@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './fretboard.css';
 import { CONSTS } from './constants';
-import { updateNote, inlineCSS } from './utils';
+import { updateNote, inlineCSS, noteToSolfege } from './utils';
+import PianoKeyboard from './PianoKeyboard';
 
 function Fretboard() {
   const [selected, setSelected] = useState(null);
   const [visibility, setVisibility] = useState('transparent');
   const [startFret, setStartFret] = useState(0);
   const [endFret, setEndFret] = useState(12);
-  const [enharmonic, setEnharmonic] = useState(0);
+  const [enharmonic, setEnharmonic] = useState(1); // 默认降号
+  const [displayMode, setDisplayMode] = useState('note'); // 默认音名模式
+  const [rootNote, setRootNote] = useState(null); // 默认不选中任何琴键
   const [data, setData] = useState({});
   const [errorMessage, setErrorMessage] = useState('');
   const [editableText, setEditableText] = useState('');
@@ -16,6 +19,7 @@ function Fretboard() {
   const [editableDivVisible, setEditableDivVisible] = useState(false);
   const [editableDivX, setEditableDivX] = useState(0);
   const [editableDivY, setEditableDivY] = useState(0);
+  const [currentDateTime, setCurrentDateTime] = useState('');
   
   const svgElementRef = useRef(null);
   const notesElementRef = useRef(null);
@@ -33,10 +37,34 @@ function Fretboard() {
     setEndFret(initialEndFret);
   }, []);
 
-  const computeNoteName = useCallback((fret, string) => {
+  // 更新当前日期时间
+  useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date();
+      const year = String(now.getFullYear()).slice(-2);
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      setCurrentDateTime(`${year}-${month}-${day} ${hours}:${minutes}:${seconds}`);
+    };
+    
+    updateDateTime();
+    const interval = setInterval(updateDateTime, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const computeNoteIndex = useCallback((fret, string) => {
     const interval = CONSTS.stringIntervals[string] + fret + 1;
-    return CONSTS.notes[enharmonic][interval % 12];
-  }, [enharmonic]);
+    return interval % 12;
+  }, []);
+
+  const computeNoteName = useCallback((fret, string) => {
+    const noteIndex = computeNoteIndex(fret, string);
+    return CONSTS.notes[enharmonic][noteIndex];
+  }, [enharmonic, computeNoteIndex]);
 
   const setFretWindow = useCallback((fretWindow) => {
     const start = fretWindow.start !== undefined ? fretWindow.start : startFret;
@@ -93,13 +121,26 @@ function Fretboard() {
       const noteId = `o-s${j}`;
       const x = CONSTS.offsetX / 2;
       const y = CONSTS.offsetY + CONSTS.stringSpacing * j;
-      const noteName = computeNoteName(-1, j);
       const noteData = data[noteId] || {};
+      
+      let displayName;
+      if (noteData.noteText) {
+        // 如果用户手动编辑了文本，优先使用编辑的文本
+        displayName = noteData.noteText;
+      } else if (displayMode === 'solfege' && rootNote !== null) {
+        // 唱名模式（需要选中根音）
+        const noteIndex = computeNoteIndex(-1, j);
+        displayName = noteToSolfege(noteIndex, rootNote, enharmonic);
+      } else {
+        // 音名模式
+        displayName = computeNoteName(-1, j);
+      }
+      
       notes.push({
         id: noteId,
         x,
         y,
-        noteName: noteData.noteText || noteName,
+        noteName: displayName,
         isOpen: true,
         data: noteData
       });
@@ -110,13 +151,26 @@ function Fretboard() {
         const noteId = `f${i}-s${j}`;
         const x = CONSTS.offsetX + (CONSTS.fretWidth / 2) + CONSTS.fretWidth * (i - startFret);
         const y = CONSTS.offsetY + CONSTS.stringSpacing * j;
-        const noteName = computeNoteName(i, j);
         const noteData = data[noteId] || {};
+        
+        let displayName;
+        if (noteData.noteText) {
+          // 如果用户手动编辑了文本，优先使用编辑的文本
+          displayName = noteData.noteText;
+        } else if (displayMode === 'solfege' && rootNote !== null) {
+          // 唱名模式（需要选中根音）
+          const noteIndex = computeNoteIndex(i, j);
+          displayName = noteToSolfege(noteIndex, rootNote, enharmonic);
+        } else {
+          // 音名模式
+          displayName = computeNoteName(i, j);
+        }
+        
         notes.push({
           id: noteId,
           x,
           y,
-          noteName: noteData.noteText || noteName,
+          noteName: displayName,
           isOpen: false,
           data: noteData
         });
@@ -124,7 +178,7 @@ function Fretboard() {
     }
     
     return notes;
-  }, [startFret, endFret, data, computeNoteName]);
+  }, [startFret, endFret, data, computeNoteName, computeNoteIndex, displayMode, rootNote, enharmonic]);
 
   const generateMarkers = useCallback(() => {
     return CONSTS.markers
@@ -257,7 +311,8 @@ function Fretboard() {
   const editNoteLabel = useCallback((noteId, noteElement) => {
     const noteData = data[noteId] || {};
     const textElem = noteElement?.querySelector('text');
-    const noteName = noteData.noteText || textElem?.getAttribute('data-note') || '';
+    // 优先使用手动编辑的文本，否则使用当前显示的文本（可能是唱名或音名）
+    const noteName = noteData.noteText || textElem?.textContent || textElem?.getAttribute('data-note') || '';
     setEditableText(noteName);
     setEditingNote(noteId);
     
@@ -283,19 +338,16 @@ function Fretboard() {
             return newData;
           });
         } else {
-          const textElem = noteElement.querySelector('text');
-          if (textElem) {
-            textElem.textContent = textElem.getAttribute('data-note');
-            setData(prevData => {
-              const newData = { ...prevData };
-              if (editingNote in newData) {
-                const noteData = { ...newData[editingNote] };
-                delete noteData.noteText;
-                newData[editingNote] = noteData;
-              }
-              return newData;
-            });
-          }
+          // 清空编辑文本时，删除 noteText，让 generateNotes 根据当前模式重新计算显示名称
+          setData(prevData => {
+            const newData = { ...prevData };
+            if (editingNote in newData) {
+              const noteData = { ...newData[editingNote] };
+              delete noteData.noteText;
+              newData[editingNote] = noteData;
+            }
+            return newData;
+          });
         }
       }
     }
@@ -308,10 +360,6 @@ function Fretboard() {
     if (selected) {
       const noteElement = selected.element || document.getElementById(selected.id);
       if (noteElement) {
-        const textElem = noteElement.querySelector('text');
-        if (textElem) {
-          textElem.textContent = textElem.getAttribute('data-note');
-        }
         updateNote(noteElement, data, { 
           color: 'white', 
           visibility: visibility 
@@ -324,6 +372,8 @@ function Fretboard() {
           }
           return newData;
         });
+        // 删除noteText后，让generateNotes重新计算显示名称
+        // 不需要手动设置textContent，因为notes会重新生成并更新DOM
       }
       setSelected(null);
     }
@@ -489,6 +539,10 @@ function Fretboard() {
 
   return (
     <>
+      <div className="title-header">
+        <h1>Fretboard Diagram Generator</h1>
+        <div className="datetime">{currentDateTime}</div>
+      </div>
       <figure id="fretboard-diagram-creator" className="half-full">
         <svg
           ref={svgElementRef}
@@ -638,6 +692,21 @@ function Fretboard() {
           >
             {CONSTS.sign[enharmonic]}
           </button>
+          <label className="mode-switch">
+            <input
+              type="checkbox"
+              checked={displayMode === 'solfege'}
+              onChange={(e) => {
+                const newMode = e.target.checked ? 'solfege' : 'note';
+                setDisplayMode(newMode);
+                // 切换到唱名模式时，取消选中琴键
+                if (newMode === 'solfege') {
+                  setRootNote(null);
+                }
+              }}
+            />
+            <span>唱名</span>
+          </label>
           <button className="button" onClick={toggleVisibility}>Toggle</button>
           <button className="button" onClick={saveSVG}>Save</button>
           <button className="button" onClick={reset}>Reset</button>
@@ -659,6 +728,22 @@ function Fretboard() {
                 return;
               } else {
                 e.target.value = endFret;
+              }
+            }}
+          />
+        </div>
+        <div id="piano-keyboard-container">
+          <PianoKeyboard
+            enharmonic={enharmonic}
+            selectedNote={rootNote}
+            onNoteSelect={(noteIndex) => {
+              setRootNote(noteIndex);
+              if (noteIndex === null) {
+                // 取消选中时，自动切换到音名模式
+                setDisplayMode('note');
+              } else {
+                // 选中琴键时，自动切换到唱名模式
+                setDisplayMode('solfege');
               }
             }}
           />
