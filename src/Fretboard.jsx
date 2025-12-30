@@ -1,15 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './fretboard.css';
 import { CONSTS } from './constants';
-import { updateNote, inlineCSS, noteToSolfege } from './utils';
+import { updateNote, inlineCSS, noteToSolfege, getLevel2Color } from './utils';
+import { initColorCSSVariables, LEVEL1_COLORS, LEVEL2_COLORS } from './colorConfig';
 import PianoKeyboard from './PianoKeyboard';
+
+// 第一层级颜色顺序（从 colorConfig.js 中 LEVEL1_COLORS 自动获取）
+const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
+
+// 第二层级颜色顺序（从 colorConfig.js 中 LEVEL2_COLORS 自动获取）
+const LEVEL2_COLOR_ORDER = Object.keys(LEVEL2_COLORS);
 
 function Fretboard() {
   const [selected, setSelected] = useState(null);
-  const [selectedColor, setSelectedColor] = useState('black'); // 当前选中的调色盘颜色，默认选中透明（黑色）
+  const [selectedColorLevel, setSelectedColorLevel] = useState(null); // 1 | 2 | 'delete' | null
+  const [selectedColor, setSelectedColor] = useState(null); // 当前选中的调色盘颜色名称
   const [visibility, setVisibility] = useState('transparent');
   const [startFret, setStartFret] = useState(0);
-  const [endFret, setEndFret] = useState(12);
+  const [endFret, setEndFret] = useState(15);
   const [enharmonic, setEnharmonic] = useState(1); // 默认降号
   const [displayMode, setDisplayMode] = useState('note'); // 默认音名模式
   const [rootNote, setRootNote] = useState(null); // 默认不选中任何琴键
@@ -30,10 +38,15 @@ function Fretboard() {
   const fretboardWidth = CONSTS.fretWidth * numFrets;
   const svgWidth = fretboardWidth + 2 * CONSTS.offsetX;
 
+  // 初始化颜色CSS变量
+  useEffect(() => {
+    initColorCSSVariables();
+  }, []);
+
   useEffect(() => {
     const initialEndFret = Math.min(
       Math.floor((window.innerWidth - 2 * CONSTS.offsetX) / CONSTS.fretWidth),
-      12
+      15
     );
     setEndFret(initialEndFret);
   }, []);
@@ -238,6 +251,7 @@ function Fretboard() {
           updateNote(noteElement, data, { 
             type: noteData.type || 'note',
             color: noteData.color || 'white',
+            color2: noteData.color2 || null,
             visibility: noteData.visibility || visibility
           });
         }
@@ -267,23 +281,64 @@ function Fretboard() {
     
     const noteData = data[noteId] || { type: 'note', color: 'white', visibility: visibility };
     const currentColor = noteData.color || 'white';
+    const currentColor2 = noteData.color2 || null;
     const currentVisibility = noteData.visibility || visibility;
     
-    // 如果选中了调色盘，应用颜色逻辑
-    if (selectedColor !== null) {
-      // 如果音符当前颜色与选中的调色盘颜色相同
+    // 如果选中了删除调色盘
+    if (selectedColorLevel === 'delete') {
+      // 只对visible状态的音符生效
+      if (currentVisibility === 'visible') {
+        updateNote(noteElement, data, { 
+          color: 'white', 
+          color2: null,
+          visibility: visibility 
+        });
+        setData(prevData => {
+          const newData = { ...prevData };
+          if (!(noteId in newData)) {
+            newData[noteId] = {};
+          }
+          newData[noteId] = { 
+            ...newData[noteId], 
+            color: 'white', 
+            color2: null,
+            visibility: visibility 
+          };
+          return newData;
+        });
+      }
+      return;
+    }
+    
+    // 如果选中了第一层级调色盘
+    if (selectedColorLevel === 1 && selectedColor !== null) {
+      // 如果音符当前第一层级颜色与选中的调色盘颜色相同
       if (currentColor === selectedColor) {
-        // 如果音符是visible状态，则切换为普通状态（颜色重置为white）
+        // 如果音符是visible状态
         if (currentVisibility === 'visible') {
-          updateNote(noteElement, data, { color: 'white', visibility: visibility });
-          setData(prevData => {
-            const newData = { ...prevData };
-            if (!(noteId in newData)) {
-              newData[noteId] = {};
-            }
-            newData[noteId] = { ...newData[noteId], color: 'white', visibility: visibility };
-            return newData;
-          });
+          // 如果音符还有第二层级颜色，只清除第一层级颜色，保持visible状态
+          if (currentColor2 && currentColor2 !== null) {
+            updateNote(noteElement, data, { color: 'white', visibility: 'visible' });
+            setData(prevData => {
+              const newData = { ...prevData };
+              if (!(noteId in newData)) {
+                newData[noteId] = {};
+              }
+              newData[noteId] = { ...newData[noteId], color: 'white', visibility: 'visible' };
+              return newData;
+            });
+          } else {
+            // 如果音符没有第二层级颜色，则切换为普通状态
+            updateNote(noteElement, data, { color: 'white', visibility: visibility });
+            setData(prevData => {
+              const newData = { ...prevData };
+              if (!(noteId in newData)) {
+                newData[noteId] = {};
+              }
+              newData[noteId] = { ...newData[noteId], color: 'white', visibility: visibility };
+              return newData;
+            });
+          }
         } else {
           // 如果音符不是visible状态，则切换为visible状态并保持颜色
           updateNote(noteElement, data, { color: selectedColor, visibility: 'visible' });
@@ -311,16 +366,52 @@ function Fretboard() {
       return;
     }
     
+    // 如果选中了第二层级调色盘
+    if (selectedColorLevel === 2 && selectedColor !== null) {
+      // 如果音符当前第二层级颜色与选中的调色盘颜色相同，清除第二层级颜色
+      if (currentColor2 === selectedColor) {
+        // 如果第一层级颜色是white（普通状态），清除第二层级后应该变成普通状态
+        // 如果第一层级颜色不是white，清除第二层级后应该保持visible状态
+        const newVisibility = (currentColor === 'white') ? visibility : 'visible';
+        updateNote(noteElement, data, { color2: null, visibility: newVisibility });
+        setData(prevData => {
+          const newData = { ...prevData };
+          if (!(noteId in newData)) {
+            newData[noteId] = {};
+          }
+          newData[noteId] = { ...newData[noteId], color2: null, visibility: newVisibility };
+          return newData;
+        });
+      } else {
+        // 如果不同，设置第二层级颜色（保持visible状态，如果已经是visible）
+        const newVisibility = currentVisibility === 'visible' ? 'visible' : 'visible';
+        updateNote(noteElement, data, { color2: selectedColor, visibility: newVisibility });
+        setData(prevData => {
+          const newData = { ...prevData };
+          if (!(noteId in newData)) {
+            newData[noteId] = {};
+          }
+          newData[noteId] = { 
+            ...newData[noteId], 
+            color2: selectedColor, 
+            visibility: newVisibility 
+          };
+          return newData;
+        });
+      }
+      return;
+    }
+    
     // 如果没有选中调色盘，执行原来的选中逻辑
     // 如果点击的音符当前是visible状态，将其变回普通状态（颜色重置为white）
     if (currentVisibility === 'visible') {
-      updateNote(noteElement, data, { color: 'white', visibility: visibility });
+      updateNote(noteElement, data, { color: 'white', color2: null, visibility: visibility });
       setData(prevData => {
         const newData = { ...prevData };
         if (!(noteId in newData)) {
           newData[noteId] = {};
         }
-        newData[noteId] = { ...newData[noteId], color: 'white', visibility: visibility };
+        newData[noteId] = { ...newData[noteId], color: 'white', color2: null, visibility: visibility };
         return newData;
       });
       return;
@@ -339,6 +430,7 @@ function Fretboard() {
           return newData;
         });
       }
+      setSelected(null);
     }
     updateNote(noteElement, data, { visibility: 'selected' });
     setData(prevData => {
@@ -354,7 +446,7 @@ function Fretboard() {
     if (event.ctrlKey) {
       editNoteLabel(noteId, noteElement);
     }
-  }, [selected, selectedColor, data, visibility, editNoteLabel]);
+  }, [selected, selectedColorLevel, selectedColor, data, visibility, editNoteLabel]);
 
   const handleNoteContextMenu = useCallback((event, noteId) => {
     event.preventDefault();
@@ -426,12 +518,13 @@ function Fretboard() {
       if (noteElement) {
         updateNote(noteElement, data, { 
           color: 'white', 
+          color2: null,
           visibility: visibility 
         });
         setData(prevData => {
           const newData = { ...prevData };
           if (selected.id in newData) {
-            newData[selected.id] = { ...newData[selected.id], color: 'white', visibility: visibility };
+            newData[selected.id] = { ...newData[selected.id], color: 'white', color2: null, visibility: visibility };
             delete newData[selected.id].noteText;
           }
           return newData;
@@ -443,14 +536,53 @@ function Fretboard() {
     }
   }, [selected, visibility, data]);
 
-  const selectColor = useCallback((color) => {
-    // 如果点击的是当前已选中的颜色，则取消选中
-    if (selectedColor === color) {
+  const selectColor = useCallback((level, color) => {
+    // 如果点击的是当前已选中的颜色和层级，则取消选中
+    if (selectedColorLevel === level && selectedColor === color) {
+      setSelectedColorLevel(null);
       setSelectedColor(null);
     } else {
+      setSelectedColorLevel(level);
       setSelectedColor(color);
     }
-  }, [selectedColor]);
+  }, [selectedColorLevel, selectedColor]);
+
+  // 循环选择第一层级颜色
+  const cycleLevel1Color = useCallback(() => {
+    if (selectedColorLevel === 1 && selectedColor) {
+      // 如果当前已选中第一层级颜色，找到下一个
+      const currentIndex = LEVEL1_COLOR_ORDER.indexOf(selectedColor);
+      const nextIndex = (currentIndex + 1) % LEVEL1_COLOR_ORDER.length;
+      selectColor(1, LEVEL1_COLOR_ORDER[nextIndex]);
+    } else {
+      // 如果未选中或选中其他层级，选择第一个颜色
+      selectColor(1, LEVEL1_COLOR_ORDER[0]);
+    }
+  }, [selectedColorLevel, selectedColor, selectColor]);
+
+  // 循环选择第二层级颜色
+  const cycleLevel2Color = useCallback(() => {
+    if (selectedColorLevel === 2 && selectedColor) {
+      // 如果当前已选中第二层级颜色，找到下一个
+      const currentIndex = LEVEL2_COLOR_ORDER.indexOf(selectedColor);
+      const nextIndex = (currentIndex + 1) % LEVEL2_COLOR_ORDER.length;
+      selectColor(2, LEVEL2_COLOR_ORDER[nextIndex]);
+    } else {
+      // 如果未选中或选中其他层级，选择第一个颜色
+      selectColor(2, LEVEL2_COLOR_ORDER[0]);
+    }
+  }, [selectedColorLevel, selectedColor, selectColor]);
+
+  const selectDelete = useCallback(() => {
+    // 如果点击的是当前已选中的删除按钮，则取消选中
+    if (selectedColorLevel === 'delete') {
+      setSelectedColorLevel(null);
+      setSelectedColor(null);
+    } else {
+      setSelectedColorLevel('delete');
+      setSelectedColor(null);
+    }
+  }, [selectedColorLevel]);
 
   const toggleVisibility = useCallback(() => {
     const newVisibility = visibility === 'hidden' ? 'transparent' : 'hidden';
@@ -490,7 +622,7 @@ function Fretboard() {
           if (textElem) {
             textElem.textContent = textElem.getAttribute('data-note');
           }
-          updateNote(note, data, { type: 'note', color: 'white', visibility: visibility });
+          updateNote(note, data, { type: 'note', color: 'white', color2: null, visibility: visibility });
         }
       }
       setSelected(null);
@@ -533,26 +665,32 @@ function Fretboard() {
           }
           break;
         case 'KeyB':
-          selectColor('blue');
-          break;
-        case 'KeyD':
-          selectColor('black');
+          selectColor(1, 'blue');
           break;
         case 'KeyG':
-          selectColor('green');
+          selectColor(1, 'green');
           break;
         case 'KeyW':
-          selectColor('white');
+          selectColor(1, 'white');
           break;
         case 'KeyR':
-          selectColor('red');
+          selectColor(1, 'red');
+          break;
+        case 'KeyX':
+          selectDelete();
+          break;
+        case 'KeyA':
+          cycleLevel1Color();
+          break;
+        case 'KeyD':
+          cycleLevel2Color();
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, deleteNote, selectColor]);
+  }, [selected, deleteNote, selectColor, selectDelete, cycleLevel1Color, cycleLevel2Color]);
 
   const handleSvgClick = useCallback(() => {
     if (selected) {
@@ -634,8 +772,18 @@ function Fretboard() {
             {notes.map(note => {
               const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
               const currentColor = noteData.color || 'white';
+              const currentColor2 = noteData.color2 || null;
               const currentVisibility = selected?.id === note.id ? 'selected' : (noteData.visibility || visibility);
               const className = `note ${currentColor} ${currentVisibility}`;
+              
+              // 根据 color2 设置描边颜色
+              let hasColor2 = currentColor2 && currentColor2 !== null;
+              let strokeColor = note.isOpen ? 'none' : undefined;
+              let strokeWidth = undefined;
+              if (hasColor2) {
+                strokeColor = getLevel2Color(currentColor2);
+                strokeWidth = '4.5';
+              }
               
               let originalNoteName = '';
               if (note.id.startsWith('o-s')) {
@@ -661,6 +809,16 @@ function Fretboard() {
                   onContextMenu={(e) => handleNoteContextMenu(e, note.id)}
                   style={{ cursor: 'pointer' }}
                 >
+                  {/* 如果有第二层级颜色，绘制第二层级颜色的描边 */}
+                  {hasColor2 && (
+                    <circle
+                      r={CONSTS.circleRadius}
+                      stroke={strokeColor}
+                      strokeWidth="4.5"
+                      fill="none"
+                    />
+                  )}
+                  {/* 填充的circle */}
                   <circle
                     r={CONSTS.circleRadius}
                     stroke={note.isOpen ? 'none' : undefined}
@@ -716,12 +874,31 @@ function Fretboard() {
 
       <div className="menu">
         <div id="color-selector">
-          <button title="blue" className={`color blue ${selectedColor === 'blue' ? 'selected' : ''}`} onClick={() => selectColor('blue')} />
-          <button title="green" className={`color green ${selectedColor === 'green' ? 'selected' : ''}`} onClick={() => selectColor('green')} />
-          <button title="red" className={`color red ${selectedColor === 'red' ? 'selected' : ''}`} onClick={() => selectColor('red')} />
-          <button title="white" className={`color white ${selectedColor === 'white' ? 'selected' : ''}`} onClick={() => selectColor('white')} />
-          <button title="black" className={`color black ${selectedColor === 'black' ? 'selected' : ''}`} onClick={() => selectColor('black')} />
-          <button title="delete" id="delete-note" onClick={deleteNote}>X</button>
+          <div className="color-palette-row">
+            <span className="palette-label">第一层:</span>
+            {LEVEL1_COLOR_ORDER.map(colorName => (
+              <button
+                key={colorName}
+                title={colorName}
+                className={`color ${colorName} ${selectedColorLevel === 1 && selectedColor === colorName ? 'selected' : ''}`}
+                onClick={() => selectColor(1, colorName)}
+              />
+            ))}
+          </div>
+          <div className="color-palette-row">
+            <span className="palette-label">第二层:</span>
+            {LEVEL2_COLOR_ORDER.map(colorName => (
+              <button
+                key={colorName}
+                title={colorName}
+                className={`color ${colorName} level2 ${selectedColorLevel === 2 && selectedColor === colorName ? 'selected' : ''}`}
+                onClick={() => selectColor(2, colorName)}
+              />
+            ))}
+          </div>
+          <div className="color-palette-row">
+            <button title="delete" id="delete-palette" className={selectedColorLevel === 'delete' ? 'selected' : ''} onClick={selectDelete}>删除</button>
+          </div>
         </div>
         <div id="global-actions">
           <input
@@ -752,21 +929,6 @@ function Fretboard() {
           >
             {CONSTS.sign[enharmonic]}
           </button>
-          <label className="mode-switch">
-            <input
-              type="checkbox"
-              checked={displayMode === 'solfege'}
-              onChange={(e) => {
-                const newMode = e.target.checked ? 'solfege' : 'note';
-                setDisplayMode(newMode);
-                // 切换到唱名模式时，取消选中琴键
-                if (newMode === 'solfege') {
-                  setRootNote(null);
-                }
-              }}
-            />
-            <span>唱名</span>
-          </label>
           <button className="button" onClick={toggleVisibility}>Toggle</button>
           <button className="button" onClick={saveSVG}>Save</button>
           <button className="button" onClick={reset}>Reset</button>
