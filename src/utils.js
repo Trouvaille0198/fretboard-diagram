@@ -1,3 +1,89 @@
+// 第一层级颜色的 RGB 值（从 CSS 中获取）
+const baseColorRGB = {
+    'blue': { r: 70, g: 130, b: 180 },      // steelblue
+    'green': { r: 0, g: 128, b: 128 },     // teal
+    'red': { r: 205, g: 92, b: 92 },       // indianred
+    'white': { r: 0, g: 0, b: 0 },         // 黑色背景（需要特殊处理）
+    'black': { r: 170, g: 170, b: 170 }    // 浅灰色文本（需要特殊处理）
+};
+
+// RGB 转 HSL
+function rgbToHsl(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+        h = s = 0; // 无色彩
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+        switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+        }
+    }
+
+    return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+// HSL 转 RGB
+function hslToRgb(h, s, l) {
+    h /= 360;
+    s /= 100;
+    l /= 100;
+
+    let r, g, b;
+
+    if (s === 0) {
+        r = g = b = l; // 无色彩
+    } else {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1 / 6) return p + (q - p) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+            return p;
+        };
+
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+    }
+
+    return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+    };
+}
+
+// RGB 转十六进制
+function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
+}
+
+// 从颜色配置文件导入
+import { getLevel2Color as getLevel2ColorFromConfig } from './colorConfig';
+
+// 获取第二层级颜色值（独立设置，不依赖第一层级）
+export function getLevel2Color(colorName) {
+    return getLevel2ColorFromConfig(colorName);
+}
+
 // 生成类名
 export function generateClassValue(elem, update) {
     const classVal = elem.className?.baseVal || elem.getAttribute('class') || 'note white transparent';
@@ -27,6 +113,22 @@ export function updateNote(elem, data, update) {
         const textElem = elem.querySelector('text');
         if (textElem) {
             textElem.textContent = update.noteText;
+        }
+    }
+
+    // 处理第二层级颜色（color2）- 设置到 circle 的 stroke 属性
+    if ('color2' in update) {
+        const circleElem = elem.querySelector('circle');
+        if (circleElem) {
+            if (update.color2 && update.color2 !== null) {
+                const level2Color = getLevel2Color(update.color2);
+                circleElem.setAttribute('stroke', level2Color);
+                circleElem.setAttribute('stroke-width', '4.5');
+            } else {
+                // 清除第二层级颜色
+                circleElem.removeAttribute('stroke');
+                circleElem.removeAttribute('stroke-width');
+            }
         }
     }
 
