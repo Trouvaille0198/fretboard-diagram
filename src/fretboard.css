@@ -1,3 +1,10 @@
+/* 
+ * 颜色配置说明：
+ * 第一层级和第二层级的颜色配置在 src/colorConfig.js 文件中
+ * 修改颜色时，请同时更新 colorConfig.js 和本文件中的对应颜色值
+ * 或者使用 CSS 变量来统一管理
+ */
+
 :root {
     --background-color: black;
     --text-color: #aaaaaa;
@@ -75,11 +82,12 @@ g.note.transparent {
 
 g.note.visible {
     opacity: 1;
-    fill: var(--background-color);
+    /* fill: var(--background-color); */
 }
 
+/* 颜色配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
 g.note.blue {
-    fill: steelblue;
+    fill: var(--color-level1-blue-fill);
 }
 
 g.note.blue>text {
@@ -87,17 +95,26 @@ g.note.blue>text {
     fill: white;
 }
 
-g.note.black {
-    fill: var(--text-color);
+g.note.trans {
+    fill: var(--color-level1-trans-fill);
 }
 
-g.note.black>text {
+g.note.trans>text {
     stroke: var(--background-color);
     fill: var(--background-color);
 }
 
+g.note.gray {
+    fill: var(--color-level1-gray-fill);
+}
+
+g.note.gray>text {
+    stroke: white;
+    fill: white;
+}
+
 g.note.red {
-    fill: indianred;
+    fill: var(--color-level1-red-fill);
 }
 
 g.note.red>text {
@@ -106,10 +123,19 @@ g.note.red>text {
 }
 
 g.note.green {
-    fill: teal;
+    fill: var(--color-level1-green-fill);
 }
 
 g.note.green>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.brown {
+    fill: var(--color-level1-brown-fill);
+}
+
+g.note.brown>text {
     stroke: white;
     fill: white;
 }
@@ -167,10 +193,25 @@ text.marker {
     /* background-color: lightgray; */
     margin: auto;
     padding-bottom: 15px;
-    width: 320px;
+    width: 400px;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     gap: 8px;
+}
+
+.color-palette-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.palette-label {
+    font-size: 12px;
+    color: var(--text-color);
+    width: 50px;
+    text-align: right;
+    margin-right: 4px;
 }
 
 button.color {
@@ -190,24 +231,66 @@ button.color.selected {
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
+/* 第一层级调色盘按钮颜色 - 配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
 .color.blue {
-    background-color: steelblue;
+    background-color: var(--color-level1-blue-button);
 }
 
-.color.black {
-    background-color: var(--text-color);
+.color.trans {
+    background-color: var(--color-level1-trans-button);
 }
 
 .color.green {
-    background-color: teal;
+    background-color: var(--color-level1-green-button);
 }
 
 .color.red {
-    background-color: indianred;
+    background-color: var(--color-level1-red-button);
 }
 
-.color.white {
-    background-color: var(--background-color);
+.color.brown {
+    background-color: var(--color-level1-brown-button);
+}
+
+.color.gray {
+    background-color: var(--color-level1-gray-button);
+}
+
+/* 第二层级调色盘颜色 - 配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
+.color.level2.yellow {
+    background-color: var(--color-level2-yellow);
+}
+
+.color.level2.cyan {
+    background-color: var(--color-level2-cyan);
+}
+
+.color.level2.pink {
+    background-color: var(--color-level2-pink);
+}
+
+.color.level2.grass-green {
+    background-color: var(--color-level2-grass-green);
+}
+
+/* 删除调色盘按钮 */
+#delete-palette {
+    width: 60px;
+    background-color: #ff4444;
+    color: white;
+    border: 1px solid var(--text-color);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#delete-palette:hover {
+    background-color: #ff6666;
+    transform: scale(1.05);
+}
+
+#delete-palette.selected {
+    border: 2px solid var(--text-color);
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.8);
 }
 
 /* Global actions */
