@@ -6,6 +6,7 @@ import PianoKeyboard from './PianoKeyboard';
 
 function Fretboard() {
   const [selected, setSelected] = useState(null);
+  const [selectedColor, setSelectedColor] = useState('black'); // 当前选中的调色盘颜色，默认选中透明（黑色）
   const [visibility, setVisibility] = useState('transparent');
   const [startFret, setStartFret] = useState(0);
   const [endFret, setEndFret] = useState(12);
@@ -244,11 +245,88 @@ function Fretboard() {
     }
   }, [notes, data, visibility]);
 
+  const editNoteLabel = useCallback((noteId, noteElement) => {
+    const noteData = data[noteId] || {};
+    const textElem = noteElement?.querySelector('text');
+    // 优先使用手动编辑的文本，否则使用当前显示的文本（可能是唱名或音名）
+    const noteName = noteData.noteText || textElem?.textContent || textElem?.getAttribute('data-note') || '';
+    setEditableText(noteName);
+    setEditingNote(noteId);
+    
+    const x = parseFloat(noteElement?.getAttribute('data-x') || '0');
+    const y = parseFloat(noteElement?.getAttribute('data-y') || '0');
+    setEditableDivX(x - CONSTS.circleRadius);
+    setEditableDivY(y - CONSTS.circleRadius + 4);
+    setEditableDivVisible(true);
+  }, [data]);
+
   const handleNoteClick = useCallback((event, noteId) => {
     event.stopPropagation();
     const noteElement = event.currentTarget;
     noteElement.focus();
     
+    const noteData = data[noteId] || { type: 'note', color: 'white', visibility: visibility };
+    const currentColor = noteData.color || 'white';
+    const currentVisibility = noteData.visibility || visibility;
+    
+    // 如果选中了调色盘，应用颜色逻辑
+    if (selectedColor !== null) {
+      // 如果音符当前颜色与选中的调色盘颜色相同
+      if (currentColor === selectedColor) {
+        // 如果音符是visible状态，则切换为普通状态（颜色重置为white）
+        if (currentVisibility === 'visible') {
+          updateNote(noteElement, data, { color: 'white', visibility: visibility });
+          setData(prevData => {
+            const newData = { ...prevData };
+            if (!(noteId in newData)) {
+              newData[noteId] = {};
+            }
+            newData[noteId] = { ...newData[noteId], color: 'white', visibility: visibility };
+            return newData;
+          });
+        } else {
+          // 如果音符不是visible状态，则切换为visible状态并保持颜色
+          updateNote(noteElement, data, { color: selectedColor, visibility: 'visible' });
+          setData(prevData => {
+            const newData = { ...prevData };
+            if (!(noteId in newData)) {
+              newData[noteId] = {};
+            }
+            newData[noteId] = { ...newData[noteId], color: selectedColor, visibility: 'visible' };
+            return newData;
+          });
+        }
+      } else {
+        // 如果音符当前颜色与选中的调色盘颜色不同，改变颜色并设置为visible
+        updateNote(noteElement, data, { color: selectedColor, visibility: 'visible' });
+        setData(prevData => {
+          const newData = { ...prevData };
+          if (!(noteId in newData)) {
+            newData[noteId] = {};
+          }
+          newData[noteId] = { ...newData[noteId], color: selectedColor, visibility: 'visible' };
+          return newData;
+        });
+      }
+      return;
+    }
+    
+    // 如果没有选中调色盘，执行原来的选中逻辑
+    // 如果点击的音符当前是visible状态，将其变回普通状态（颜色重置为white）
+    if (currentVisibility === 'visible') {
+      updateNote(noteElement, data, { color: 'white', visibility: visibility });
+      setData(prevData => {
+        const newData = { ...prevData };
+        if (!(noteId in newData)) {
+          newData[noteId] = {};
+        }
+        newData[noteId] = { ...newData[noteId], color: 'white', visibility: visibility };
+        return newData;
+      });
+      return;
+    }
+    
+    // 否则，选中音符
     if (selected) {
       const prevElement = selected.element || document.getElementById(selected.id);
       if (prevElement) {
@@ -276,9 +354,10 @@ function Fretboard() {
     if (event.ctrlKey) {
       editNoteLabel(noteId, noteElement);
     }
-  }, [selected, data]);
+  }, [selected, selectedColor, data, visibility, editNoteLabel]);
 
-  const handleNoteDoubleClick = useCallback((event, noteId) => {
+  const handleNoteContextMenu = useCallback((event, noteId) => {
+    event.preventDefault();
     event.stopPropagation();
     const noteElement = event.currentTarget;
     
@@ -306,22 +385,7 @@ function Fretboard() {
     });
     setSelected({ id: noteId, element: noteElement });
     editNoteLabel(noteId, noteElement);
-  }, [selected, data]);
-
-  const editNoteLabel = useCallback((noteId, noteElement) => {
-    const noteData = data[noteId] || {};
-    const textElem = noteElement?.querySelector('text');
-    // 优先使用手动编辑的文本，否则使用当前显示的文本（可能是唱名或音名）
-    const noteName = noteData.noteText || textElem?.textContent || textElem?.getAttribute('data-note') || '';
-    setEditableText(noteName);
-    setEditingNote(noteId);
-    
-    const x = parseFloat(noteElement?.getAttribute('data-x') || '0');
-    const y = parseFloat(noteElement?.getAttribute('data-y') || '0');
-    setEditableDivX(x - CONSTS.circleRadius);
-    setEditableDivY(y - CONSTS.circleRadius + 4);
-    setEditableDivVisible(true);
-  }, [data]);
+  }, [selected, data, editNoteLabel]);
 
   const finishEditing = useCallback(() => {
     if (editingNote) {
@@ -379,21 +443,14 @@ function Fretboard() {
     }
   }, [selected, visibility, data]);
 
-  const updateColor = useCallback((color) => {
-    if (selected) {
-      const noteElement = selected.element || document.getElementById(selected.id);
-      if (noteElement) {
-        updateNote(noteElement, data, { color });
-        setData(prevData => {
-          const newData = { ...prevData };
-          if (selected.id in newData) {
-            newData[selected.id] = { ...newData[selected.id], color };
-          }
-          return newData;
-        });
-      }
+  const selectColor = useCallback((color) => {
+    // 如果点击的是当前已选中的颜色，则取消选中
+    if (selectedColor === color) {
+      setSelectedColor(null);
+    } else {
+      setSelectedColor(color);
     }
-  }, [selected, data]);
+  }, [selectedColor]);
 
   const toggleVisibility = useCallback(() => {
     const newVisibility = visibility === 'hidden' ? 'transparent' : 'hidden';
@@ -468,34 +525,34 @@ function Fretboard() {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (!selected) return;
-      
       switch (event.code) {
         case 'Backspace':
         case 'Delete':
-          deleteNote();
+          if (selected) {
+            deleteNote();
+          }
           break;
         case 'KeyB':
-          updateColor('blue');
+          selectColor('blue');
           break;
         case 'KeyD':
-          updateColor('black');
+          selectColor('black');
           break;
         case 'KeyG':
-          updateColor('green');
+          selectColor('green');
           break;
         case 'KeyW':
-          updateColor('white');
+          selectColor('white');
           break;
         case 'KeyR':
-          updateColor('red');
+          selectColor('red');
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, deleteNote, updateColor]);
+  }, [selected, deleteNote, selectColor]);
 
   const handleSvgClick = useCallback(() => {
     if (selected) {
@@ -601,14 +658,17 @@ function Fretboard() {
                   data-y={note.y}
                   data-open={note.isOpen}
                   onClick={(e) => handleNoteClick(e, note.id)}
-                  onDoubleClick={(e) => handleNoteDoubleClick(e, note.id)}
+                  onContextMenu={(e) => handleNoteContextMenu(e, note.id)}
                   style={{ cursor: 'pointer' }}
                 >
                   <circle
                     r={CONSTS.circleRadius}
                     stroke={note.isOpen ? 'none' : undefined}
                   />
-                  <text data-note={originalNoteName}>
+                  <text 
+                    data-note={originalNoteName}
+                    style={{ opacity: editingNote === note.id ? 0 : 1 }}
+                  >
                     {note.noteName}
                   </text>
                 </g>
@@ -656,11 +716,11 @@ function Fretboard() {
 
       <div className="menu">
         <div id="color-selector">
-          <button title="blue" className="color blue" onClick={() => updateColor('blue')} />
-          <button title="green" className="color green" onClick={() => updateColor('green')} />
-          <button title="red" className="color red" onClick={() => updateColor('red')} />
-          <button title="white" className="color white" onClick={() => updateColor('white')} />
-          <button title="black" className="color black" onClick={() => updateColor('black')} />
+          <button title="blue" className={`color blue ${selectedColor === 'blue' ? 'selected' : ''}`} onClick={() => selectColor('blue')} />
+          <button title="green" className={`color green ${selectedColor === 'green' ? 'selected' : ''}`} onClick={() => selectColor('green')} />
+          <button title="red" className={`color red ${selectedColor === 'red' ? 'selected' : ''}`} onClick={() => selectColor('red')} />
+          <button title="white" className={`color white ${selectedColor === 'white' ? 'selected' : ''}`} onClick={() => selectColor('white')} />
+          <button title="black" className={`color black ${selectedColor === 'black' ? 'selected' : ''}`} onClick={() => selectColor('black')} />
           <button title="delete" id="delete-note" onClick={deleteNote}>X</button>
         </div>
         <div id="global-actions">
