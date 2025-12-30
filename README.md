@@ -1,13 +1,183 @@
 # Fretboard Diagram Creator
 
-A simple online tool with which you can create fretboard diagrams for the guitar. 
+一个简单的在线工具，用于创建吉他指板图。本项目已使用 Svelte 框架重构。
 
-Demo: https://zeitbach.com/projects/fretboard-diagram-creator/
+## 功能特性
 
-## Features
+- 自由选择音符用于音阶或和弦图
+- 编辑音符标签（用于指示指法、音程等）
+- 为音符着色
+- 选择指板的一部分
+- 将图表保存为 SVG
 
-* Freely select notes for scale or chord diagrams
-* Edit note labels (to indicate fingerings, intervals etc.)
-* Color notes
-* Select part of the fretboard
-* Save diagram as SVG
+## 技术栈
+
+- **Svelte 4** - 现代前端框架
+- **Vite** - 快速构建工具
+- **SVG** - 矢量图形渲染
+
+## 环境要求
+
+- Node.js 18.0 或更高版本
+- pnpm 包管理器（推荐）或 npm/yarn
+
+### 安装 pnpm
+
+如果尚未安装 pnpm，可以使用以下命令安装：
+
+```bash
+npm install -g pnpm
+```
+
+或者使用其他安装方式，详见 [pnpm 官方文档](https://pnpm.io/installation)。
+
+## 安装步骤
+
+### 1. 检查 Node.js 版本
+
+首先确保已安装 Node.js，并检查版本：
+
+```bash
+node --version
+```
+
+如果版本低于 18.0，请访问 [Node.js 官网](https://nodejs.org/) 下载并安装最新版本。
+
+### 2. 安装项目依赖
+
+在项目根目录下运行以下命令安装依赖：
+
+```bash
+pnpm install
+```
+
+这将安装以下依赖：
+
+- `svelte` - Svelte 框架
+- `vite` - 构建工具
+- `@sveltejs/vite-plugin-svelte` - Svelte 的 Vite 插件
+
+## 应用启动
+
+### 开发模式
+
+启动开发服务器：
+
+```bash
+pnpm dev
+```
+
+开发服务器启动后，在浏览器中访问显示的本地地址（通常是 `http://localhost:5173`）。
+
+开发模式下支持：
+
+- 热模块替换（HMR）- 修改代码后自动刷新
+- 源代码映射 - 便于调试
+
+### 构建生产版本
+
+构建用于生产环境的优化版本：
+
+```bash
+pnpm build
+```
+
+构建产物将输出到 `dist` 目录。
+
+### 预览生产构建
+
+预览生产构建的结果：
+
+```bash
+pnpm preview
+```
+
+## 使用说明
+
+### 基本操作
+
+1. **选择音符**：点击指板上的任意音符进行选择
+2. **编辑标签**：双击音符或按住 Ctrl 键点击音符，然后输入自定义文本
+3. **更改颜色**：选择音符后，点击颜色按钮或使用键盘快捷键：
+   - `B` - 蓝色
+   - `D` - 黑色
+   - `G` - 绿色
+   - `W` - 白色
+   - `R` - 红色
+4. **删除音符**：选择音符后按 `Delete` 或 `Backspace` 键，或点击删除按钮
+5. **切换可见性**：点击 "Toggle" 按钮切换未选中音符的显示/隐藏
+6. **设置品格范围**：使用 "start-fret" 和 "end-fret" 输入框设置显示的品格范围
+7. **切换升降号**：点击升降号按钮在 ♯ 和 ♭ 之间切换
+8. **保存图表**：点击 "Save" 按钮将图表保存为 SVG 文件
+9. **重置图表**：点击 "Reset" 按钮清除所有自定义设置
+
+### 键盘快捷键
+
+- `B` - 将选中音符设置为蓝色
+- `D` - 将选中音符设置为黑色
+- `G` - 将选中音符设置为绿色
+- `W` - 将选中音符设置为白色
+- `R` - 将选中音符设置为红色
+- `Delete` / `Backspace` - 删除选中音符
+- `Enter` - 完成文本编辑
+
+## 项目结构
+
+```
+fretboard-diagram/
+├── src/
+│   ├── App.svelte          # 主应用组件
+│   ├── Fretboard.svelte    # 指板组件（核心功能）
+│   └── main.js             # 应用入口文件
+├── index.html              # HTML 模板
+├── package.json            # 项目配置和依赖
+├── vite.config.js          # Vite 配置文件
+└── README.md               # 项目文档
+```
+
+## 开发说明
+
+### 主要组件
+
+- **Fretboard.svelte**：包含所有指板逻辑和 UI
+  - 音符渲染和管理
+  - 用户交互处理
+  - SVG 生成和导出
+
+### 状态管理
+
+组件使用 Svelte 的响应式系统管理状态：
+
+- `selected` - 当前选中的音符 ID
+- `data` - 所有音符的数据（颜色、可见性、自定义文本等）
+- `startFret` / `endFret` - 显示的品格范围
+- `enharmonic` - 升降号模式（0 = ♯, 1 = ♭）
+- `visibility` - 未选中音符的可见性模式
+
+## 故障排除
+
+### 端口被占用
+
+如果默认端口 5173 被占用，Vite 会自动尝试下一个可用端口。或者可以在 `vite.config.js` 中手动配置端口。
+
+### 依赖安装失败
+
+如果遇到依赖安装问题，尝试：
+
+1. 清除缓存：`pnpm store prune`
+2. 删除 `node_modules` 和 `pnpm-lock.yaml`
+3. 重新运行 `pnpm install`
+
+### 构建错误
+
+如果构建失败，检查：
+
+1. Node.js 版本是否符合要求
+2. 所有依赖是否正确安装
+3. 代码中是否有语法错误
+
+## 许可证
+
+MIT License
+
+Copyright (c) 2021 Tobias Kolditz
