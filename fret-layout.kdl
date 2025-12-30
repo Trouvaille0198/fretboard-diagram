@@ -1,0 +1,9 @@
+layout {
+    default_tab_template {
+        pane {
+            command "pnpm"
+            args "dev"
+            cwd "/home/melon/pros/fretboard-diagram"
+        }
+    }
+}

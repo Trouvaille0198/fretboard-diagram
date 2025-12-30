@@ -1,0 +1,221 @@
+:root {
+    --background-color: black;
+    --text-color: #aaaaaa;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-color: #161718;
+    }
+}
+
+
+/* Diagram */
+
+g.note.transparent:hover {
+    opacity: 1;
+}
+
+g.note {
+    fill: var(--background-color);
+    stroke-width: 1px;
+    stroke: var(--text-color);
+}
+
+g.note.selected>circle {
+    opacity: 1;
+    stroke-dasharray: 4, 4;
+    stroke-width: 3px;
+    stroke: var(--text-color);
+}
+
+g.note.hidden {
+    opacity: 0;
+}
+
+g.note.transparent {
+    opacity: 0.3;
+}
+
+g.note.visible {
+    opacity: 1;
+    fill: var(--background-color);
+}
+
+g.note.blue {
+    fill: steelblue;
+}
+
+g.note.blue>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.black {
+    fill: var(--text-color);
+}
+
+g.note.black>text {
+    stroke: var(--background-color);
+    fill: var(--background-color);
+}
+
+g.note.red {
+    fill: indianred;
+}
+
+g.note.red>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.green {
+    fill: teal;
+}
+
+g.note.green>text {
+    stroke: white;
+    fill: white;
+}
+
+path.string {
+    stroke: var(--text-color);
+    fill: none;
+}
+
+path.frets {
+    stroke: var(--text-color);
+    stroke-width: 1px;
+    fill: none;
+}
+
+g.note>text {
+    stroke: var(--text-color);
+    stroke-width: 0px;
+    fill: var(--text-color);
+    text-anchor: middle;
+    dominant-baseline: middle;
+    font-size: 18px;
+}
+
+#editable-div {
+    text-align: center;
+    font-size: 18px;
+}
+
+#fretboard-diagram-creator {
+    padding-top: 10px;
+    /* border: 1px solid; */
+}
+
+div.menu {
+    text-align: center;
+    /* text-align: center; */
+}
+
+text.marker {
+    text-anchor: middle;
+    font-size: 16px;
+    fill: var(--text-color);
+}
+
+
+/* Controls */
+
+/* Actions on nodes */
+
+#color-selector {
+    /* background-color: lightgray; */
+    margin: auto;
+    padding-bottom: 10px;
+    width: 280px;
+    display: flex;
+    justify-content: space-between;
+}
+
+button.color {
+    width: 44px;
+}
+
+button {
+    height: 25px;
+}
+
+button.color:hover {
+    transform: scale(1.1);
+}
+
+.color.blue {
+    background-color: steelblue;
+}
+
+.color.black {
+    background-color: var(--text-color);
+}
+
+.color.green {
+    background-color: teal;
+}
+
+.color.red {
+    background-color: indianred;
+}
+
+.color.white {
+    background-color: var(--background-color);
+}
+
+/* Global actions */
+
+#global-actions {
+    margin: auto;
+    width: 280px;
+    display: flex;
+    justify-content: space-between;
+}
+
+@supports (width: 100vw) {
+    figure.half-full {
+        max-width: 100vw;
+        width: 1200px;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -600px;
+        margin-right: -600px;
+    }
+
+    @media only screen and (max-width: 1200px) {
+        figure.half-full {
+            max-width: 100vw;
+            width: 1000px;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -500px;
+            margin-right: -500px;
+            overflow-y: auto;
+        }
+    }
+
+    @media only screen and (max-width: 1000px) {
+        figure.half-full {
+            max-width: 100vw;
+            width: 100%;
+            left: 0;
+            right: 0;
+            margin: 0;
+            overflow-y: auto;
+        }
+    }
+}
+
+.num-input {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+
+.error {
+    font-size: 18px;
+    text-anchor: middle;
+}
