@@ -77,7 +77,7 @@ function rgbToHex(r, g, b) {
 }
 
 // 从颜色配置文件导入
-import { getLevel2Color as getLevel2ColorFromConfig } from './colorConfig';
+import { getLevel2Color as getLevel2ColorFromConfig, LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from './colorConfig';
 
 // 获取第二层级颜色值（独立设置，不依赖第一层级）
 export function getLevel2Color(colorName) {
@@ -230,4 +230,159 @@ export function noteToSolfege(noteIndex, rootNote, enharmonic) {
 
     // 默认情况（理论上不应该到达这里）
     return solfegeMap[semitones] || String(semitones);
+}
+
+// 获取颜色的RGB值
+function getColorRGB(colorName) {
+    if (colorName === 'white') {
+        return { r: 170, g: 170, b: 170 }; // 灰色，用于white note
+    }
+    // trans 是透明色，使用黑色背景
+    if (colorName === 'trans') {
+        return { r: 0, g: 0, b: 0 }; // 黑色背景（透明色）
+    }
+    // 先尝试第一层级颜色
+    if (colorName in LEVEL1_COLORS) {
+        const colorValue = getLevel1FillColor(colorName);
+        if (colorValue && colorValue.startsWith('#')) {
+            const hex = colorValue.slice(1);
+            return {
+                r: parseInt(hex.slice(0, 2), 16),
+                g: parseInt(hex.slice(2, 4), 16),
+                b: parseInt(hex.slice(4, 6), 16)
+            };
+        }
+    }
+    // 再尝试第二层级颜色
+    if (colorName in LEVEL2_COLORS) {
+        const colorValue = getLevel2Color(colorName);
+        if (colorValue && colorValue.startsWith('#')) {
+            const hex = colorValue.slice(1);
+            return {
+                r: parseInt(hex.slice(0, 2), 16),
+                g: parseInt(hex.slice(2, 4), 16),
+                b: parseInt(hex.slice(4, 6), 16)
+            };
+        }
+    }
+    // 处理命名颜色（从CSS变量或直接颜色名）
+    if (colorName === 'blue') return { r: 70, g: 130, b: 180 };
+    if (colorName === 'green') return { r: 0, g: 160, b: 128 }; // #00a080
+    if (colorName === 'red') return { r: 205, g: 92, b: 92 };
+    if (colorName === 'brown') return { r: 139, g: 69, b: 19 };
+    if (colorName === 'gray') return { r: 170, g: 170, b: 170 }; // 灰色 #aaaaaa
+    return { r: 170, g: 170, b: 170 }; // 默认灰色
+}
+
+// 降低颜色饱和度
+export function reduceColorSaturation(colorName, saturationFactor = 0.5) {
+    const rgb = getColorRGB(colorName);
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    hsl.s = Math.max(0, hsl.s * saturationFactor);
+    const newRgb = hslToRgb(hsl.h, hsl.s, hsl.l);
+    return rgbToHex(newRgb.r, newRgb.g, newRgb.b);
+}
+
+// 计算连线颜色
+export function calculateConnectionColor(startNoteData, endNoteData, connectionId) {
+    const startColor = startNoteData?.color || 'white';
+    const endColor = endNoteData?.color || 'white';
+
+    // 如果都是white，返回灰色
+    if (startColor === 'white' && endColor === 'white') {
+        return '#aaaaaa';
+    }
+
+    // 如果颜色相同，降低饱和度
+    if (startColor === endColor) {
+        return reduceColorSaturation(startColor, 0.6);
+    }
+
+    // 不同颜色，返回渐变ID
+    return `gradient-${connectionId}`;
+}
+
+// 检测鼠标位置是否在某个note上
+export function detectNoteAtPosition(x, y, notes, circleRadius = 18) {
+    for (const note of notes) {
+        const noteX = note.x;
+        const noteY = note.y;
+        const distance = Math.sqrt(Math.pow(x - noteX, 2) + Math.pow(y - noteY, 2));
+        if (distance <= circleRadius) {
+            return note;
+        }
+    }
+    return null;
+}
+
+// 计算note边缘上的点（从中心点向目标点方向延伸radius距离）
+export function getPointOnNoteEdge(centerX, centerY, targetX, targetY, radius) {
+    const dx = targetX - centerX;
+    const dy = targetY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance === 0) {
+        // 如果目标点就是中心点，返回一个默认方向（向右）
+        return { x: centerX + radius, y: centerY };
+    }
+
+    // 计算单位向量
+    const unitX = dx / distance;
+    const unitY = dy / distance;
+
+    // 从中心点沿着方向延伸radius距离
+    return {
+        x: centerX + unitX * radius,
+        y: centerY + unitY * radius
+    };
+}
+
+// 计算弧线路径
+// curvature: -1到1之间，0为直线，正值为向上弯曲，负值为向下弯曲
+export function calculateArcPath(startX, startY, endX, endY, curvature = 0) {
+    if (curvature === 0) {
+        // 直线
+        return `M ${startX} ${startY} L ${endX} ${endY}`;
+    }
+
+    const midX = (startX + endX) / 2;
+    const midY = (startY + endY) / 2;
+    const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+    const arcHeight = Math.abs(curvature) * distance * 0.3; // 可调整的弧度系数
+
+    // 计算垂直方向（垂直于起点到终点的方向）
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    // 根据curvature的正负决定弯曲方向
+    // 在SVG坐标系中，y轴向下，所以向上凸需要y值更小
+    const perpX = -dy / length;
+    const perpY = dx / length;
+
+    // 反转符号：正值向上凸（y值更小），负值向下凸（y值更大）
+    const sign = curvature > 0 ? -1 : 1;
+    const controlX = midX + perpX * arcHeight * sign;
+    const controlY = midY + perpY * arcHeight * sign;
+
+    return `M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`;
+}
+
+// 计算路径上距离起点指定距离的点
+// 使用浏览器原生的SVGPathElement.getPointAtLength()方法
+export function getPointOnPathAtDistance(pathString, distanceFromStart) {
+    // 创建临时的SVG元素来计算路径点
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const pathElement = document.createElementNS(svgNS, 'path');
+    pathElement.setAttribute('d', pathString);
+
+    // 获取路径总长度
+    const totalLength = pathElement.getTotalLength();
+
+    // 确保距离在有效范围内
+    const distance = Math.max(0, Math.min(distanceFromStart, totalLength));
+
+    // 获取路径上指定距离的点
+    const point = pathElement.getPointAtLength(distance);
+
+    return { x: point.x, y: point.y };
 }
