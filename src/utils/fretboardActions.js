@@ -42,20 +42,20 @@ export function cycleLevel2Color(selectedColorLevel, selectedColor, selectColor)
 export function toggleVisibility(visibility, setVisibility, notesElementRef, data, updateNote) {
   const newVisibility = visibility === 'hidden' ? 'transparent' : 'hidden';
   setVisibility(newVisibility);
-  
+
   if (notesElementRef.current) {
     for (const note of notesElementRef.current.children) {
       const noteId = note.id;
       const noteData = data[noteId] || {};
       const currentVisibility = noteData.visibility;
-      
+
       // 只更新非visible和selected的note
       if (currentVisibility !== 'visible' && currentVisibility !== 'selected') {
         updateNote(note, data, { visibility: newVisibility });
       }
     }
   }
-  
+
   // 更新data中的visibility
   // 注意：这里需要返回新的data，但为了保持函数签名一致，我们通过setData在外部处理
 }
@@ -65,39 +65,37 @@ export function toggleEnharmonic(enharmonic, setEnharmonic) {
 }
 
 export function reset(visibility, setData, setSelected, notesElementRef, data, updateNote) {
-  if (window.confirm("Do you really want to reset your diagram?")) {
-    // 只重置点的颜色和visibility，保留音名（noteText）
-    setData(prevData => {
-      const newData = {};
-      // 保留所有note的noteText，但重置其他属性
-      Object.keys(prevData).forEach(key => {
-        if (key.startsWith('conn-')) {
-          // 删除所有连线
-          return;
-        }
-        const noteData = prevData[key];
-        if (noteData && noteData.type === 'note') {
-          // 只保留noteText，重置其他属性
-          newData[key] = {
-            type: 'note',
-            color: 'white',
-            color2: null,
-            visibility: visibility,
-            ...(noteData.noteText ? { noteText: noteData.noteText } : {})
-          };
-        }
-      });
-      return newData;
-    });
-    
-    // 更新DOM中的note样式
-    if (notesElementRef.current) {
-      for (const note of notesElementRef.current.children) {
-        updateNote(note, data, { type: 'note', color: 'white', color2: null, visibility: visibility });
+  // 只重置点的颜色和visibility，保留音名（noteText）
+  setData(prevData => {
+    const newData = {};
+    // 保留所有note的noteText，但重置其他属性
+    Object.keys(prevData).forEach(key => {
+      if (key.startsWith('conn-')) {
+        // 删除所有连线
+        return;
       }
+      const noteData = prevData[key];
+      if (noteData && noteData.type === 'note') {
+        // 只保留noteText，重置其他属性
+        newData[key] = {
+          type: 'note',
+          color: 'white',
+          color2: null,
+          visibility: visibility,
+          ...(noteData.noteText ? { noteText: noteData.noteText } : {})
+        };
+      }
+    });
+    return newData;
+  });
+
+  // 更新DOM中的note样式
+  if (notesElementRef.current) {
+    for (const note of notesElementRef.current.children) {
+      updateNote(note, data, { type: 'note', color: 'white', color2: null, visibility: visibility });
     }
-    setSelected(null);
   }
+  setSelected(null);
 }
 
 export function saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS) {
@@ -115,12 +113,12 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
     }
     setSelected(null);
   }
-  
+
   // 隐藏工具栏
   if (connectionToolbarVisible) {
     setConnectionToolbarVisible(false);
   }
-  
+
   const svgCopy = inlineCSS(svgElementRef.current);
   const svgData = svgCopy.outerHTML;
   const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
@@ -134,7 +132,7 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
 export function setFretWindow(fretWindow, startFret, endFret, selected, setSelected, data, setData, updateNote, setErrorMessage, setStartFret, setEndFret) {
   const start = fretWindow.start !== undefined ? fretWindow.start : startFret;
   const end = fretWindow.end !== undefined ? fretWindow.end : endFret;
-  
+
   if (selected) {
     const noteElement = selected.element || document.getElementById(selected.id);
     if (noteElement) {
@@ -149,13 +147,13 @@ export function setFretWindow(fretWindow, startFret, endFret, selected, setSelec
     }
     setSelected(null);
   }
-  
+
   setErrorMessage('');
-  
+
   if (isNaN(start) || isNaN(end)) {
     return;
   }
-  
+
   if (start < 0 || start > 22 || end < 1 || end > 22) {
     setErrorMessage("Invalid fret value(s)!");
     setStartFret(start);
