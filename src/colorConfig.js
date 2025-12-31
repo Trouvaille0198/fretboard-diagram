@@ -5,7 +5,7 @@
 // 注意：顺序很重要，所有地方都会按照这个顺序
 export const LEVEL1_COLORS = {
     trans: {
-        fill: 'var(--background-color)',  // 音符填充色（背景色，黑色）
+        fill: 'var(--background-color)',  // 音符填充色（透明色，黑色）
         button: 'var(--background-color)' // 调色盘按钮背景色
     },
     blue: {
@@ -25,8 +25,8 @@ export const LEVEL1_COLORS = {
         button: '#8b4513'            // 调色盘按钮背景色
     },
     gray: {
-        fill: '#cccccc',             // 音符填充色（透明色，浅灰色）
-        button: '#cccccc'            // 调色盘按钮背景色
+        fill: '#aaaaaa',             // 音符填充色（灰色）
+        button: '#aaaaaa'            // 调色盘按钮背景色
     },
 };
 
@@ -35,7 +35,9 @@ export const LEVEL2_COLORS = {
     yellow: '#ffd700',        // 黄色
     cyan: '#87ceeb',          // 淡青色
     pink: '#ffb6c1',          // 淡红色
-    'grass-green': '#6b8e23' // 青草绿色
+    'grass-green': '#6b8e23', // 青草绿色
+    orange: '#ff8c00',        // 亮橙色
+    white: '#ffffff'          // 白色
 };
 
 // 获取第一层级颜色（用于音符填充）
