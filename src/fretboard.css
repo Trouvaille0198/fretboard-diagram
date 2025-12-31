@@ -180,12 +180,16 @@ g.note>text {
 
 div.menu {
     text-align: center;
-    padding: 15px 0;
+    padding: 20px 0;
     position: relative;
     z-index: 9999999;
     isolation: isolate;
     transform: translateZ(0);
     will-change: transform;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
 }
 
 text.marker {
@@ -208,13 +212,15 @@ g.markers {
 /* Actions on nodes */
 
 #color-selector {
-    /* background-color: lightgray; */
-    margin: auto;
-    padding-bottom: 15px;
+    margin: 0;
+    padding: 12px 16px;
     width: 400px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .color-palette-row {
@@ -222,32 +228,64 @@ g.markers {
     justify-content: center;
     align-items: center;
     gap: 8px;
+    padding: 0;
 }
 
 .palette-label {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-color);
-    width: 50px;
+    width: 55px;
     text-align: right;
-    margin-right: 4px;
+    margin-right: 6px;
 }
 
 button.color {
-    width: 44px;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+button.color:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+button.color.selected {
+    border: 2px solid var(--text-color);
 }
 
 button {
     height: 25px;
 }
 
-button.color:hover {
-    transform: scale(1.1);
+/* 全局操作按钮样式 */
+.button {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    min-width: 70px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s;
 }
 
-button.color.selected {
-    border: 2px solid var(--text-color);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+.button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
 }
+
+.button:active {
+    background: rgba(255, 255, 255, 0.08);
+}
+
 
 /* 第一层级调色盘按钮颜色 - 配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
 .color.blue {
@@ -320,16 +358,46 @@ button.color.selected {
     box-shadow: 0 0 8px rgba(255, 68, 68, 0.8);
 }
 
+/* Enharmonic 按钮样式 */
+#enharmonic {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    padding: 0;
+    cursor: pointer;
+    font-size: 16px;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+#enharmonic:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+#enharmonic:active {
+    background: rgba(255, 255, 255, 0.08);
+}
+
 /* Global actions */
 
 #global-actions {
-    margin: auto;
-    width: 500px;
+    margin: 0;
+    width: auto;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
+    padding: 0;
+    background: transparent;
+    border: none;
 }
 
 figure.half-full {
@@ -412,8 +480,8 @@ figure.half-full svg {
 .piano-key.white-key {
     width: 45px;
     height: 130px;
-    background-color: white;
-    border: 1px solid var(--text-color);
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.2);
     border-radius: 0 0 4px 4px;
     display: flex;
     align-items: flex-end;
@@ -424,11 +492,11 @@ figure.half-full svg {
 }
 
 .piano-key.white-key:hover {
-    background-color: #f0f0f0;
+    background: #f5f5f5;
 }
 
 .piano-key.white-key.selected {
-    background-color: #d0d0ff;
+    background: #d0d0ff;
     border-color: steelblue;
     border-width: 2px;
 }
@@ -436,7 +504,7 @@ figure.half-full svg {
 .piano-key.black-key {
     width: 28px;
     height: 80px;
-    background-color: #333;
+    background: #333;
     border: 1px solid #000;
     border-radius: 0 0 3px 3px;
     display: flex;
@@ -449,11 +517,11 @@ figure.half-full svg {
 }
 
 .piano-key.black-key:hover {
-    background-color: #555;
+    background: #444;
 }
 
 .piano-key.black-key.selected {
-    background-color: #6b6bff;
+    background: #6b6bff;
     border-color: steelblue;
     border-width: 2px;
 }
@@ -508,8 +576,8 @@ figure.half-full svg {
 }
 
 .connection-toolbar {
-    background-color: var(--background-color);
-    border: 1px solid var(--text-color);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 6px;
     padding: 6px 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -521,6 +589,7 @@ figure.half-full svg {
     height: max-content;
     clip-path: none !important;
     clip: auto !important;
+    backdrop-filter: blur(8px);
 }
 
 .toolbar-icons {
@@ -537,11 +606,11 @@ figure.half-full svg {
 }
 
 .toolbar-icon-btn {
-    background-color: var(--background-color);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-color);
-    border: 1px solid var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 4px;
-    padding: 6px 8px;
+    padding: 6px 10px;
     cursor: pointer;
     font-size: 14px;
     min-width: 32px;
@@ -549,7 +618,7 @@ figure.half-full svg {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: background-color 0.2s, border-color 0.2s;
     white-space: nowrap;
     pointer-events: auto !important;
     position: relative;
@@ -557,25 +626,37 @@ figure.half-full svg {
 }
 
 .toolbar-icon-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
 }
 
+.toolbar-icon-btn:active {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.toolbar-icon-btn.active {
+    background: rgba(70, 130, 180, 0.2);
+    border-color: steelblue;
+    color: #a0c4e8;
+}
+
 .toolbar-icon-btn.delete-icon-btn {
-    color: #ff4444;
-    border-color: #ff4444;
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
 }
 
 .toolbar-icon-btn.delete-icon-btn:hover {
-    background-color: rgba(255, 68, 68, 0.2);
+    background: rgba(255, 107, 107, 0.2);
+    border-color: #ff5252;
 }
 
 .toolbar-dropdown {
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
-    background-color: var(--background-color);
-    border: 1px solid var(--text-color);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     min-width: 100px;
@@ -591,6 +672,7 @@ figure.half-full svg {
     clip: auto !important;
     transform: translateZ(0);
     will-change: transform;
+    backdrop-filter: blur(8px);
 }
 
 /* 向上展开的下拉菜单 - 使用更具体的选择器确保覆盖 */
@@ -623,7 +705,7 @@ figure.half-full svg {
 
 .toolbar-dropdown button.active {
     background-color: rgba(70, 130, 180, 0.3);
-    color: steelblue;
+    color: #a0c4e8;
 }
 
 .toolbar-slider-wrapper {
@@ -632,11 +714,54 @@ figure.half-full svg {
     align-items: center;
     gap: 10px;
     min-width: 150px;
+    background: transparent;
 }
 
 .toolbar-slider-wrapper input[type="range"] {
     flex: 1;
     cursor: pointer;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    outline: none;
+}
+
+.toolbar-slider-wrapper input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #ffffff;
+    border: 2px solid #4a90e2;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    margin-top: -5px;
+}
+
+.toolbar-slider-wrapper input[type="range"]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.toolbar-slider-wrapper input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #ffffff;
+    border: 2px solid #4a90e2;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toolbar-slider-wrapper input[type="range"]::-moz-range-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
 }
 
 .toolbar-slider-wrapper span {
@@ -654,10 +779,8 @@ figure.half-full svg {
     padding: 20px 16px;
     margin: 12px auto;
     max-width: 500px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* 双滑块范围选择器 */
@@ -682,7 +805,7 @@ figure.half-full svg {
     left: 9px;
     right: 9px;
     height: 6px;
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 3px;
     z-index: 0;
 }
@@ -723,6 +846,7 @@ figure.half-full svg {
     width: 18px;
     height: 18px;
     background: #ffffff;
+    border: 2px solid #4a90e2;
     border-radius: 50%;
     cursor: pointer;
     pointer-events: all;
@@ -730,17 +854,11 @@ figure.half-full svg {
     z-index: 3;
     margin-top: -6px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    transition: border-color 0.2s;
 }
 
 .dual-range-input::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
-}
-
-.dual-range-input::-webkit-slider-thumb:active {
-    transform: scale(1.15);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    border-color: #5a9fe2;
 }
 
 /* 滑块手柄 - Firefox */
@@ -748,24 +866,18 @@ figure.half-full svg {
     width: 18px;
     height: 18px;
     background: #ffffff;
+    border: 2px solid #4a90e2;
     border-radius: 50%;
     cursor: pointer;
     pointer-events: all;
     position: relative;
     z-index: 3;
-    border: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    transition: border-color 0.2s;
 }
 
 .dual-range-input::-moz-range-thumb:hover {
-    transform: scale(1.1);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
-}
-
-.dual-range-input::-moz-range-thumb:active {
-    transform: scale(1.15);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    border-color: #5a9fe2;
 }
 
 /* 滑块轨道 */
@@ -807,8 +919,9 @@ figure.half-full svg {
 
 /* 连线模式下的按钮高亮 */
 .button.selected {
-    background-color: rgba(70, 130, 180, 0.3);
-    border: 2px solid steelblue;
+    background: rgba(70, 130, 180, 0.2);
+    border: 1px solid steelblue;
+    color: #a0c4e8;
 }
 
 /* 预览悬停note的高亮 */
