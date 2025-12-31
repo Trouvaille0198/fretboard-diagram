@@ -14,6 +14,7 @@ export function FretboardMenu({
   connectionMode,
   onToggleConnectionMode,
   onSaveSVG,
+  onSaveState,
   onReset,
   rootNote,
   onRootNoteSelect,
@@ -47,6 +48,7 @@ export function FretboardMenu({
           连线
         </button>
         <button className="button" onClick={onSaveSVG}>Save</button>
+        {onSaveState && <button className="button" onClick={onSaveState} title="保存当前指板状态">保存状态</button>}
         <button className="button" onClick={onReset}>Reset</button>
       </div>
       <div id="piano-keyboard-container">

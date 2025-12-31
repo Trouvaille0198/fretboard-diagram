@@ -14,6 +14,10 @@ export function useFretboardState() {
     const [rootNote, setRootNote] = useState(null); // 默认不选中任何琴键
     const [data, setData] = useState({});
     const [errorMessage, setErrorMessage] = useState('');
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastType, setToastType] = useState('info');
+    const [historyStates, setHistoryStates] = useState([]);
+    const [selectedHistoryState, setSelectedHistoryState] = useState(null); // 当前选中的历史状态
     const [currentDateTime, setCurrentDateTime] = useState('');
 
     const dataRef = useRef(data); // 存储最新的 data 状态，避免闭包问题
@@ -52,6 +56,19 @@ export function useFretboardState() {
         return () => clearInterval(interval);
     }, []);
 
+    // 从 localStorage 加载历史状态
+    useEffect(() => {
+        try {
+            const existingHistory = localStorage.getItem('fretboard-history');
+            if (existingHistory) {
+                const historyArray = JSON.parse(existingHistory);
+                setHistoryStates(historyArray);
+            }
+        } catch (error) {
+            console.error('加载历史状态失败:', error);
+        }
+    }, []);
+
     return {
         selected,
         setSelected,
@@ -77,6 +94,14 @@ export function useFretboardState() {
         setData,
         errorMessage,
         setErrorMessage,
+        toastMessage,
+        setToastMessage,
+        toastType,
+        setToastType,
+        historyStates,
+        setHistoryStates,
+        selectedHistoryState,
+        setSelectedHistoryState,
         currentDateTime,
         dataRef,
         selectedTimeoutRef

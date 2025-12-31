@@ -18,10 +18,29 @@ export function createKeyboardHandler(params) {
         setConnectionStartPosition,
         setMousePosition,
         setPreviewHoverNote,
-        setUseColor2Level
+        setUseColor2Level,
+        saveFretboardState
     } = params;
 
     return (event) => {
+        // Ctrl+Shift+S 强制新建状态
+        if (event.ctrlKey && event.shiftKey && event.code === 'KeyS') {
+            event.preventDefault();
+            if (saveFretboardState) {
+                saveFretboardState(true); // forceNew = true
+            }
+            return;
+        }
+
+        // Ctrl+S 保存状态（如果有选中则更新，否则新建）
+        if (event.ctrlKey && event.code === 'KeyS' && !event.shiftKey) {
+            event.preventDefault();
+            if (saveFretboardState) {
+                saveFretboardState(false); // forceNew = false
+            }
+            return;
+        }
+
         // Ctrl+Z 撤销
         if (event.ctrlKey && event.code === 'KeyZ' && !event.shiftKey) {
             event.preventDefault();
