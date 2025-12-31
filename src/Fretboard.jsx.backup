@@ -48,6 +48,10 @@ function Fretboard() {
   const historyRef = useRef([]); // 历史记录数组
   const historyIndexRef = useRef(-1); // 当前历史记录索引
   const isUndoingRef = useRef(false); // 是否正在执行撤销操作
+  
+  // 撤销/重做历史记录
+  const [history, setHistory] = useState([]); // 历史记录数组
+  const [historyIndex, setHistoryIndex] = useState(-1); // 当前历史记录索引
   const toolbarRef = useRef(null);
   const buttonClickRef = useRef({ type: false, arrow: false }); // 防止按钮重复点击
   const dataRef = useRef(data); // 存储最新的 data 状态，避免闭包问题
@@ -1091,6 +1095,11 @@ function Fretboard() {
       return newData;
     });
     setSelected({ id: noteId, element: noteElement });
+    
+    // 暂时注释掉Ctrl+点击重命名功能
+    // if (event.ctrlKey) {
+    //   editNoteLabel(noteId, noteElement);
+    // }
   }, [selected, selectedColorLevel, selectedColor, data, visibility, editNoteLabel, connectionMode, connectionStartNote, useColor2Level, previewHoverNote, connections]);
 
   const handleNoteContextMenu = useCallback((event, noteId) => {
@@ -1121,6 +1130,8 @@ function Fretboard() {
       return newData;
     });
     setSelected({ id: noteId, element: noteElement });
+    // 暂时注释掉右键重命名功能
+    // editNoteLabel(noteId, noteElement);
   }, [selected, data, editNoteLabel]);
 
   const finishEditing = useCallback(() => {
@@ -1506,7 +1517,7 @@ function Fretboard() {
       setConnectionStartPosition(null);
       setMousePosition(null);
       setPreviewHoverNote(null);
-      setUseColor2Level(false);
+      setPreviewUseColor2(false);
       return;
     }
     
@@ -1568,7 +1579,7 @@ function Fretboard() {
         setConnectionStartPosition(null);
         setMousePosition(null);
         setPreviewHoverNote(null);
-        setUseColor2Level(false);
+        setPreviewUseColor2(false);
       }
     };
 
@@ -1591,7 +1602,7 @@ function Fretboard() {
       setConnectionStartPosition(null);
       setMousePosition(null);
       setPreviewHoverNote(null);
-      setUseColor2Level(false);
+      setPreviewUseColor2(false);
     }
   }, [connectionMode]);
   
@@ -1948,6 +1959,7 @@ function Fretboard() {
                       }
                     }
                   }}
+                  // 暂时注释掉右键重命名功能: onContextMenu={(e) => handleNoteContextMenu(e, note.id)}
                   onMouseEnter={() => setHoveredNoteId(note.id)}
                   onMouseLeave={() => setHoveredNoteId(null)}
                   style={{ cursor: 'pointer' }}
