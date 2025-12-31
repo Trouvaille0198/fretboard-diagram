@@ -22,6 +22,7 @@ body {
     display: flex;
     justify-content: center;
     min-height: 100vh;
+    position: relative;
 }
 
 main {
@@ -100,8 +101,8 @@ g.note.trans {
 }
 
 g.note.trans>text {
-    stroke: var(--background-color);
-    fill: var(--background-color);
+    stroke: white;
+    fill: white;
 }
 
 g.note.gray {
@@ -141,12 +142,14 @@ g.note.brown>text {
 }
 
 path.string {
-    stroke: var(--text-color);
+    stroke: var(--text-color) !important;
     fill: none;
+    pointer-events: none;
+    stroke-width: 1px !important;
 }
 
 path.frets {
-    stroke: var(--text-color);
+    stroke: var(--text-color) !important;
     stroke-width: 1px;
     fill: none;
 }
@@ -170,18 +173,33 @@ g.note>text {
     display: flex;
     justify-content: center;
     width: 100%;
+    position: relative;
+    z-index: 1;
     /* border: 1px solid; */
 }
 
 div.menu {
     text-align: center;
     padding: 15px 0;
+    position: relative;
+    z-index: 9999999;
+    isolation: isolate;
+    transform: translateZ(0);
+    will-change: transform;
 }
 
 text.marker {
     text-anchor: middle;
     font-size: 16px;
+    font-weight: bold;
     fill: var(--text-color);
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+g.markers {
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 
@@ -273,6 +291,15 @@ button.color.selected {
     background-color: var(--color-level2-grass-green);
 }
 
+.color.level2.orange {
+    background-color: var(--color-level2-orange);
+}
+
+.color.level2.white {
+    background-color: var(--color-level2-white);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 /* 删除调色盘按钮 */
 #delete-palette {
     width: 60px;
@@ -310,15 +337,16 @@ figure.half-full {
     justify-content: center;
     width: 100%;
     margin: 0 auto;
+    position: relative;
+    z-index: 1;
+    isolation: isolate;
 }
 
 figure.half-full svg {
     display: block;
-}
-
-.num-input {
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum";
+    position: relative;
+    z-index: 1;
+    isolation: isolate;
 }
 
 .error {
@@ -450,4 +478,346 @@ figure.half-full svg {
 
 .piano-key.black-key.selected .key-label {
     color: white;
+}
+
+/* 连线相关样式 */
+.connection {
+    pointer-events: stroke;
+    stroke-width: 3px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 1;
+}
+
+.connection-preview {
+    pointer-events: none;
+}
+
+/* 连线工具栏 */
+.connection-toolbar-container {
+    pointer-events: all;
+    z-index: 100001;
+    overflow: visible !important;
+    width: 100%;
+    height: 100%;
+    clip-path: none !important;
+    clip: auto !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    isolation: isolate;
+}
+
+.connection-toolbar {
+    background-color: var(--background-color);
+    border: 1px solid var(--text-color);
+    border-radius: 6px;
+    padding: 6px 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: visible !important;
+    width: max-content;
+    height: max-content;
+    clip-path: none !important;
+    clip: auto !important;
+}
+
+.toolbar-icons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.toolbar-icon-wrapper {
+    position: relative;
+    overflow: visible !important;
+    z-index: 100002;
+    isolation: isolate;
+}
+
+.toolbar-icon-btn {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--text-color);
+    border-radius: 4px;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    white-space: nowrap;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 100004;
+}
+
+.toolbar-icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.toolbar-icon-btn.delete-icon-btn {
+    color: #ff4444;
+    border-color: #ff4444;
+}
+
+.toolbar-icon-btn.delete-icon-btn:hover {
+    background-color: rgba(255, 68, 68, 0.2);
+}
+
+.toolbar-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background-color: var(--background-color);
+    border: 1px solid var(--text-color);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    min-width: 100px;
+    width: max-content;
+    max-width: none;
+    z-index: 100003 !important;
+    padding: 4px;
+    white-space: nowrap;
+    overflow: visible !important;
+    display: block !important;
+    visibility: visible !important;
+    clip-path: none !important;
+    clip: auto !important;
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* 向上展开的下拉菜单 - 使用更具体的选择器确保覆盖 */
+.toolbar-icon-wrapper .toolbar-dropdown.toolbar-dropdown-up,
+.toolbar-dropdown.toolbar-dropdown-up {
+    top: auto !important;
+    bottom: calc(100% + 4px) !important;
+}
+
+.toolbar-dropdown button {
+    display: block;
+    width: 100%;
+    min-width: 100px;
+    background-color: transparent;
+    color: var(--text-color);
+    border: none;
+    border-radius: 3px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: left;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+.toolbar-dropdown button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.toolbar-dropdown button.active {
+    background-color: rgba(70, 130, 180, 0.3);
+    color: steelblue;
+}
+
+.toolbar-slider-wrapper {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+}
+
+.toolbar-slider-wrapper input[type="range"] {
+    flex: 1;
+    cursor: pointer;
+}
+
+.toolbar-slider-wrapper span {
+    min-width: 35px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-color);
+}
+
+/* 品格范围滑块 - 完全重新设计 */
+.fret-range-slider-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px;
+    margin: 12px auto;
+    max-width: 500px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 双滑块范围选择器 */
+.dual-range-slider {
+    position: relative;
+    width: 100%;
+    height: 50px;
+}
+
+.dual-range-inputs-container {
+    position: relative;
+    margin: auto;
+    width: 80%;
+    height: 100%;
+    padding: 0 9px;
+}
+
+/* 滑块轨道背景 */
+.dual-range-track {
+    position: absolute;
+    top: 40px;
+    left: 9px;
+    right: 9px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+    z-index: 0;
+}
+
+/* 选中范围高亮 */
+.dual-range-selected {
+    position: absolute;
+    top: 40px;
+    height: 6px;
+    background: #4a90e2;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 1;
+    transition: left 0.1s ease, width 0.1s ease;
+}
+
+/* 滑块输入 */
+.dual-range-input {
+    position: absolute;
+    width: calc(100% - 18px);
+    left: 9px;
+    height: 6px;
+    top: 40px;
+    background: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: none;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+    z-index: 2;
+}
+
+/* 滑块手柄 - Webkit */
+.dual-range-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #ffffff;
+    border-radius: 50%;
+    cursor: pointer;
+    pointer-events: all;
+    position: relative;
+    z-index: 3;
+    margin-top: -6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.dual-range-input::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.dual-range-input::-webkit-slider-thumb:active {
+    transform: scale(1.15);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* 滑块手柄 - Firefox */
+.dual-range-input::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #ffffff;
+    border-radius: 50%;
+    cursor: pointer;
+    pointer-events: all;
+    position: relative;
+    z-index: 3;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.dual-range-input::-moz-range-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.dual-range-input::-moz-range-thumb:active {
+    transform: scale(1.15);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* 滑块轨道 */
+.dual-range-input::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    background: transparent;
+    border-radius: 3px;
+}
+
+.dual-range-input::-moz-range-track {
+    width: 100%;
+    height: 6px;
+    background: transparent;
+    border-radius: 3px;
+}
+
+.dual-range-input-min {
+    z-index: 2;
+}
+
+.dual-range-input-max {
+    z-index: 3;
+}
+
+/* 数字提示框 */
+.fret-value-tooltip {
+    position: absolute;
+    top: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-color);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 4;
+    transition: left 0.1s ease;
+    text-align: center;
+}
+
+/* 连线模式下的按钮高亮 */
+.button.selected {
+    background-color: rgba(70, 130, 180, 0.3);
+    border: 2px solid steelblue;
+}
+
+/* 预览悬停note的高亮 */
+g.note.preview-hover {
+    opacity: 1;
+}
+
+g.note.preview-hover>circle {
+    stroke-dasharray: 3, 3;
+    stroke-width: 2px;
+    stroke: var(--text-color);
 }
