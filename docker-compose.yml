@@ -1,0 +1,32 @@
+services:
+  # 生产环境服务
+  fretboard-diagram:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fretboard-diagram
+    ports:
+      - "1645:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+
+  # 开发环境服务（可选）
+  fretboard-diagram-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: fretboard-diagram-dev
+    ports:
+      - "5173:5173"
+    restart: unless-stopped
+    volumes:
+      # 挂载源代码以实现热重载
+      - ./src:/app/src
+      - ./index.html:/app/index.html
+      - ./vite.config.js:/app/vite.config.js
+      - ./package.json:/app/package.json
+    environment:
+      - NODE_ENV=development
+    profiles:
+      - dev
