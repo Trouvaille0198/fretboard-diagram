@@ -845,16 +845,30 @@ export function FretboardSVG({
                 <button
                   className="toolbar-icon-btn"
                   onClick={(e) => {
-                    const direction = detectDropdownDirection(e.currentTarget);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const direction = detectDropdownDirection(e.currentTarget, toolbarRef, svgElementRef);
                     setToolbarDropdownDirection(direction);
                     setToolbarDropdown(toolbarDropdown === 'width' ? null : 'width');
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                   }}
                   title="粗细"
                 >
                   粗
                 </button>
                 {toolbarDropdown === 'width' && (
-                  <div className={`toolbar-dropdown toolbar-dropdown-${toolbarDropdownDirection}`}>
+                  <div 
+                    className={`toolbar-dropdown toolbar-dropdown-${toolbarDropdownDirection}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
                     <div className="toolbar-slider-wrapper">
                       <input
                         type="range"
@@ -887,16 +901,30 @@ export function FretboardSVG({
                   <button
                     className="toolbar-icon-btn"
                     onClick={(e) => {
-                      const direction = detectDropdownDirection(e.currentTarget);
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const direction = detectDropdownDirection(e.currentTarget, toolbarRef, svgElementRef);
                       setToolbarDropdownDirection(direction);
                       setToolbarDropdown(toolbarDropdown === 'curvature' ? null : 'curvature');
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                     }}
                     title="弧度"
                   >
                     弯
                   </button>
                   {toolbarDropdown === 'curvature' && (
-                    <div className={`toolbar-dropdown toolbar-dropdown-${toolbarDropdownDirection}`}>
+                    <div 
+                      className={`toolbar-dropdown toolbar-dropdown-${toolbarDropdownDirection}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
                       <div className="toolbar-slider-wrapper">
                         <input
                           type="range"
