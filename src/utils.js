@@ -140,27 +140,108 @@ export function updateNote(elem, data, update) {
 
 // 内联 CSS
 export function inlineCSS(svg) {
-    const PROPERTIES = ["fill", "stroke", "stroke-width", "text-anchor", "dominant-baseline"];
-    const svgElements = svg.querySelectorAll("*");
+    const PROPERTIES = [
+        "fill",
+        "stroke",
+        "stroke-width",
+        "stroke-linecap",
+        "stroke-linejoin",
+        "stroke-dasharray",
+        "text-anchor",
+        "dominant-baseline",
+        "font-size",
+        "font-family",
+        "font-weight"
+    ];
+
+    // 获取 CSS 变量值（从原始 DOM 获取）
+    const root = document.documentElement;
+    const rootStyle = getComputedStyle(root);
+    const cssVars = {
+        '--background-color': rootStyle.getPropertyValue('--background-color').trim() || 'black',
+        '--text-color': rootStyle.getPropertyValue('--text-color').trim() || '#aaaaaa'
+    };
+
+    // 获取所有颜色 CSS 变量
+    const colorVars = {};
+    for (let i = 0; i < rootStyle.length; i++) {
+        const prop = rootStyle[i];
+        if (prop.startsWith('--color-')) {
+            colorVars[prop] = rootStyle.getPropertyValue(prop).trim();
+        }
+    }
+
+    // 从原始 SVG（在 DOM 中的）获取元素
+    const originalSvg = document.getElementById('fretboard-svg');
+    if (!originalSvg) {
+        // 如果找不到原始 SVG，使用传入的 svg（可能是克隆的）
+        return svg;
+    }
+
+    const originalElements = originalSvg.querySelectorAll("*");
     const clonedSVG = svg.cloneNode(true);
     const clonedElements = clonedSVG.querySelectorAll("*");
 
-    for (let i = 0; i < svgElements.length; i++) {
-        const computedStyle = getComputedStyle(svgElements[i]);
+    for (let i = 0; i < originalElements.length; i++) {
+        const originalElement = originalElements[i];
+        const clonedElement = clonedElements[i];
+
+        if (!clonedElement) continue;
+
+        // 跳过 foreignObject 中的 HTML 元素
+        if (originalElement.tagName === 'foreignObject' || originalElement.closest('foreignObject')) {
+            continue;
+        }
+
+        // 从原始元素（在 DOM 中的）获取计算样式
+        const computedStyle = getComputedStyle(originalElement);
         const opacity = computedStyle.getPropertyValue('opacity');
         if (opacity === '0') {
-            clonedElements[i].remove();
+            clonedElement.remove();
             continue;
         }
         const styles = { opacity: opacity };
         for (const attr of PROPERTIES) {
-            const value = computedStyle.getPropertyValue(attr);
+            let value = computedStyle.getPropertyValue(attr);
+            // 替换 CSS 变量为实际值
             if (value) {
+                // 替换 --background-color
+                if (value.includes('var(--background-color)')) {
+                    value = value.replace(/var\(--background-color\)/g, cssVars['--background-color']);
+                }
+                // 替换 --text-color
+                if (value.includes('var(--text-color)')) {
+                    value = value.replace(/var\(--text-color\)/g, cssVars['--text-color']);
+                }
+                // 替换所有颜色变量
+                for (const [varName, varValue] of Object.entries(colorVars)) {
+                    if (value.includes(`var(${varName})`)) {
+                        value = value.replace(new RegExp(`var\\(${varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g'), varValue);
+                    }
+                }
+            }
+            if (value && value !== 'none' && value !== 'normal' && value.trim() !== '') {
                 styles[attr] = value;
             }
         }
         for (const [key, value] of Object.entries(styles)) {
-            clonedElements[i].style.setProperty(key.replace(/-([a-z])/g, (g) => g[1].toUpperCase()), value);
+            // text-anchor 和 dominant-baseline 应该作为 SVG 属性，而不是 CSS 样式
+            if (key === 'text-anchor' || key === 'dominant-baseline') {
+                clonedElement.setAttribute(key, value);
+            } else {
+                clonedElement.style.setProperty(key.replace(/-([a-z])/g, (g) => g[1].toUpperCase()), value);
+            }
+        }
+
+        // 对于文本元素，确保设置 x 和 y 属性（如果它们在 g 元素内，需要设置为 0）
+        if (clonedElement.tagName === 'text' && originalElement.parentElement?.tagName === 'g') {
+            // 检查文本元素是否已经有 x 和 y 属性
+            if (!clonedElement.hasAttribute('x')) {
+                clonedElement.setAttribute('x', '0');
+            }
+            if (!clonedElement.hasAttribute('y')) {
+                clonedElement.setAttribute('y', '0');
+            }
         }
     }
     return clonedSVG;
