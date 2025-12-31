@@ -64,6 +64,10 @@ g.note {
     fill: var(--background-color);
     stroke-width: 1px;
     stroke: var(--text-color);
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 g.note.selected>circle {
@@ -161,6 +165,10 @@ g.note>text {
     text-anchor: middle;
     dominant-baseline: middle;
     font-size: 18px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 #editable-div {
@@ -199,6 +207,10 @@ text.marker {
     fill: var(--text-color);
     opacity: 1 !important;
     visibility: visible !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 g.markers {
