@@ -43,13 +43,13 @@ export function FretboardMenu({
         <button 
           className={`button ${connectionMode ? 'selected' : ''}`} 
           onClick={onToggleConnectionMode}
-          title="连线工具"
+          title="Connection Tool"
         >
-          连线
+          Connect
         </button>
-        <button className="button" onClick={onSaveSVG}>Save</button>
-        {onSaveState && <button className="button" onClick={onSaveState} title="保存当前指板状态">保存状态</button>}
+        {onSaveState && <button className="button" onClick={onSaveState} title="Save current fretboard state">Save</button>}
         <button className="button" onClick={onReset}>Reset</button>
+        <button className="button" onClick={onSaveSVG}>Download</button>
       </div>
       <div id="piano-keyboard-container">
         <PianoKeyboard
