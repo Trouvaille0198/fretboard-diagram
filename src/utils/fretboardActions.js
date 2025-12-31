@@ -99,27 +99,40 @@ export function reset(visibility, setData, setSelected, notesElementRef, data, u
 }
 
 export function saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS) {
-  if (selected) {
-    const noteElement = selected.element || document.getElementById(selected.id);
-    if (noteElement) {
-      updateNote(noteElement, data, { visibility: 'visible' });
-      setData(prevData => {
-        const newData = { ...prevData };
-        if (selected.id in newData) {
-          newData[selected.id] = { ...newData[selected.id], visibility: 'visible' };
-        }
-        return newData;
-      });
+  // 克隆 SVG 并移除不需要的元素
+  const svgClone = svgElementRef.current.cloneNode(true);
+
+  // 移除工具栏和编辑框
+  const foreignObjects = svgClone.querySelectorAll('foreignObject');
+  foreignObjects.forEach(fo => {
+    const toolbar = fo.querySelector('.connection-toolbar-container, .connection-toolbar');
+    const editableDiv = fo.querySelector('#editable-div');
+    if (toolbar || editableDiv) {
+      fo.remove();
     }
-    setSelected(null);
+  });
+
+  // 如果选中了 note，在克隆的 SVG 中将其设置为可见
+  if (selected) {
+    const selectedElement = svgClone.getElementById(selected.id);
+    if (selectedElement) {
+      selectedElement.classList.remove('hidden', 'transparent');
+      selectedElement.classList.add('visible');
+      const circle = selectedElement.querySelector('circle');
+      if (circle) {
+        circle.style.opacity = '1';
+      }
+    }
   }
 
-  // 隐藏工具栏
-  if (connectionToolbarVisible) {
-    setConnectionToolbarVisible(false);
-  }
+  const svgCopy = inlineCSS(svgClone);
 
-  const svgCopy = inlineCSS(svgElementRef.current);
+  // 设置 SVG 背景色（从 CSS 变量获取）
+  const root = document.documentElement;
+  const computedStyle = getComputedStyle(root);
+  const backgroundColor = computedStyle.getPropertyValue('--background-color').trim() || 'black';
+  svgCopy.setAttribute('style', `background-color: ${backgroundColor};`);
+
   const svgData = svgCopy.outerHTML;
   const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
   const svgUrl = URL.createObjectURL(svgBlob);
