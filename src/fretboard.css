@@ -195,6 +195,22 @@ div.menu {
     transform: translateZ(0);
     will-change: transform;
     display: flex;
+    flex-direction: row;
+    gap: 40px;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.menu-left {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+}
+
+.menu-right {
+    display: flex;
     flex-direction: column;
     gap: 20px;
     align-items: center;

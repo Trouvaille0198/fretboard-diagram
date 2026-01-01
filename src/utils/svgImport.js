@@ -1,5 +1,20 @@
 import { LEVEL1_COLORS, LEVEL2_COLORS } from '../colorConfig';
 import { CONSTS } from '../constants';
+import { reduceColorSaturation } from '../utils';
+
+/**
+ * 转义 CSS 选择器中的特殊字符
+ * @param {string} selector - 需要转义的选择器字符串
+ * @returns {string} 转义后的选择器字符串
+ */
+function escapeCSSSelector(selector) {
+    // 如果浏览器支持 CSS.escape，使用它
+    if (typeof CSS !== 'undefined' && CSS.escape) {
+        return CSS.escape(selector);
+    }
+    // 否则手动转义特殊字符
+    return selector.replace(/([!"#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~])/g, '\\$1');
+}
 
 /**
  * 从颜色值反推颜色名称（支持第一层级和第二层级颜色）
@@ -13,6 +28,26 @@ function getColorNameFromValue(colorValue, level = null) {
     // 标准化颜色值（转换为小写，去除空格）
     const normalized = colorValue.toLowerCase().trim();
 
+    // 处理 CSS 变量（如 var(--color-level1-blue-fill)）
+    if (normalized.startsWith('var(')) {
+        const varMatch = normalized.match(/var\(--color-level(\d+)-(.+?)(?:-fill|-button)?\)/);
+        if (varMatch) {
+            const varLevel = parseInt(varMatch[1]);
+            const varColorName = varMatch[2];
+            // 如果指定了层级，检查是否匹配
+            if (level === null || level === varLevel) {
+                // 检查颜色名称是否存在
+                if (varLevel === 1 && varColorName in LEVEL1_COLORS) {
+                    return varColorName;
+                } else if (varLevel === 2 && varColorName in LEVEL2_COLORS) {
+                    return varColorName;
+                }
+            }
+        }
+        // 如果无法从 CSS 变量中提取，返回 null，让后续逻辑处理
+        return null;
+    }
+
     // 如果是 rgb/rgba 格式，转换为 hex
     let hexValue = normalized;
     if (normalized.startsWith('rgb')) {
@@ -25,6 +60,33 @@ function getColorNameFromValue(colorValue, level = null) {
                 const hex = x.toString(16);
                 return hex.length === 1 ? '0' + hex : hex;
             }).join('')}`;
+        }
+    }
+
+    // 处理命名颜色（如 steelblue, indianred 等）
+    const namedColors = {
+        'steelblue': 'blue',
+        'indianred': 'red',
+        '#00a080': 'green',
+        '#8b4513': 'brown',
+        '#aaaaaa': 'gray',
+        '#ffd700': 'yellow',
+        '#87ceeb': 'cyan',
+        '#ffb6c1': 'pink',
+        '#6b8e23': 'grass-green',
+        '#ff8c00': 'orange',
+        '#ffffff': 'white'
+    };
+
+    if (normalized in namedColors) {
+        const colorName = namedColors[normalized];
+        // 检查是否匹配指定的层级
+        if (level === 1 && colorName in LEVEL1_COLORS) {
+            return colorName;
+        } else if (level === 2 && colorName in LEVEL2_COLORS) {
+            return colorName;
+        } else if (level === null) {
+            return colorName;
         }
     }
 
@@ -336,7 +398,15 @@ export async function parseSVGToFretboardState(svgInput) {
         }
 
         data[noteId] = noteData;
+
+        // 调试日志：输出解析的 note 颜色
+        if (color !== 'white' || color2 !== null) {
+            console.log(`解析 note ${noteId}: color=${color}, color2=${color2}, visibility=${visibility}`);
+        }
     });
+
+    // 调试日志：输出所有解析的 note 数据
+    console.log(`解析了 ${Object.keys(data).length} 个 note，其中 ${Object.keys(data).filter(id => data[id].color !== 'white').length} 个有颜色`);
 
     // 确定 startFret 和 endFret
     // 如果 minFret 和 maxFret 都是 -1，说明只有开放弦，使用默认值
@@ -410,14 +480,66 @@ export async function parseSVGToFretboardState(svgInput) {
         }
     });
 
-    // 查找所有连线路径（path 或 line，class 为 connection）
-    // 注意：连线可能在 <g> 元素内，需要查找所有包含 connection class 的路径
-    // 先查找所有包含 connection class 的元素
-    const allConnectionElements = svgElement.querySelectorAll('.connection');
-    const connectionPaths = Array.from(allConnectionElements).filter(el =>
-        el.tagName === 'path' || el.tagName === 'line'
-    );
+    // 查找所有连线路径（path 或 line）
+    // 连线可能在以下位置：
+    // 1. 直接在 <g className="connections"> 内的 path/line（有 class="connection"）
+    // 2. 在 <g> 内的 path/line（class 可能在父元素上）
+    // 3. 直接在 connections group 内的 path/line
 
+    // 方法1：查找所有有 class="connection" 的 path 和 line
+    const directConnections = svgElement.querySelectorAll('path.connection, line.connection');
+
+    // 方法2：查找在 <g className="connections"> 内的所有 path 和 line
+    const connectionsGroup = svgElement.querySelector('g.connections');
+    const connectionsInGroup = connectionsGroup ?
+        Array.from(connectionsGroup.querySelectorAll('path, line')).filter(el => {
+            // 排除在 marker 内的元素
+            return !el.closest('marker');
+        }) : [];
+
+    // 方法3：查找所有 path 和 line，然后检查是否在 connections 相关的结构中
+    const allPathsAndLines = svgElement.querySelectorAll('path, line');
+    const otherConnections = Array.from(allPathsAndLines).filter(el => {
+        // 排除在 marker、defs 等内的元素
+        if (el.closest('marker') || el.closest('defs')) return false;
+        // 如果已经有 class="connection"，已经包含在 directConnections 中
+        if (el.classList.contains('connection')) return false;
+        // 检查是否在 connections group 内
+        if (connectionsGroup && connectionsGroup.contains(el)) return true;
+        // 检查是否有 stroke 属性（可能是连线）
+        const stroke = el.getAttribute('stroke') || el.style.stroke;
+        // 如果有 stroke 且不是 'none'，或者是 path/line 元素，都可能是连线
+        // 特别要注意：没有箭头的连线可能没有 marker 属性，但仍然应该被识别
+        if (stroke && stroke !== 'none') return true;
+        // 如果是 path 或 line，且不在其他已知的组内（如 strings、frets 等），也可能是连线
+        const parent = el.parentElement;
+        if (parent) {
+            const parentClass = parent.getAttribute('class') || '';
+            // 如果不在 strings、frets、markers 等组内，可能是连线
+            if (!parentClass.includes('string') &&
+                !parentClass.includes('fret') &&
+                !parentClass.includes('marker') &&
+                !parentClass.includes('note')) {
+                return true;
+            }
+        }
+        return false;
+    });
+
+    // 合并所有连线，去重
+    const allConnectionElements = new Set([
+        ...Array.from(directConnections),
+        ...connectionsInGroup,
+        ...otherConnections
+    ]);
+
+    const connectionPaths = Array.from(allConnectionElements);
+
+    // 调试信息：输出找到的连线数量
+    console.log(`找到 ${connectionPaths.length} 条连线元素`);
+
+    // 使用一个计数器确保每条连线都有唯一的 ID
+    let connectionIndex = 0;
     connectionPaths.forEach((pathElement, index) => {
         try {
             // 从 markerStart 和 markerEnd 中提取连接 ID
@@ -476,9 +598,28 @@ export async function parseSVGToFretboardState(svgInput) {
                 }
             }
 
-            // 如果仍然无法提取，生成一个 ID
+            // 如果仍然无法提取，生成一个唯一的 ID
+            // 使用递增的 connectionIndex 确保每条连线都有唯一 ID
             if (!connId) {
-                connId = `conn-imported-${Date.now()}-${index}`;
+                // 使用 Date.now() + connectionIndex + 随机字符串确保唯一性
+                const timestamp = Date.now();
+                const random = Math.random().toString(36).substr(2, 9);
+                connId = `conn-imported-${timestamp}-${connectionIndex++}-${random}`;
+                console.log(`[${index}] 为没有箭头的连线生成新 ID: ${connId}, connectionIndex: ${connectionIndex - 1}`);
+            } else {
+                console.log(`[${index}] 从 marker 提取的 ID: ${connId}`);
+            }
+
+            // 确保 connId 是唯一的（检查是否已存在）
+            // 使用循环确保生成真正唯一的 ID
+            while (connections[connId]) {
+                console.warn(`[${index}] 警告：connId ${connId} 已存在，生成新的唯一 ID`);
+                const timestamp = Date.now();
+                const random = Math.random().toString(36).substr(2, 9);
+                connId = `conn-imported-${timestamp}-${connectionIndex++}-${random}`;
+            }
+            if (connId !== (connections[connId]?.id || null)) {
+                console.log(`[${index}] 最终使用的 ID: ${connId}`);
             }
 
             // 确定箭头方向
@@ -563,14 +704,14 @@ export async function parseSVGToFretboardState(svgInput) {
 
             // 找到最近的音符作为起点和终点
             // 注意：由于箭头缩进，路径的起点和终点可能不在音符中心，需要扩大搜索范围
-            const findNearestNote = (x, y) => {
+            const findNearestNote = (x, y, maxDistance = 100) => {
                 let nearestNoteId = null;
                 let minDistance = Infinity;
 
                 for (const [noteId, pos] of Object.entries(notePositions)) {
                     const distance = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(y - pos.y, 2));
-                    // 扩大搜索范围到 50px（考虑箭头缩进和路径偏移）
-                    if (distance < minDistance && distance < 50) {
+                    // 扩大搜索范围（考虑箭头缩进和路径偏移）
+                    if (distance < minDistance && distance < maxDistance) {
                         minDistance = distance;
                         nearestNoteId = noteId;
                     }
@@ -579,17 +720,49 @@ export async function parseSVGToFretboardState(svgInput) {
                 return nearestNoteId;
             };
 
-            const startNoteId = findNearestNote(startX, startY);
-            const endNoteId = findNearestNote(endX, endY);
+            let startNoteId = findNearestNote(startX, startY, 100);
+            let endNoteId = findNearestNote(endX, endY, 100);
 
+            // 如果找不到，尝试扩大搜索范围或使用路径上的其他点
+            if (!startNoteId) {
+                // 尝试从起点向终点方向移动一点再搜索
+                const dx = endX - startX;
+                const dy = endY - startY;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                if (length > 0) {
+                    const offset = 30; // 向终点方向移动 30px
+                    const newX = startX + (dx / length) * offset;
+                    const newY = startY + (dy / length) * offset;
+                    startNoteId = findNearestNote(newX, newY, 150);
+                }
+            }
+
+            if (!endNoteId) {
+                // 尝试从终点向起点方向移动一点再搜索
+                const dx = startX - endX;
+                const dy = startY - endY;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                if (length > 0) {
+                    const offset = 30; // 向起点方向移动 30px
+                    const newX = endX + (dx / length) * offset;
+                    const newY = endY + (dy / length) * offset;
+                    endNoteId = findNearestNote(newX, newY, 150);
+                }
+            }
+
+            // 如果还是找不到，尝试更宽松的匹配
             if (!startNoteId || !endNoteId || startNoteId === endNoteId) {
-                // 如果找不到，尝试使用路径的中点来匹配
-                const midX = (startX + endX) / 2;
-                const midY = (startY + endY) / 2;
+                // 最后一次尝试：使用更大的搜索半径
+                if (!startNoteId) {
+                    startNoteId = findNearestNote(startX, startY, 200);
+                }
+                if (!endNoteId) {
+                    endNoteId = findNearestNote(endX, endY, 200);
+                }
 
                 // 如果还是找不到，跳过这条连线
-                if (!startNoteId || !endNoteId) {
-                    console.warn(`无法匹配连线端点: start(${startX}, ${startY}) -> end(${endX}, ${endY})`);
+                if (!startNoteId || !endNoteId || startNoteId === endNoteId) {
+                    console.warn(`无法匹配连线端点: start(${startX}, ${startY}) -> end(${endX}, ${endY}), startNoteId: ${startNoteId}, endNoteId: ${endNoteId}`);
                     return;
                 }
             }
@@ -619,7 +792,9 @@ export async function parseSVGToFretboardState(svgInput) {
                     // 如果渐变 ID 不是以 'gradient-' 开头，需要查找对应的渐变定义
                     if (!color.startsWith('gradient-')) {
                         // 查找渐变定义，提取起点和终点颜色
-                        const gradientDef = svgElement.querySelector(`#${color}`);
+                        // 转义 ID 中的特殊字符（如点号）
+                        const escapedColor = escapeCSSSelector(color);
+                        const gradientDef = svgElement.querySelector(`#${escapedColor}`);
                         if (gradientDef) {
                             const stop1 = gradientDef.querySelector('stop[offset="0%"]');
                             const stop2 = gradientDef.querySelector('stop[offset="100%"]');
@@ -693,14 +868,22 @@ export async function parseSVGToFretboardState(svgInput) {
             }
 
             // 获取起点和终点的颜色（用于渐变）
+            // 优先从已解析的 note 数据中获取
             const startNoteData = data[startNoteId] || {};
             const endNoteData = data[endNoteId] || {};
             let startColor = startNoteData.color || 'white';
             let endColor = endNoteData.color || 'white';
 
+            // 调试日志：如果颜色是 white，输出 note 数据
+            if (startColor === 'white' || endColor === 'white') {
+                console.log(`[${index}] 连线 ${startNoteId} -> ${endNoteId}: startNoteData=`, startNoteData, `endNoteData=`, endNoteData);
+            }
+
             // 如果连线使用渐变，尝试从渐变定义中提取颜色
             if (color && color.startsWith('gradient-')) {
-                const gradientDef = svgElement.querySelector(`#${color}`);
+                // 转义 ID 中的特殊字符（如点号）
+                const escapedColor = escapeCSSSelector(color);
+                const gradientDef = svgElement.querySelector(`#${escapedColor}`);
                 if (gradientDef) {
                     const stop1 = gradientDef.querySelector('stop[offset="0%"]');
                     const stop2 = gradientDef.querySelector('stop[offset="100%"]');
@@ -708,28 +891,192 @@ export async function parseSVGToFretboardState(svgInput) {
                         const startColorValue = stop1.getAttribute('stop-color') || stop1.getAttribute('stopColor');
                         const endColorValue = stop2.getAttribute('stop-color') || stop2.getAttribute('stopColor');
 
-                        // 尝试从颜色值反推颜色名称
+                        // 尝试从颜色值反推颜色名称（先尝试第一层级，再尝试第二层级，最后尝试不指定层级）
                         if (startColorValue) {
-                            const startColorName = getColorNameFromValue(startColorValue);
+                            let startColorName = getColorNameFromValue(startColorValue, 1);
+                            let isLevel2 = false;
+                            if (!startColorName) {
+                                startColorName = getColorNameFromValue(startColorValue, 2);
+                                isLevel2 = !!startColorName;
+                            }
+                            if (!startColorName) {
+                                startColorName = getColorNameFromValue(startColorValue, null);
+                                // 检查是否是第二层级颜色
+                                if (startColorName && startColorName in LEVEL2_COLORS) {
+                                    isLevel2 = true;
+                                }
+                            }
                             if (startColorName) {
-                                startColor = startColorName;
+                                // 智能匹配：优先匹配 note 的实际颜色
+                                // 如果是第二层级颜色，优先检查 note 的 color2
+                                if (isLevel2) {
+                                    if (startNoteData.color2 === startColorName) {
+                                        // 匹配到 color2
+                                        startColor = startColorName;
+                                    } else if (startNoteData.color === startColorName) {
+                                        // 虽然提取的是第二层级颜色，但 note 的 color1 匹配，使用 color1
+                                        startColor = startColorName;
+                                    } else {
+                                        // 不匹配，但直接使用提取的颜色名称
+                                        startColor = startColorName;
+                                    }
+                                } else {
+                                    // 如果是第一层级颜色，优先检查 note 的 color1
+                                    if (startNoteData.color === startColorName) {
+                                        // 匹配到 color1
+                                        startColor = startColorName;
+                                    } else if (startNoteData.color2 === startColorName) {
+                                        // 虽然提取的是第一层级颜色，但 note 的 color2 匹配，使用 color2
+                                        startColor = startColorName;
+                                    } else {
+                                        // 不匹配，但直接使用提取的颜色名称
+                                        startColor = startColorName;
+                                    }
+                                }
+                            } else {
+                                console.warn(`无法从渐变起点颜色值反推颜色名称: ${startColorValue}`);
                             }
                         }
                         if (endColorValue) {
-                            const endColorName = getColorNameFromValue(endColorValue);
+                            let endColorName = getColorNameFromValue(endColorValue, 1);
+                            let isLevel2 = false;
+                            if (!endColorName) {
+                                endColorName = getColorNameFromValue(endColorValue, 2);
+                                isLevel2 = !!endColorName;
+                            }
+                            if (!endColorName) {
+                                endColorName = getColorNameFromValue(endColorValue, null);
+                                // 检查是否是第二层级颜色
+                                if (endColorName && endColorName in LEVEL2_COLORS) {
+                                    isLevel2 = true;
+                                }
+                            }
                             if (endColorName) {
-                                endColor = endColorName;
+                                // 智能匹配：优先匹配 note 的实际颜色
+                                // 如果是第二层级颜色，优先检查 note 的 color2
+                                if (isLevel2) {
+                                    if (endNoteData.color2 === endColorName) {
+                                        // 匹配到 color2
+                                        endColor = endColorName;
+                                    } else if (endNoteData.color === endColorName) {
+                                        // 虽然提取的是第二层级颜色，但 note 的 color1 匹配，使用 color1
+                                        endColor = endColorName;
+                                    } else {
+                                        // 不匹配，但直接使用提取的颜色名称
+                                        endColor = endColorName;
+                                    }
+                                } else {
+                                    // 如果是第一层级颜色，优先检查 note 的 color1
+                                    if (endNoteData.color === endColorName) {
+                                        // 匹配到 color1
+                                        endColor = endColorName;
+                                    } else if (endNoteData.color2 === endColorName) {
+                                        // 虽然提取的是第一层级颜色，但 note 的 color2 匹配，使用 color2
+                                        endColor = endColorName;
+                                    } else {
+                                        // 不匹配，但直接使用提取的颜色名称
+                                        endColor = endColorName;
+                                    }
+                                }
+                            } else {
+                                console.warn(`无法从渐变终点颜色值反推颜色名称: ${endColorValue}`);
                             }
                         }
                     }
                 }
-            } else if (color && color !== 'none') {
+            } else if (color && color !== 'none' && !color.startsWith('url(')) {
                 // 如果是纯色，尝试从颜色值反推颜色名称
-                const colorName = getColorNameFromValue(color);
+                let colorName = getColorNameFromValue(color, 1);
+                if (!colorName) {
+                    colorName = getColorNameFromValue(color, 2);
+                }
+                if (!colorName) {
+                    colorName = getColorNameFromValue(color, null);
+                }
                 if (colorName) {
-                    // 如果反推成功，使用该颜色；否则使用起点颜色
+                    // 如果反推成功，使用该颜色
                     startColor = colorName;
                     endColor = colorName;
+                } else {
+                    console.warn(`无法从连线颜色值反推颜色名称: ${color}`);
+                }
+            }
+
+            // 如果从渐变或颜色值中无法获取颜色，使用 note 的实际颜色
+            // 但优先使用从渐变中提取的颜色
+            // 先尝试 color1，如果 color1 是 white，再尝试 color2
+            if (startColor === 'white') {
+                if (startNoteData.color && startNoteData.color !== 'white') {
+                    startColor = startNoteData.color;
+                } else if (startNoteData.color2 && startNoteData.color2 !== null) {
+                    startColor = startNoteData.color2;
+                }
+            }
+            if (endColor === 'white') {
+                if (endNoteData.color && endNoteData.color !== 'white') {
+                    endColor = endNoteData.color;
+                } else if (endNoteData.color2 && endNoteData.color2 !== null) {
+                    endColor = endNoteData.color2;
+                }
+            }
+
+            // 如果起点或终点的 note 颜色仍然是 'white'，尝试从 SVG 元素本身提取
+            // 先尝试第一层级颜色，再尝试第二层级颜色
+            if (startColor === 'white') {
+                const startNoteElement = svgElement.querySelector(`g#${startNoteId}`);
+                if (startNoteElement) {
+                    const className = startNoteElement.getAttribute('class') || '';
+                    const classes = className.split(/\s+/);
+                    // 先尝试第一层级颜色
+                    const level1ColorClasses = ['blue', 'green', 'red', 'black', 'white', 'trans', 'brown', 'gray'];
+                    for (const colorClass of level1ColorClasses) {
+                        if (classes.includes(colorClass) && colorClass !== 'white') {
+                            startColor = colorClass;
+                            break;
+                        }
+                    }
+                    // 如果还是 white，尝试第二层级颜色
+                    if (startColor === 'white') {
+                        const level2ColorClasses = Object.keys(LEVEL2_COLORS);
+                        for (const colorClass of level2ColorClasses) {
+                            if (classes.includes(colorClass)) {
+                                // 检查 note 的 color2 是否匹配
+                                if (startNoteData.color2 === colorClass) {
+                                    startColor = colorClass;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (endColor === 'white') {
+                const endNoteElement = svgElement.querySelector(`g#${endNoteId}`);
+                if (endNoteElement) {
+                    const className = endNoteElement.getAttribute('class') || '';
+                    const classes = className.split(/\s+/);
+                    // 先尝试第一层级颜色
+                    const level1ColorClasses = ['blue', 'green', 'red', 'black', 'white', 'trans', 'brown', 'gray'];
+                    for (const colorClass of level1ColorClasses) {
+                        if (classes.includes(colorClass) && colorClass !== 'white') {
+                            endColor = colorClass;
+                            break;
+                        }
+                    }
+                    // 如果还是 white，尝试第二层级颜色
+                    if (endColor === 'white') {
+                        const level2ColorClasses = Object.keys(LEVEL2_COLORS);
+                        for (const colorClass of level2ColorClasses) {
+                            if (classes.includes(colorClass)) {
+                                // 检查 note 的 color2 是否匹配
+                                if (endNoteData.color2 === colorClass) {
+                                    endColor = colorClass;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -743,17 +1090,25 @@ export async function parseSVGToFretboardState(svgInput) {
             if (startColor === 'white' && endColor === 'white') {
                 connection.color = '#aaaaaa';
             } else if (startColor === endColor) {
-                // 相同颜色，使用降低饱和度的颜色值（这里暂时保留为 null，让系统自动计算）
-                connection.color = null; // 系统会根据颜色自动计算
+                // 相同颜色，使用降低饱和度的颜色值
+                try {
+                    connection.color = reduceColorSaturation(startColor, 0.6);
+                    console.log(`[${index}] 同色连线颜色计算: ${startColor} -> ${connection.color}`);
+                } catch (error) {
+                    console.error(`[${index}] 计算同色连线颜色失败:`, error, `startColor: ${startColor}`);
+                    // 如果计算失败，使用默认灰色
+                    connection.color = '#aaaaaa';
+                }
             } else {
                 // 不同颜色，使用渐变 ID
                 connection.color = `gradient-${connId}`;
             }
 
             connections[connId] = connection;
+            console.log(`成功导入连线 ${connId}: ${startNoteId} -> ${endNoteId}, 类型: ${type}, 箭头: ${arrowDirection}, 颜色: ${connection.color}, 起点颜色: ${startColor}, 终点颜色: ${endColor}`);
         } catch (error) {
             // 如果单个连线解析失败，记录错误但继续处理其他连线
-            console.warn(`解析连线 ${index} 失败:`, error);
+            console.warn(`解析连线 ${index} 失败:`, error, pathElement);
         }
     });
 
@@ -763,6 +1118,8 @@ export async function parseSVGToFretboardState(svgInput) {
             data.connections = {};
         }
         Object.assign(data.connections, connections);
+        console.log(`最终保存了 ${Object.keys(connections).length} 条连线到 data.connections`);
+        console.log('连线 IDs:', Object.keys(connections));
     }
 
     return {
