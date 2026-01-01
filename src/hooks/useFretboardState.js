@@ -6,6 +6,7 @@ export function useFretboardState() {
     const [selectedColorLevel, setSelectedColorLevel] = useState(null); // 1 | 2 | null
     const [selectedColor, setSelectedColor] = useState(null); // 当前选中的调色盘颜色名称
     const [hoveredNoteId, setHoveredNoteId] = useState(null); // 当前hover的note ID（用于x键删除）
+    const [hoveredConnectionId, setHoveredConnectionId] = useState(null); // 当前hover的连线ID（用于backspace删除）
     const [visibility, setVisibility] = useState('transparent');
     const [startFret, setStartFret] = useState(0);
     const [endFret, setEndFret] = useState(15);
@@ -28,13 +29,36 @@ export function useFretboardState() {
         dataRef.current = data;
     }, [data]);
 
-    // 初始化endFret
+    // 从 localStorage 恢复当前状态（页面刷新时）- 必须在初始化之前
     useEffect(() => {
-        const initialEndFret = Math.min(
-            Math.floor((window.innerWidth - 2 * CONSTS.offsetX) / CONSTS.fretWidth),
-            15
-        );
-        setEndFret(initialEndFret);
+        try {
+            const savedState = localStorage.getItem('fretboard-current-state');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                if (state.data) setData(state.data);
+                if (typeof state.startFret === 'number') setStartFret(state.startFret);
+                if (typeof state.endFret === 'number') setEndFret(state.endFret);
+                if (typeof state.enharmonic === 'number') setEnharmonic(state.enharmonic);
+                if (state.displayMode) setDisplayMode(state.displayMode);
+                if (state.rootNote !== undefined) setRootNote(state.rootNote);
+                if (state.visibility) setVisibility(state.visibility);
+            } else {
+                // 如果没有保存的状态，才初始化endFret
+                const initialEndFret = Math.min(
+                    Math.floor((window.innerWidth - 2 * CONSTS.offsetX) / CONSTS.fretWidth),
+                    15
+                );
+                setEndFret(initialEndFret);
+            }
+        } catch (error) {
+            console.error('恢复当前状态失败:', error);
+            // 如果恢复失败，初始化endFret
+            const initialEndFret = Math.min(
+                Math.floor((window.innerWidth - 2 * CONSTS.offsetX) / CONSTS.fretWidth),
+                15
+            );
+            setEndFret(initialEndFret);
+        }
     }, []);
 
     // 更新当前日期时间
@@ -69,6 +93,32 @@ export function useFretboardState() {
         }
     }, []);
 
+    // 自动保存当前状态到 localStorage（状态变化时）
+    // 使用 useRef 来避免初始化时立即保存
+    const isInitialMount = useRef(true);
+    useEffect(() => {
+        // 跳过首次渲染（此时状态可能还在恢复中）
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+
+        try {
+            const currentState = {
+                data,
+                startFret,
+                endFret,
+                enharmonic,
+                displayMode,
+                rootNote,
+                visibility
+            };
+            localStorage.setItem('fretboard-current-state', JSON.stringify(currentState));
+        } catch (error) {
+            console.error('保存当前状态失败:', error);
+        }
+    }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility]);
+
     return {
         selected,
         setSelected,
@@ -78,6 +128,8 @@ export function useFretboardState() {
         setSelectedColor,
         hoveredNoteId,
         setHoveredNoteId,
+        hoveredConnectionId,
+        setHoveredConnectionId,
         visibility,
         setVisibility,
         startFret,

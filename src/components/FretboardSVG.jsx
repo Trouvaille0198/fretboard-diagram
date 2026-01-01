@@ -35,6 +35,7 @@ export function FretboardSVG({
   setPreviewHoverNote,
   setUseColor2Level,
   setHoveredNoteId,
+  setHoveredConnectionId,
   computeNoteNameMemo,
   connections,
   getNotePositionMemo,
@@ -445,6 +446,8 @@ export function FretboardSVG({
                   markerEnd={markerEnd}
                   onClick={(e) => handleConnectionClickMemo(e, conn.id)}
                   onContextMenu={(e) => handleConnectionContextMenuMemo(e, conn.id)}
+                  onMouseEnter={() => setHoveredConnectionId(conn.id)}
+                  onMouseLeave={() => setHoveredConnectionId(null)}
                   style={{ 
                     cursor: 'pointer',
                     strokeWidth: `${conn.strokeWidth || 3}px`
@@ -516,6 +519,8 @@ export function FretboardSVG({
                   markerEnd={markerEnd}
                   onClick={(e) => handleConnectionClickMemo(e, conn.id)}
                   onContextMenu={(e) => handleConnectionContextMenuMemo(e, conn.id)}
+                  onMouseEnter={() => setHoveredConnectionId(conn.id)}
+                  onMouseLeave={() => setHoveredConnectionId(null)}
                   style={{ 
                     cursor: 'pointer',
                     strokeWidth: `${conn.strokeWidth || 3}px`,

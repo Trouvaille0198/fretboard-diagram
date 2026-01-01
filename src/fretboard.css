@@ -466,6 +466,8 @@ figure.half-full svg {
     display: flex;
     justify-content: center;
     padding: 15px 0;
+    position: relative;
+    z-index: 1;
 }
 
 .piano-keyboard {

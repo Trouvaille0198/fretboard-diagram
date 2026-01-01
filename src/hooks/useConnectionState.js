@@ -30,7 +30,8 @@ export function useConnectionState() {
     const [connectionToolbarPosition, setConnectionToolbarPosition] = useState({ x: 0, y: 0 });
     const [toolbarDropdown, setToolbarDropdown] = useState(null); // 'type' | 'arrow' | 'width' | 'curvature' | null
     const [toolbarDropdownDirection, setToolbarDropdownDirection] = useState('down'); // 'up' | 'down'
-    const [connectionPreset, setConnectionPreset] = useState('preset1'); // 默认选择预设1
+    const [connectionType, setConnectionType] = useState('line'); // 'line' | 'arc'，默认直线
+    const [connectionArrowDirection, setConnectionArrowDirection] = useState('none'); // 'none' | 'start' | 'end' | 'both'，默认无箭头
 
     return {
         connectionMode,
@@ -55,7 +56,9 @@ export function useConnectionState() {
         setToolbarDropdown,
         toolbarDropdownDirection,
         setToolbarDropdownDirection,
-        connectionPreset,
-        setConnectionPreset
+        connectionType,
+        setConnectionType,
+        connectionArrowDirection,
+        setConnectionArrowDirection
     };
 }

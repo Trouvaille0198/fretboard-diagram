@@ -2,7 +2,6 @@ import { calculateConnectionColor } from '../utils.js';
 
 export function detectDropdownDirection(buttonElement, toolbarRef, svgElementRef) {
     if (!buttonElement || !toolbarRef.current || !svgElementRef.current) {
-        console.log('[检测方向] 缺少元素，返回down');
         return 'down';
     }
 
@@ -24,49 +23,33 @@ export function detectDropdownDirection(buttonElement, toolbarRef, svgElementRef
     // 计算按钮在 SVG 中的位置比例（0 = 顶部，1 = 底部）
     const buttonPositionRatio = buttonBottomInSvg / svgHeight;
 
-    console.log('[检测方向]', {
-        spaceBelow,
-        spaceAbove,
-        estimatedMenuHeight,
-        buttonTopInSvg,
-        buttonBottomInSvg,
-        svgHeight,
-        buttonPositionRatio
-    });
-
     // 如果下方空间不足，必须向上展开
     if (spaceBelow < estimatedMenuHeight) {
         if (spaceAbove >= estimatedMenuHeight) {
-            console.log('[检测方向] 返回up（下方空间不足）');
             return 'up';
         }
     }
 
     // 如果按钮位置很靠下（超过 SVG 的40%），且上方空间足够，向上展开（进一步降低阈值）
     if (buttonPositionRatio > 0.4 && spaceAbove >= estimatedMenuHeight) {
-        console.log('[检测方向] 返回up（按钮位置靠下）');
         return 'up';
     }
 
     // 如果上方空间大于下方空间，且上方空间足够，向上展开
     if (spaceAbove > spaceBelow && spaceAbove >= estimatedMenuHeight) {
-        console.log('[检测方向] 返回up（上方空间更大）');
         return 'up';
     }
 
     // 如果按钮位置在 SVG 下半部分（超过35%），且上方空间足够，向上展开（更宽松的条件）
     if (buttonPositionRatio > 0.35 && spaceAbove >= estimatedMenuHeight && spaceAbove > spaceBelow * 0.6) {
-        console.log('[检测方向] 返回up（按钮在下半部分且上方空间足够）');
         return 'up';
     }
 
     // 如果上方空间接近下方空间（差距不大），且上方空间足够，向上展开
     if (spaceAbove >= estimatedMenuHeight && spaceAbove > spaceBelow * 0.5 && spaceBelow < estimatedMenuHeight * 1.5) {
-        console.log('[检测方向] 返回up（上方空间接近下方且足够）');
         return 'up';
     }
 
-    console.log('[检测方向] 返回down');
     return 'down';
 }
 

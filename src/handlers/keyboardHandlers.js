@@ -9,6 +9,7 @@ export function createKeyboardHandler(params) {
         cycleLevel2Color,
         undo,
         hoveredNoteId,
+        hoveredConnectionId,
         data,
         setData,
         visibility,
@@ -19,7 +20,9 @@ export function createKeyboardHandler(params) {
         setMousePosition,
         setPreviewHoverNote,
         setUseColor2Level,
-        saveFretboardState
+        saveFretboardState,
+        toggleVisibility,
+        reset
     } = params;
 
     return (event) => {
@@ -48,10 +51,41 @@ export function createKeyboardHandler(params) {
             return;
         }
 
+        // Z 切换可见性
+        if (!event.ctrlKey && !event.altKey && !event.shiftKey && event.code === 'KeyZ') {
+            event.preventDefault();
+            if (toggleVisibility) {
+                toggleVisibility();
+            }
+            return;
+        }
+
+        // Ctrl+D 重置
+        if (event.ctrlKey && event.code === 'KeyD' && !event.shiftKey) {
+            event.preventDefault();
+            if (reset) {
+                reset();
+            }
+            return;
+        }
+
         switch (event.code) {
             case 'Backspace':
                 // 屏蔽backspace的默认功能
                 event.preventDefault();
+                // 如果hover在某个连线上，删除该连线
+                if (hoveredConnectionId) {
+                    setData(prevData => {
+                        const newData = { ...prevData };
+                        if (newData.connections && newData.connections[hoveredConnectionId]) {
+                            const connections = { ...newData.connections };
+                            delete connections[hoveredConnectionId];
+                            newData.connections = connections;
+                        }
+                        return newData;
+                    });
+                    return;
+                }
                 // 如果hover在某个visible的note上，删除该note
                 if (hoveredNoteId) {
                     const noteElement = document.getElementById(hoveredNoteId);
@@ -91,7 +125,7 @@ export function createKeyboardHandler(params) {
                         }
                     }
                 }
-                // 如果不在任何note上，已经通过preventDefault屏蔽了默认功能
+                // 如果不在任何note或连线上，已经通过preventDefault屏蔽了默认功能
                 break;
             case 'Delete':
                 if (selected) {
@@ -125,7 +159,10 @@ export function createKeyboardHandler(params) {
                 cycleLevel1Color();
                 break;
             case 'KeyD':
-                cycleLevel2Color();
+                // 只在没有 Ctrl 键时执行（避免与 Ctrl+D 冲突）
+                if (!event.ctrlKey) {
+                    cycleLevel2Color();
+                }
                 break;
         }
     };
