@@ -3,7 +3,6 @@ import { CONSTS } from '../constants';
 import PianoKeyboard from '../PianoKeyboard';
 import { ColorPalette } from './ColorPalette';
 import { FretRangeSlider } from './FretRangeSlider';
-import { CONNECTION_PRESETS } from '../hooks/useConnectionState';
 
 export function FretboardMenu({
   selectedColorLevel,
@@ -13,8 +12,10 @@ export function FretboardMenu({
   onToggleEnharmonic,
   onToggleVisibility,
   connectionMode,
-  connectionPreset,
-  setConnectionPreset,
+  connectionType,
+  setConnectionType,
+  connectionArrowDirection,
+  setConnectionArrowDirection,
   onToggleConnectionMode,
   onSaveSVG,
   onSaveState,
@@ -39,13 +40,40 @@ export function FretboardMenu({
           id="enharmonic"
           style={{ width: '25px', textAlign: 'center' }}
           onClick={onToggleEnharmonic}
+          title="切换升降号"
         >
           {CONSTS.sign[enharmonic]}
         </button>
-        <button className="button" onClick={onToggleVisibility}>Toggle</button>
-        {onSaveState && <button className="button" onClick={onSaveState} title="Save current fretboard state">Save</button>}
-        <button className="button" onClick={onReset}>Reset</button>
-        <button className="button" onClick={onSaveSVG}>Download</button>
+        <button 
+          className="button" 
+          onClick={onToggleVisibility}
+          title="Toggle (Z)"
+        >
+          Toggle
+        </button>
+        {onSaveState && (
+          <button 
+            className="button" 
+            onClick={onSaveState} 
+            title="Save current fretboard state (Ctrl+S)"
+          >
+            Save
+          </button>
+        )}
+        <button 
+          className="button" 
+          onClick={onReset}
+          title="Reset (Ctrl+D)"
+        >
+          Reset
+        </button>
+        <button 
+          className="button" 
+          onClick={onSaveSVG}
+          title="Download"
+        >
+          Download
+        </button>
       </div>
       {/* 连线工具区域 */}
       <div id="connection-tool-section" style={{ padding: '8px' }}>
@@ -53,28 +81,35 @@ export function FretboardMenu({
           <button 
             className={`button ${connectionMode ? 'selected' : ''}`} 
             onClick={onToggleConnectionMode}
-            title="Connection Tool"
+            title="Connection Tool (S)"
             style={{ marginRight: 'auto' }}
           >
             Connect
           </button>
           <button
-            className={`button ${connectionPreset === 'preset1' ? 'selected' : ''}`}
-            onClick={() => setConnectionPreset('preset1')}
+            className="button"
+            onClick={() => setConnectionType(connectionType === 'line' ? 'arc' : 'line')}
             disabled={!connectionMode}
-            title="直线，无箭头"
-            style={{  padding: '4px 8px' }}
+            title={connectionType === 'line' ? '直线' : '弧线'}
+            style={{ padding: '4px 8px' }}
           >
-            Line
+            {connectionType === 'line' ? 'Line' : 'Arc'}
           </button>
           <button
-            className={`button ${connectionPreset === 'preset2' ? 'selected' : ''}`}
-            onClick={() => setConnectionPreset('preset2')}
+            className="button"
+            onClick={() => {
+              const directions = ['none', 'start', 'end', 'both'];
+              const currentIndex = directions.indexOf(connectionArrowDirection);
+              const nextIndex = (currentIndex + 1) % directions.length;
+              setConnectionArrowDirection(directions[nextIndex]);
+            }}
             disabled={!connectionMode}
-            title="弧线，单箭头"
-            style={{  padding: '4px 8px' }}
+            title={`箭头：${connectionArrowDirection === 'none' ? '无' : connectionArrowDirection === 'start' ? '起点' : connectionArrowDirection === 'end' ? '终点' : '双向'}`}
+            style={{ padding: '4px 8px' }}
           >
-            Arc
+            {connectionArrowDirection === 'none' ? '无' : 
+             connectionArrowDirection === 'start' ? '←' : 
+             connectionArrowDirection === 'end' ? '→' : '⇄'}
           </button>
         </div>
        

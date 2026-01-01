@@ -17,7 +17,7 @@ import { FretboardMenu } from './components/FretboardMenu';
 import { FretboardGallery } from './components/FretboardGallery';
 import { Toast } from './components/Toast';
 import { FretboardSVG } from './components/FretboardSVG';
-import { saveFretboardState, restoreFretboardState } from './utils/fretboardHistory';
+import { saveFretboardState, restoreFretboardState, generateThumbnail } from './utils/fretboardHistory';
 
 function Fretboard() {
   // 使用自定义hooks
@@ -32,6 +32,7 @@ function Fretboard() {
     selectedColorLevel, setSelectedColorLevel,
     selectedColor, setSelectedColor,
     hoveredNoteId, setHoveredNoteId,
+    hoveredConnectionId, setHoveredConnectionId,
     visibility, setVisibility,
     startFret, setStartFret,
     endFret, setEndFret,
@@ -61,7 +62,8 @@ function Fretboard() {
     connectionToolbarPosition, setConnectionToolbarPosition,
     toolbarDropdown, setToolbarDropdown,
     toolbarDropdownDirection, setToolbarDropdownDirection,
-    connectionPreset, setConnectionPreset
+    connectionType, setConnectionType,
+    connectionArrowDirection, setConnectionArrowDirection
   } = connectionState;
 
   const {
@@ -259,10 +261,10 @@ function Fretboard() {
     selectedColorLevel, selectedColor, connectionMode, connectionStartNote,
     setConnectionStartNote, setConnectionStartPosition, setMousePosition,
     setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote,
-    connections, connectionPreset, updateNote: updateNote
+    connections, connectionType, connectionArrowDirection, updateNote: updateNote
   }), [data, setData, visibility, selected, setSelected, selectedColorLevel, selectedColor,
       connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionPreset]);
+      setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionType, connectionArrowDirection]);
 
   const handleNoteContextMenu = useCallback(createNoteContextMenuHandler({
     selected, setSelected, data, setData, updateNote: updateNote
@@ -416,16 +418,17 @@ function Fretboard() {
   useEffect(() => {
     const handleKeyDown = createKeyboardHandler({
       selected, deleteNote, selectColor: selectColorMemo, cycleLevel1Color: cycleLevel1ColorMemo,
-      cycleLevel2Color: cycleLevel2ColorMemo, undo, hoveredNoteId, data, setData, visibility,
+      cycleLevel2Color: cycleLevel2ColorMemo, undo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
       connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardState: saveFretboardStateMemo
+      setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardState: saveFretboardStateMemo,
+      toggleVisibility: toggleVisibilityMemo, reset: resetMemo
     });
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, deleteNote, selectColorMemo, cycleLevel1ColorMemo, cycleLevel2ColorMemo, undo, hoveredNoteId, data, setData, visibility,
+  }, [selected, deleteNote, selectColorMemo, cycleLevel1ColorMemo, cycleLevel2ColorMemo, undo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
       connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardStateMemo]);
+      setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardStateMemo, toggleVisibilityMemo, resetMemo]);
 
   // 生成字符串路径
   const generateStringPathMemo = useCallback((stringIndex) => generateStringPath(stringIndex, fretboardWidth), [fretboardWidth]);
@@ -470,6 +473,7 @@ function Fretboard() {
           setPreviewHoverNote={setPreviewHoverNote}
           setUseColor2Level={setUseColor2Level}
           setHoveredNoteId={setHoveredNoteId}
+          setHoveredConnectionId={setHoveredConnectionId}
           computeNoteNameMemo={computeNoteNameMemo}
           connections={connections}
           getNotePositionMemo={getNotePositionMemo}
@@ -511,8 +515,10 @@ function Fretboard() {
         onToggleEnharmonic={toggleEnharmonicMemo}
         onToggleVisibility={toggleVisibilityMemo}
         connectionMode={connectionMode}
-        connectionPreset={connectionPreset}
-        setConnectionPreset={setConnectionPreset}
+        connectionType={connectionType}
+        setConnectionType={setConnectionType}
+        connectionArrowDirection={connectionArrowDirection}
+        setConnectionArrowDirection={setConnectionArrowDirection}
         onToggleConnectionMode={() => {
           setConnectionMode(!connectionMode);
           if (connectionMode) {
@@ -572,6 +578,96 @@ function Fretboard() {
           } catch (error) {
             console.error('清空历史状态失败:', error);
             setToastMessage('清空失败：' + error.message);
+            setToastType('error');
+          }
+        }}
+        onImport={async (result) => {
+          try {
+            if (!result.success) {
+              setToastMessage(result.message || '操作失败');
+              setToastType('error');
+              return;
+            }
+
+            // 如果只有消息没有数据，说明是分享操作，只显示消息
+            if (!result.data || !result.data.state) {
+              if (result.message) {
+                setToastMessage(result.message);
+                setToastType('success');
+                return;
+              } else {
+                setToastMessage('导入数据格式错误');
+                setToastType('error');
+                return;
+              }
+            }
+
+            // 创建新的状态快照对象
+            const importedState = {
+              id: Date.now().toString(),
+              timestamp: Date.now(),
+              name: new Date().toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) + ' (导入)',
+              thumbnail: null,
+              state: result.data.state
+            };
+
+            // 先恢复导入的状态（这样 SVG 会更新）
+            restoreFretboardStateMemo(importedState);
+
+            // 等待 SVG 更新后生成缩略图
+            // 使用 requestAnimationFrame 确保 DOM 已更新
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                // 生成缩略图
+                const thumbnailUrl = generateThumbnail(svgElementRef);
+                if (thumbnailUrl) {
+                  importedState.thumbnail = thumbnailUrl;
+                }
+
+                // 保存到历史记录
+                const existingHistory = localStorage.getItem('fretboard-history');
+                let historyArray = [];
+                if (existingHistory) {
+                  try {
+                    historyArray = JSON.parse(existingHistory);
+                  } catch (e) {
+                    console.error('解析历史记录失败:', e);
+                    historyArray = [];
+                  }
+                }
+
+                // 检查是否已存在（避免重复添加）
+                const existingIndex = historyArray.findIndex(item => item.id === importedState.id);
+                if (existingIndex !== -1) {
+                  // 更新已存在的项（更新缩略图）
+                  historyArray[existingIndex] = importedState;
+                } else {
+                  // 添加到数组开头
+                  historyArray.unshift(importedState);
+                }
+
+                // 限制最大数量
+                if (historyArray.length > 50) {
+                  historyArray = historyArray.slice(0, 50);
+                }
+
+                // 保存到 localStorage
+                localStorage.setItem('fretboard-history', JSON.stringify(historyArray));
+                setHistoryStates(historyArray);
+              }, 100); // 给 SVG 100ms 时间完成渲染
+            });
+
+            setToastMessage(result.message || '导入成功！');
+            setToastType('success');
+          } catch (error) {
+            console.error('导入处理失败:', error);
+            setToastMessage('导入处理失败：' + error.message);
             setToastType('error');
           }
         }}
