@@ -1,6 +1,7 @@
 import { updateNote } from '../utils';
 import { calculateConnectionColor } from '../utils';
 import { LEVEL1_COLORS } from '../colorConfig';
+import { CONNECTION_PRESETS } from '../hooks/useConnectionState';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
 
@@ -23,6 +24,7 @@ export function createNoteClickHandler(params) {
         setUseColor2Level,
         previewHoverNote,
         connections,
+        connectionPreset,
         updateNote: updateNoteFn
     } = params;
 
@@ -131,15 +133,17 @@ export function createNoteClickHandler(params) {
                     const gradientColors = { start: actualStartColor, end: actualEndColor };
 
                     const existingConnection = existingConnectionId ? connections[existingConnectionId] : null;
+                    // 使用预设样式（如果连线已存在，则保留原有样式）
+                    const preset = CONNECTION_PRESETS[connectionPreset || 'preset1'];
                     const newConnection = {
                         id: connectionId,
                         startNoteId: connectionStartNote,
                         endNoteId: noteId,
-                        type: existingConnection?.type || 'line',
-                        hasArrow: existingConnection?.hasArrow || false,
-                        arrowDirection: existingConnection?.arrowDirection || 'none',
-                        strokeWidth: existingConnection?.strokeWidth || 3,
-                        arcCurvature: existingConnection?.arcCurvature || 0,
+                        type: existingConnection?.type || preset.type,
+                        hasArrow: existingConnection?.hasArrow || (preset.arrowDirection !== 'none'),
+                        arrowDirection: existingConnection?.arrowDirection || preset.arrowDirection,
+                        strokeWidth: existingConnection?.strokeWidth || preset.strokeWidth,
+                        arcCurvature: existingConnection?.arcCurvature || preset.arcCurvature,
                         color: connectionColor,
                         gradientColors: gradientColors
                     };

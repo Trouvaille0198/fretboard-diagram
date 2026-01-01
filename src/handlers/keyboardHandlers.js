@@ -50,36 +50,9 @@ export function createKeyboardHandler(params) {
 
         switch (event.code) {
             case 'Backspace':
-            case 'Delete':
-                if (selected) {
-                    deleteNote();
-                }
-                break;
-            case 'KeyB':
-                selectColor(1, 'blue');
-                break;
-            case 'KeyG':
-                selectColor(1, 'green');
-                break;
-            case 'KeyS':
-                // 切换连线工具
-                setConnectionMode(prev => {
-                    if (prev) {
-                        // 退出连线模式时清除状态
-                        setConnectionStartNote(null);
-                        setConnectionStartPosition(null);
-                        setMousePosition(null);
-                        setPreviewHoverNote(null);
-                        setUseColor2Level(false);
-                    }
-                    return !prev;
-                });
-                break;
-            case 'KeyR':
-                selectColor(1, 'red');
-                break;
-            case 'KeyX':
-                // 如果hover在某个note上，删除该note
+                // 屏蔽backspace的默认功能
+                event.preventDefault();
+                // 如果hover在某个visible的note上，删除该note
                 if (hoveredNoteId) {
                     const noteElement = document.getElementById(hoveredNoteId);
                     if (noteElement) {
@@ -118,6 +91,35 @@ export function createKeyboardHandler(params) {
                         }
                     }
                 }
+                // 如果不在任何note上，已经通过preventDefault屏蔽了默认功能
+                break;
+            case 'Delete':
+                if (selected) {
+                    deleteNote();
+                }
+                break;
+            case 'KeyB':
+                selectColor(1, 'blue');
+                break;
+            case 'KeyG':
+                selectColor(1, 'green');
+                break;
+            case 'KeyS':
+                // 切换连线工具
+                setConnectionMode(prev => {
+                    if (prev) {
+                        // 退出连线模式时清除状态
+                        setConnectionStartNote(null);
+                        setConnectionStartPosition(null);
+                        setMousePosition(null);
+                        setPreviewHoverNote(null);
+                        setUseColor2Level(false);
+                    }
+                    return !prev;
+                });
+                break;
+            case 'KeyR':
+                selectColor(1, 'red');
                 break;
             case 'KeyA':
                 cycleLevel1Color();
