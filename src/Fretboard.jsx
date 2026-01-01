@@ -355,12 +355,12 @@ function Fretboard() {
   }, [enharmonic, setEnharmonic]);
 
   const resetMemo = useCallback(() => {
-    reset(visibility, setData, setSelected, notesElementRef, data, updateNote);
-  }, [visibility, setData, setSelected, data]);
+    reset(visibility, setData, setSelected, notesElementRef, data, updateNote, setStartFret, setEndFret, setDisplayMode, setRootNote, setEnharmonic);
+  }, [visibility, setData, setSelected, data, setStartFret, setEndFret, setDisplayMode, setRootNote, setEnharmonic]);
 
   const saveSVGMemo = useCallback(() => {
-    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS);
-  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible]);
+    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic);
+  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic]);
 
   const setFretWindowMemo = useCallback((fretWindow) => {
     setFretWindow(fretWindow, startFret, endFret, selected, setSelected, data, setData, updateNote, setToastMessage, setStartFret, setEndFret);
@@ -581,6 +581,31 @@ function Fretboard() {
             setToastType('error');
           }
         }}
+        onRename={(stateSnapshot, newName) => {
+          try {
+            const existingHistory = localStorage.getItem('fretboard-history');
+            let historyArray = [];
+            if (existingHistory) {
+              historyArray = JSON.parse(existingHistory);
+            }
+            const index = historyArray.findIndex(item => item.id === stateSnapshot.id);
+            if (index !== -1) {
+              historyArray[index] = { ...historyArray[index], name: newName };
+              localStorage.setItem('fretboard-history', JSON.stringify(historyArray));
+              setHistoryStates(historyArray);
+              // 如果重命名的是选中的状态，更新选中状态
+              if (selectedHistoryState && selectedHistoryState.id === stateSnapshot.id) {
+                setSelectedHistoryState(historyArray[index]);
+              }
+              setToastMessage('重命名成功！');
+              setToastType('success');
+            }
+          } catch (error) {
+            console.error('重命名失败:', error);
+            setToastMessage('重命名失败：' + error.message);
+            setToastType('error');
+          }
+        }}
         onImport={async (result) => {
           try {
             if (!result.success) {
@@ -603,18 +628,26 @@ function Fretboard() {
             }
 
             // 创建新的状态快照对象
+            // 如果导入的数据包含名称，使用导入的名称，否则使用默认名称
+            const importedName = result.data.name 
+              ? result.data.name 
+              : new Date().toLocaleString('zh-CN', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) + ' (导入)';
+            
+            // 使用导入的状态数据（包括从 SVG 推断的显示模式）
+            const importedStateData = { ...result.data.state };
+            
             const importedState = {
               id: Date.now().toString(),
               timestamp: Date.now(),
-              name: new Date().toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              }) + ' (导入)',
+              name: importedName,
               thumbnail: null,
-              state: result.data.state
+              state: importedStateData
             };
 
             // 先恢复导入的状态（这样 SVG 会更新）

@@ -18,6 +18,7 @@ export function exportFretboardState(stateSnapshot) {
         // 构建要序列化的数据对象
         const exportData = {
             version: CURRENT_VERSION,
+            name: stateSnapshot.name || null, // 包含名称
             state: {
                 data: stateSnapshot.state.data || {},
                 startFret: stateSnapshot.state.startFret ?? 0,

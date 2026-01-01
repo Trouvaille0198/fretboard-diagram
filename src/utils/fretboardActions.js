@@ -64,7 +64,7 @@ export function toggleEnharmonic(enharmonic, setEnharmonic) {
   setEnharmonic(prev => (prev + 1) % 2);
 }
 
-export function reset(visibility, setData, setSelected, notesElementRef, data, updateNote) {
+export function reset(visibility, setData, setSelected, notesElementRef, data, updateNote, setStartFret, setEndFret, setDisplayMode, setRootNote, setEnharmonic) {
   // 只重置点的颜色和visibility，保留音名（noteText）
   setData(prevData => {
     const newData = {};
@@ -96,9 +96,29 @@ export function reset(visibility, setData, setSelected, notesElementRef, data, u
     }
   }
   setSelected(null);
+  
+  // 还原指板长度到默认值
+  if (setStartFret) {
+    setStartFret(0);
+  }
+  if (setEndFret) {
+    // 还原为默认值 15
+    setEndFret(15);
+  }
+  
+  // 还原为默认的音名模式
+  if (setDisplayMode) {
+    setDisplayMode('note');
+  }
+  if (setRootNote) {
+    setRootNote(null);
+  }
+  if (setEnharmonic) {
+    setEnharmonic(1);
+  }
 }
 
-export function saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS) {
+export function saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic) {
   // 克隆 SVG 并移除不需要的元素
   const svgClone = svgElementRef.current.cloneNode(true);
 
@@ -132,6 +152,13 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
   const computedStyle = getComputedStyle(root);
   const backgroundColor = computedStyle.getPropertyValue('--background-color').trim() || 'black';
   svgCopy.setAttribute('style', `background-color: ${backgroundColor};`);
+  
+  // 在 SVG 中添加元数据（保存显示模式信息）
+  svgCopy.setAttribute('data-display-mode', displayMode || 'note');
+  if (rootNote !== null && rootNote !== undefined) {
+    svgCopy.setAttribute('data-root-note', String(rootNote));
+  }
+  svgCopy.setAttribute('data-enharmonic', String(enharmonic || 1));
 
   const svgData = svgCopy.outerHTML;
   const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });

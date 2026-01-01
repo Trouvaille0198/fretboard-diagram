@@ -13,37 +13,40 @@ export function computeNoteName(fret, string, enharmonic) {
 export function generateNotes(startFret, endFret, data, displayMode, rootNote, enharmonic, visibility, computeNoteName, computeNoteIndex, noteToSolfege) {
     const notes = [];
 
-    for (let j = 0; j < CONSTS.numStrings; j++) {
-        const noteId = `o-s${j}`;
-        // 调整0品位置，使其与相邻品位的间隔相同
-        // 第一个品位的x坐标是：CONSTS.offsetX + CONSTS.fretWidth / 2
-        // 为了让0品和第一个品位之间的距离等于相邻品位之间的距离（CONSTS.fretWidth）
-        // 0品的x坐标应该是：CONSTS.offsetX + CONSTS.fretWidth / 2 - CONSTS.fretWidth = CONSTS.offsetX - CONSTS.fretWidth / 2
-        const x = CONSTS.offsetX - CONSTS.fretWidth / 2;
-        const y = CONSTS.offsetY + CONSTS.stringSpacing * j;
-        const noteData = data[noteId] || {};
+    // 只有当 startFret === 0 时，才显示开放弦（0品）
+    if (startFret === 0) {
+        for (let j = 0; j < CONSTS.numStrings; j++) {
+            const noteId = `o-s${j}`;
+            // 调整0品位置，使其与相邻品位的间隔相同
+            // 第一个品位的x坐标是：CONSTS.offsetX + CONSTS.fretWidth / 2
+            // 为了让0品和第一个品位之间的距离等于相邻品位之间的距离（CONSTS.fretWidth）
+            // 0品的x坐标应该是：CONSTS.offsetX + CONSTS.fretWidth / 2 - CONSTS.fretWidth = CONSTS.offsetX - CONSTS.fretWidth / 2
+            const x = CONSTS.offsetX - CONSTS.fretWidth / 2;
+            const y = CONSTS.offsetY + CONSTS.stringSpacing * j;
+            const noteData = data[noteId] || {};
 
-        let displayName;
-        if (noteData.noteText) {
-            // 如果用户手动编辑了文本，优先使用编辑的文本
-            displayName = noteData.noteText;
-        } else if (displayMode === 'solfege' && rootNote !== null) {
-            // 唱名模式（需要选中根音）
-            const noteIndex = computeNoteIndex(-1, j);
-            displayName = noteToSolfege(noteIndex, rootNote, enharmonic);
-        } else {
-            // 音名模式
-            displayName = computeNoteName(-1, j, enharmonic);
+            let displayName;
+            if (noteData.noteText) {
+                // 如果用户手动编辑了文本，优先使用编辑的文本
+                displayName = noteData.noteText;
+            } else if (displayMode === 'solfege' && rootNote !== null) {
+                // 唱名模式（需要选中根音）
+                const noteIndex = computeNoteIndex(-1, j);
+                displayName = noteToSolfege(noteIndex, rootNote, enharmonic);
+            } else {
+                // 音名模式
+                displayName = computeNoteName(-1, j, enharmonic);
+            }
+
+            notes.push({
+                id: noteId,
+                x,
+                y,
+                noteName: displayName,
+                isOpen: true,
+                data: noteData
+            });
         }
-
-        notes.push({
-            id: noteId,
-            x,
-            y,
-            noteName: displayName,
-            isOpen: true,
-            data: noteData
-        });
     }
 
     for (let i = startFret; i < endFret; i++) {
