@@ -1,6 +1,6 @@
 # Fretboard Diagram Creator
 
-一个简单的在线工具，用于创建吉他指板图。本项目已使用 Svelte 框架重构。
+一个简单的在线工具，用于创建吉他指板图。
 
 ## 功能特性
 
@@ -9,12 +9,15 @@
 - 为音符着色
 - 选择指板的一部分
 - 将图表保存为 SVG
+- **分享功能**：生成压缩字符串并复制到剪贴板
+- **导入功能**：通过分享字符串导入指板状态
 
 ## 技术栈
 
-- **Svelte 4** - 现代前端框架
+- **React 18** - 现代前端框架
 - **Vite** - 快速构建工具
 - **SVG** - 矢量图形渲染
+- **LZ-String** - 数据压缩
 
 ## 环境要求
 
@@ -53,9 +56,11 @@ pnpm install
 
 这将安装以下依赖：
 
-- `svelte` - Svelte 框架
+- `react` - React 框架
+- `react-dom` - React DOM 渲染
+- `lz-string` - 数据压缩库
 - `vite` - 构建工具
-- `@sveltejs/vite-plugin-svelte` - Svelte 的 Vite 插件
+- `@vitejs/plugin-react` - React 的 Vite 插件
 
 ## 应用启动
 
@@ -92,6 +97,14 @@ pnpm build
 pnpm preview
 ```
 
+### 分享功能
+
+分享功能使用本地压缩字符串，完全无需配置：
+
+- **分享**：点击历史状态缩略图上的分享按钮，会生成压缩字符串并复制到剪贴板
+- **导入**：点击"导入"按钮，粘贴分享字符串即可导入状态
+- **完全离线**：无需任何服务器或外部服务，可直接使用
+
 ## 使用说明
 
 ### 基本操作
@@ -110,6 +123,8 @@ pnpm preview
 7. **切换升降号**：点击升降号按钮在 ♯ 和 ♭ 之间切换
 8. **保存图表**：点击 "Save" 按钮将图表保存为 SVG 文件
 9. **重置图表**：点击 "Reset" 按钮清除所有自定义设置
+10. **分享状态**：在历史状态画廊中，点击缩略图左上角的分享按钮，会生成压缩字符串并复制到剪贴板
+11. **导入状态**：点击"导入"按钮，粘贴分享字符串即可导入指板状态
 
 ### 键盘快捷键
 
@@ -126,9 +141,12 @@ pnpm preview
 ```
 fretboard-diagram/
 ├── src/
-│   ├── App.svelte          # 主应用组件
-│   ├── Fretboard.svelte    # 指板组件（核心功能）
-│   └── main.js             # 应用入口文件
+│   ├── App.jsx             # 主应用组件
+│   ├── Fretboard.jsx       # 指板组件（核心功能）
+│   ├── components/         # React 组件
+│   ├── utils/              # 工具函数
+│   ├── hooks/              # React Hooks
+│   └── main.jsx            # 应用入口文件
 ├── index.html              # HTML 模板
 ├── package.json            # 项目配置和依赖
 ├── vite.config.js          # Vite 配置文件
@@ -139,14 +157,15 @@ fretboard-diagram/
 
 ### 主要组件
 
-- **Fretboard.svelte**：包含所有指板逻辑和 UI
+- **Fretboard.jsx**：包含所有指板逻辑和 UI
   - 音符渲染和管理
   - 用户交互处理
   - SVG 生成和导出
+  - 状态保存和恢复
 
 ### 状态管理
 
-组件使用 Svelte 的响应式系统管理状态：
+组件使用 React Hooks 管理状态：
 
 - `selected` - 当前选中的音符 ID
 - `data` - 所有音符的数据（颜色、可见性、自定义文本等）
