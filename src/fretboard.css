@@ -463,7 +463,6 @@ figure.half-full svg {
 
 /* Piano Keyboard */
 #piano-keyboard-container {
-    margin-top: 20px;
     display: flex;
     justify-content: center;
     padding: 15px 0;
@@ -588,11 +587,11 @@ figure.half-full svg {
 }
 
 .connection-toolbar {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: transparent;
+    border: none;
     border-radius: 6px;
     padding: 6px 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
     display: flex;
     align-items: center;
     position: relative;
@@ -601,7 +600,7 @@ figure.half-full svg {
     height: max-content;
     clip-path: none !important;
     clip: auto !important;
-    backdrop-filter: blur(8px);
+    backdrop-filter: none;
 }
 
 .toolbar-icons {
@@ -788,7 +787,7 @@ figure.half-full svg {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px 16px;
+    padding: 10px 10px;
     margin: 12px auto;
     max-width: 500px;
     width: 100%;

@@ -60,7 +60,8 @@ function Fretboard() {
     connectionToolbarVisible, setConnectionToolbarVisible,
     connectionToolbarPosition, setConnectionToolbarPosition,
     toolbarDropdown, setToolbarDropdown,
-    toolbarDropdownDirection, setToolbarDropdownDirection
+    toolbarDropdownDirection, setToolbarDropdownDirection,
+    connectionPreset, setConnectionPreset
   } = connectionState;
 
   const {
@@ -258,10 +259,10 @@ function Fretboard() {
     selectedColorLevel, selectedColor, connectionMode, connectionStartNote,
     setConnectionStartNote, setConnectionStartPosition, setMousePosition,
     setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote,
-    connections, updateNote: updateNote
+    connections, connectionPreset, updateNote: updateNote
   }), [data, setData, visibility, selected, setSelected, selectedColorLevel, selectedColor,
       connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections]);
+      setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionPreset]);
 
   const handleNoteContextMenu = useCallback(createNoteContextMenuHandler({
     selected, setSelected, data, setData, updateNote: updateNote
@@ -510,6 +511,8 @@ function Fretboard() {
         onToggleEnharmonic={toggleEnharmonicMemo}
         onToggleVisibility={toggleVisibilityMemo}
         connectionMode={connectionMode}
+        connectionPreset={connectionPreset}
+        setConnectionPreset={setConnectionPreset}
         onToggleConnectionMode={() => {
           setConnectionMode(!connectionMode);
           if (connectionMode) {

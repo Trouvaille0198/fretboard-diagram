@@ -82,6 +82,16 @@ export function FretboardSVG({
       onWheel={handleSvgWheel}
     >
       <defs>
+        {/* 毛玻璃效果filter */}
+        <filter id="glassmorphism" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.8"/>
+          <feColorMatrix 
+            type="matrix" 
+            values="0.5 0.5 0.5 0 0
+                    0.5 0.5 0.5 0 0
+                    0.5 0.5 0.5 0 0
+                    0 0 0 0.9 0"/>
+        </filter>
         {/* 渐变定义 */}
         {Object.values(connections).map(conn => {
           // 如果连线使用渐变（color以gradient-开头），创建渐变定义
@@ -307,15 +317,27 @@ export function FretboardSVG({
           
           // 计算连线颜色：如果是渐变ID，使用url引用；否则使用起点颜色
           const isGradient = conn.color && conn.color.startsWith('gradient-');
-          const strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColor === 'white' ? '#aaaaaa' : reduceColorSaturation(startColor, 0.6)));
+          let strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColor === 'white' ? '#aaaaaa' : reduceColorSaturation(startColor, 0.6)));
+          
+          // 如果启用了灰色效果，使用半透明灰色
+          const isGrayed = conn.isGrayed || false;
+          if (isGrayed) {
+            strokeColor = 'rgba(200, 200, 200, 0.7)';
+          }
           
           // 箭头颜色：每个箭头使用自己接触的note的颜色（降低饱和度）
           const getArrowColor = (colorName) => {
             if (colorName === 'white') return '#aaaaaa';
             return reduceColorSaturation(colorName, 0.6);
           };
-          const startArrowColor = getArrowColor(startColor);
-          const endArrowColor = getArrowColor(endColor);
+          let startArrowColor = getArrowColor(startColor);
+          let endArrowColor = getArrowColor(endColor);
+          
+          // 如果启用了灰色效果，箭头也使用灰色
+          if (isGrayed) {
+            startArrowColor = 'rgba(200, 200, 200, 0.7)';
+            endArrowColor = 'rgba(200, 200, 200, 0.7)';
+          }
           
           // 计算边缘上的点
           const hasArrowStart = conn.arrowDirection === 'start' || conn.arrowDirection === 'both';
@@ -951,6 +973,104 @@ export function FretboardSVG({
                   )}
                 </div>
               )}
+
+              {/* 反转弧度按钮（仅弧线时显示） */}
+              {connections[selectedConnection].type === 'arc' && (
+                <div className="toolbar-icon-wrapper">
+                  <button
+                    className="toolbar-icon-btn"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
+                      const connId = selectedConnection;
+                      if (!connId) return;
+                      if (buttonClickRef.current.reverseCurvature) {
+                        return;
+                      }
+                      buttonClickRef.current.reverseCurvature = true;
+                      setTimeout(() => {
+                        buttonClickRef.current.reverseCurvature = false;
+                      }, 100);
+                      const currentData = dataRef.current;
+                      const currentConn = currentData?.connections?.[connId];
+                      if (!currentConn) {
+                        return;
+                      }
+                      const currentCurvature = currentConn.arcCurvature || 0;
+                      setData(prevData => {
+                        const newData = { ...prevData };
+                        if (!newData.connections) {
+                          newData.connections = {};
+                        }
+                        if (newData.connections[connId]) {
+                          newData.connections[connId] = {
+                            ...newData.connections[connId],
+                            arcCurvature: -currentCurvature
+                          };
+                        }
+                        return newData;
+                      });
+                    }}
+                    title="反转弧度"
+                  >
+                    ↻
+                  </button>
+                </div>
+              )}
+
+              {/* 灰色毛玻璃效果按钮 */}
+              <div className="toolbar-icon-wrapper">
+                <button
+                  className={`toolbar-icon-btn ${connections[selectedConnection].isGrayed ? 'active' : ''}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                    const connId = selectedConnection;
+                    if (!connId) return;
+                    if (buttonClickRef.current.grayed) {
+                      return;
+                    }
+                    buttonClickRef.current.grayed = true;
+                    setTimeout(() => {
+                      buttonClickRef.current.grayed = false;
+                    }, 100);
+                    const currentData = dataRef.current;
+                    const currentConn = currentData?.connections?.[connId];
+                    if (!currentConn) {
+                      return;
+                    }
+                    const currentIsGrayed = currentConn.isGrayed || false;
+                    setData(prevData => {
+                      const newData = { ...prevData };
+                      if (!newData.connections) {
+                        newData.connections = {};
+                      }
+                      if (newData.connections[connId]) {
+                        newData.connections[connId] = {
+                          ...newData.connections[connId],
+                          isGrayed: !currentIsGrayed
+                        };
+                      }
+                      return newData;
+                    });
+                  }}
+                  title="灰色毛玻璃效果"
+                >
+                  灰
+                </button>
+              </div>
 
               {/* 删除按钮 */}
               <button
