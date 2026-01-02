@@ -26,7 +26,11 @@ export function FretboardMenu({
   setDisplayMode,
   startFret,
   endFret,
-  onFretWindowChange
+  onFretWindowChange,
+  includeMarkers,
+  setIncludeMarkers,
+  copyOnly,
+  setCopyOnly
 }) {
   return (
     <div className="menu">
@@ -69,13 +73,6 @@ export function FretboardMenu({
           >
             Reset
           </button>
-          <button 
-            className="button" 
-            onClick={onSaveSVG}
-            title="Download"
-          >
-            Download
-          </button>
         </div>
         {/* 连线工具区域 */}
         <div id="connection-tool-section" style={{ padding: '8px' }}>
@@ -114,6 +111,35 @@ export function FretboardMenu({
                connectionArrowDirection === 'end' ? '→' : '⇄'}
             </button>
           </div>
+        </div>
+        {/* 下载区域 - 放在最底下，一行显示 */}
+        <div id="download-section" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', borderTop: '1px solid #ddd', marginTop: '8px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
+            <input
+              type="checkbox"
+              checked={includeMarkers}
+              onChange={(e) => setIncludeMarkers(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span>包含品数</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
+            <input
+              type="checkbox"
+              checked={copyOnly}
+              onChange={(e) => setCopyOnly(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span>仅复制</span>
+          </label>
+          <button 
+            className="button" 
+            onClick={onSaveSVG}
+            title={copyOnly ? "复制到剪贴板" : "下载 SVG"}
+            style={{ marginLeft: 'auto' }}
+          >
+            {copyOnly ? '复制' : 'Download'}
+          </button>
         </div>
       </div>
       {/* 右侧：钢琴+指板slider */}

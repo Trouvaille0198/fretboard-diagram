@@ -13,6 +13,8 @@ export function createNoteClickHandler(params) {
         setSelected,
         selectedColorLevel,
         selectedColor,
+        setSelectedColorLevel,
+        setSelectedColor,
         connectionMode,
         connectionStartNote,
         setConnectionStartNote,
@@ -254,45 +256,49 @@ export function createNoteClickHandler(params) {
             return;
         }
 
-        // 如果没有选中调色盘，执行原来的选中逻辑
-        if (currentVisibility === 'visible') {
-            updateNoteFn(noteElement, data, { color: 'white', color2: null, visibility: visibility });
-            setData(prevData => {
-                const newData = { ...prevData };
-                if (!(noteId in newData)) {
-                    newData[noteId] = {};
+        // 如果没有选中调色盘，自动选中透明色并用透明色着色
+        const defaultTransColor = LEVEL1_COLOR_ORDER[0]; // 第一层第一个颜色（trans）
+        if (selectedColorLevel === null || selectedColor === null) {
+            // 自动选中透明色
+            setSelectedColorLevel(1);
+            setSelectedColor(defaultTransColor);
+            
+            // 用透明色给note着色
+            if (currentColor === defaultTransColor) {
+                if (currentVisibility === 'visible') {
+                    updateNoteFn(noteElement, data, { color: 'white', visibility: visibility });
+                    setData(prevData => {
+                        const newData = { ...prevData };
+                        if (!(noteId in newData)) {
+                            newData[noteId] = {};
+                        }
+                        newData[noteId] = { ...newData[noteId], color: 'white', visibility: visibility };
+                        return newData;
+                    });
+                } else {
+                    updateNoteFn(noteElement, data, { color: defaultTransColor, visibility: 'visible' });
+                    setData(prevData => {
+                        const newData = { ...prevData };
+                        if (!(noteId in newData)) {
+                            newData[noteId] = {};
+                        }
+                        newData[noteId] = { ...newData[noteId], color: defaultTransColor, visibility: 'visible' };
+                        return newData;
+                    });
                 }
-                newData[noteId] = { ...newData[noteId], color: 'white', color2: null, visibility: visibility };
-                return newData;
-            });
-            return;
-        }
-
-        // 否则，选中音符
-        if (selected) {
-            const prevElement = selected.element || document.getElementById(selected.id);
-            if (prevElement) {
-                updateNoteFn(prevElement, data, { visibility: 'visible' });
+            } else {
+                updateNoteFn(noteElement, data, { color: defaultTransColor, visibility: 'visible' });
                 setData(prevData => {
                     const newData = { ...prevData };
-                    if (selected.id in newData) {
-                        newData[selected.id] = { ...newData[selected.id], visibility: 'visible' };
+                    if (!(noteId in newData)) {
+                        newData[noteId] = {};
                     }
+                    newData[noteId] = { ...newData[noteId], color: defaultTransColor, visibility: 'visible' };
                     return newData;
                 });
             }
-            setSelected(null);
+            return;
         }
-        updateNoteFn(noteElement, data, { visibility: 'selected' });
-        setData(prevData => {
-            const newData = { ...prevData };
-            if (!(noteId in newData)) {
-                newData[noteId] = {};
-            }
-            newData[noteId] = { ...newData[noteId], visibility: 'selected' };
-            return newData;
-        });
-        setSelected({ id: noteId, element: noteElement });
     };
 }
 

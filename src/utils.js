@@ -374,6 +374,11 @@ export function calculateConnectionColor(startNoteData, endNoteData, connectionI
         return '#aaaaaa';
     }
 
+    // 如果都是trans，返回灰色
+    if (startColor === 'trans' && endColor === 'trans') {
+        return '#aaaaaa';
+    }
+
     // 如果颜色相同，降低饱和度
     if (startColor === endColor) {
         return reduceColorSaturation(startColor, 0.6);

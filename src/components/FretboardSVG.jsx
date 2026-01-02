@@ -127,8 +127,8 @@ export function FretboardSVG({
             const gradientX2 = endEdge.x;
             const gradientY2 = endEdge.y;
             
-            const finalStartColor = startColorName === 'white' ? '#aaaaaa' : startColor;
-            const finalEndColor = endColorName === 'white' ? '#aaaaaa' : endColor;
+            const finalStartColor = startColorName === 'white' || startColorName === 'trans' ? '#aaaaaa' : startColor;
+            const finalEndColor = endColorName === 'white' || endColorName === 'trans' ? '#aaaaaa' : endColor;
             const safeStartColor = finalStartColor || '#aaaaaa';
             const safeEndColor = finalEndColor || '#aaaaaa';
             const finalStartColorStr = String(safeStartColor);
@@ -318,7 +318,7 @@ export function FretboardSVG({
           
           // 计算连线颜色：如果是渐变ID，使用url引用；否则使用起点颜色
           const isGradient = conn.color && conn.color.startsWith('gradient-');
-          let strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColor === 'white' ? '#aaaaaa' : reduceColorSaturation(startColor, 0.6)));
+          let strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColor === 'white' || startColor === 'trans' ? '#aaaaaa' : reduceColorSaturation(startColor, 0.6)));
           
           // 如果启用了灰色效果，使用半透明灰色
           const isGrayed = conn.isGrayed || false;
@@ -329,6 +329,7 @@ export function FretboardSVG({
           // 箭头颜色：每个箭头使用自己接触的note的颜色（降低饱和度）
           const getArrowColor = (colorName) => {
             if (colorName === 'white') return '#aaaaaa';
+            if (colorName === 'trans') return '#aaaaaa';
             return reduceColorSaturation(colorName, 0.6);
           };
           let startArrowColor = getArrowColor(startColor);
@@ -598,12 +599,12 @@ export function FretboardSVG({
               previewColor = calculateConnectionColor(startNoteData, endNoteData, tempConnectionId);
               
               if (previewColor.startsWith('gradient-')) {
-                previewColor = startNoteData.color === 'white' 
+                previewColor = startNoteData.color === 'white' || startNoteData.color === 'trans'
                   ? '#aaaaaa' 
                   : reduceColorSaturation(startNoteData.color, 0.6);
               }
             } else {
-              previewColor = startNoteData.color === 'white' 
+              previewColor = startNoteData.color === 'white' || startNoteData.color === 'trans'
                 ? '#aaaaaa' 
                 : reduceColorSaturation(startNoteData.color, 0.6);
             }

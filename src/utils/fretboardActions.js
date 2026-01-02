@@ -119,7 +119,7 @@ export function reset(visibility, setData, setSelected, notesElementRef, data, u
   }
 }
 
-export function saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic) {
+export function saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers = true, copyOnly = false, setToastMessage = null, setToastType = null) {
   // 克隆 SVG 并移除不需要的元素
   const svgClone = svgElementRef.current.cloneNode(true);
 
@@ -146,7 +146,21 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
     }
   }
 
+  // 先调用 inlineCSS，确保样式正确内联
   const svgCopy = inlineCSS(svgClone);
+
+  // 如果不包含品数，移除 markers（上下方的品数标记，如 3、5、7 等）
+  // 注意：必须在 inlineCSS 之后移除，避免索引错位
+  if (!includeMarkers) {
+    // 查找并移除 markers 组
+    const markersGroup = svgCopy.querySelector('g.markers');
+    if (markersGroup) {
+      markersGroup.remove();
+    }
+    // 也尝试通过类名查找，以防万一
+    const markersByClass = svgCopy.querySelectorAll('.marker');
+    markersByClass.forEach(marker => marker.remove());
+  }
 
   // 获取原始的 viewBox 和尺寸（用于保持上下不变）
   const originalViewBox = svgCopy.getAttribute('viewBox');
@@ -160,13 +174,12 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
     }
   }
 
-  // 只计算左右边界（水平方向）
-  let minX = Infinity;
-  let maxX = -Infinity;
+  // 以品丝为边界进行裁剪
+  let minFret = Infinity;
+  let maxFret = -Infinity;
   let hasColoredNotes = false;
-  const padding = 20; // 左右边距
 
-  // 查找所有有颜色的 note
+  // 查找所有有颜色的 note，提取品丝编号
   const noteElements = svgCopy.querySelectorAll('g.note');
   noteElements.forEach(noteElement => {
     const noteId = noteElement.getAttribute('id');
@@ -175,82 +188,93 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
     const noteData = data[noteId];
     if (!noteData) return;
 
-    // 检查是否有颜色（不是 white 或 trans，且 visibility 是 visible 或 selected）
+    // 检查是否有颜色（visibility 是 visible 或 selected）
     const hasColor = noteData.color &&
-      noteData.color !== 'white' &&
-      noteData.color !== 'trans' &&
       (noteData.visibility === 'visible' || noteData.visibility === 'selected');
 
     // 或者有 color2
     const hasColor2 = noteData.color2 && noteData.color2 !== null;
 
     if (hasColor || hasColor2) {
-      // 获取 note 的位置
-      const transform = noteElement.getAttribute('transform');
-      const dataX = noteElement.getAttribute('data-x');
-
-      let x;
-      if (dataX !== null) {
-        x = parseFloat(dataX);
-      } else if (transform) {
-        const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+      // 从 noteId 提取品丝编号
+      // 格式：f{i}-s{j} 或 o-s{j}（0品/开放弦）
+      let fret;
+      if (noteId.startsWith('o-')) {
+        fret = 0; // 开放弦（0品）
+      } else {
+        const match = noteId.match(/^f(\d+)-s/);
         if (match) {
-          x = parseFloat(match[1]);
+          fret = parseInt(match[1], 10);
         }
       }
 
-      if (x !== undefined && !isNaN(x)) {
-        const radius = CONSTS.circleRadius || 18;
-        minX = Math.min(minX, x - radius);
-        maxX = Math.max(maxX, x + radius);
+      if (fret !== undefined && !isNaN(fret)) {
+        minFret = Math.min(minFret, fret);
+        maxFret = Math.max(maxFret, fret);
         hasColoredNotes = true;
       }
     }
   });
 
-  // 查找所有连线，也包含在左右边界中
-  const connectionElements = svgCopy.querySelectorAll('.connection');
-  connectionElements.forEach(connElement => {
-    if (connElement.tagName === 'path') {
-      try {
-        const bbox = connElement.getBBox();
-        if (bbox && bbox.width > 0) {
-          minX = Math.min(minX, bbox.x);
-          maxX = Math.max(maxX, bbox.x + bbox.width);
-          hasColoredNotes = true;
-        }
-      } catch (e) {
-        // 如果 getBBox 失败，尝试从 d 属性解析
-        const d = connElement.getAttribute('d');
-        if (d) {
-          const coords = d.match(/[\d.-]+/g);
-          if (coords && coords.length >= 2) {
-            const xs = [];
-            for (let i = 0; i < coords.length; i += 2) {
-              xs.push(parseFloat(coords[i]));
-            }
-            if (xs.length > 0) {
-              minX = Math.min(minX, ...xs);
-              maxX = Math.max(maxX, ...xs);
-              hasColoredNotes = true;
-            }
+  // 查找所有连线，也考虑它们跨越的品丝范围
+  // 从 data.connections 获取连线信息
+  if (data && data.connections) {
+    Object.values(data.connections).forEach(conn => {
+      if (conn.startNoteId) {
+        let fret;
+        if (conn.startNoteId.startsWith('o-')) {
+          fret = 0;
+        } else {
+          const match = conn.startNoteId.match(/^f(\d+)-s/);
+          if (match) {
+            fret = parseInt(match[1], 10);
           }
         }
+        if (fret !== undefined && !isNaN(fret)) {
+          minFret = Math.min(minFret, fret);
+          maxFret = Math.max(maxFret, fret);
+          hasColoredNotes = true;
+        }
       }
-    } else if (connElement.tagName === 'line') {
-      const x1 = parseFloat(connElement.getAttribute('x1') || '0');
-      const x2 = parseFloat(connElement.getAttribute('x2') || '0');
-      minX = Math.min(minX, x1, x2);
-      maxX = Math.max(maxX, x1, x2);
-      hasColoredNotes = true;
-    }
-  });
 
-  // 如果找到了有颜色的 note，只调整左右（水平方向）
-  if (hasColoredNotes && minX !== Infinity) {
-    // 添加左右边距
-    minX -= padding;
-    maxX += padding;
+      if (conn.endNoteId) {
+        let fret;
+        if (conn.endNoteId.startsWith('o-')) {
+          fret = 0;
+        } else {
+          const match = conn.endNoteId.match(/^f(\d+)-s/);
+          if (match) {
+            fret = parseInt(match[1], 10);
+          }
+        }
+        if (fret !== undefined && !isNaN(fret)) {
+          minFret = Math.min(minFret, fret);
+          maxFret = Math.max(maxFret, fret);
+          hasColoredNotes = true;
+        }
+      }
+    });
+  }
+
+  // 如果找到了有颜色的 note，以品丝边界进行裁剪
+  if (hasColoredNotes && minFret !== Infinity && maxFret !== -Infinity) {
+    // 计算品丝边界位置
+    // 第0品丝（开放弦的左边界）：CONSTS.offsetX
+    // 第i品丝：CONSTS.offsetX + CONSTS.fretWidth * (i - startFret)
+
+    let minX, maxX;
+
+    // 左边界：最小品丝的左边界
+    if (minFret === 0) {
+      // 0品：左边界是第0品丝位置
+      minX = CONSTS.offsetX;
+    } else {
+      // 其他品：左边界是该品丝的位置
+      minX = CONSTS.offsetX + CONSTS.fretWidth * (minFret - (startFret || 0));
+    }
+
+    // 右边界：最大品丝的右边界（下一品丝的位置）
+    maxX = CONSTS.offsetX + CONSTS.fretWidth * (maxFret + 1 - (startFret || 0));
 
     // 计算新的宽度
     const newWidth = maxX - minX;
@@ -283,12 +307,86 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
   svgCopy.setAttribute('data-enharmonic', String(enharmonic || 1));
 
   const svgData = svgCopy.outerHTML;
+
+  // 如果仅复制，将 SVG 转换为图片并复制到剪贴板
+  if (copyOnly) {
+    // 获取 SVG 的尺寸
+    const width = parseFloat(svgCopy.getAttribute('width')) || parseFloat(svgCopy.getAttribute('viewBox')?.split(' ')[2]) || 800;
+    const height = parseFloat(svgCopy.getAttribute('height')) || parseFloat(svgCopy.getAttribute('viewBox')?.split(' ')[3]) || 400;
+
+    // 将 SVG 转换为图片
+    const img = new Image();
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    img.onload = () => {
+      // 创建 Canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      // 绘制图片到 Canvas
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // 转换为 Blob (PNG)
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url);
+
+        if (!blob) {
+          if (setToastMessage) {
+            setToastMessage('转换图片失败');
+            setToastType('error');
+          }
+          return;
+        }
+
+        // 使用 Clipboard API 复制图片
+        if (navigator.clipboard && navigator.clipboard.write) {
+          const clipboardItem = new ClipboardItem({ 'image/png': blob });
+          navigator.clipboard.write([clipboardItem]).then(() => {
+            if (setToastMessage) {
+              setToastMessage('已复制图片到剪贴板！');
+              setToastType('success');
+            }
+          }).catch(err => {
+            console.error('复制图片失败:', err);
+            if (setToastMessage) {
+              setToastMessage('复制失败：' + err.message);
+              setToastType('error');
+            }
+          });
+        } else {
+          // 降级方案：提示用户浏览器不支持
+          if (setToastMessage) {
+            setToastMessage('浏览器不支持复制图片，请使用下载功能');
+            setToastType('error');
+          }
+        }
+      }, 'image/png');
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      console.error('加载 SVG 图片失败');
+      if (setToastMessage) {
+        setToastMessage('转换图片失败');
+        setToastType('error');
+      }
+    };
+
+    img.src = url;
+    return;
+  }
+
+  // 否则下载文件
   const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
   const svgUrl = URL.createObjectURL(svgBlob);
   const link = document.createElement('a');
   link.href = svgUrl;
   link.download = 'fretboard-diagram.svg';
   link.click();
+  URL.revokeObjectURL(svgUrl);
 }
 
 export function setFretWindow(fretWindow, startFret, endFret, selected, setSelected, data, setData, updateNote, setErrorMessage, setStartFret, setEndFret) {
