@@ -963,3 +963,183 @@ g.note.preview-hover>circle {
     stroke-width: 2px;
     stroke: var(--text-color);
 }
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+
+    /* 禁止页面整体横向滚动 - 从根元素开始 */
+    html {
+        overflow-x: hidden !important;
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+    }
+
+    body {
+        overflow-x: hidden !important;
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+    }
+
+    #app {
+        overflow-x: hidden !important;
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+    }
+
+    main {
+        overflow-x: hidden !important;
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+    }
+
+    /* 指板图区域横向滚动（唯一允许滚动的区域） */
+    figure.half-full {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100vw;
+        justify-content: flex-start !important;
+    }
+
+    #fretboard-diagram-creator {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100vw;
+        position: relative;
+        justify-content: flex-start !important;
+    }
+
+    #fretboard-diagram-creator svg {
+        /* SVG保持其原始宽度，允许超出容器 */
+        width: auto !important;
+        min-width: fit-content !important;
+        max-width: none !important;
+        display: block;
+        flex-shrink: 0;
+    }
+
+    /* 工具区域移动端适配（禁止横向滚动） */
+    div.menu {
+        flex-direction: column !important;
+        overflow-x: hidden !important;
+        flex-wrap: nowrap !important;
+        width: 100%;
+        max-width: 100%;
+        gap: 12px !important;
+        padding: 20px 16px !important;
+        box-sizing: border-box;
+        margin: 0;
+    }
+
+    .menu-left,
+    .menu-right {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+        margin: 0;
+    }
+
+    #color-selector {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box;
+        padding: 12px 0 !important;
+        margin: 0;
+    }
+
+    #global-actions {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box;
+        padding: 0 !important;
+        margin: 0;
+        justify-content: center;
+    }
+
+    #connection-tool-section {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box;
+        padding: 8px 0 !important;
+        margin: 0;
+    }
+
+    #connection-tool-section>div {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        flex-wrap: wrap !important;
+        box-sizing: border-box;
+        justify-content: center;
+        gap: 4px !important;
+    }
+
+    #connection-tool-section>div button {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+    }
+
+    #download-section {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box;
+        flex-wrap: wrap !important;
+        padding: 8px 0 !important;
+        margin: 0 !important;
+        margin-top: 0 !important;
+        justify-content: center;
+        gap: 8px !important;
+        align-items: center;
+    }
+
+    #download-section label {
+        margin: 0 !important;
+        white-space: nowrap;
+    }
+
+    #download-section button {
+        margin-left: 0 !important;
+        flex-shrink: 0;
+    }
+
+    #piano-keyboard-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box;
+        padding: 15px 0 !important;
+        margin: 0;
+    }
+
+    .piano-keyboard {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .piano-keys {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .fret-range-slider-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box;
+        padding: 10px 0 !important;
+        margin: 0;
+    }
+}
