@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import './fretboard.css';
 import { CONSTS } from './constants';
 import { updateNote, inlineCSS, noteToSolfege, calculateConnectionColor } from './utils';
@@ -74,6 +74,10 @@ function Fretboard() {
     editableDivRef,
     editNoteLabel
   } = noteEditing;
+
+  // 下载选项状态
+  const [includeMarkers, setIncludeMarkers] = useState(true);
+  const [copyOnly, setCopyOnly] = useState(false);
 
   // Refs
   const svgElementRef = useRef(null);
@@ -258,11 +262,13 @@ function Fretboard() {
   // 创建事件处理器
   const handleNoteClick = useCallback(createNoteClickHandler({
     data, setData, visibility, selected, setSelected,
-    selectedColorLevel, selectedColor, connectionMode, connectionStartNote,
+    selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor,
+    connectionMode, connectionStartNote,
     setConnectionStartNote, setConnectionStartPosition, setMousePosition,
     setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote,
     connections, connectionType, connectionArrowDirection, updateNote: updateNote
   }), [data, setData, visibility, selected, setSelected, selectedColorLevel, selectedColor,
+      setSelectedColorLevel, setSelectedColor,
       connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
       setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionType, connectionArrowDirection]);
 
@@ -359,8 +365,8 @@ function Fretboard() {
   }, [visibility, setData, setSelected, data, setStartFret, setEndFret, setDisplayMode, setRootNote, setEnharmonic]);
 
   const saveSVGMemo = useCallback(() => {
-    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic);
-  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic]);
+    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, setToastMessage, setToastType);
+  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, setToastMessage, setToastType]);
 
   const setFretWindowMemo = useCallback((fretWindow) => {
     setFretWindow(fretWindow, startFret, endFret, selected, setSelected, data, setData, updateNote, setToastMessage, setStartFret, setEndFret);
@@ -530,6 +536,10 @@ function Fretboard() {
           }
         }}
         onSaveSVG={saveSVGMemo}
+        includeMarkers={includeMarkers}
+        setIncludeMarkers={setIncludeMarkers}
+        copyOnly={copyOnly}
+        setCopyOnly={setCopyOnly}
         onSaveState={saveFretboardStateMemo}
         onReset={resetMemo}
         rootNote={rootNote}

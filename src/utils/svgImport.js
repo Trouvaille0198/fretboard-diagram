@@ -1089,6 +1089,8 @@ export async function parseSVGToFretboardState(svgInput) {
             // 如果颜色相同，使用降低饱和度的颜色值；如果不同，使用渐变 ID
             if (startColor === 'white' && endColor === 'white') {
                 connection.color = '#aaaaaa';
+            } else if (startColor === 'trans' && endColor === 'trans') {
+                connection.color = '#aaaaaa';
             } else if (startColor === endColor) {
                 // 相同颜色，使用降低饱和度的颜色值
                 try {
