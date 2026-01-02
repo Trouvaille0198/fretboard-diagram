@@ -5,6 +5,76 @@ import { CONSTS } from '../constants';
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
 const LEVEL2_COLOR_ORDER = Object.keys(LEVEL2_COLORS);
 
+// 显示图片让用户手动复制的辅助函数
+function showImageForManualCopy(img, dataUrl, setToastMessage, setToastType) {
+  // 创建遮罩层
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  `;
+
+  // 创建图片容器
+  const imgContainer = document.createElement('div');
+  imgContainer.style.cssText = `
+    position: relative;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 90%;
+    max-height: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  `;
+
+  // 创建提示文字
+  const hint = document.createElement('div');
+  hint.style.cssText = `
+    color: #333;
+    font-size: 14px;
+    text-align: center;
+    padding: 10px;
+  `;
+  hint.textContent = '右键点击图片，选择"复制图片"，然后点击任意位置关闭';
+
+  // 克隆图片
+  const displayImg = img.cloneNode(true);
+  displayImg.style.cssText = 'max-width: 100%; max-height: 70vh; height: auto; cursor: pointer;';
+
+  imgContainer.appendChild(displayImg);
+  imgContainer.appendChild(hint);
+  overlay.appendChild(imgContainer);
+  document.body.appendChild(overlay);
+
+  // 点击关闭
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target === overlay) {
+      document.body.removeChild(overlay);
+    }
+  });
+
+  // 图片右键复制提示
+  displayImg.addEventListener('contextmenu', (e) => {
+    e.stopPropagation();
+  });
+
+  if (setToastMessage) {
+    setToastMessage('请右键点击图片，选择"复制图片"');
+    setToastType('info');
+  }
+}
+
 export function selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor) {
   // 如果点击的是当前已选中的颜色和层级，则取消选中
   if (selectedColorLevel === level && selectedColor === color) {
@@ -342,8 +412,11 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
           return;
         }
 
+        // 检查是否在安全上下文中（HTTPS或localhost）
+        const isSecureContext = window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
         // 使用 Clipboard API 复制图片
-        if (navigator.clipboard && navigator.clipboard.write) {
+        if (isSecureContext && navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== 'undefined') {
           const clipboardItem = new ClipboardItem({ 'image/png': blob });
           navigator.clipboard.write([clipboardItem]).then(() => {
             if (setToastMessage) {
@@ -353,15 +426,73 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
           }).catch(err => {
             console.error('复制图片失败:', err);
             if (setToastMessage) {
-              setToastMessage('复制失败：' + err.message);
+              // 如果是权限错误，给出更明确的提示
+              if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+                setToastMessage('复制失败：需要剪贴板权限。请允许浏览器访问剪贴板');
+              } else {
+                setToastMessage('复制失败：' + err.message);
+              }
               setToastType('error');
             }
           });
         } else {
-          // 降级方案：提示用户浏览器不支持
-          if (setToastMessage) {
-            setToastMessage('浏览器不支持复制图片，请使用下载功能');
-            setToastType('error');
+          // 降级方案：HTTP环境下，创建临时图片元素让用户手动复制
+          if (!isSecureContext) {
+            // 将blob转换为DataURL
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result;
+
+              // 创建临时容器
+              const container = document.createElement('div');
+              container.style.cssText = 'position: fixed; top: -9999px; left: -9999px; opacity: 0; pointer-events: none;';
+
+              // 创建img元素
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.cssText = 'max-width: 100%; height: auto;';
+              img.onload = () => {
+                container.appendChild(img);
+                document.body.appendChild(container);
+
+                // 选中图片
+                const range = document.createRange();
+                range.selectNodeContents(container);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                // 尝试使用execCommand复制（虽然通常只对文本有效，但某些浏览器可能支持）
+                try {
+                  const successful = document.execCommand('copy');
+                  if (successful) {
+                    if (setToastMessage) {
+                      setToastMessage('已复制图片到剪贴板！');
+                      setToastType('success');
+                    }
+                  } else {
+                    // 如果execCommand失败，显示图片让用户手动复制
+                    showImageForManualCopy(img, dataUrl, setToastMessage, setToastType);
+                  }
+                } catch (err) {
+                  // execCommand失败，显示图片让用户手动复制
+                  showImageForManualCopy(img, dataUrl, setToastMessage, setToastType);
+                }
+
+                // 清理
+                setTimeout(() => {
+                  selection.removeAllRanges();
+                  document.body.removeChild(container);
+                }, 100);
+              };
+            };
+            reader.readAsDataURL(blob);
+          } else {
+            // HTTPS但浏览器不支持
+            if (setToastMessage) {
+              setToastMessage('浏览器不支持复制图片，请使用下载功能');
+              setToastType('error');
+            }
           }
         }
       }, 'image/png');
