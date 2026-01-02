@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { CONSTS } from '../constants';
+import { LEVEL1_COLORS } from '../colorConfig';
 
 export function useFretboardState() {
     const [selected, setSelected] = useState(null);
-    const [selectedColorLevel, setSelectedColorLevel] = useState(null); // 1 | 2 | null
-    const [selectedColor, setSelectedColor] = useState(null); // 当前选中的调色盘颜色名称
+    // 默认选中第一层第一个颜色（trans）
+    const firstLevel1Color = Object.keys(LEVEL1_COLORS)[0];
+    const [selectedColorLevel, setSelectedColorLevel] = useState(1); // 1 | 2 | null
+    const [selectedColor, setSelectedColor] = useState(firstLevel1Color); // 当前选中的调色盘颜色名称
     const [hoveredNoteId, setHoveredNoteId] = useState(null); // 当前hover的note ID（用于x键删除）
     const [hoveredConnectionId, setHoveredConnectionId] = useState(null); // 当前hover的连线ID（用于backspace删除）
     const [visibility, setVisibility] = useState('transparent');
