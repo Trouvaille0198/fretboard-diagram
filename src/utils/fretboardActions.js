@@ -377,7 +377,42 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
   }
   svgCopy.setAttribute('data-enharmonic', String(enharmonic || 1));
 
+  // 先保存下载用的SVG数据（不包含背景矩形，因为SVG的style背景色在浏览器中会正确显示）
   const svgData = svgCopy.outerHTML;
+
+  // 如果仅复制，需要在SVG中添加背景矩形（因为SVG转图片时style背景色可能不生效）
+  let svgDataForCopy = svgData;
+  if (copyOnly) {
+    // 克隆SVG以避免修改原始数据
+    const svgForCopy = svgCopy.cloneNode(true);
+
+    // 获取 SVG 的尺寸和viewBox
+    const width = parseFloat(svgForCopy.getAttribute('width')) || parseFloat(svgForCopy.getAttribute('viewBox')?.split(' ')[2]) || 800;
+    const height = parseFloat(svgForCopy.getAttribute('height')) || parseFloat(svgForCopy.getAttribute('viewBox')?.split(' ')[3]) || 400;
+    const viewBox = svgForCopy.getAttribute('viewBox');
+
+    // 计算背景矩形的位置和尺寸
+    let bgX = 0, bgY = 0, bgWidth = width, bgHeight = height;
+    if (viewBox) {
+      const parts = viewBox.split(' ');
+      bgX = parseFloat(parts[0]) || 0;
+      bgY = parseFloat(parts[1]) || 0;
+      bgWidth = parseFloat(parts[2]) || width;
+      bgHeight = parseFloat(parts[3]) || height;
+    }
+
+    // 创建背景矩形，插入到SVG的最前面
+    const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bgRect.setAttribute('x', bgX);
+    bgRect.setAttribute('y', bgY);
+    bgRect.setAttribute('width', bgWidth);
+    bgRect.setAttribute('height', bgHeight);
+    bgRect.setAttribute('fill', backgroundColor);
+    svgForCopy.insertBefore(bgRect, svgForCopy.firstChild);
+
+    // 使用包含背景矩形的SVG
+    svgDataForCopy = svgForCopy.outerHTML;
+  }
 
   // 如果仅复制，将 SVG 转换为图片并复制到剪贴板
   if (copyOnly) {
@@ -385,17 +420,25 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
     const width = parseFloat(svgCopy.getAttribute('width')) || parseFloat(svgCopy.getAttribute('viewBox')?.split(' ')[2]) || 800;
     const height = parseFloat(svgCopy.getAttribute('height')) || parseFloat(svgCopy.getAttribute('viewBox')?.split(' ')[3]) || 400;
 
-    // 将 SVG 转换为图片
+    // 将 SVG 转换为图片（使用包含背景矩形的SVG）
     const img = new Image();
-    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const svgBlob = new Blob([svgDataForCopy], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
 
     img.onload = () => {
-      // 创建 Canvas
+      // 创建 Canvas，使用高分辨率提高清晰度
+      const scale = 3; // 使用3倍分辨率确保清晰
       const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = width * scale;
+      canvas.height = height * scale;
       const ctx = canvas.getContext('2d');
+
+      // 缩放上下文以匹配高分辨率
+      ctx.scale(scale, scale);
+
+      // 先填充背景色（确保背景正确，与下载的SVG一致）
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, width, height);
 
       // 绘制图片到 Canvas
       ctx.drawImage(img, 0, 0, width, height);
