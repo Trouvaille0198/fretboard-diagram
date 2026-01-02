@@ -113,7 +113,7 @@ export function FretboardMenu({
           </div>
         </div>
         {/* 下载区域 - 放在最底下，一行显示 */}
-        <div id="download-section" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', borderTop: '1px solid #ddd', marginTop: '8px' }}>
+        <div id="download-section" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', marginTop: '8px' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
             <input
               type="checkbox"

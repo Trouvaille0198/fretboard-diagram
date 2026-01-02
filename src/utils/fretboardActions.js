@@ -266,8 +266,9 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
 
     // 左边界：最小品丝的左边界
     if (minFret === 0) {
-      // 0品：左边界是第0品丝位置
-      minX = CONSTS.offsetX;
+      // 0品：左边界需要包含0品note的位置（CONSTS.offsetX - CONSTS.fretWidth / 2）
+      // 留出一些padding确保note完全可见
+      minX = CONSTS.offsetX - CONSTS.fretWidth / 2 - CONSTS.circleRadius;
     } else {
       // 其他品：左边界是该品丝的位置
       minX = CONSTS.offsetX + CONSTS.fretWidth * (minFret - (startFret || 0));

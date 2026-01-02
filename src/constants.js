@@ -2,7 +2,7 @@ export const CONSTS = {
     offsetX: 40,
     offsetY: 30,
     stringIntervals: [24, 19, 15, 10, 5, 0],
-    markers: [3, 5, 7, 9, 12, 15, 17, 19, 21],
+    markers: [1, 3, 5, 7, 9, 12, 15, 17, 19, 21],
     fretWidth: 75,
     stringSpacing: 49,
     minStringSize: 0.2,
