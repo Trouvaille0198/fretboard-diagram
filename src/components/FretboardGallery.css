@@ -306,17 +306,56 @@
 }
 
 @media (max-width: 768px) {
+
+    /* 禁止横向滚动 */
+    .fretboard-gallery {
+        overflow-x: hidden !important;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 20px 16px !important;
+    }
+
+    /* 每行显示两个缩略图 */
     .gallery-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 15px;
+        overflow-x: hidden !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+        width: 100%;
     }
 
     .gallery-item {
-        width: 150px;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        overflow-y: hidden !important;
+        box-sizing: border-box;
+        min-width: 0;
     }
 
     .gallery-thumbnail-wrapper {
-        height: 100px;
+        height: 100px !important;
+        width: 100% !important;
+        overflow: hidden !important;
+        position: relative;
+    }
+
+    .gallery-thumbnail {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain !important;
+        display: block !important;
+        background: var(--background-color);
+    }
+
+    .gallery-thumbnail-placeholder {
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
     }
 
     .import-dialog {
