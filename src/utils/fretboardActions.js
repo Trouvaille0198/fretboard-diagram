@@ -350,15 +350,65 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
     // 计算新的宽度
     const newWidth = maxX - minX;
 
-    // 保持原始的 Y 和高度，只调整 X 和宽度
-    const newX = minX;
-    const newY = originalY || 0;
-    const newHeight = originalHeight || svgCopy.getAttribute('height') || 0;
+    // 计算上下边界
+    let newY = originalY || 0;
+    let newHeight = originalHeight || svgCopy.getAttribute('height') || 0;
 
-    // 设置新的 viewBox（只调整左右）
-    svgCopy.setAttribute('viewBox', `${newX} ${newY} ${newWidth} ${newHeight}`);
+    // 如果不包含品数标记，计算实际内容的上下边界
+    if (!includeMarkers) {
+      let minStringIndex = Infinity;
+      let maxStringIndex = -Infinity;
+      let hasValidNotes = false;
+
+      // 查找所有有颜色的note，提取string索引
+      noteElements.forEach(noteElement => {
+        const noteId = noteElement.getAttribute('id');
+        if (!noteId) return;
+
+        const noteData = data[noteId];
+        if (!noteData) return;
+
+        const hasColor = noteData.color &&
+          (noteData.visibility === 'visible' || noteData.visibility === 'selected');
+        const hasColor2 = noteData.color2 && noteData.color2 !== null;
+
+        if (hasColor || hasColor2) {
+          // 从noteId提取string索引
+          // 格式：f{i}-s{j} 或 o-s{j}
+          let stringIndex;
+          if (noteId.startsWith('o-s')) {
+            stringIndex = parseInt(noteId.substring(3), 10);
+          } else {
+            const match = noteId.match(/-s(\d+)$/);
+            if (match) {
+              stringIndex = parseInt(match[1], 10);
+            }
+          }
+
+          if (stringIndex !== undefined && !isNaN(stringIndex)) {
+            minStringIndex = Math.min(minStringIndex, stringIndex);
+            maxStringIndex = Math.max(maxStringIndex, stringIndex);
+            hasValidNotes = true;
+          }
+        }
+      });
+
+      // 如果找到了有效的note，计算Y坐标范围
+      if (hasValidNotes && minStringIndex !== Infinity && maxStringIndex !== -Infinity) {
+        // 根据string索引计算Y坐标
+        const minY = CONSTS.offsetY + CONSTS.stringSpacing * minStringIndex - CONSTS.circleRadius;
+        const maxY = CONSTS.offsetY + CONSTS.stringSpacing * maxStringIndex + CONSTS.circleRadius;
+
+        const padding = 15; // 上下各留15px的padding
+        newY = minY - padding;
+        newHeight = maxY - minY + padding * 2;
+      }
+    }
+
+    // 设置新的 viewBox
+    svgCopy.setAttribute('viewBox', `${minX} ${newY} ${newWidth} ${newHeight}`);
     svgCopy.setAttribute('width', newWidth);
-    // 保持原始高度
+    // 设置高度
     if (newHeight > 0) {
       svgCopy.setAttribute('height', newHeight);
     }
