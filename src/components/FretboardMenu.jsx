@@ -138,7 +138,7 @@ export function FretboardMenu({
             title={copyOnly ? "复制到剪贴板" : "下载 SVG"}
             style={{ marginLeft: 'auto' }}
           >
-            {copyOnly ? '复制' : 'Download'}
+            {copyOnly ? 'CopyCopy' : 'Download'}
           </button>
         </div>
       </div>
