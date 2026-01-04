@@ -16,13 +16,13 @@ function PianoKeyboard({ enharmonic, selectedNote, onNoteSelect }) {
   ];
 
   // 黑键：C#, D#, F#, G#, A#
-  // 对应的音符索引：9, 11, 6, 4, 2
+  // 对应的音符索引：9, 11, 2, 4, 6
   const blackKeys = [
     { noteIndex: 9, sharpName: 'C#', flatName: 'Db', position: 0 }, // 在C和D之间
     { noteIndex: 11, sharpName: 'D#', flatName: 'Eb', position: 1 }, // 在D和E之间
-    { noteIndex: 6, sharpName: 'F#', flatName: 'Gb', position: 3 }, // 在F和G之间
+    { noteIndex: 2, sharpName: 'F#', flatName: 'Gb', position: 3 }, // 在F和G之间
     { noteIndex: 4, sharpName: 'G#', flatName: 'Ab', position: 4 }, // 在G和A之间
-    { noteIndex: 2, sharpName: 'A#', flatName: 'Bb', position: 5 }  // 在A和B之间
+    { noteIndex: 6, sharpName: 'A#', flatName: 'Bb', position: 5 }  // 在A和B之间
   ];
 
   const handleKeyClick = (noteIndex) => {
