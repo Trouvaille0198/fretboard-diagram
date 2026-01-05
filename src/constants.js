@@ -4,7 +4,7 @@ export const CONSTS = {
     stringIntervals: [24, 19, 15, 10, 5, 0],
     markers: [1, 3, 5, 7, 9, 12, 15, 17, 19, 21],
     fretWidth: 75,
-    stringSpacing: 49,
+    stringSpacing: 51,
     minStringSize: 0.2,
     circleRadius: 18,
     notes: [
