@@ -17,7 +17,7 @@ import { FretboardMenu } from './components/FretboardMenu';
 import { FretboardGallery } from './components/FretboardGallery';
 import { Toast } from './components/Toast';
 import { FretboardSVG } from './components/FretboardSVG';
-import { saveFretboardState, restoreFretboardState, generateThumbnail } from './utils/fretboardHistory';
+import { saveFretboardState, restoreFretboardState, generateThumbnail, saveFretboardStateSilently } from './utils/fretboardHistory';
 
 function Fretboard() {
   // 使用自定义hooks
@@ -121,6 +121,49 @@ function Fretboard() {
   useEffect(() => {
     initColorCSSVariables();
   }, []);
+
+  // 页面关闭/刷新前自动保存状态
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // 在页面关闭前静默保存状态
+      saveFretboardStateSilently({
+        data,
+        startFret,
+        endFret,
+        enharmonic,
+        displayMode,
+        rootNote,
+        visibility,
+        svgElementRef
+      });
+    };
+
+    // 监听页面关闭/刷新事件
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // 监听页面隐藏事件（移动端和某些浏览器使用）
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        saveFretboardStateSilently({
+          data,
+          startFret,
+          endFret,
+          enharmonic,
+          displayMode,
+          rootNote,
+          visibility,
+          svgElementRef
+        });
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility]);
 
   // 自动解除selected状态
   useEffect(() => {

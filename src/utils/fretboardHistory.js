@@ -172,6 +172,93 @@ export function saveFretboardState({
     }
 }
 
+// 静默保存指板状态（用于页面关闭前自动保存，不显示提示）
+export function saveFretboardStateSilently({
+    data,
+    startFret,
+    endFret,
+    enharmonic,
+    displayMode,
+    rootNote,
+    visibility,
+    svgElementRef
+}) {
+    try {
+        // 从 localStorage 读取现有历史
+        const existingHistory = localStorage.getItem('fretboard-history');
+        let historyArray = [];
+        if (existingHistory) {
+            try {
+                historyArray = JSON.parse(existingHistory);
+            } catch (e) {
+                console.error('解析历史记录失败:', e);
+                historyArray = [];
+            }
+        }
+
+        // 检查是否与最新状态相同（避免重复保存）
+        if (historyArray.length > 0) {
+            const latestState = historyArray[0];
+            const currentStateData = JSON.stringify({
+                data: JSON.parse(JSON.stringify(data)),
+                startFret,
+                endFret,
+                enharmonic,
+                displayMode,
+                rootNote,
+                visibility
+            });
+            const latestStateData = JSON.stringify(latestState.state);
+            if (currentStateData === latestStateData) {
+                // 状态相同，不需要保存
+                return;
+            }
+        }
+
+        // 新建状态
+        const stateSnapshot = {
+            id: Date.now().toString(),
+            timestamp: Date.now(),
+            name: new Date().toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            }) + ' (自动保存)',
+            thumbnail: null,
+            state: {
+                data: JSON.parse(JSON.stringify(data)), // 深拷贝，包括 connections
+                startFret,
+                endFret,
+                enharmonic,
+                displayMode,
+                rootNote,
+                visibility
+            }
+        };
+
+        // 生成缩略图
+        const thumbnailUrl = generateThumbnail(svgElementRef);
+        if (thumbnailUrl) {
+            stateSnapshot.thumbnail = thumbnailUrl;
+        }
+
+        // 添加到数组开头（最新的在前）
+        historyArray.unshift(stateSnapshot);
+
+        // 限制最大数量（50个）
+        if (historyArray.length > 50) {
+            historyArray = historyArray.slice(0, 50);
+        }
+
+        // 保存到 localStorage
+        localStorage.setItem('fretboard-history', JSON.stringify(historyArray));
+    } catch (error) {
+        console.error('静默保存状态失败:', error);
+    }
+}
+
 // 恢复指板状态
 export function restoreFretboardState(stateSnapshot, {
     setData,
