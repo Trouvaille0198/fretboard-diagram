@@ -237,30 +237,59 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
     }
   }
 
-  // 先调用 inlineCSS，确保样式正确内联
+  // showNotes 控制：
+  // true: 临时修改原始 DOM，让 inlineCSS 不删除 hidden 的 note
+  // false: 执行 Toggle 切换（hidden ↔ transparent）
+  const originalNotes = [];
+  if (showNotes) {
+    const originalSvg = document.getElementById('fretboard-svg');
+    if (originalSvg) {
+      const notes = originalSvg.querySelectorAll('g.note.hidden');
+      notes.forEach(note => {
+        originalNotes.push({ note, wasHidden: true });
+        note.classList.remove('hidden');
+        note.classList.add('transparent');
+      });
+    }
+  }
+
+  // 调用 inlineCSS
   const svgCopy = inlineCSS(svgClone);
 
-  // showNotes checkbox 模拟 Toggle 按钮效果：切换 hidden ↔ transparent
-  // false 时执行切换（与 Toggle 按钮一样）
-  if (!showNotes) {
+  // 恢复原始 DOM
+  if (showNotes && originalNotes.length > 0) {
+    originalNotes.forEach(({ note }) => {
+      note.classList.remove('transparent');
+      note.classList.add('hidden');
+    });
+  }
+
+  // 设置复制 SVG 中的样式
+  if (showNotes) {
+    // 隐藏 transparent note 的文本
+    const notes = svgCopy.querySelectorAll('g.note.transparent');
+    notes.forEach(note => {
+      const text = note.querySelector('text');
+      if (text) text.style.opacity = '0';
+    });
+  } else {
+    // 执行 Toggle 切换
     const notes = svgCopy.querySelectorAll('g.note');
     notes.forEach(note => {
-      // 跳过 visible 和 selected 的 note
       if (note.classList.contains('visible') || note.classList.contains('selected')) {
         return;
       }
 
       const text = note.querySelector('text');
-      
-      // hidden -> transparent
+
       if (note.classList.contains('hidden')) {
+        // hidden -> transparent
         note.classList.remove('hidden');
         note.classList.add('transparent');
         if (text) text.style.opacity = '0';
         note.style.opacity = '1';
-      } 
-      // transparent -> hidden
-      else if (note.classList.contains('transparent')) {
+      } else if (note.classList.contains('transparent')) {
+        // transparent -> hidden
         note.classList.remove('transparent');
         note.classList.add('hidden');
         if (text) text.style.opacity = '0';
