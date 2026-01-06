@@ -189,7 +189,9 @@ export function reset(visibility, setData, setSelected, notesElementRef, data, u
   }
 }
 
-export function saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers = true, copyOnly = false, setToastMessage = null, setToastType = null) {
+export function saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers = true, copyOnly = false, showNotes = true, setToastMessage = null, setToastType = null, currentVisibility = 'transparent', setVisibility = null) {
+  // 直接导出，不再在这里处理 visibility 切换
+  // 切换逻辑已经在 Fretboard.jsx 的 saveSVGMemo 中处理
   // 克隆 SVG 并移除不需要的元素
   const svgClone = svgElementRef.current.cloneNode(true);
 
@@ -218,6 +220,31 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
 
   // 先调用 inlineCSS，确保样式正确内联
   const svgCopy = inlineCSS(svgClone);
+
+  // 如果不显示音符，对所有 note 执行 toggle 操作（hidden ↔ transparent）
+  // 只影响非 visible/selected 的 note
+  if (!showNotes) {
+    const notes = svgCopy.querySelectorAll('g.note');
+    notes.forEach(note => {
+      // 检查 note 是否是 visible 或 selected，如果是则跳过
+      if (note.classList.contains('visible') || note.classList.contains('selected')) {
+        return;
+      }
+
+      // Toggle: hidden <-> transparent
+      if (note.classList.contains('hidden')) {
+        // hidden -> transparent: 显示圆圈，不显示文本
+        const text = note.querySelector('text');
+        if (text) {
+          text.style.opacity = '0';
+        }
+        note.style.opacity = '1';
+      } else {
+        // transparent -> hidden: 都不显示
+        note.style.opacity = '0';
+      }
+    });
+  }
 
   // 如果不包含品数，移除 markers（上下方的品数标记，如 3、5、7 等）
   // 注意：必须在 inlineCSS 之后移除，避免索引错位

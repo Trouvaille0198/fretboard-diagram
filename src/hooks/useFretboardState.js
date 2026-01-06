@@ -90,6 +90,31 @@ export function useFretboardState() {
             if (existingHistory) {
                 const historyArray = JSON.parse(existingHistory);
                 setHistoryStates(historyArray);
+
+                // 尝试匹配当前状态到历史记录中的某一项
+                const savedState = localStorage.getItem('fretboard-current-state');
+                if (savedState && historyArray.length > 0) {
+                    const currentState = JSON.parse(savedState);
+                    // 查找最近保存的状态（默认是数组第一项）
+                    const latestHistoryState = historyArray[0];
+
+                    // 比较当前状态和最新历史状态是否一致
+                    const currentStateStr = JSON.stringify({
+                        data: currentState.data || {},
+                        startFret: currentState.startFret,
+                        endFret: currentState.endFret,
+                        enharmonic: currentState.enharmonic,
+                        displayMode: currentState.displayMode,
+                        rootNote: currentState.rootNote,
+                        visibility: currentState.visibility
+                    });
+                    const historyStateStr = JSON.stringify(latestHistoryState.state);
+
+                    if (currentStateStr === historyStateStr) {
+                        // 状态一致，自动选中这个历史状态
+                        setSelectedHistoryState(latestHistoryState);
+                    }
+                }
             }
         } catch (error) {
             console.error('加载历史状态失败:', error);
