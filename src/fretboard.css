@@ -308,6 +308,13 @@ button.color.color-tint {
     border-radius: 4px;
 }
 
+/* 淡色版本选中效果 */
+button.color.color-tint.selected {
+    box-shadow: 0 0 0 3px var(--text-color), 0 0 8px rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+    border-width: 2px;
+}
+
 button.color:hover {
     border-color: rgba(255, 255, 255, 0.4);
 }

@@ -10,6 +10,7 @@ import { useNoteEditing } from './hooks/useNoteEditing';
 import { computeNoteIndex, computeNoteName, generateNotes, generateMarkers, generateFretPath, generateStringPath, getNotePosition } from './utils/fretboardCalculations';
 import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors } from './utils/connectionUtils';
 import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow } from './utils/fretboardActions';
+import { generateTintVariants, getLevel1FillColor, getLevel2Color } from './colorConfig';
 import { createNoteClickHandler, createNoteContextMenuHandler, createDeleteNoteHandler, createFinishEditingHandler } from './handlers/noteHandlers';
 import { createSvgClickHandler, createSvgContextMenuHandler, createSvgMouseMoveHandler, createSvgMouseDownHandler, createSvgWheelHandler, createEditableKeyDownHandler, createEditableClickHandler } from './handlers/svgHandlers';
 import { createKeyboardHandler } from './handlers/keyboardHandlers';
@@ -79,6 +80,9 @@ function Fretboard() {
   const [includeMarkers, setIncludeMarkers] = useState(true);
   const [copyOnly, setCopyOnly] = useState(true);
   const [showNotes, setShowNotes] = useState(false);
+
+  // 异色模式标记
+  const [inTintMode, setInTintMode] = useState(false);
 
   // Refs
   const svgElementRef = useRef(null);
@@ -333,15 +337,28 @@ function Fretboard() {
   // 工具函数
   const selectColorMemo = useCallback((level, color, customColor = null) => {
     selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor, customColor);
+    // 单击退出异色模式
+    if (!customColor) {
+      setInTintMode(false);
+    }
   }, [selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor]);
 
-  const cycleLevel1ColorMemo = useCallback(() => {
-    cycleLevel1Color(selectedColorLevel, selectedColor, selectColorMemo);
-  }, [selectedColorLevel, selectedColor, selectColorMemo]);
+  // 双击颜色：进入异色版本模式，默认选中最深的（第一个）
+  const doubleClickColorMemo = useCallback((level, color) => {
+    const baseColor = level === 1 ? getLevel1FillColor(color) : getLevel2Color(color);
+    const variants = generateTintVariants(baseColor);
+    // 默认选中第一个（最深）
+    selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor, variants[0]);
+    setInTintMode(true);
+  }, [selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor]);
 
-  const cycleLevel2ColorMemo = useCallback(() => {
-    cycleLevel2Color(selectedColorLevel, selectedColor, selectColorMemo);
-  }, [selectedColorLevel, selectedColor, selectColorMemo]);
+    const cycleLevel1ColorMemo = useCallback(() => {
+    cycleLevel1Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel1FillColor, inTintMode);
+  }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
+
+    const cycleLevel2ColorMemo = useCallback(() => {
+    cycleLevel2Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel2Color, inTintMode);
+  }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
 
   const toggleVisibilityMemo = useCallback(() => {
     toggleVisibility(visibility, setVisibility, notesElementRef, data, updateNote);
@@ -436,7 +453,7 @@ function Fretboard() {
     cycleLevel2Color: cycleLevel2ColorMemo, undo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
     connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardState: saveFretboardStateMemo,
-    toggleVisibility: toggleVisibilityMemo, reset: resetMemo
+    toggleVisibility: toggleVisibilityMemo, reset: resetMemo, saveSVG: saveSVGMemo
   };
 
   useEffect(() => {
@@ -534,7 +551,9 @@ function Fretboard() {
       <FretboardMenu
         selectedColorLevel={selectedColorLevel}
         selectedColor={selectedColor}
+        inTintMode={inTintMode}
         onSelectColor={selectColorMemo}
+        onDoubleClickColor={doubleClickColorMemo}
         enharmonic={enharmonic}
         onToggleEnharmonic={toggleEnharmonicMemo}
         onToggleVisibility={toggleVisibilityMemo}
