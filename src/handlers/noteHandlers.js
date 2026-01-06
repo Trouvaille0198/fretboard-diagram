@@ -136,16 +136,31 @@ export function createNoteClickHandler(params) {
                     const actualEndColor = endNoteData.color || 'white';
                     const gradientColors = { start: actualStartColor, end: actualEndColor };
 
+                    // 检查两个note是否都只有第一层颜色且是透明色
+                    // 需要检查原始note数据，而不是处理后的数据
+                    const originalStartNoteData = data[connectionStartNote] || { type: 'note', color: 'white', visibility: visibility };
+                    const originalEndNoteData = data[noteId] || { type: 'note', color: 'white', visibility: visibility };
+                    const originalStartColor = originalStartNoteData.color || 'white';
+                    const originalEndColor = originalEndNoteData.color || 'white';
+                    const startColorName = typeof originalStartColor === 'object' ? originalStartColor.name : originalStartColor;
+                    const endColorName = typeof originalEndColor === 'object' ? originalEndColor.name : originalEndColor;
+                    const startHasColor2 = originalStartNoteData.color2 && originalStartNoteData.color2 !== null;
+                    const endHasColor2 = originalEndNoteData.color2 && originalEndNoteData.color2 !== null;
+                    const isBothTrans = startColorName === 'trans' && endColorName === 'trans' && !startHasColor2 && !endHasColor2;
+
                     const existingConnection = existingConnectionId ? connections[existingConnectionId] : null;
                     // 使用当前选择的类型和箭头方向（如果连线已存在，则保留原有样式）
+                    // 对于两个透明色note的连线，默认有箭头，方向为始->终（end）
+                    const defaultArrowDirection = isBothTrans ? 'end' : connectionArrowDirection;
                     const newConnection = {
                         id: connectionId,
                         startNoteId: connectionStartNote,
                         endNoteId: noteId,
                         type: existingConnection?.type || connectionType,
-                        hasArrow: existingConnection?.hasArrow || (connectionArrowDirection !== 'none'),
-                        arrowDirection: existingConnection?.arrowDirection || connectionArrowDirection,
-                        strokeWidth: existingConnection?.strokeWidth || 3,
+                        hasArrow: existingConnection?.hasArrow || (defaultArrowDirection !== 'none'),
+                        arrowDirection: existingConnection?.arrowDirection || defaultArrowDirection,
+                        strokeWidth: existingConnection?.strokeWidth || (isBothTrans ? 2 : 3),
+                        strokeDasharray: existingConnection?.strokeDasharray || (isBothTrans ? '8,4' : undefined),
                         arcCurvature: existingConnection?.arcCurvature || (connectionType === 'arc' ? 0.7 : 0),
                         color: connectionColor,
                         gradientColors: gradientColors
@@ -181,9 +196,64 @@ export function createNoteClickHandler(params) {
             // 获取实际的颜色名称用于比较
             const actualSelectedColorName = typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
             const actualCurrentColorName = currentColor && typeof currentColor === 'object' ? currentColor.name : currentColor;
+            // 检查选中的是否是异色（有 custom 字段）
+            const isSelectedTint = typeof selectedColor === 'object' && selectedColor.custom;
 
             if (actualCurrentColorName === actualSelectedColorName) {
-                if (currentVisibility === 'visible') {
+                // 如果选中的是异色，且当前也是异色（同色），清除颜色
+                const isCurrentTint = typeof currentColor === 'object' && currentColor.custom;
+                if (isSelectedTint && isCurrentTint) {
+                    // 检查是否是同一个异色（custom 值相同）
+                    const currentCustom = currentColor.custom;
+                    const selectedCustom = selectedColor.custom;
+                    if (currentCustom === selectedCustom) {
+                        // 同色异色，清除
+                        if (currentColor2 && currentColor2 !== null) {
+                            updateNoteFn(noteElement, data, { color: 'white', visibility: 'visible' });
+                            setData(prevData => {
+                                const newData = { ...prevData };
+                                if (!(noteId in newData)) {
+                                    newData[noteId] = {};
+                                }
+                                newData[noteId] = { ...newData[noteId], color: 'white', visibility: 'visible' };
+                                return newData;
+                            });
+                        } else {
+                            updateNoteFn(noteElement, data, { color: 'white', visibility: visibility });
+                            setData(prevData => {
+                                const newData = { ...prevData };
+                                if (!(noteId in newData)) {
+                                    newData[noteId] = {};
+                                }
+                                newData[noteId] = { ...newData[noteId], color: 'white', visibility: visibility };
+                                return newData;
+                            });
+                        }
+                    } else {
+                        // 不同异色，覆盖
+                        updateNoteFn(noteElement, data, { color: selectedColor, visibility: 'visible' });
+                        setData(prevData => {
+                            const newData = { ...prevData };
+                            if (!(noteId in newData)) {
+                                newData[noteId] = {};
+                            }
+                            newData[noteId] = { ...newData[noteId], color: selectedColor, visibility: 'visible' };
+                            return newData;
+                        });
+                    }
+                } else if (isSelectedTint && !isCurrentTint) {
+                    // 选中的是异色，但当前不是异色，应用异色
+                    updateNoteFn(noteElement, data, { color: selectedColor, visibility: 'visible' });
+                    setData(prevData => {
+                        const newData = { ...prevData };
+                        if (!(noteId in newData)) {
+                            newData[noteId] = {};
+                        }
+                        newData[noteId] = { ...newData[noteId], color: selectedColor, visibility: 'visible' };
+                        return newData;
+                    });
+                } else if (currentVisibility === 'visible') {
+                    // 如果选中的不是异色，且当前是visible，清除颜色
                     if (currentColor2 && currentColor2 !== null) {
                         updateNoteFn(noteElement, data, { color: 'white', visibility: 'visible' });
                         setData(prevData => {
@@ -206,6 +276,7 @@ export function createNoteClickHandler(params) {
                         });
                     }
                 } else {
+                    // 如果选中的不是异色，且当前不是visible，应用颜色
                     updateNoteFn(noteElement, data, { color: selectedColor, visibility: 'visible' });
                     setData(prevData => {
                         const newData = { ...prevData };
@@ -217,6 +288,7 @@ export function createNoteClickHandler(params) {
                     });
                 }
             } else {
+                // 颜色名称不同，直接应用选中的颜色
                 updateNoteFn(noteElement, data, { color: selectedColor, visibility: 'visible' });
                 setData(prevData => {
                     const newData = { ...prevData };
@@ -235,19 +307,76 @@ export function createNoteClickHandler(params) {
             // 获取实际的颜色名称用于比较
             const actualSelectedColorName = typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
             const actualCurrentColor2Name = currentColor2 && typeof currentColor2 === 'object' ? currentColor2.name : currentColor2;
+            // 检查选中的是否是异色（有 custom 字段）
+            const isSelectedTint = typeof selectedColor === 'object' && selectedColor.custom;
 
             if (actualCurrentColor2Name === actualSelectedColorName) {
-                const newVisibility = (currentColor === 'white') ? visibility : 'visible';
-                updateNoteFn(noteElement, data, { color2: null, visibility: newVisibility });
-                setData(prevData => {
-                    const newData = { ...prevData };
-                    if (!(noteId in newData)) {
-                        newData[noteId] = {};
+                // 如果选中的是异色，且当前也是异色（同色），清除第二层颜色
+                const isCurrentTint = typeof currentColor2 === 'object' && currentColor2.custom;
+                if (isSelectedTint && isCurrentTint) {
+                    // 检查是否是同一个异色（custom 值相同）
+                    const currentCustom = currentColor2.custom;
+                    const selectedCustom = selectedColor.custom;
+                    if (currentCustom === selectedCustom) {
+                        // 同色异色，清除第二层颜色
+                        const newVisibility = (currentColor === 'white') ? visibility : 'visible';
+                        updateNoteFn(noteElement, data, { color2: null, visibility: newVisibility });
+                        setData(prevData => {
+                            const newData = { ...prevData };
+                            if (!(noteId in newData)) {
+                                newData[noteId] = {};
+                            }
+                            newData[noteId] = { ...newData[noteId], color2: null, visibility: newVisibility };
+                            return newData;
+                        });
+                    } else {
+                        // 不同异色，覆盖
+                        const newVisibility = currentVisibility === 'visible' ? 'visible' : 'visible';
+                        updateNoteFn(noteElement, data, { color2: selectedColor, visibility: newVisibility });
+                        setData(prevData => {
+                            const newData = { ...prevData };
+                            if (!(noteId in newData)) {
+                                newData[noteId] = {};
+                            }
+                            newData[noteId] = {
+                                ...newData[noteId],
+                                color2: selectedColor,
+                                visibility: newVisibility
+                            };
+                            return newData;
+                        });
                     }
-                    newData[noteId] = { ...newData[noteId], color2: null, visibility: newVisibility };
-                    return newData;
-                });
+                } else if (isSelectedTint && !isCurrentTint) {
+                    // 选中的是异色，但当前不是异色，应用异色
+                    const newVisibility = currentVisibility === 'visible' ? 'visible' : 'visible';
+                    updateNoteFn(noteElement, data, { color2: selectedColor, visibility: newVisibility });
+                    setData(prevData => {
+                        const newData = { ...prevData };
+                        if (!(noteId in newData)) {
+                            newData[noteId] = {};
+                        }
+                        newData[noteId] = {
+                            ...newData[noteId],
+                            color2: selectedColor,
+                            visibility: newVisibility
+                        };
+                        return newData;
+                    });
+                } else {
+                    // 如果选中的不是异色，清除第二层颜色
+                    const newVisibility = (currentColor === 'white') ? visibility : 'visible';
+                    updateNoteFn(noteElement, data, { color2: null, visibility: newVisibility });
+                    setData(prevData => {
+                        const newData = { ...prevData };
+                        if (!(noteId in newData)) {
+                            newData[noteId] = {};
+                        }
+                        newData[noteId] = { ...newData[noteId], color2: null, visibility: newVisibility };
+                        return newData;
+                    });
+                }
             } else {
+                // 颜色名称不同，直接应用选中的颜色
                 const newVisibility = currentVisibility === 'visible' ? 'visible' : 'visible';
                 updateNoteFn(noteElement, data, { color2: selectedColor, visibility: newVisibility });
                 setData(prevData => {

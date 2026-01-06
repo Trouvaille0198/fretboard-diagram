@@ -1,6 +1,6 @@
 import React from 'react';
 import { CONSTS } from '../constants';
-import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, calculateArcPath, getPointOnNoteEdge, getPointOnPathAtDistance } from '../utils';
+import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, calculateArcPath, getPointOnNoteEdge, getPointOnPathAtDistance, getColorName } from '../utils';
 import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from '../colorConfig';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
@@ -66,7 +66,8 @@ export function FretboardSVG({
   buttonClickRef,
   setData,
   setConnectionToolbarVisible,
-  setSelectedConnection
+  setSelectedConnection,
+  showNotes
 }) {
   return (
     <svg
@@ -198,14 +199,27 @@ export function FretboardSVG({
           const currentColor2 = noteData.color2 || null;
           const currentVisibility = selected?.id === note.id ? 'selected' : (noteData.visibility || visibility);
           const isPreviewHover = connectionMode && connectionStartNote && previewHoverNote === note.id;
-          const className = `note ${currentColor} ${currentVisibility} ${isPreviewHover ? 'preview-hover' : ''}`;
+          
+          // 当toggle处于hidden状态时，trans note显示为0.3透明度而不是完全隐藏
+          const colorName = typeof currentColor === 'object' ? getColorName(currentColor) : currentColor;
+          const isTransColor = colorName === 'trans';
+          const shouldApplyTransparentStyle = visibility === 'hidden' && isTransColor;
+          
+          const className = `note ${currentColor} ${currentVisibility} ${isPreviewHover ? 'preview-hover' : ''} ${shouldApplyTransparentStyle ? 'force-transparent' : ''}`;
           
           // 根据 color2 设置描边颜色
           let hasColor2 = currentColor2 && currentColor2 !== null;
           let strokeColor = note.isOpen ? 'none' : undefined;
           let strokeWidth = undefined;
           if (hasColor2) {
-            strokeColor = getLevel2Color(currentColor2);
+            // 处理自定义颜色对象（与 color2-strokes 组中的逻辑一致）
+            if (typeof currentColor2 === 'object' && currentColor2.custom) {
+              strokeColor = currentColor2.custom;
+            } else if (typeof currentColor2 === 'object' && currentColor2.name) {
+              strokeColor = getLevel2Color(currentColor2.name);
+            } else {
+              strokeColor = getLevel2Color(currentColor2);
+            }
             strokeWidth = '3.5';
           }
           
@@ -332,9 +346,15 @@ export function FretboardSVG({
             }
           }
           
+          // 检查起点和终点是否都是 trans note（用于设置连线透明度）
+          const startColorName = typeof startColor === 'object' ? getColorName(startColor) : startColor;
+          const endColorName = typeof endColor === 'object' ? getColorName(endColor) : endColor;
+          const isTransConnection = (startColorName === 'trans' || endColorName === 'trans');
+          const connectionOpacity = (visibility === 'hidden' && isTransConnection) ? 0.3 : undefined;
+          
           // 计算连线颜色：如果是渐变ID，使用url引用；否则使用起点颜色
           const isGradient = conn.color && conn.color.startsWith('gradient-');
-          let strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColor === 'white' || startColor === 'trans' ? '#aaaaaa' : reduceColorSaturation(startColor, 0.6)));
+          let strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColorName === 'white' || startColorName === 'trans' ? '#aaaaaa' : reduceColorSaturation(startColor, 0.6)));
           
           // 如果启用了灰色效果，使用半透明灰色
           const isGrayed = conn.isGrayed || false;
@@ -343,10 +363,11 @@ export function FretboardSVG({
           }
           
           // 箭头颜色：每个箭头使用自己接触的note的颜色（降低饱和度）
-          const getArrowColor = (colorName) => {
+          const getArrowColor = (color) => {
+            const colorName = getColorName(color);
             if (colorName === 'white') return '#aaaaaa';
             if (colorName === 'trans') return '#aaaaaa';
-            return reduceColorSaturation(colorName, 0.6);
+            return reduceColorSaturation(color, 0.6);
           };
           let startArrowColor = getArrowColor(startColor);
           let endArrowColor = getArrowColor(endColor);
@@ -458,6 +479,7 @@ export function FretboardSVG({
                   className="connection"
                   stroke={strokeColor}
                   strokeWidth={conn.strokeWidth || 3}
+                  strokeDasharray={conn.strokeDasharray}
                   fill="none"
                   markerStart={markerStart}
                   markerEnd={markerEnd}
@@ -467,7 +489,9 @@ export function FretboardSVG({
                   onMouseLeave={() => setHoveredConnectionId(null)}
                   style={{ 
                     cursor: 'pointer',
-                    strokeWidth: `${conn.strokeWidth || 3}px`
+                    strokeWidth: `${conn.strokeWidth || 3}px`,
+                    strokeDasharray: conn.strokeDasharray || undefined,
+                    opacity: connectionOpacity
                   }}
                 />
               </g>
@@ -530,6 +554,7 @@ export function FretboardSVG({
                   className="connection"
                   stroke={strokeColor}
                   strokeWidth={conn.strokeWidth || 3}
+                  strokeDasharray={conn.strokeDasharray}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   markerStart={markerStart}
@@ -541,13 +566,42 @@ export function FretboardSVG({
                   style={{ 
                     cursor: 'pointer',
                     strokeWidth: `${conn.strokeWidth || 3}px`,
+                    strokeDasharray: conn.strokeDasharray || undefined,
                     strokeLinecap: 'round',
-                    strokeLinejoin: 'round'
+                    strokeLinejoin: 'round',
+                    opacity: connectionOpacity
                   }}
                 />
               </g>
             );
           }
+        })}
+      </g>
+      
+      {/* 白色分隔描边 - 当note同时有第一层和第二层颜色时，在第一层和第二层之间添加白色描边 */}
+      <g className="white-separator-strokes">
+        {notes.map(note => {
+          const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
+          const currentColor = noteData.color || 'white';
+          const currentColor2 = noteData.color2 || null;
+          const hasColor1 = currentColor && currentColor !== 'white';
+          const hasColor2 = currentColor2 && currentColor2 !== null;
+          
+          // 只有当同时有第一层和第二层颜色时才显示白色分隔描边
+          if (!hasColor1 || !hasColor2) return null;
+          
+          return (
+            <circle
+              key={`white-separator-${note.id}`}
+              cx={note.x}
+              cy={note.y}
+              r={CONSTS.circleRadius}
+              stroke="white"
+              strokeWidth="2"
+              fill="none"
+              pointerEvents="none"
+            />
+          );
         })}
       </g>
       

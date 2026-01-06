@@ -13,9 +13,21 @@ const LEVEL1_SHORTCUTS = {
   black: 'D'
 };
 
-export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor, onDoubleClickColor }) {
+export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor, onDoubleClickColor, onReplaceAllTintNotes }) {
   // 获取实际的颜色名称（处理自定义颜色对象）
   const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+  
+  const handleContextMenu = (e, colorName) => {
+    e.preventDefault();
+    // 不包括透明色
+    if (colorName === 'trans') return;
+    
+    // 显示确认对话框
+    const confirmed = window.confirm(`是否替换成该颜色？\n\n这将把所有异色note替换为 ${colorName} 对应浓度的异色颜色。`);
+    if (confirmed && onReplaceAllTintNotes) {
+      onReplaceAllTintNotes(colorName);
+    }
+  };
   
   return (
     <div id="color-selector">
@@ -27,6 +39,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor,
             className={`color ${colorName} ${selectedColorLevel === 1 && actualColorName === colorName ? 'selected' : ''}`}
             onClick={() => onSelectColor(1, colorName)}
             onDoubleClick={() => onDoubleClickColor && onDoubleClickColor(1, colorName)}
+            onContextMenu={(e) => handleContextMenu(e, colorName)}
           />
         ))}
       </div>

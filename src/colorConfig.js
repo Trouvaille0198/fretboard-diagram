@@ -9,20 +9,20 @@ export const LEVEL1_COLORS = {
         button: 'var(--background-color)' // 调色盘按钮背景色
     },
     blue: {
-        fill: '#4682b4',           // 音符填充色
-        button: '#4682b4'          // 调色盘按钮背景色
-    },
-    green: {
-        fill: '#00a080',             // 音符填充色（更绿的绿色）
-        button: '#00a080'            // 调色盘按钮背景色
+        fill: '#2c6cca',           // 音符填充色
+        button: '#2c6cca'          // 调色盘按钮背景色
     },
     red: {
         fill: '#cd5c5c',           // 音符填充色
         button: '#cd5c5c'          // 调色盘按钮背景色
     },
+    green: {
+        fill: '#2bb046',             // 音符填充色
+        button: '#2bb046'            // 调色盘按钮背景色
+    },
     brown: {
-        fill: '#8b4513',             // 音符填充色
-        button: '#8b4513'            // 调色盘按钮背景色
+        fill: '#f8bb24',             // 音符填充色
+        button: '#f8bb24'            // 调色盘按钮背景色
     },
     gray: {
         fill: '#aaaaaa',             // 音符填充色（灰色）
@@ -32,12 +32,12 @@ export const LEVEL1_COLORS = {
 
 // 第二层级颜色配置（用于描边）
 export const LEVEL2_COLORS = {
-    yellow: '#ffd700',        // 黄色
-    cyan: '#87ceeb',          // 淡青色
-    pink: '#ffb6c1',          // 淡红色
-    'grass-green': '#6b8e23', // 青草绿色
-    orange: '#ff8c00',        // 亮橙色
-    white: '#ffffff'          // 白色
+    orange: '#ff8c00',        // 橙色
+    cyan: '#2c6cca',          // 蓝色
+    pink: '#cd5c5c',          // 红色
+    'grass-green': '#2bb046', // 绿色
+    yellow: '#f8bb24',        // 黄色
+    white: '#aaaaaa'          // 白色
 };
 
 // 获取第一层级颜色（用于音符填充）
@@ -78,11 +78,11 @@ export function generateTintVariants(baseColor) {
     // 浓：增加饱和度，降低亮度（向色轮边缘移动）
     // 淡：降低饱和度，增加亮度（向色轮中心移动）
     const adjustments = [
-        { s: 30, l: -25 },  // 浓二档
-        { s: 15, l: -15 },   // 浓一档
-        { s: 0, l: 0 },     // 原色
-        { s: -15, l: 10 },  // 淡一档
-        { s: -30, l: 20 }   // 淡二档
+        { s: 25, l: -35 },  // 浓二档
+        { s: 20, l: -15 },   // 浓一档
+        { s: 0, l: 10 },     // 原色
+        { s: -20, l: 25 },  // 淡一档
+        // { s: -30, l: 20 }   // 淡二档
     ];
 
     adjustments.forEach(({ s: sAdj, l: lAdj }) => {
@@ -92,7 +92,8 @@ export function generateTintVariants(baseColor) {
         variants.push(`rgb(${nr}, ${ng}, ${nb})`);
     });
 
-    return variants;
+    // 反转数组，使浅色在最上面（淡二档 -> 淡一档 -> 原色 -> 浓一档 -> 浓二档）
+    return variants.reverse();
 }
 
 // RGB 转 HSL
