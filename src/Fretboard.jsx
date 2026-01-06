@@ -9,7 +9,7 @@ import { useHistory } from './hooks/useHistory';
 import { useNoteEditing } from './hooks/useNoteEditing';
 import { computeNoteIndex, computeNoteName, generateNotes, generateMarkers, generateFretPath, generateStringPath, getNotePosition } from './utils/fretboardCalculations';
 import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors } from './utils/connectionUtils';
-import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow } from './utils/fretboardActions';
+import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow, replaceAllTintNotes } from './utils/fretboardActions';
 import { generateTintVariants, getLevel1FillColor, getLevel2Color } from './colorConfig';
 import { createNoteClickHandler, createNoteContextMenuHandler, createDeleteNoteHandler, createFinishEditingHandler } from './handlers/noteHandlers';
 import { createSvgClickHandler, createSvgContextMenuHandler, createSvgMouseMoveHandler, createSvgMouseDownHandler, createSvgWheelHandler, createEditableKeyDownHandler, createEditableClickHandler } from './handlers/svgHandlers';
@@ -24,7 +24,7 @@ function Fretboard() {
   // 使用自定义hooks
   const fretboardState = useFretboardState();
   const connectionState = useConnectionState();
-  const { undo } = useHistory(fretboardState.data, fretboardState.setData);
+  const { undo, redo } = useHistory(fretboardState.data, fretboardState.setData);
   const noteEditing = useNoteEditing();
 
   // 解构状态
@@ -343,21 +343,33 @@ function Fretboard() {
     }
   }, [selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor]);
 
-  // 双击颜色：进入异色版本模式，默认选中最深的（第一个）
+  // 双击颜色：进入异色版本模式
+  // 第一层异色：默认选中第三个（浓一档，index 2）
+  // 第二层异色：默认选中第一个（淡一档，index 0）
   const doubleClickColorMemo = useCallback((level, color) => {
     const baseColor = level === 1 ? getLevel1FillColor(color) : getLevel2Color(color);
     const variants = generateTintVariants(baseColor);
-    // 默认选中第一个（最深）
-    selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor, variants[0]);
+    // 根据层级选择不同的默认索引
+    // 数组已反转：index 0=淡一档, 1=原色, 2=浓一档, 3=浓二档
+    const defaultIndex = level === 1 ? 2 : 0; // 第一层选浓一档，第二层选淡一档
+    selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor, variants[defaultIndex]);
     setInTintMode(true);
   }, [selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor]);
 
     const cycleLevel1ColorMemo = useCallback(() => {
-    cycleLevel1Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel1FillColor, inTintMode);
+    cycleLevel1Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel1FillColor, inTintMode, 1);
+  }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
+
+    const cycleLevel1ColorReverseMemo = useCallback(() => {
+    cycleLevel1Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel1FillColor, inTintMode, -1);
   }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
 
     const cycleLevel2ColorMemo = useCallback(() => {
-    cycleLevel2Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel2Color, inTintMode);
+    cycleLevel2Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel2Color, inTintMode, 1);
+  }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
+
+    const cycleLevel2ColorReverseMemo = useCallback(() => {
+    cycleLevel2Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel2Color, inTintMode, -1);
   }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
 
   const toggleVisibilityMemo = useCallback(() => {
@@ -377,6 +389,10 @@ function Fretboard() {
   const toggleEnharmonicMemo = useCallback(() => {
     toggleEnharmonic(enharmonic, setEnharmonic);
   }, [enharmonic, setEnharmonic]);
+
+  const replaceAllTintNotesMemo = useCallback((targetColorName) => {
+    replaceAllTintNotes(targetColorName, data, setData, notesElementRef, updateNote, generateTintVariants, getLevel1FillColor, getLevel2Color);
+  }, [data, setData, generateTintVariants, getLevel1FillColor, getLevel2Color]);
 
   const resetMemo = useCallback(() => {
     reset(visibility, setData, setSelected, notesElementRef, data, updateNote, setStartFret, setEndFret, setDisplayMode, setRootNote, setEnharmonic);
@@ -450,14 +466,21 @@ function Fretboard() {
   const handlerParamsRef = useRef();
   handlerParamsRef.current = {
     selected, deleteNote, selectColor: selectColorMemo, cycleLevel1Color: cycleLevel1ColorMemo,
-    cycleLevel2Color: cycleLevel2ColorMemo, undo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
+    cycleLevel1ColorReverse: cycleLevel1ColorReverseMemo, cycleLevel2Color: cycleLevel2ColorMemo,
+    cycleLevel2ColorReverse: cycleLevel2ColorReverseMemo, undo, redo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
     connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardState: saveFretboardStateMemo,
-    toggleVisibility: toggleVisibilityMemo, reset: resetMemo, saveSVG: saveSVGMemo
+    toggleVisibility: toggleVisibilityMemo, reset: resetMemo, saveSVG: saveSVGMemo,
+    selectedColorLevel
   };
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // 检查是否在输入框中
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable) {
+        return;
+      }
+      
       const handler = createKeyboardHandler(handlerParamsRef.current);
       handler(event);
     };
@@ -481,6 +504,23 @@ function Fretboard() {
         {selectedHistoryState && (
           <div className="selected-state-name" title="当前选中的历史状态，保存将更新此状态">
             📌 {selectedHistoryState.name}
+            <button
+              className="new-state-btn"
+              onClick={() => setSelectedHistoryState(null)}
+              title="创建新状态（清除选中，保留当前指板状态）"
+              style={{
+                marginLeft: '8px',
+                padding: '2px 8px',
+                fontSize: '12px',
+                backgroundColor: 'transparent',
+                border: '1px solid currentColor',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                color: 'inherit'
+              }}
+            >
+              new
+            </button>
           </div>
         )}
       </div>
@@ -546,6 +586,7 @@ function Fretboard() {
           setData={setData}
           setConnectionToolbarVisible={setConnectionToolbarVisible}
           setSelectedConnection={setSelectedConnection}
+          showNotes={showNotes}
         />
       </figure>
       <FretboardMenu
@@ -554,6 +595,7 @@ function Fretboard() {
         inTintMode={inTintMode}
         onSelectColor={selectColorMemo}
         onDoubleClickColor={doubleClickColorMemo}
+        onReplaceAllTintNotes={replaceAllTintNotesMemo}
         enharmonic={enharmonic}
         onToggleEnharmonic={toggleEnharmonicMemo}
         onToggleVisibility={toggleVisibilityMemo}

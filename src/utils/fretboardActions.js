@@ -1,5 +1,5 @@
 import { updateNote, inlineCSS } from '../utils';
-import { LEVEL1_COLORS, LEVEL2_COLORS } from '../colorConfig';
+import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel2Color } from '../colorConfig';
 import { CONSTS } from '../constants';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
@@ -81,7 +81,7 @@ export function selectColor(level, color, selectedColorLevel, selectedColor, set
   setSelectedColor(customColor ? { name: color, custom: customColor } : color);
 }
 
-export function cycleLevel1Color(selectedColorLevel, selectedColor, selectColor, generateTintVariants, getLevel1FillColor, inTintMode) {
+export function cycleLevel1Color(selectedColorLevel, selectedColor, selectColor, generateTintVariants, getLevel1FillColor, inTintMode, direction = 1) {
   // 获取实际的颜色名称
   const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
 
@@ -91,21 +91,28 @@ export function cycleLevel1Color(selectedColorLevel, selectedColor, selectColor,
       const tintVariants = generateTintVariants(getLevel1FillColor(actualColorName));
       const currentCustom = typeof selectedColor === 'object' ? selectedColor.custom : null;
       const currentIndex = currentCustom ? tintVariants.indexOf(currentCustom) : -1;
-      const nextIndex = (currentIndex + 1) % tintVariants.length;
+      // direction: 1 表示正向，-1 表示反向
+      const nextIndex = currentIndex === -1
+        ? (direction > 0 ? 0 : tintVariants.length - 1)
+        : ((currentIndex + direction + tintVariants.length) % tintVariants.length);
       selectColor(1, actualColorName, tintVariants[nextIndex]);
     } else {
       // 否则切换到下一个主颜色
       const currentIndex = LEVEL1_COLOR_ORDER.indexOf(actualColorName);
-      const nextIndex = (currentIndex + 1) % LEVEL1_COLOR_ORDER.length;
+      // direction: 1 表示正向，-1 表示反向
+      const nextIndex = currentIndex === -1
+        ? (direction > 0 ? 0 : LEVEL1_COLOR_ORDER.length - 1)
+        : ((currentIndex + direction + LEVEL1_COLOR_ORDER.length) % LEVEL1_COLOR_ORDER.length);
       selectColor(1, LEVEL1_COLOR_ORDER[nextIndex]);
     }
   } else {
-    // 如果未选中或选中其他层级，选择第一个颜色
-    selectColor(1, LEVEL1_COLOR_ORDER[0]);
+    // 如果未选中或选中其他层级，选择第一个颜色（正向）或最后一个颜色（反向）
+    const index = direction > 0 ? 0 : LEVEL1_COLOR_ORDER.length - 1;
+    selectColor(1, LEVEL1_COLOR_ORDER[index]);
   }
 }
 
-export function cycleLevel2Color(selectedColorLevel, selectedColor, selectColor, generateTintVariants, getLevel2Color, inTintMode) {
+export function cycleLevel2Color(selectedColorLevel, selectedColor, selectColor, generateTintVariants, getLevel2Color, inTintMode, direction = 1) {
   // 获取实际的颜色名称
   const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
 
@@ -115,17 +122,24 @@ export function cycleLevel2Color(selectedColorLevel, selectedColor, selectColor,
       const tintVariants = generateTintVariants(getLevel2Color(actualColorName));
       const currentCustom = typeof selectedColor === 'object' ? selectedColor.custom : null;
       const currentIndex = currentCustom ? tintVariants.indexOf(currentCustom) : -1;
-      const nextIndex = (currentIndex + 1) % tintVariants.length;
+      // direction: 1 表示正向，-1 表示反向
+      const nextIndex = currentIndex === -1
+        ? (direction > 0 ? 0 : tintVariants.length - 1)
+        : ((currentIndex + direction + tintVariants.length) % tintVariants.length);
       selectColor(2, actualColorName, tintVariants[nextIndex]);
     } else {
       // 否则切换到下一个主颜色
       const currentIndex = LEVEL2_COLOR_ORDER.indexOf(actualColorName);
-      const nextIndex = (currentIndex + 1) % LEVEL2_COLOR_ORDER.length;
+      // direction: 1 表示正向，-1 表示反向
+      const nextIndex = currentIndex === -1
+        ? (direction > 0 ? 0 : LEVEL2_COLOR_ORDER.length - 1)
+        : ((currentIndex + direction + LEVEL2_COLOR_ORDER.length) % LEVEL2_COLOR_ORDER.length);
       selectColor(2, LEVEL2_COLOR_ORDER[nextIndex]);
     }
   } else {
-    // 如果未选中或选中其他层级，选择第一个颜色
-    selectColor(2, LEVEL2_COLOR_ORDER[0]);
+    // 如果未选中或选中其他层级，选择第一个颜色（正向）或最后一个颜色（反向）
+    const index = direction > 0 ? 0 : LEVEL2_COLOR_ORDER.length - 1;
+    selectColor(2, LEVEL2_COLOR_ORDER[index]);
   }
 }
 
@@ -154,11 +168,108 @@ export function toggleEnharmonic(enharmonic, setEnharmonic) {
   setEnharmonic(prev => (prev + 1) % 2);
 }
 
+// 替换所有异色note为新颜色对应浓度的异色
+export function replaceAllTintNotes(targetColorName, data, setData, notesElementRef, updateNote, generateTintVariants, getLevel1FillColor, getLevel2Color) {
+  if (!targetColorName || targetColorName === 'trans') {
+    return; // 不包括透明色
+  }
+
+  const targetBaseColor = getLevel1FillColor(targetColorName);
+  const targetVariants = generateTintVariants(targetBaseColor);
+
+  // 遍历所有note，找到异色note并替换
+  const newData = { ...data };
+  let hasChanges = false;
+
+  for (const [noteId, noteData] of Object.entries(newData)) {
+    if (noteId.startsWith('conn-')) continue; // 跳过连线数据
+
+    const currentColor = noteData.color;
+    const currentColor2 = noteData.color2;
+    let updateColor = null;
+    let updateColor2 = null;
+
+    // 处理第一层颜色的异色
+    if (currentColor && typeof currentColor === 'object' && currentColor.custom) {
+      const originalColorName = currentColor.name;
+      const originalBaseColor = getLevel1FillColor(originalColorName);
+      const originalVariants = generateTintVariants(originalBaseColor);
+
+      // 找到当前异色在原色变体中的索引
+      const currentTintValue = currentColor.custom;
+      const tintIndex = originalVariants.findIndex(variant => variant === currentTintValue);
+
+      if (tintIndex !== -1) {
+        // 找到对应浓度的新颜色异色
+        const newTintValue = targetVariants[tintIndex];
+        updateColor = {
+          name: targetColorName,
+          custom: newTintValue
+        };
+        hasChanges = true;
+      }
+    }
+
+    // 处理第二层颜色的异色
+    if (currentColor2 && typeof currentColor2 === 'object' && currentColor2.custom) {
+      const originalColor2Name = currentColor2.name;
+      // 判断是第二层颜色还是第一层颜色
+      let originalBaseColor;
+      if (originalColor2Name in LEVEL2_COLORS) {
+        // 是第二层颜色，使用 getLevel2Color
+        originalBaseColor = getLevel2Color(originalColor2Name);
+      } else {
+        // 是第一层颜色，使用 getLevel1FillColor
+        originalBaseColor = getLevel1FillColor(originalColor2Name);
+      }
+      const originalVariants = generateTintVariants(originalBaseColor);
+
+      // 找到当前异色在原色变体中的索引
+      const currentTintValue = currentColor2.custom;
+      const tintIndex = originalVariants.findIndex(variant => variant === currentTintValue);
+
+      if (tintIndex !== -1) {
+        // 对于第二层颜色，也使用第一层颜色的异色变体（因为右键的是第一层颜色）
+        const newTintValue = targetVariants[tintIndex];
+        updateColor2 = {
+          name: targetColorName,
+          custom: newTintValue
+        };
+        hasChanges = true;
+      }
+    }
+
+    // 如果有更新，更新note数据
+    if (updateColor || updateColor2) {
+      const update = {};
+      if (updateColor) update.color = updateColor;
+      if (updateColor2) update.color2 = updateColor2;
+
+      newData[noteId] = {
+        ...noteData,
+        ...update
+      };
+
+      // 更新DOM元素
+      if (notesElementRef.current) {
+        const noteElement = notesElementRef.current.querySelector(`#${noteId}`);
+        if (noteElement) {
+          updateNote(noteElement, data, update);
+        }
+      }
+    }
+  }
+
+  if (hasChanges) {
+    setData(newData);
+  }
+}
+
 export function reset(visibility, setData, setSelected, notesElementRef, data, updateNote, setStartFret, setEndFret, setDisplayMode, setRootNote, setEnharmonic) {
-  // 只重置点的颜色和visibility，保留音名（noteText）
+  // 重置点的颜色、visibility和noteText，清除所有自定义设置
   setData(prevData => {
     const newData = {};
-    // 保留所有note的noteText，但重置其他属性
+    // 重置所有note的属性，清除noteText让系统根据displayMode重新生成
     Object.keys(prevData).forEach(key => {
       if (key.startsWith('conn-')) {
         // 删除所有连线
@@ -166,13 +277,12 @@ export function reset(visibility, setData, setSelected, notesElementRef, data, u
       }
       const noteData = prevData[key];
       if (noteData && noteData.type === 'note') {
-        // 只保留noteText，重置其他属性
+        // 清除noteText，重置其他属性，让系统根据displayMode重新生成显示名称
         newData[key] = {
           type: 'note',
           color: 'white',
           color2: null,
-          visibility: visibility,
-          ...(noteData.noteText ? { noteText: noteData.noteText } : {})
+          visibility: visibility
         };
       }
     });
@@ -196,13 +306,9 @@ export function reset(visibility, setData, setSelected, notesElementRef, data, u
     setEndFret(15);
   }
 
-  // 还原为默认的音名模式
-  if (setDisplayMode) {
-    setDisplayMode('note');
-  }
-  if (setRootNote) {
-    setRootNote(null);
-  }
+  // displayMode 和 rootNote 保持不变，不重置
+  // setDisplayMode 和 setRootNote 不调用，保持当前状态
+
   if (setEnharmonic) {
     setEnharmonic(1);
   }
@@ -281,21 +387,50 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
       }
 
       const text = note.querySelector('text');
+      const isTransColor = note.classList.contains('trans');
 
       if (note.classList.contains('hidden')) {
         // hidden -> transparent
         note.classList.remove('hidden');
         note.classList.add('transparent');
         if (text) text.style.opacity = '0';
-        note.style.opacity = '1';
+        // 如果是 trans note，保持 0.3 透明度
+        note.style.opacity = isTransColor ? '0.3' : '1';
       } else if (note.classList.contains('transparent')) {
         // transparent -> hidden
         note.classList.remove('transparent');
         note.classList.add('hidden');
         if (text) text.style.opacity = '0';
-        note.style.opacity = '0';
+        // 如果是 trans note，保持 0.3 透明度而不是完全隐藏
+        note.style.opacity = isTransColor ? '0.3' : '0';
       }
     });
+
+    // 当 showNotes 为 false（不显示音符）时，trans note 应该显示为 0.3 透明度
+    if (!showNotes) {
+      const transNotes = svgCopy.querySelectorAll('g.note.trans');
+      transNotes.forEach(note => {
+        note.style.opacity = '0.3';
+      });
+
+      // trans note 之间的连线也要有透明度
+      const connections = svgCopy.querySelectorAll('.connection');
+      connections.forEach(conn => {
+        // 检查连线连接的 note 是否包含 trans
+        const path = conn.closest('g');
+        if (path) {
+          // 尝试从路径的 marker 或连接信息中判断
+          // 更简单的方法：检查所有 trans note，然后检查连线是否连接到它们
+          const transNoteIds = Array.from(transNotes).map(n => n.id);
+          // 由于连线没有直接存储连接的 note ID，我们需要通过其他方式判断
+          // 这里暂时通过检查连线颜色是否为灰色（trans note 的连线默认是灰色）来判断
+          const strokeColor = conn.getAttribute('stroke');
+          if (strokeColor === '#aaaaaa' || strokeColor === 'rgba(170, 170, 170, 1)') {
+            conn.style.opacity = '0.3';
+          }
+        }
+      });
+    }
   }
 
   // 如果不包含品数，移除 markers（上下方的品数标记，如 3、5、7 等）

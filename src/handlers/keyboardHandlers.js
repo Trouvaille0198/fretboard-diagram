@@ -6,8 +6,11 @@ export function createKeyboardHandler(params) {
         deleteNote,
         selectColor,
         cycleLevel1Color,
+        cycleLevel1ColorReverse,
         cycleLevel2Color,
+        cycleLevel2ColorReverse,
         undo,
+        redo,
         hoveredNoteId,
         hoveredConnectionId,
         data,
@@ -23,7 +26,8 @@ export function createKeyboardHandler(params) {
         saveFretboardState,
         toggleVisibility,
         reset,
-        saveSVG
+        saveSVG,
+        selectedColorLevel
     } = params;
 
     return (event) => {
@@ -50,6 +54,15 @@ export function createKeyboardHandler(params) {
             event.preventDefault();
             if (saveFretboardState) {
                 saveFretboardState(false); // forceNew = false
+            }
+            return;
+        }
+
+        // Ctrl+Shift+Z 重做
+        if (event.ctrlKey && event.shiftKey && event.code === 'KeyZ') {
+            event.preventDefault();
+            if (redo) {
+                redo();
             }
             return;
         }
@@ -143,34 +156,68 @@ export function createKeyboardHandler(params) {
                 }
                 break;
             case 'KeyB':
+                event.preventDefault();
                 selectColor(1, 'blue');
                 break;
             case 'KeyG':
+                event.preventDefault();
                 selectColor(1, 'green');
                 break;
             case 'KeyS':
                 // 切换连线工具
-                setConnectionMode(prev => {
-                    if (prev) {
-                        // 退出连线模式时清除状态
-                        setConnectionStartNote(null);
-                        setConnectionStartPosition(null);
-                        setMousePosition(null);
-                        setPreviewHoverNote(null);
-                        setUseColor2Level(false);
-                    }
-                    return !prev;
-                });
+                if (!event.ctrlKey && !event.shiftKey) {
+                    event.preventDefault();
+                    setConnectionMode(prev => {
+                        if (prev) {
+                            // 退出连线模式时清除状态
+                            setConnectionStartNote(null);
+                            setConnectionStartPosition(null);
+                            setMousePosition(null);
+                            setPreviewHoverNote(null);
+                            setUseColor2Level(false);
+                        }
+                        return !prev;
+                    });
+                }
                 break;
             case 'KeyR':
+                event.preventDefault();
                 selectColor(1, 'red');
                 break;
+            case 'KeyW':
+                event.preventDefault();
+                // W 键：根据当前选中的颜色层级循环颜色
+                // Shift+W：反向循环颜色
+                if (event.shiftKey) {
+                    // Shift+W：反向循环
+                    if (selectedColorLevel === 1) {
+                        cycleLevel1ColorReverse();
+                    } else if (selectedColorLevel === 2) {
+                        cycleLevel2ColorReverse();
+                    } else {
+                        // 如果没有选中任何层级，默认反向循环第一层颜色
+                        cycleLevel1ColorReverse();
+                    }
+                } else {
+                    // W：正向循环
+                    if (selectedColorLevel === 1) {
+                        cycleLevel1Color();
+                    } else if (selectedColorLevel === 2) {
+                        cycleLevel2Color();
+                    } else {
+                        // 如果没有选中任何层级，默认循环第一层颜色
+                        cycleLevel1Color();
+                    }
+                }
+                break;
             case 'KeyA':
+                event.preventDefault();
                 cycleLevel1Color();
                 break;
             case 'KeyD':
                 // 只在没有 Ctrl 键时执行（避免与 Ctrl+D 冲突）
                 if (!event.ctrlKey) {
+                    event.preventDefault();
                     cycleLevel2Color();
                 }
                 break;
