@@ -30,7 +30,9 @@ export function FretboardMenu({
   includeMarkers,
   setIncludeMarkers,
   copyOnly,
-  setCopyOnly
+  setCopyOnly,
+  showNotes,
+  setShowNotes
 }) {
   return (
     <div className="menu">
@@ -122,6 +124,15 @@ export function FretboardMenu({
               style={{ cursor: 'pointer' }}
             />
             <span>包含品数</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
+            <input
+              type="checkbox"
+              checked={showNotes}
+              onChange={(e) => setShowNotes(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span>显示音符</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
             <input
