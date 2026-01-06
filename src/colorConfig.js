@@ -55,6 +55,41 @@ export function getLevel2Color(colorName) {
     return LEVEL2_COLORS[colorName] || '#ffffff';
 }
 
+// 生成颜色的淡色版本（5个从深到浅）
+export function generateTintVariants(baseColor) {
+    // 将颜色转为RGB
+    const parseColor = (color) => {
+        if (color === 'steelblue') return [70, 130, 180];
+        if (color === 'indianred') return [205, 92, 92];
+        if (color.startsWith('#')) {
+            const hex = color.slice(1);
+            return [
+                parseInt(hex.slice(0, 2), 16),
+                parseInt(hex.slice(2, 4), 16),
+                parseInt(hex.slice(4, 6), 16)
+            ];
+        }
+        return [128, 128, 128];
+    };
+
+    const [r, g, b] = parseColor(baseColor);
+    const variants = [];
+
+    // 生成5个版本：第一个是原色，后面4个是淡色版本
+    variants.push(`rgb(${r}, ${g}, ${b})`); // 原色
+
+    // 生成4个淡色版本：混合白色的比例从20%到80%
+    for (let i = 1; i < 5; i++) {
+        const ratio = 0.2 * i; // 20%, 40%, 60%, 80%
+        const nr = Math.round(r + (255 - r) * ratio);
+        const ng = Math.round(g + (255 - g) * ratio);
+        const nb = Math.round(b + (255 - b) * ratio);
+        variants.push(`rgb(${nr}, ${ng}, ${nb})`);
+    }
+
+    return variants;
+}
+
 // 初始化CSS变量（在组件挂载时调用）
 export function initColorCSSVariables() {
     const root = document.documentElement;

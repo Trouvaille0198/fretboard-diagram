@@ -92,7 +92,9 @@ export function generateClassValue(elem, update) {
         classValues[0] = update.type || 'note';
     }
     if ('color' in update) {
-        classValues[1] = update.color || 'white';
+        // 如果是自定义颜色对象，使用其 name 属性
+        const colorName = typeof update.color === 'object' ? update.color.name : update.color;
+        classValues[1] = colorName || 'white';
     }
     if ('visibility' in update) {
         classValues[2] = update.visibility || 'transparent';
@@ -116,9 +118,20 @@ export function updateNote(elem, data, update) {
         }
     }
 
+    // 处理第一层级自定义颜色
+    const circleElem = elem.querySelector('circle');
+    if ('color' in update && circleElem) {
+        if (typeof update.color === 'object' && update.color.custom) {
+            // 使用自定义颜色，直接设置 fill
+            circleElem.setAttribute('fill', update.color.custom);
+        } else {
+            // 使用预定义颜色，移除 fill 属性让 CSS 控制
+            circleElem.removeAttribute('fill');
+        }
+    }
+
     // 处理第二层级颜色（color2）- 设置到 circle 的 stroke 属性
     if ('color2' in update) {
-        const circleElem = elem.querySelector('circle');
         if (circleElem) {
             if (update.color2 && update.color2 !== null) {
                 const level2Color = getLevel2Color(update.color2);
