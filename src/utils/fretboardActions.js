@@ -91,9 +91,12 @@ export function selectColor(level, color, selectedColorLevel, selectedColor, set
 }
 
 export function cycleLevel1Color(selectedColorLevel, selectedColor, selectColor) {
-  if (selectedColorLevel === 1 && selectedColor) {
+  // 获取实际的颜色名称
+  const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+
+  if (selectedColorLevel === 1 && actualColorName) {
     // 如果当前已选中第一层级颜色，找到下一个
-    const currentIndex = LEVEL1_COLOR_ORDER.indexOf(selectedColor);
+    const currentIndex = LEVEL1_COLOR_ORDER.indexOf(actualColorName);
     const nextIndex = (currentIndex + 1) % LEVEL1_COLOR_ORDER.length;
     selectColor(1, LEVEL1_COLOR_ORDER[nextIndex]);
   } else {
@@ -103,9 +106,12 @@ export function cycleLevel1Color(selectedColorLevel, selectedColor, selectColor)
 }
 
 export function cycleLevel2Color(selectedColorLevel, selectedColor, selectColor) {
-  if (selectedColorLevel === 2 && selectedColor) {
+  // 获取实际的颜色名称
+  const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+
+  if (selectedColorLevel === 2 && actualColorName) {
     // 如果当前已选中第二层级颜色，找到下一个
-    const currentIndex = LEVEL2_COLOR_ORDER.indexOf(selectedColor);
+    const currentIndex = LEVEL2_COLOR_ORDER.indexOf(actualColorName);
     const nextIndex = (currentIndex + 1) % LEVEL2_COLOR_ORDER.length;
     selectColor(2, LEVEL2_COLOR_ORDER[nextIndex]);
   } else {

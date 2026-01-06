@@ -560,7 +560,15 @@ export function FretboardSVG({
           
           if (!hasColor2) return null;
           
-          const strokeColor = getLevel2Color(currentColor2);
+          // 处理自定义颜色对象
+          let strokeColor;
+          if (typeof currentColor2 === 'object' && currentColor2.custom) {
+            strokeColor = currentColor2.custom;
+          } else if (typeof currentColor2 === 'object' && currentColor2.name) {
+            strokeColor = getLevel2Color(currentColor2.name);
+          } else {
+            strokeColor = getLevel2Color(currentColor2);
+          }
           
           return (
             <circle
