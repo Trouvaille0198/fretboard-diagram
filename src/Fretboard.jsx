@@ -77,7 +77,8 @@ function Fretboard() {
 
   // 下载选项状态
   const [includeMarkers, setIncludeMarkers] = useState(true);
-  const [copyOnly, setCopyOnly] = useState(false);
+  const [copyOnly, setCopyOnly] = useState(true);
+  const [showNotes, setShowNotes] = useState(false);
 
   // Refs
   const svgElementRef = useRef(null);
@@ -121,49 +122,6 @@ function Fretboard() {
   useEffect(() => {
     initColorCSSVariables();
   }, []);
-
-  // 页面关闭/刷新前自动保存状态
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      // 在页面关闭前静默保存状态
-      saveFretboardStateSilently({
-        data,
-        startFret,
-        endFret,
-        enharmonic,
-        displayMode,
-        rootNote,
-        visibility,
-        svgElementRef
-      });
-    };
-
-    // 监听页面关闭/刷新事件
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    // 监听页面隐藏事件（移动端和某些浏览器使用）
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        saveFretboardStateSilently({
-          data,
-          startFret,
-          endFret,
-          enharmonic,
-          displayMode,
-          rootNote,
-          visibility,
-          svgElementRef
-        });
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility]);
 
   // 自动解除selected状态
   useEffect(() => {
@@ -408,15 +366,23 @@ function Fretboard() {
   }, [visibility, setData, setSelected, data, setStartFret, setEndFret, setDisplayMode, setRootNote, setEnharmonic]);
 
   const saveSVGMemo = useCallback(() => {
-    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, setToastMessage, setToastType);
-  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, setToastMessage, setToastType]);
+    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility);
+  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility]);
 
   const setFretWindowMemo = useCallback((fretWindow) => {
     setFretWindow(fretWindow, startFret, endFret, selected, setSelected, data, setData, updateNote, setToastMessage, setStartFret, setEndFret);
   }, [startFret, endFret, selected, setSelected, data, setData, setToastMessage, setStartFret, setEndFret]);
 
   // 保存指板状态
+  // 防抖：避免短时间内重复保存
+  const lastSaveTimeRef = useRef(0);
   const saveFretboardStateMemo = useCallback((forceNew = false) => {
+    const now = Date.now();
+    if (now - lastSaveTimeRef.current < 300) { // 300ms内只允许保存一次
+      return;
+    }
+    lastSaveTimeRef.current = now;
+    
     saveFretboardState({
       data,
       startFret,
@@ -463,21 +429,25 @@ function Fretboard() {
       setMousePosition, setPreviewHoverNote, setUseColor2Level, setSelectedConnection,
       setConnectionToolbarVisible, setToastMessage, setToastType, setSelectedHistoryState]);
 
-  // 键盘事件
+  // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
+  const handlerParamsRef = useRef();
+  handlerParamsRef.current = {
+    selected, deleteNote, selectColor: selectColorMemo, cycleLevel1Color: cycleLevel1ColorMemo,
+    cycleLevel2Color: cycleLevel2ColorMemo, undo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
+    connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
+    setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardState: saveFretboardStateMemo,
+    toggleVisibility: toggleVisibilityMemo, reset: resetMemo
+  };
+
   useEffect(() => {
-    const handleKeyDown = createKeyboardHandler({
-      selected, deleteNote, selectColor: selectColorMemo, cycleLevel1Color: cycleLevel1ColorMemo,
-      cycleLevel2Color: cycleLevel2ColorMemo, undo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
-      connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardState: saveFretboardStateMemo,
-      toggleVisibility: toggleVisibilityMemo, reset: resetMemo
-    });
+    const handleKeyDown = (event) => {
+      const handler = createKeyboardHandler(handlerParamsRef.current);
+      handler(event);
+    };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, deleteNote, selectColorMemo, cycleLevel1ColorMemo, cycleLevel2ColorMemo, undo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
-      connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardStateMemo, toggleVisibilityMemo, resetMemo]);
+  }, []); // 空依赖数组，只注册一次
 
   // 生成字符串路径
   const generateStringPathMemo = useCallback((stringIndex) => generateStringPath(stringIndex, fretboardWidth), [fretboardWidth]);
@@ -491,6 +461,11 @@ function Fretboard() {
       <div className="title-header">
         <h1>Fretboard Diagram Generator</h1>
         <div className="datetime">{currentDateTime}</div>
+        {selectedHistoryState && (
+          <div className="selected-state-name" title="当前选中的历史状态，保存将更新此状态">
+            📌 {selectedHistoryState.name}
+          </div>
+        )}
       </div>
       <figure id="fretboard-diagram-creator" className="half-full">
         <FretboardSVG
@@ -583,6 +558,8 @@ function Fretboard() {
         setIncludeMarkers={setIncludeMarkers}
         copyOnly={copyOnly}
         setCopyOnly={setCopyOnly}
+        showNotes={showNotes}
+        setShowNotes={setShowNotes}
         onSaveState={saveFretboardStateMemo}
         onReset={resetMemo}
         rootNote={rootNote}
