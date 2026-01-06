@@ -22,10 +22,20 @@ export function createKeyboardHandler(params) {
         setUseColor2Level,
         saveFretboardState,
         toggleVisibility,
-        reset
+        reset,
+        saveSVG
     } = params;
 
     return (event) => {
+        // Ctrl+C 复制 SVG
+        if (event.ctrlKey && event.code === 'KeyC' && !event.shiftKey) {
+            event.preventDefault();
+            if (saveSVG) {
+                saveSVG();
+            }
+            return;
+        }
+
         // Ctrl+Shift+S 强制新建状态
         if (event.ctrlKey && event.shiftKey && event.code === 'KeyS') {
             event.preventDefault();

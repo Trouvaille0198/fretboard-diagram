@@ -76,44 +76,53 @@ function showImageForManualCopy(img, dataUrl, setToastMessage, setToastType) {
 }
 
 export function selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor, customColor = null) {
-  // 获取实际的颜色名称
-  const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
-
-  // 如果点击的是当前已选中的颜色和层级，则取消选中
-  if (selectedColorLevel === level && actualColorName === color && !customColor) {
-    setSelectedColorLevel(null);
-    setSelectedColor(null);
-  } else {
-    setSelectedColorLevel(level);
-    // 如果有自定义颜色，存储为对象
-    setSelectedColor(customColor ? { name: color, custom: customColor } : color);
-  }
+  setSelectedColorLevel(level);
+  // 如果有自定义颜色，存储为对象
+  setSelectedColor(customColor ? { name: color, custom: customColor } : color);
 }
 
-export function cycleLevel1Color(selectedColorLevel, selectedColor, selectColor) {
+export function cycleLevel1Color(selectedColorLevel, selectedColor, selectColor, generateTintVariants, getLevel1FillColor, inTintMode) {
   // 获取实际的颜色名称
   const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
 
   if (selectedColorLevel === 1 && actualColorName) {
-    // 如果当前已选中第一层级颜色，找到下一个
-    const currentIndex = LEVEL1_COLOR_ORDER.indexOf(actualColorName);
-    const nextIndex = (currentIndex + 1) % LEVEL1_COLOR_ORDER.length;
-    selectColor(1, LEVEL1_COLOR_ORDER[nextIndex]);
+    // 如果在异色模式，在异色数组中循环
+    if (inTintMode) {
+      const tintVariants = generateTintVariants(getLevel1FillColor(actualColorName));
+      const currentCustom = typeof selectedColor === 'object' ? selectedColor.custom : null;
+      const currentIndex = currentCustom ? tintVariants.indexOf(currentCustom) : -1;
+      const nextIndex = (currentIndex + 1) % tintVariants.length;
+      selectColor(1, actualColorName, tintVariants[nextIndex]);
+    } else {
+      // 否则切换到下一个主颜色
+      const currentIndex = LEVEL1_COLOR_ORDER.indexOf(actualColorName);
+      const nextIndex = (currentIndex + 1) % LEVEL1_COLOR_ORDER.length;
+      selectColor(1, LEVEL1_COLOR_ORDER[nextIndex]);
+    }
   } else {
     // 如果未选中或选中其他层级，选择第一个颜色
     selectColor(1, LEVEL1_COLOR_ORDER[0]);
   }
 }
 
-export function cycleLevel2Color(selectedColorLevel, selectedColor, selectColor) {
+export function cycleLevel2Color(selectedColorLevel, selectedColor, selectColor, generateTintVariants, getLevel2Color, inTintMode) {
   // 获取实际的颜色名称
   const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
 
   if (selectedColorLevel === 2 && actualColorName) {
-    // 如果当前已选中第二层级颜色，找到下一个
-    const currentIndex = LEVEL2_COLOR_ORDER.indexOf(actualColorName);
-    const nextIndex = (currentIndex + 1) % LEVEL2_COLOR_ORDER.length;
-    selectColor(2, LEVEL2_COLOR_ORDER[nextIndex]);
+    // 如果在异色模式，在异色数组中循环
+    if (inTintMode) {
+      const tintVariants = generateTintVariants(getLevel2Color(actualColorName));
+      const currentCustom = typeof selectedColor === 'object' ? selectedColor.custom : null;
+      const currentIndex = currentCustom ? tintVariants.indexOf(currentCustom) : -1;
+      const nextIndex = (currentIndex + 1) % tintVariants.length;
+      selectColor(2, actualColorName, tintVariants[nextIndex]);
+    } else {
+      // 否则切换到下一个主颜色
+      const currentIndex = LEVEL2_COLOR_ORDER.indexOf(actualColorName);
+      const nextIndex = (currentIndex + 1) % LEVEL2_COLOR_ORDER.length;
+      selectColor(2, LEVEL2_COLOR_ORDER[nextIndex]);
+    }
   } else {
     // 如果未选中或选中其他层级，选择第一个颜色
     selectColor(2, LEVEL2_COLOR_ORDER[0]);
@@ -231,26 +240,30 @@ export function saveSVG(selected, setSelected, data, updateNote, connectionToolb
   // 先调用 inlineCSS，确保样式正确内联
   const svgCopy = inlineCSS(svgClone);
 
-  // 如果不显示音符，对所有 note 执行 toggle 操作（hidden ↔ transparent）
-  // 只影响非 visible/selected 的 note
+  // showNotes checkbox 模拟 Toggle 按钮效果：切换 hidden ↔ transparent
+  // false 时执行切换（与 Toggle 按钮一样）
   if (!showNotes) {
     const notes = svgCopy.querySelectorAll('g.note');
     notes.forEach(note => {
-      // 检查 note 是否是 visible 或 selected，如果是则跳过
+      // 跳过 visible 和 selected 的 note
       if (note.classList.contains('visible') || note.classList.contains('selected')) {
         return;
       }
 
-      // Toggle: hidden <-> transparent
+      const text = note.querySelector('text');
+      
+      // hidden -> transparent
       if (note.classList.contains('hidden')) {
-        // hidden -> transparent: 显示圆圈，不显示文本
-        const text = note.querySelector('text');
-        if (text) {
-          text.style.opacity = '0';
-        }
+        note.classList.remove('hidden');
+        note.classList.add('transparent');
+        if (text) text.style.opacity = '0';
         note.style.opacity = '1';
-      } else {
-        // transparent -> hidden: 都不显示
+      } 
+      // transparent -> hidden
+      else if (note.classList.contains('transparent')) {
+        note.classList.remove('transparent');
+        note.classList.add('hidden');
+        if (text) text.style.opacity = '0';
         note.style.opacity = '0';
       }
     });
