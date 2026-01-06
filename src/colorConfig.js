@@ -9,16 +9,16 @@ export const LEVEL1_COLORS = {
         button: 'var(--background-color)' // 调色盘按钮背景色
     },
     blue: {
-        fill: 'steelblue',           // 音符填充色
-        button: 'steelblue'          // 调色盘按钮背景色
+        fill: '#4682b4',           // 音符填充色
+        button: '#4682b4'          // 调色盘按钮背景色
     },
     green: {
         fill: '#00a080',             // 音符填充色（更绿的绿色）
         button: '#00a080'            // 调色盘按钮背景色
     },
     red: {
-        fill: 'indianred',           // 音符填充色
-        button: 'indianred'          // 调色盘按钮背景色
+        fill: '#cd5c5c',           // 音符填充色
+        button: '#cd5c5c'          // 调色盘按钮背景色
     },
     brown: {
         fill: '#8b4513',             // 音符填充色
@@ -59,8 +59,6 @@ export function getLevel2Color(colorName) {
 export function generateTintVariants(baseColor) {
     // 将颜色转为RGB
     const parseColor = (color) => {
-        if (color === 'steelblue') return [70, 130, 180];
-        if (color === 'indianred') return [205, 92, 92];
         if (color.startsWith('#')) {
             const hex = color.slice(1);
             return [
@@ -73,21 +71,73 @@ export function generateTintVariants(baseColor) {
     };
 
     const [r, g, b] = parseColor(baseColor);
+    const [h, s, l] = rgbToHsl(r, g, b);
     const variants = [];
 
-    // 生成5个版本：第一个是原色，后面4个是淡色版本
-    variants.push(`rgb(${r}, ${g}, ${b})`); // 原色
+    // 生成5个版本：浓二档、浓一档、原色、淡一档、淡二档
+    // 浓：增加饱和度，降低亮度（向色轮边缘移动）
+    // 淡：降低饱和度，增加亮度（向色轮中心移动）
+    const adjustments = [
+        { s: 30, l: -25 },  // 浓二档
+        { s: 15, l: -15 },   // 浓一档
+        { s: 0, l: 0 },     // 原色
+        { s: -15, l: 10 },  // 淡一档
+        { s: -30, l: 20 }   // 淡二档
+    ];
 
-    // 生成4个淡色版本：混合白色的比例从20%到80%
-    for (let i = 1; i < 5; i++) {
-        const ratio = 0.2 * i; // 20%, 40%, 60%, 80%
-        const nr = Math.round(r + (255 - r) * ratio);
-        const ng = Math.round(g + (255 - g) * ratio);
-        const nb = Math.round(b + (255 - b) * ratio);
+    adjustments.forEach(({ s: sAdj, l: lAdj }) => {
+        const newS = Math.max(0, Math.min(100, s + sAdj));
+        const newL = Math.max(0, Math.min(100, l + lAdj));
+        const [nr, ng, nb] = hslToRgb(h, newS, newL);
         variants.push(`rgb(${nr}, ${ng}, ${nb})`);
-    }
+    });
 
     return variants;
+}
+
+// RGB 转 HSL
+function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+        h = s = 0;
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+        }
+    }
+    return [h * 360, s * 100, l * 100];
+}
+
+// HSL 转 RGB
+function hslToRgb(h, s, l) {
+    h /= 360; s /= 100; l /= 100;
+    let r, g, b;
+
+    if (s === 0) {
+        r = g = b = l;
+    } else {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1 / 6) return p + (q - p) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+            return p;
+        };
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
 
 // 初始化CSS变量（在组件挂载时调用）

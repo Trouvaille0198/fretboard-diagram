@@ -13,7 +13,7 @@ const LEVEL1_SHORTCUTS = {
   black: 'D'
 };
 
-export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor }) {
+export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor, onDoubleClickColor }) {
   // 获取实际的颜色名称（处理自定义颜色对象）
   const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
   
@@ -26,6 +26,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor 
             title={LEVEL1_SHORTCUTS[colorName] ? `${colorName} (${LEVEL1_SHORTCUTS[colorName]})` : colorName}
             className={`color ${colorName} ${selectedColorLevel === 1 && actualColorName === colorName ? 'selected' : ''}`}
             onClick={() => onSelectColor(1, colorName)}
+            onDoubleClick={() => onDoubleClickColor && onDoubleClickColor(1, colorName)}
           />
         ))}
       </div>
@@ -37,6 +38,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor 
             title={`${colorName} (A/D)`}
             className={`color ${colorName} level2 ${selectedColorLevel === 2 && actualColorName === colorName ? 'selected' : ''}`}
             onClick={() => onSelectColor(2, colorName)}
+            onDoubleClick={() => onDoubleClickColor && onDoubleClickColor(2, colorName)}
           />
         ))}
       </div>

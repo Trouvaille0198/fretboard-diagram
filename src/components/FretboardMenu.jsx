@@ -8,7 +8,9 @@ import { getLevel1FillColor, getLevel2Color, generateTintVariants } from '../col
 export function FretboardMenu({
   selectedColorLevel,
   selectedColor,
+  inTintMode,
   onSelectColor,
+  onDoubleClickColor,
   enharmonic,
   onToggleEnharmonic,
   onToggleVisibility,
@@ -37,11 +39,11 @@ export function FretboardMenu({
 }) {
   // 如果选中的是第一层颜色且不是trans，生成淡色版本
   const colorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
-  const showLevel1TintVariants = selectedColorLevel === 1 && colorName && colorName !== 'trans';
+  const showLevel1TintVariants = inTintMode && selectedColorLevel === 1 && colorName && colorName !== 'trans';
   const level1TintVariants = showLevel1TintVariants ? generateTintVariants(getLevel1FillColor(colorName)) : [];
   
   // 如果选中的是第二层颜色，生成淡色版本
-  const showLevel2TintVariants = selectedColorLevel === 2 && colorName;
+  const showLevel2TintVariants = inTintMode && selectedColorLevel === 2 && colorName;
   const level2TintVariants = showLevel2TintVariants ? generateTintVariants(getLevel2Color(colorName)) : [];
 
   return (
@@ -49,34 +51,48 @@ export function FretboardMenu({
       {/* 左侧：颜色+两行工具栏 */}
       <div className="menu-left">
         {/* 淡色版本和调色板在同一区域 */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-          {/* 第一层淡色版本显示在最左侧，纵向排列 */}
-          {showLevel1TintVariants && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {level1TintVariants.map((color, index) => (
-                <button
-                  key={index}
-                  className="color color-tint"
-                  style={{ backgroundColor: color }}
-                  onClick={() => onSelectColor(1, colorName, color)}
-                  title={`淡色版本 ${index + 1}`}
-                />
-              ))}
-            </div>
-          )}
-          
-          {/* 第二层淡色版本显示在最左侧，纵向排列 */}
-          {showLevel2TintVariants && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {level2TintVariants.map((color, index) => (
-                <button
-                  key={index}
-                  className="color color-tint level2"
-                  style={{ borderColor: color, borderWidth: '6px', borderStyle: 'solid' }}
-                  onClick={() => onSelectColor(2, colorName, color)}
-                  title={`淡色版本 ${index + 1}`}
-                />
-              ))}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', position: 'relative' }}>
+          {/* 异色版本绝对定位在左侧，不占用布局空间 */}
+          {(showLevel1TintVariants || showLevel2TintVariants) && (
+            <div style={{ 
+              position: 'absolute',
+              left: '-48px',
+              top: '0',
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '4px' 
+            }}>
+              {/* 第一层淡色版本显示在最左侧，纵向排列 */}
+              {showLevel1TintVariants && level1TintVariants.map((color, index) => {
+                const isSelected = selectedColorLevel === 1 && 
+                                   typeof selectedColor === 'object' && 
+                                   selectedColor.custom === color;
+                return (
+                  <button
+                    key={index}
+                    className={`color color-tint ${isSelected ? 'selected' : ''}`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => onSelectColor(1, colorName, color)}
+                    title={`异色版本 ${index + 1}`}
+                  />
+                );
+              })}
+              
+              {/* 第二层淡色版本显示在最左侧，纵向排列 */}
+              {showLevel2TintVariants && level2TintVariants.map((color, index) => {
+                const isSelected = selectedColorLevel === 2 && 
+                                   typeof selectedColor === 'object' && 
+                                   selectedColor.custom === color;
+                return (
+                  <button
+                    key={index}
+                    className={`color color-tint level2 ${isSelected ? 'selected' : ''}`}
+                    style={{ borderColor: color, borderWidth: '6px', borderStyle: 'solid' }}
+                    onClick={() => onSelectColor(2, colorName, color)}
+                    title={`异色版本 ${index + 1}`}
+                  />
+                );
+              })}
             </div>
           )}
           
@@ -84,6 +100,7 @@ export function FretboardMenu({
             selectedColorLevel={selectedColorLevel}
             selectedColor={selectedColor}
             onSelectColor={onSelectColor}
+            onDoubleClickColor={onDoubleClickColor}
           />
         </div>
         <div id="global-actions">
