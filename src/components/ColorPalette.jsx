@@ -1,5 +1,5 @@
 import React from 'react';
-import { LEVEL1_COLORS, LEVEL2_COLORS } from '../colorConfig';
+import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor, generateTintVariants } from '../colorConfig';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
 const LEVEL2_COLOR_ORDER = Object.keys(LEVEL2_COLORS);
@@ -14,6 +14,9 @@ const LEVEL1_SHORTCUTS = {
 };
 
 export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor }) {
+  // 获取实际的颜色名称（处理自定义颜色对象）
+  const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+  
   return (
     <div id="color-selector">
       <div className="color-palette-row">
@@ -21,11 +24,12 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor 
           <button
             key={colorName}
             title={LEVEL1_SHORTCUTS[colorName] ? `${colorName} (${LEVEL1_SHORTCUTS[colorName]})` : colorName}
-            className={`color ${colorName} ${selectedColorLevel === 1 && selectedColor === colorName ? 'selected' : ''}`}
+            className={`color ${colorName} ${selectedColorLevel === 1 && actualColorName === colorName ? 'selected' : ''}`}
             onClick={() => onSelectColor(1, colorName)}
           />
         ))}
       </div>
+      
       <div className="color-palette-row">
         {LEVEL2_COLOR_ORDER.map(colorName => (
           <button
