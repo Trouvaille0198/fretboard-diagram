@@ -121,9 +121,14 @@ export function updateNote(elem, data, update) {
     // 处理第一层级自定义颜色
     const circleElem = elem.querySelector('circle');
     if ('color' in update && circleElem) {
-        if (typeof update.color === 'object' && update.color.custom) {
-            // 使用自定义颜色，直接设置 fill
-            circleElem.setAttribute('fill', update.color.custom);
+        if (typeof update.color === 'object') {
+            if (update.color.custom) {
+                // 使用自定义颜色，直接设置 fill
+                circleElem.setAttribute('fill', update.color.custom);
+            } else {
+                // 对象但没有custom，移除 fill 属性让 CSS 控制
+                circleElem.removeAttribute('fill');
+            }
         } else {
             // 使用预定义颜色，移除 fill 属性让 CSS 控制
             circleElem.removeAttribute('fill');

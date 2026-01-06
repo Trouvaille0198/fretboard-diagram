@@ -178,7 +178,11 @@ export function createNoteClickHandler(params) {
 
         // 如果选中了第一层级调色盘
         if (selectedColorLevel === 1 && selectedColor !== null) {
-            if (currentColor === selectedColor) {
+            // 获取实际的颜色名称用于比较
+            const actualSelectedColorName = typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+            const actualCurrentColorName = currentColor && typeof currentColor === 'object' ? currentColor.name : currentColor;
+
+            if (actualCurrentColorName === actualSelectedColorName) {
                 if (currentVisibility === 'visible') {
                     if (currentColor2 && currentColor2 !== null) {
                         updateNoteFn(noteElement, data, { color: 'white', visibility: 'visible' });
@@ -228,7 +232,11 @@ export function createNoteClickHandler(params) {
 
         // 如果选中了第二层级调色盘
         if (selectedColorLevel === 2 && selectedColor !== null) {
-            if (currentColor2 === selectedColor) {
+            // 获取实际的颜色名称用于比较
+            const actualSelectedColorName = typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+            const actualCurrentColor2Name = currentColor2 && typeof currentColor2 === 'object' ? currentColor2.name : currentColor2;
+
+            if (actualCurrentColor2Name === actualSelectedColorName) {
                 const newVisibility = (currentColor === 'white') ? visibility : 'visible';
                 updateNoteFn(noteElement, data, { color2: null, visibility: newVisibility });
                 setData(prevData => {
