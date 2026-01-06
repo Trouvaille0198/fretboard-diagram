@@ -35,7 +35,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onSelectColor 
           <button
             key={colorName}
             title={`${colorName} (A/D)`}
-            className={`color ${colorName} level2 ${selectedColorLevel === 2 && selectedColor === colorName ? 'selected' : ''}`}
+            className={`color ${colorName} level2 ${selectedColorLevel === 2 && actualColorName === colorName ? 'selected' : ''}`}
             onClick={() => onSelectColor(2, colorName)}
           />
         ))}
