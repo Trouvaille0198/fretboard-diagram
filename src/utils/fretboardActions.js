@@ -75,14 +75,18 @@ function showImageForManualCopy(img, dataUrl, setToastMessage, setToastType) {
   }
 }
 
-export function selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor) {
+export function selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor, customColor = null) {
+  // 获取实际的颜色名称
+  const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+
   // 如果点击的是当前已选中的颜色和层级，则取消选中
-  if (selectedColorLevel === level && selectedColor === color) {
+  if (selectedColorLevel === level && actualColorName === color && !customColor) {
     setSelectedColorLevel(null);
     setSelectedColor(null);
   } else {
     setSelectedColorLevel(level);
-    setSelectedColor(color);
+    // 如果有自定义颜色，存储为对象
+    setSelectedColor(customColor ? { name: color, custom: customColor } : color);
   }
 }
 

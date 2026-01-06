@@ -301,12 +301,25 @@ button.color {
     transition: border-color 0.2s;
 }
 
+/* 淡色版本按钮样式 */
+button.color.color-tint {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+}
+
 button.color:hover {
     border-color: rgba(255, 255, 255, 0.4);
 }
 
 button.color.selected {
-    border: 2px solid var(--text-color);
+    box-shadow: 0 0 0 2px var(--text-color);
+}
+
+/* 第二层颜色选中状态优化 */
+button.color.level2.selected {
+    border-width: 7px;
+    box-shadow: 0 0 0 1px var(--text-color);
 }
 
 button {
@@ -366,29 +379,36 @@ button {
 }
 
 /* 第二层级调色盘颜色 - 配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
+/* 第二层颜色使用环状（空心）样式 */
+.color.level2 {
+    background-color: transparent;
+    border: 6px solid;
+    box-sizing: border-box;
+}
+
 .color.level2.yellow {
-    background-color: var(--color-level2-yellow);
+    border-color: var(--color-level2-yellow);
 }
 
 .color.level2.cyan {
-    background-color: var(--color-level2-cyan);
+    border-color: var(--color-level2-cyan);
 }
 
 .color.level2.pink {
-    background-color: var(--color-level2-pink);
+    border-color: var(--color-level2-pink);
 }
 
 .color.level2.grass-green {
-    background-color: var(--color-level2-grass-green);
+    border-color: var(--color-level2-grass-green);
 }
 
 .color.level2.orange {
-    background-color: var(--color-level2-orange);
+    border-color: var(--color-level2-orange);
 }
 
 .color.level2.white {
-    background-color: var(--color-level2-white);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-color: var(--color-level2-white);
+    border-width: 6px;
 }
 
 /* 删除调色盘按钮 */

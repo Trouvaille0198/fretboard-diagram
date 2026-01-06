@@ -331,8 +331,8 @@ function Fretboard() {
   }, [openConnectionToolbarMemo]);
 
   // 工具函数
-  const selectColorMemo = useCallback((level, color) => {
-    selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor);
+  const selectColorMemo = useCallback((level, color, customColor = null) => {
+    selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor, customColor);
   }, [selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor]);
 
   const cycleLevel1ColorMemo = useCallback(() => {

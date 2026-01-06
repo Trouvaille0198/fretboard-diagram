@@ -130,6 +130,8 @@ export function createNoteClickHandler(params) {
 
                     const connectionId = existingConnectionId || `conn-${Date.now()}`;
                     const connectionColor = calculateConnectionColor(startNoteDataWithColor, endNoteData, connectionId);
+
+                    // 处理自定义颜色对象，保存完整的颜色信息
                     const actualStartColor = startNoteDataWithColor.color || 'white';
                     const actualEndColor = endNoteData.color || 'white';
                     const gradientColors = { start: actualStartColor, end: actualEndColor };
@@ -262,7 +264,7 @@ export function createNoteClickHandler(params) {
             // 自动选中透明色
             setSelectedColorLevel(1);
             setSelectedColor(defaultTransColor);
-            
+
             // 用透明色给note着色
             if (currentColor === defaultTransColor) {
                 if (currentVisibility === 'visible') {

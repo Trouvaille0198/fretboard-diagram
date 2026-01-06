@@ -3,6 +3,7 @@ import { CONSTS } from '../constants';
 import PianoKeyboard from '../PianoKeyboard';
 import { ColorPalette } from './ColorPalette';
 import { FretRangeSlider } from './FretRangeSlider';
+import { getLevel1FillColor, generateTintVariants } from '../colorConfig';
 
 export function FretboardMenu({
   selectedColorLevel,
@@ -34,15 +35,38 @@ export function FretboardMenu({
   showNotes,
   setShowNotes
 }) {
+  // 如果选中的是第一层颜色且不是trans，生成淡色版本
+  const colorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+  const showTintVariants = selectedColorLevel === 1 && colorName && colorName !== 'trans';
+  const tintVariants = showTintVariants ? generateTintVariants(getLevel1FillColor(colorName)) : [];
+
   return (
     <div className="menu">
       {/* 左侧：颜色+两行工具栏 */}
       <div className="menu-left">
-        <ColorPalette 
-          selectedColorLevel={selectedColorLevel}
-          selectedColor={selectedColor}
-          onSelectColor={onSelectColor}
-        />
+        {/* 淡色版本和调色板在同一区域 */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+          {/* 淡色版本显示在最左侧，纵向排列 */}
+          {showTintVariants && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {tintVariants.map((color, index) => (
+                <button
+                  key={index}
+                  className="color color-tint"
+                  style={{ backgroundColor: color }}
+                  onClick={() => onSelectColor(1, colorName, color)}
+                  title={`淡色版本 ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+          
+          <ColorPalette 
+            selectedColorLevel={selectedColorLevel}
+            selectedColor={selectedColor}
+            onSelectColor={onSelectColor}
+          />
+        </div>
         <div id="global-actions">
           <button
             id="enharmonic"

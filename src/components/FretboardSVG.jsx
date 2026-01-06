@@ -99,14 +99,30 @@ export function FretboardSVG({
           if (conn.color && conn.color.startsWith('gradient-')) {
             // 如果没有gradientColors，尝试从conn中获取
             const gradientColors = conn.gradientColors || { start: 'white', end: 'white' };
-            const startColorName = gradientColors.start;
-            const endColorName = gradientColors.end;
+            let startColorName = gradientColors.start;
+            let endColorName = gradientColors.end;
+            
+            // 处理自定义颜色对象（淡色版本）
+            let startColorValue = null;
+            let endColorValue = null;
+            
+            if (typeof startColorName === 'object' && startColorName.custom) {
+              // 自定义颜色，直接使用 custom 颜色值
+              startColorValue = startColorName.custom;
+              startColorName = startColorName.name; // 用于判断 white/trans
+            }
+            
+            if (typeof endColorName === 'object' && endColorName.custom) {
+              // 自定义颜色，直接使用 custom 颜色值
+              endColorValue = endColorName.custom;
+              endColorName = endColorName.name; // 用于判断 white/trans
+            }
             
             // 判断颜色是第一层级还是第二层级
             const isStartLevel1 = startColorName in LEVEL1_COLORS;
             const isEndLevel1 = endColorName in LEVEL1_COLORS;
-            const startColor = isStartLevel1 ? getLevel1FillColor(startColorName) : getLevel2Color(startColorName);
-            const endColor = isEndLevel1 ? getLevel1FillColor(endColorName) : getLevel2Color(endColorName);
+            const startColor = startColorValue || (isStartLevel1 ? getLevel1FillColor(startColorName) : getLevel2Color(startColorName));
+            const endColor = endColorValue || (isEndLevel1 ? getLevel1FillColor(endColorName) : getLevel2Color(endColorName));
             
             // 获取起点和终点的位置，用于设置渐变方向
             const startNotePos = getNotePositionMemo(conn.startNoteId);
