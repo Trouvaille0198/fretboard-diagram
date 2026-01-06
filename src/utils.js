@@ -139,7 +139,15 @@ export function updateNote(elem, data, update) {
     if ('color2' in update) {
         if (circleElem) {
             if (update.color2 && update.color2 !== null) {
-                const level2Color = getLevel2Color(update.color2);
+                // 处理自定义颜色对象（与 FretboardSVG.jsx 中的逻辑一致）
+                let level2Color;
+                if (typeof update.color2 === 'object' && update.color2.custom) {
+                    level2Color = update.color2.custom;
+                } else if (typeof update.color2 === 'object' && update.color2.name) {
+                    level2Color = getLevel2Color(update.color2.name);
+                } else {
+                    level2Color = getLevel2Color(update.color2);
+                }
                 circleElem.setAttribute('stroke', level2Color);
                 circleElem.setAttribute('stroke-width', '4.5');
             } else {
@@ -332,17 +340,65 @@ export function noteToSolfege(noteIndex, rootNote, enharmonic) {
 }
 
 // 获取颜色的RGB值
+// 提取实际的颜色值（处理自定义颜色对象）
+export function getActualColorValue(color) {
+    // 如果是对象（异色模式），返回 custom 颜色值
+    if (color && typeof color === 'object' && color.custom) {
+        return color.custom;
+    }
+    // 如果是对象但没有 custom，返回 name
+    if (color && typeof color === 'object' && color.name) {
+        return color.name;
+    }
+    // 否则直接返回（字符串）
+    return color;
+}
+
+// 提取颜色名称（用于比较）
+export function getColorName(color) {
+    if (color && typeof color === 'object') {
+        return color.name || color;
+    }
+    return color;
+}
+
 function getColorRGB(colorName) {
-    if (colorName === 'white') {
+    // 处理自定义颜色对象
+    const actualColor = getActualColorValue(colorName);
+    const colorNameStr = getColorName(colorName);
+
+    // 如果是自定义颜色值（hex），直接解析
+    if (typeof actualColor === 'string' && actualColor.startsWith('#')) {
+        const hex = actualColor.slice(1);
+        return {
+            r: parseInt(hex.slice(0, 2), 16),
+            g: parseInt(hex.slice(2, 4), 16),
+            b: parseInt(hex.slice(4, 6), 16)
+        };
+    }
+
+    // 如果是 rgb(...) 格式，直接解析
+    if (typeof actualColor === 'string' && actualColor.startsWith('rgb')) {
+        const matches = actualColor.match(/\d+/g);
+        if (matches && matches.length >= 3) {
+            return {
+                r: parseInt(matches[0], 10),
+                g: parseInt(matches[1], 10),
+                b: parseInt(matches[2], 10)
+            };
+        }
+    }
+
+    if (colorNameStr === 'white') {
         return { r: 170, g: 170, b: 170 }; // 灰色，用于white note
     }
     // trans 是透明色，使用黑色背景
-    if (colorName === 'trans') {
+    if (colorNameStr === 'trans') {
         return { r: 0, g: 0, b: 0 }; // 黑色背景（透明色）
     }
     // 先尝试第一层级颜色
-    if (colorName in LEVEL1_COLORS) {
-        const colorValue = getLevel1FillColor(colorName);
+    if (colorNameStr in LEVEL1_COLORS) {
+        const colorValue = getLevel1FillColor(colorNameStr);
         if (colorValue && colorValue.startsWith('#')) {
             const hex = colorValue.slice(1);
             return {
@@ -353,8 +409,8 @@ function getColorRGB(colorName) {
         }
     }
     // 再尝试第二层级颜色
-    if (colorName in LEVEL2_COLORS) {
-        const colorValue = getLevel2Color(colorName);
+    if (colorNameStr in LEVEL2_COLORS) {
+        const colorValue = getLevel2Color(colorNameStr);
         if (colorValue && colorValue.startsWith('#')) {
             const hex = colorValue.slice(1);
             return {
@@ -365,11 +421,11 @@ function getColorRGB(colorName) {
         }
     }
     // 处理命名颜色（从CSS变量或直接颜色名）
-    if (colorName === 'blue') return { r: 70, g: 130, b: 180 };
-    if (colorName === 'green') return { r: 0, g: 160, b: 128 }; // #00a080
-    if (colorName === 'red') return { r: 205, g: 92, b: 92 };
-    if (colorName === 'brown') return { r: 139, g: 69, b: 19 };
-    if (colorName === 'gray') return { r: 170, g: 170, b: 170 }; // 灰色 #aaaaaa
+    if (colorNameStr === 'blue') return { r: 70, g: 130, b: 180 };
+    if (colorNameStr === 'green') return { r: 0, g: 160, b: 128 }; // #00a080
+    if (colorNameStr === 'red') return { r: 205, g: 92, b: 92 };
+    if (colorNameStr === 'brown') return { r: 139, g: 69, b: 19 };
+    if (colorNameStr === 'gray') return { r: 170, g: 170, b: 170 }; // 灰色 #aaaaaa
     return { r: 170, g: 170, b: 170 }; // 默认灰色
 }
 
@@ -387,18 +443,22 @@ export function calculateConnectionColor(startNoteData, endNoteData, connectionI
     const startColor = startNoteData?.color || 'white';
     const endColor = endNoteData?.color || 'white';
 
+    // 提取颜色名称用于比较
+    const startColorName = getColorName(startColor);
+    const endColorName = getColorName(endColor);
+
     // 如果都是white，返回灰色
-    if (startColor === 'white' && endColor === 'white') {
+    if (startColorName === 'white' && endColorName === 'white') {
         return '#aaaaaa';
     }
 
     // 如果都是trans，返回灰色
-    if (startColor === 'trans' && endColor === 'trans') {
+    if (startColorName === 'trans' && endColorName === 'trans') {
         return '#aaaaaa';
     }
 
-    // 如果颜色相同，降低饱和度
-    if (startColor === endColor) {
+    // 如果颜色相同，降低饱和度（使用实际颜色值）
+    if (startColorName === endColorName) {
         return reduceColorSaturation(startColor, 0.6);
     }
 

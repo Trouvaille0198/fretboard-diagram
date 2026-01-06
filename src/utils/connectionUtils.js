@@ -115,14 +115,25 @@ export function updateConnectionColors(data, setData, calculateConnectionColor) 
             return;
         }
 
+        // 辅助函数：比较两个颜色是否相同（处理自定义颜色对象）
+        const colorsEqual = (color1, color2) => {
+            if (color1 === color2) return true;
+            if (!color1 || !color2) return false;
+            // 如果都是对象，比较 name 和 custom
+            if (typeof color1 === 'object' && typeof color2 === 'object') {
+                return color1.name === color2.name && color1.custom === color2.custom;
+            }
+            return false;
+        };
+
         // 判断创建连线时使用的是color1还是color2
         let startColor = startColor1;
         let endColor = endColor1;
 
         if (storedStartColor) {
-            if (storedStartColor === startColor2 && startColor2 !== null) {
+            if (colorsEqual(storedStartColor, startColor2) && startColor2 !== null) {
                 startColor = startColor2;
-            } else if (storedStartColor === startColor1) {
+            } else if (colorsEqual(storedStartColor, startColor1)) {
                 startColor = startColor1;
             } else {
                 startColor = startColor1;
@@ -130,9 +141,9 @@ export function updateConnectionColors(data, setData, calculateConnectionColor) 
         }
 
         if (storedEndColor) {
-            if (storedEndColor === endColor2 && endColor2 !== null) {
+            if (colorsEqual(storedEndColor, endColor2) && endColor2 !== null) {
                 endColor = endColor2;
-            } else if (storedEndColor === endColor1) {
+            } else if (colorsEqual(storedEndColor, endColor1)) {
                 endColor = endColor1;
             } else {
                 endColor = endColor1;
@@ -144,7 +155,7 @@ export function updateConnectionColors(data, setData, calculateConnectionColor) 
         currentNoteColors[conn.endNoteId] = endColor;
 
         // 如果颜色改变了，需要更新连线
-        if (storedStartColor !== startColor || storedEndColor !== endColor) {
+        if (!colorsEqual(storedStartColor, startColor) || !colorsEqual(storedEndColor, endColor)) {
             // 重新计算连线颜色
             const tempStartNoteData = { color: startColor };
             const tempEndNoteData = { color: endColor };

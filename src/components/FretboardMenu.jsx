@@ -35,7 +35,8 @@ export function FretboardMenu({
   copyOnly,
   setCopyOnly,
   showNotes,
-  setShowNotes
+  setShowNotes,
+  onReplaceAllTintNotes
 }) {
   // 如果选中的是第一层颜色且不是trans，生成淡色版本
   const colorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
@@ -101,6 +102,7 @@ export function FretboardMenu({
             selectedColor={selectedColor}
             onSelectColor={onSelectColor}
             onDoubleClickColor={onDoubleClickColor}
+            onReplaceAllTintNotes={onReplaceAllTintNotes}
           />
         </div>
         <div id="global-actions">
