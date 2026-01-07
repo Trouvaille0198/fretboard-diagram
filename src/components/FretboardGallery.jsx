@@ -3,14 +3,67 @@ import ReactDOM from 'react-dom';
 import './FretboardGallery.css';
 import { exportFretboardState, importFretboardState, copyToClipboard, readFromClipboard } from '../utils/fretboardShare';
 import { parseSVGToFretboardState } from '../utils/svgImport';
+import { exportAllData, importBatchData } from '../utils/fretboardHistory';
 
-export function FretboardGallery({ historyStates, onRestore, onDelete, selectedHistoryState, onSelect, onClearAll, onImport, onRename }) {
+export function FretboardGallery({ 
+  historyStates, 
+  onRestore, 
+  onDelete, 
+  selectedHistoryState, 
+  onSelect, 
+  onClearAll, 
+  onImport, 
+  onRename,
+  // 目录管理
+  directories = [],
+  currentDirectoryId = 'default',
+  onDirectoryChange,
+  onDirectoryCreate,
+  onDirectoryRename,
+  onDirectoryDelete,
+  onExportAll,
+  onBatchImport
+}) {
   const [showImportDialog, setShowImportDialog] = React.useState(false);
   const [importText, setImportText] = React.useState('');
   const [editingId, setEditingId] = React.useState(null);
   const [editingName, setEditingName] = React.useState('');
-  const [importMode, setImportMode] = React.useState('string'); // 'string' 或 'svg'
+  const [importMode, setImportMode] = React.useState('string'); // 'string', 'svg', 'json'
   const fileInputRef = React.useRef(null);
+  const jsonFileInputRef = React.useRef(null);
+  
+  // 侧边栏展开/收起状态
+  const [isOpen, setIsOpen] = React.useState(false);
+  
+  // 点击外部区域关闭侧边栏
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event) => {
+      const gallery = document.querySelector('.fretboard-gallery');
+      const toggleBtn = document.querySelector('.gallery-toggle-btn');
+      
+      // 如果点击的不是侧边栏内部或切换按钮，则关闭侧边栏
+      if (gallery && !gallery.contains(event.target) && 
+          toggleBtn && !toggleBtn.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    // 延迟添加事件监听，避免立即触发
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isOpen]);
+  
+  // 目录编辑状态
+  const [editingDirectoryId, setEditingDirectoryId] = React.useState(null);
+  const [editingDirectoryName, setEditingDirectoryName] = React.useState('');
+  const [hoveredDirectoryId, setHoveredDirectoryId] = React.useState(null);
 
   const handleImport = async (e) => {
     if (e) {
@@ -83,6 +136,35 @@ export function FretboardGallery({ historyStates, onRestore, onDelete, selectedH
       } else {
         onImport({ success: false, message: '请选择一个SVG文件' });
       }
+    } else if (importMode === 'json') {
+      if (jsonFileInputRef.current && jsonFileInputRef.current.files.length > 0) {
+        const file = jsonFileInputRef.current.files[0];
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const jsonData = JSON.parse(e.target.result);
+            const result = importBatchData(jsonData);
+            if (result.success && onBatchImport) {
+              onBatchImport(result);
+            } else {
+              onImport(result);
+            }
+            if (result.success) {
+              setShowImportDialog(false);
+              setImportText('');
+              setImportMode('string');
+            }
+          } catch (error) {
+            onImport({ success: false, message: 'JSON解析失败：' + error.message });
+          }
+        };
+        reader.onerror = () => {
+          onImport({ success: false, message: '读取JSON文件失败' });
+        };
+        reader.readAsText(file);
+      } else {
+        onImport({ success: false, message: '请选择一个JSON文件' });
+      }
     }
   };
 
@@ -116,6 +198,9 @@ export function FretboardGallery({ historyStates, onRestore, onDelete, selectedH
   };
 
   const emptyStateContent = !historyStates || historyStates.length === 0;
+  
+  // 过滤当前目录下的状态
+  const filteredStates = historyStates.filter(state => state.directoryId === currentDirectoryId);
 
   const handleThumbnailClick = (stateSnapshot, e) => {
     // 如果按住 Ctrl 或 Cmd，只选中不恢复
@@ -177,6 +262,13 @@ export function FretboardGallery({ historyStates, onRestore, onDelete, selectedH
     e.stopPropagation(); // 阻止触发恢复
     setEditingId(stateSnapshot.id);
     setEditingName(stateSnapshot.name);
+    // 延迟执行，确保input已经渲染
+    setTimeout(() => {
+      const input = document.querySelector('.gallery-item-name-input');
+      if (input) {
+        input.select();
+      }
+    }, 0);
   };
 
   const handleNameChange = (e) => {
@@ -206,21 +298,111 @@ export function FretboardGallery({ historyStates, onRestore, onDelete, selectedH
     setEditingId(null);
     setEditingName('');
   };
+  
+  // 目录操作处理函数
+  const handleDirectoryClick = (dirId) => {
+    if (editingDirectoryId) return; // 编辑中不切换
+    if (onDirectoryChange) {
+      onDirectoryChange(dirId);
+    }
+  };
+  
+  const handleDirectoryDoubleClick = (e, dir) => {
+    e.stopPropagation();
+    if (dir.isDefault) return; // 默认目录不能重命名
+    setEditingDirectoryId(dir.id);
+    setEditingDirectoryName(dir.name);
+    // 延迟执行，确保input已经渲染
+    setTimeout(() => {
+      const input = document.querySelector('.directory-tab-input');
+      if (input) {
+        input.select();
+      }
+    }, 0);
+  };
+  
+  const handleDirectoryNameChange = (e) => {
+    setEditingDirectoryName(e.target.value);
+  };
+  
+  const handleDirectoryNameKeyDown = (e, dir) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleDirectoryRenameConfirm(dir);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setEditingDirectoryId(null);
+      setEditingDirectoryName('');
+    }
+  };
+  
+  const handleDirectoryNameBlur = (dir) => {
+    handleDirectoryRenameConfirm(dir);
+  };
+  
+  const handleDirectoryRenameConfirm = (dir) => {
+    const newName = editingDirectoryName.trim();
+    if (newName && newName !== dir.name && onDirectoryRename) {
+      const result = onDirectoryRename(dir.id, newName);
+      if (!result.success && onImport) {
+        onImport({ success: false, message: result.message });
+      }
+    }
+    setEditingDirectoryId(null);
+    setEditingDirectoryName('');
+  };
+  
+  const handleDirectoryDelete = (e, dir) => {
+    e.stopPropagation();
+    if (dir.isDefault) return;
+    
+    const stateCount = historyStates.filter(s => s.directoryId === dir.id).length;
+    const confirmMsg = stateCount > 0 
+      ? `确认删除目录 "${dir.name}"？\n该目录下的 ${stateCount} 个状态将移至 default 目录。`
+      : `确认删除目录 "${dir.name}"？`;
+    
+    if (window.confirm(confirmMsg)) {
+      if (onDirectoryDelete) {
+        onDirectoryDelete(dir.id);
+      }
+    }
+  };
+  
+  const handleDirectoryCreate = () => {
+    if (onDirectoryCreate) {
+      onDirectoryCreate();
+    }
+  };
+  
+  const handleExportAll = () => {
+    const result = exportAllData();
+    if (onImport) {
+      onImport(result);
+    }
+  };
 
   return (
-    <div className="fretboard-gallery">
-      <div className="gallery-header">
-        <h3 className="gallery-title">历史状态</h3>
-        {emptyStateContent ? (
-          <button 
-            className="gallery-import-btn"
-            onClick={handleImport}
-            title="从剪贴板导入指板状态"
-          >
-            导入
-          </button>
-        ) : (
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+    <>
+      {/* 侧边栏切换按钮 */}
+      <button 
+        className={`gallery-toggle-btn ${isOpen ? 'open' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+        title={isOpen ? '隐藏历史状态' : '显示历史状态'}
+      >
+        {isOpen ? '«' : '»'}
+      </button>
+
+      <div className={`fretboard-gallery ${isOpen ? 'open' : ''}`}>
+        <div className="gallery-header">
+          <h3 className="gallery-title">历史状态</h3>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button 
+              className="gallery-export-btn"
+              onClick={handleExportAll}
+              title="导出所有目录和状态"
+            >
+              导出
+            </button>
             <button 
               className="gallery-import-btn"
               onClick={handleImport}
@@ -228,21 +410,62 @@ export function FretboardGallery({ historyStates, onRestore, onDelete, selectedH
             >
               导入
             </button>
-            <button 
-              className="gallery-clear-btn"
-              onClick={handleClearAll}
-              title="清空所有历史状态"
-            >
-              清空
-            </button>
           </div>
-        )}
+        </div>
+      
+      {/* 目录标签栏 */}
+      <div className="directory-tabs">
+        <div className="tabs-container">
+          {directories.map((dir) => (
+            <div
+              key={dir.id}
+              className={`directory-tab ${dir.id === currentDirectoryId ? 'active' : ''}`}
+              onClick={() => handleDirectoryClick(dir.id)}
+              onDoubleClick={(e) => handleDirectoryDoubleClick(e, dir)}
+              onMouseEnter={() => setHoveredDirectoryId(dir.id)}
+              onMouseLeave={() => setHoveredDirectoryId(null)}
+              title={dir.name}
+            >
+              {editingDirectoryId === dir.id ? (
+                <input
+                  type="text"
+                  className="directory-tab-input"
+                  value={editingDirectoryName}
+                  onChange={handleDirectoryNameChange}
+                  onKeyDown={(e) => handleDirectoryNameKeyDown(e, dir)}
+                  onBlur={() => handleDirectoryNameBlur(dir)}
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                />
+              ) : (
+                <span className="directory-tab-name">{dir.name}</span>
+              )}
+              {!dir.isDefault && hoveredDirectoryId === dir.id && !editingDirectoryId && (
+                <button
+                  className="directory-tab-close"
+                  onClick={(e) => handleDirectoryDelete(e, dir)}
+                  title="删除目录"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            className="directory-tab-add"
+            onClick={handleDirectoryCreate}
+            title="新建目录"
+          >
+            +
+          </button>
+        </div>
       </div>
-      {emptyStateContent ? (
+      
+      {filteredStates.length === 0 ? (
         <div className="gallery-empty">暂无保存的状态</div>
       ) : (
         <div className="gallery-grid">
-        {historyStates.map((stateSnapshot) => (
+        {filteredStates.map((stateSnapshot) => (
           <div
             key={stateSnapshot.id}
             className={`gallery-item ${selectedHistoryState && selectedHistoryState.id === stateSnapshot.id ? 'selected' : ''}`}
@@ -322,6 +545,13 @@ export function FretboardGallery({ historyStates, onRestore, onDelete, selectedH
                 >
                   SVG 文件
                 </button>
+                <button
+                  className={importMode === 'json' ? 'gallery-import-btn' : 'gallery-clear-btn'}
+                  onClick={() => setImportMode('json')}
+                  style={{ flex: 1 }}
+                >
+                  JSON 批量导入
+                </button>
               </div>
             </div>
             {importMode === 'string' ? (
@@ -336,6 +566,34 @@ export function FretboardGallery({ historyStates, onRestore, onDelete, selectedH
                   placeholder="粘贴分享字符串..."
                   rows={4}
                   autoFocus
+                />
+              </>
+            ) : importMode === 'json' ? (
+              <>
+                <p style={{ fontSize: '12px', color: 'var(--text-color)', opacity: 0.7, marginBottom: '10px' }}>
+                  选择之前导出的 JSON 备份文件进行批量导入
+                </p>
+                <input
+                  ref={jsonFileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={(e) => {
+                    if (e.target.files.length > 0) {
+                      setImportText(e.target.files[0].name); // 显示文件名
+                    } else {
+                      setImportText('');
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid var(--text-color)',
+                    borderRadius: '4px',
+                    background: 'var(--background-color)',
+                    color: 'var(--text-color)',
+                    cursor: 'pointer',
+                    marginBottom: '10px'
+                  }}
                 />
               </>
             ) : (
@@ -379,6 +637,7 @@ export function FretboardGallery({ historyStates, onRestore, onDelete, selectedH
         </div>,
         document.body
       )}
-    </div>
+      </div>
+    </>
   );
 }
