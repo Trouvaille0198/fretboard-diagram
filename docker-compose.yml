@@ -1,5 +1,5 @@
 services:
-  # 生产环境服务
+  # 前端服务
   fretboard-diagram:
     build:
       context: .
@@ -8,8 +8,40 @@ services:
     ports:
       - "1645:80"
     restart: unless-stopped
+    depends_on:
+      - backend
     environment:
       - NODE_ENV=production
+    networks:
+      - fretboard-network
+
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fretboard-backend
+    expose:
+      - "8000"
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - DATABASE_NAME=fretboard_db
+      - CORS_ORIGINS=*
+    networks:
+      - fretboard-network
+
+  # MongoDB 数据库
+  mongodb:
+    image: mongo:7
+    container_name: fretboard-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - fretboard-network
 
   # 开发环境服务（可选）
   fretboard-diagram-dev:
@@ -21,7 +53,6 @@ services:
       - "5173:5173"
     restart: unless-stopped
     volumes:
-      # 挂载源代码以实现热重载
       - ./src:/app/src
       - ./index.html:/app/index.html
       - ./vite.config.js:/app/vite.config.js
@@ -30,3 +61,11 @@ services:
       - NODE_ENV=development
     profiles:
       - dev
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  fretboard-network:
+    driver: bridge

@@ -22,7 +22,10 @@ export function FretboardGallery({
   onDirectoryRename,
   onDirectoryDelete,
   onExportAll,
-  onBatchImport
+  onBatchImport,
+  // 认证状态
+  isAuthenticated = false,
+  onShowLogin
 }) {
   const [showImportDialog, setShowImportDialog] = React.useState(false);
   const [importText, setImportText] = React.useState('');
@@ -50,20 +53,13 @@ export function FretboardGallery({
           e.preventDefault();
           // 恢复最后删除的状态
           const lastDeleted = deleteHistory[deleteHistory.length - 1];
-          const existingHistory = localStorage.getItem('fretboard-history');
-          let historyArray = [];
-          if (existingHistory) {
-            historyArray = JSON.parse(existingHistory);
-          }
-          // 添加回去
-          historyArray.unshift(lastDeleted);
-          localStorage.setItem('fretboard-history', JSON.stringify(historyArray));
           
-          // 更新状态
+          // 通过 onBatchImport 回调通知父组件添加回去
+          const updatedStates = [lastDeleted, ...historyStates];
           if (onBatchImport) {
             onBatchImport({ 
               success: true, 
-              historyStates: historyArray,
+              historyStates: updatedStates,
               directories: directories,
               message: '已撤销删除' 
             });
@@ -77,7 +73,38 @@ export function FretboardGallery({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [deleteHistory, directories, onBatchImport]);
+  }, [deleteHistory, directories, historyStates, onBatchImport]);
+  
+  // Tab 键切换侧边栏
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Tab' && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
+        // 检查是否在输入框中
+        const activeElement = document.activeElement;
+        const isInputActive = activeElement && (
+          activeElement.tagName === 'INPUT' || 
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.isContentEditable
+        );
+        
+        // 如果不在输入框中，则切换侧边栏
+        if (!isInputActive) {
+          e.preventDefault();
+          if (!isAuthenticated && !isOpen) {
+            // 未登录时提示
+            if (onShowLogin) {
+              onShowLogin();
+            }
+          } else {
+            setIsOpen(!isOpen);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isAuthenticated, onShowLogin]);
   
   // 点击外部区域关闭侧边栏
   React.useEffect(() => {
@@ -500,13 +527,61 @@ export function FretboardGallery({
       {/* 侧边栏切换按钮 */}
       <button 
         className={`gallery-toggle-btn ${isOpen ? 'open' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isAuthenticated && !isOpen) {
+            // 未登录时提示
+            if (onShowLogin) {
+              onShowLogin();
+            }
+            return;
+          }
+          setIsOpen(!isOpen);
+        }}
         title={isOpen ? '隐藏历史状态' : '显示历史状态'}
       >
         {isOpen ? '«' : '»'}
       </button>
 
       <div className={`fretboard-gallery ${isOpen ? 'open' : ''}`}>
+        {!isAuthenticated ? (
+          // 未登录提示
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            padding: '40px 20px',
+            textAlign: 'center',
+            color: '#888'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔒</div>
+            <h3 style={{ color: '#fff', marginBottom: '10px' }}>需要登录</h3>
+            <p style={{ marginBottom: '20px', lineHeight: '1.6' }}>
+              历史状态功能需要登录后使用<br/>
+              登录后可以保存和管理您的指板图
+            </p>
+            {onShowLogin && (
+              <button 
+                onClick={onShowLogin}
+                style={{
+                  padding: '10px 24px',
+                  background: 'linear-gradient(135deg, #4a90e2 0%, #357abd 100%)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                立即登录
+              </button>
+            )}
+          </div>
+        ) : (
+          // 已登录，显示正常内容
+          <>
         <div className="gallery-header">
           <h3 className="gallery-title">历史状态</h3>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -771,6 +846,8 @@ export function FretboardGallery({
         </div>,
         document.body
       )}
+      </>
+        )}
       </div>
     </>
   );

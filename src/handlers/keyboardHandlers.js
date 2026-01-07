@@ -40,7 +40,7 @@ export function createKeyboardHandler(params) {
             return;
         }
 
-        // Ctrl+Shift+S 强制新建状态
+        // Ctrl+Shift+S 强制新建状态保存
         if (event.ctrlKey && event.shiftKey && event.code === 'KeyS') {
             event.preventDefault();
             if (saveFretboardState) {
@@ -49,7 +49,7 @@ export function createKeyboardHandler(params) {
             return;
         }
 
-        // Ctrl+S 保存状态（如果有选中则更新，否则新建）
+        // Ctrl+S 保存到当前状态
         if (event.ctrlKey && event.code === 'KeyS' && !event.shiftKey) {
             event.preventDefault();
             if (saveFretboardState) {

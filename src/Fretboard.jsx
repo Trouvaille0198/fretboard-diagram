@@ -7,6 +7,7 @@ import { useFretboardState } from './hooks/useFretboardState';
 import { useConnectionState } from './hooks/useConnectionState';
 import { useHistory } from './hooks/useHistory';
 import { useNoteEditing } from './hooks/useNoteEditing';
+import { useAuth } from './hooks/useAuth';
 import { computeNoteIndex, computeNoteName, generateNotes, generateMarkers, generateFretPath, generateStringPath, getNotePosition } from './utils/fretboardCalculations';
 import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors } from './utils/connectionUtils';
 import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow, replaceAllTintNotes } from './utils/fretboardActions';
@@ -18,9 +19,20 @@ import { FretboardMenu } from './components/FretboardMenu';
 import { FretboardGallery } from './components/FretboardGallery';
 import { Toast } from './components/Toast';
 import { FretboardSVG } from './components/FretboardSVG';
+import { LoginModal } from './components/LoginModal';
 import { saveFretboardState, restoreFretboardState, generateThumbnail, saveFretboardStateSilently, exportAllData } from './utils/fretboardHistory';
+import { saveData, loadData } from './utils/api';
+import { storageService } from './services/storageService';
 
 function Fretboard() {
+  // 认证状态
+  const auth = useAuth();
+  
+  // 同步认证状态到 storageService
+  useEffect(() => {
+    storageService.setAuthState(auth.isAuthenticated, auth.username);
+  }, [auth.isAuthenticated, auth.username]);
+  
   // 使用自定义hooks
   const fretboardState = useFretboardState();
   const connectionState = useConnectionState();
@@ -413,31 +425,110 @@ function Fretboard() {
   // 保存指板状态
   // 防抖：避免短时间内重复保存
   const lastSaveTimeRef = useRef(0);
-  const saveFretboardStateMemo = useCallback((forceNew = false) => {
+  const saveFretboardStateMemo = useCallback(async (forceNew = false) => {
     const now = Date.now();
     if (now - lastSaveTimeRef.current < 300) { // 300ms内只允许保存一次
       return;
     }
     lastSaveTimeRef.current = now;
     
-    saveFretboardState({
-      data,
-      startFret,
-      endFret,
-      enharmonic,
-      displayMode,
-      rootNote,
-      visibility,
-      svgElementRef,
-      setHistoryStates,
-      setToastMessage,
-      setToastType,
-      selectedHistoryState,
-      setSelectedHistoryState,
-      forceNew,
-      currentDirectoryId // 传入当前目录 ID
-    });
-  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, setHistoryStates, setToastMessage, setToastType, selectedHistoryState, setSelectedHistoryState, currentDirectoryId]);
+    try {
+      // 构建状态快照
+      let stateSnapshot;
+      let updatedStates = [...historyStates];
+      let isUpdate = false;
+      
+      if (selectedHistoryState && !forceNew) {
+        // 更新现有状态
+        stateSnapshot = {
+          ...selectedHistoryState,
+          timestamp: Date.now(),
+          name: new Date().toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          state: {
+            data: JSON.parse(JSON.stringify(data)),
+            startFret,
+            endFret,
+            enharmonic,
+            displayMode,
+            rootNote,
+            visibility
+          }
+        };
+        
+        // 生成缩略图
+        const thumbnailUrl = generateThumbnail(svgElementRef);
+        if (thumbnailUrl) {
+          stateSnapshot.thumbnail = thumbnailUrl;
+        }
+        
+        const index = updatedStates.findIndex(item => item.id === selectedHistoryState.id);
+        if (index !== -1) {
+          updatedStates[index] = stateSnapshot;
+          updatedStates.splice(index, 1);
+          updatedStates.unshift(stateSnapshot);
+          isUpdate = true;
+        }
+      } else {
+        // 新建状态
+        stateSnapshot = {
+          id: Date.now().toString(),
+          directoryId: currentDirectoryId,
+          timestamp: Date.now(),
+          name: new Date().toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          state: {
+            data: JSON.parse(JSON.stringify(data)),
+            startFret,
+            endFret,
+            enharmonic,
+            displayMode,
+            rootNote,
+            visibility
+          }
+        };
+        
+        // 生成缩略图
+        const thumbnailUrl = generateThumbnail(svgElementRef);
+        if (thumbnailUrl) {
+          stateSnapshot.thumbnail = thumbnailUrl;
+        }
+        
+        updatedStates.unshift(stateSnapshot);
+      }
+      
+      // 限制最大数量
+      if (updatedStates.length > 50) {
+        updatedStates = updatedStates.slice(0, 50);
+      }
+      
+      // 使用 storageService 保存
+      await storageService.saveAll(directories, updatedStates);
+      setHistoryStates(updatedStates);
+      
+      // 保存成功后才设置选中状态（只在新建状态时）
+      if (!isUpdate) {
+        setSelectedHistoryState(stateSnapshot);
+      }
+      
+      setToastMessage(isUpdate ? '状态已更新！' : '状态已保存！');
+      setToastType('success');
+    } catch (error) {
+      console.error('保存失败:', error);
+      setToastMessage('保存失败: ' + error.message);
+      setToastType('error');
+    }
+  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, setHistoryStates, setToastMessage, setToastType, selectedHistoryState, setSelectedHistoryState, currentDirectoryId, directories, historyStates, svgElementRef]);
 
   // 恢复指板状态
   const restoreFretboardStateMemo = useCallback((stateSnapshot) => {
@@ -466,6 +557,50 @@ function Fretboard() {
       setSelected, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
       setMousePosition, setPreviewHoverNote, setUseColor2Level, setSelectedConnection,
       setConnectionToolbarVisible, setToastMessage, setToastType, setSelectedHistoryState]);
+
+  // 包装目录操作函数，使用 storageService
+  const wrappedCreateDirectory = useCallback(async (baseName = 'new') => {
+    const result = createDirectory(baseName);
+    
+    // 同步到存储
+    try {
+      await storageService.saveAll(directories, historyStates);
+    } catch (error) {
+      console.error('同步目录失败:', error);
+    }
+    
+    return result;
+  }, [createDirectory, directories, historyStates]);
+  
+  const wrappedRenameDirectory = useCallback(async (dirId, newName) => {
+    const result = renameDirectory(dirId, newName);
+    
+    if (result.success) {
+      // 同步到存储
+      try {
+        await storageService.saveAll(directories, historyStates);
+      } catch (error) {
+        console.error('同步目录重命名失败:', error);
+      }
+    }
+    
+    return result;
+  }, [renameDirectory, directories, historyStates]);
+  
+  const wrappedDeleteDirectory = useCallback(async (dirId) => {
+    const result = deleteDirectory(dirId);
+    
+    if (result.success) {
+      // 同步到存储
+      try {
+        await storageService.saveAll(directories, historyStates);
+      } catch (error) {
+        console.error('同步目录删除失败:', error);
+      }
+    }
+    
+    return result;
+  }, [deleteDirectory, directories, historyStates]);
 
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
   const handlerParamsRef = useRef();
@@ -497,79 +632,145 @@ function Fretboard() {
   // 生成字符串路径
   const generateStringPathMemo = useCallback((stringIndex) => generateStringPath(stringIndex, fretboardWidth), [fretboardWidth]);
 
-  // 渲染SVG内容（这部分代码太长，暂时保留在原文件中，后续可以进一步拆分）
-  // 由于SVG渲染代码非常复杂（包含渐变、连线、预览线等），暂时保留在原位置
-  // 这里只展示主要结构
+  // 加载初始数据（仅登录后）
+  const hasLoadedRef = useRef(false);
+  useEffect(() => {
+    if (auth.isLoading) return; // 等待认证检查完成
+    if (hasLoadedRef.current) return; // 已经加载过
+    if (!auth.isAuthenticated) return; // 未登录不加载历史
+    
+    hasLoadedRef.current = true;
+    
+    // 从服务器加载
+    storageService.loadAll().then(({ directories: loadedDirs, states: loadedStates }) => {
+      if (loadedDirs && loadedDirs.length > 0) {
+        setDirectories(loadedDirs);
+      }
+      if (loadedStates && loadedStates.length > 0) {
+        setHistoryStates(loadedStates);
+      }
+      setToastMessage('数据已从服务器加载');
+      setToastType('success');
+    }).catch(error => {
+      console.error('加载数据失败:', error);
+      setToastMessage(`加载数据失败: ${error.message}`);
+      setToastType('error');
+    });
+  }, [auth.isAuthenticated, auth.isLoading]);
+
+  // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
     <>
       <div className="title-header">
-        <h1>Fretboard Diagram Generator</h1>
-        {selectedHistoryState && (
-          <>
-            <div className="selected-state-name" title="当前选中的历史状态,保存将更新此状态" style={{ backgroundColor: 'rgba(74, 144, 226, 0.3)', color: 'white' }}>
-              <span 
-                contentEditable
-                suppressContentEditableWarning
-                onDoubleClick={(e) => {
-                  const selection = window.getSelection();
-                  const range = document.createRange();
-                  range.selectNodeContents(e.target);
-                  selection.removeAllRanges();
-                  selection.addRange(range);
-                }}
-                onBlur={(e) => {
-                  const newName = e.target.textContent.trim();
-                  if (newName && newName !== selectedHistoryState.name) {
-                    const updatedStates = historyStates.map(state => 
-                      state.id === selectedHistoryState.id 
-                        ? { ...state, name: newName } 
-                        : state
-                    );
-                    setHistoryStates(updatedStates);
-                    setSelectedHistoryState({ ...selectedHistoryState, name: newName });
-                    saveFretboardStateSilently(updatedStates);
-                  } else {
-                    e.target.textContent = selectedHistoryState.name;
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    e.target.blur();
-                  } else if (e.key === 'Escape') {
-                    e.target.textContent = selectedHistoryState.name;
-                    e.target.blur();
-                  }
-                }}
+        <div>
+          <h1>Fretboard Diagram Generator</h1>
+          {selectedHistoryState && (
+            <>
+              <div className="selected-state-name" title="当前选中的历史状态,保存将更新此状态" style={{ backgroundColor: 'rgba(74, 144, 226, 0.3)', color: 'white' }}>
+                <span 
+                  contentEditable
+                  suppressContentEditableWarning
+                  onDoubleClick={(e) => {
+                    const selection = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(e.target);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                  }}
+                  onBlur={(e) => {
+                    const newName = e.target.textContent.trim();
+                    if (newName && newName !== selectedHistoryState.name) {
+                      const updatedStates = historyStates.map(state => 
+                        state.id === selectedHistoryState.id 
+                          ? { ...state, name: newName } 
+                          : state
+                      );
+                      setHistoryStates(updatedStates);
+                      setSelectedHistoryState({ ...selectedHistoryState, name: newName });
+                      saveFretboardStateSilently(updatedStates);
+                    } else {
+                      e.target.textContent = selectedHistoryState.name;
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.target.blur();
+                    } else if (e.key === 'Escape') {
+                      e.target.textContent = selectedHistoryState.name;
+                      e.target.blur();
+                    }
+                  }}
+                  style={{
+                    cursor: 'text',
+                    outline: 'none'
+                  }}
+                  title="双击编辑"
+                >
+                  {selectedHistoryState.name}
+                </span>
+              </div>
+              <button
+                className="new-state-btn"
+                onClick={() => setSelectedHistoryState(null)}
+                title="创建新状态(清除选中,保留当前指板状态)"
                 style={{
-                  cursor: 'text',
-                  outline: 'none'
+                  marginLeft: '6px',
+                  padding: '1px 6px',
+                  fontSize: '10px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid currentColor',
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                  color: 'inherit'
                 }}
-                title="双击编辑"
               >
-                {selectedHistoryState.name}
+                new
+              </button>
+            </>
+          )}
+        </div>
+        <div className="login-status">
+          {auth.isAuthenticated ? (
+            <>
+              <span style={{ fontSize: '14px', color: '#666' }}>
+                用户: {auth.username}
               </span>
-            </div>
+              <button
+                onClick={auth.logout}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  backgroundColor: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                登出
+              </button>
+            </>
+          ) : (
             <button
-              className="new-state-btn"
-              onClick={() => setSelectedHistoryState(null)}
-              title="创建新状态(清除选中,保留当前指板状态)"
+              onClick={() => setShowLoginModal(true)}
               style={{
-                marginLeft: '6px',
-                padding: '1px 6px',
-                fontSize: '10px',
-                backgroundColor: 'transparent',
-                border: '1px solid currentColor',
-                borderRadius: '3px',
-                cursor: 'pointer',
-                color: 'inherit'
+                padding: '4px 12px',
+                fontSize: '12px',
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
               }}
+              title="登录后可将数据同步到服务器"
             >
-              new
+              登录
             </button>
-          </>
-        )}
+          )}
+        </div>
       </div>
       <figure id="fretboard-diagram-creator" className="half-full">
         <FretboardSVG
@@ -688,9 +889,9 @@ function Fretboard() {
         directories={directories}
         currentDirectoryId={currentDirectoryId}
         onDirectoryChange={setCurrentDirectoryId}
-        onDirectoryCreate={createDirectory}
-        onDirectoryRename={renameDirectory}
-        onDirectoryDelete={deleteDirectory}
+        onDirectoryCreate={wrappedCreateDirectory}
+        onDirectoryRename={wrappedRenameDirectory}
+        onDirectoryDelete={wrappedDeleteDirectory}
         onExportAll={() => {
           const result = exportAllData();
           setToastMessage(result.message);
@@ -698,28 +899,28 @@ function Fretboard() {
         }}
         onBatchImport={(result) => {
           if (result.success) {
-            // 更新目录和状态
-            setDirectories(result.directories);
-            setHistoryStates(result.historyStates);
-            setCurrentDirectoryId('default');
-            setToastMessage(result.message);
-            setToastType('success');
+            // 使用 storageService 保存
+            storageService.saveAll(result.directories, result.historyStates).then(() => {
+              setDirectories(result.directories);
+              setHistoryStates(result.historyStates);
+              setCurrentDirectoryId('default');
+              setToastMessage(result.message);
+              setToastType('success');
+            }).catch(error => {
+              console.error('保存失败:', error);
+              setToastMessage('保存失败: ' + error.message);
+              setToastType('error');
+            });
           } else {
             setToastMessage(result.message);
             setToastType('error');
           }
         }}
-        onDelete={(stateSnapshot) => {
+        onDelete={async (stateSnapshot) => {
           try {
-            const existingHistory = localStorage.getItem('fretboard-history');
-            let historyArray = [];
-            if (existingHistory) {
-              historyArray = JSON.parse(existingHistory);
-            }
-            historyArray = historyArray.filter(item => item.id !== stateSnapshot.id);
-            localStorage.setItem('fretboard-history', JSON.stringify(historyArray));
-            setHistoryStates(historyArray);
-            // 如果删除的是选中的状态，清除选中
+            const updatedStates = historyStates.filter(item => item.id !== stateSnapshot.id);
+            await storageService.saveAll(directories, updatedStates);
+            setHistoryStates(updatedStates);
             if (selectedHistoryState && selectedHistoryState.id === stateSnapshot.id) {
               setSelectedHistoryState(null);
             }
@@ -731,9 +932,9 @@ function Fretboard() {
             setToastType('error');
           }
         }}
-        onClearAll={() => {
+        onClearAll={async () => {
           try {
-            localStorage.removeItem('fretboard-history');
+            await storageService.saveAll(directories, []);
             setHistoryStates([]);
             setSelectedHistoryState(null);
             setToastMessage('所有历史状态已清空！');
@@ -744,25 +945,18 @@ function Fretboard() {
             setToastType('error');
           }
         }}
-        onRename={(stateSnapshot, newName) => {
+        onRename={async (stateSnapshot, newName) => {
           try {
-            const existingHistory = localStorage.getItem('fretboard-history');
-            let historyArray = [];
-            if (existingHistory) {
-              historyArray = JSON.parse(existingHistory);
+            const updatedStates = historyStates.map(item =>
+              item.id === stateSnapshot.id ? { ...item, name: newName } : item
+            );
+            await storageService.saveAll(directories, updatedStates);
+            setHistoryStates(updatedStates);
+            if (selectedHistoryState && selectedHistoryState.id === stateSnapshot.id) {
+              setSelectedHistoryState(updatedStates.find(item => item.id === stateSnapshot.id));
             }
-            const index = historyArray.findIndex(item => item.id === stateSnapshot.id);
-            if (index !== -1) {
-              historyArray[index] = { ...historyArray[index], name: newName };
-              localStorage.setItem('fretboard-history', JSON.stringify(historyArray));
-              setHistoryStates(historyArray);
-              // 如果重命名的是选中的状态，更新选中状态
-              if (selectedHistoryState && selectedHistoryState.id === stateSnapshot.id) {
-                setSelectedHistoryState(historyArray[index]);
-              }
-              setToastMessage('重命名成功！');
-              setToastType('success');
-            }
+            setToastMessage('重命名成功！');
+            setToastType('success');
           } catch (error) {
             console.error('重命名失败:', error);
             setToastMessage('重命名失败：' + error.message);
@@ -820,43 +1014,32 @@ function Fretboard() {
             // 等待 SVG 更新后生成缩略图
             // 使用 requestAnimationFrame 确保 DOM 已更新
             requestAnimationFrame(() => {
-              setTimeout(() => {
+              setTimeout(async () => {
                 // 生成缩略图
                 const thumbnailUrl = generateThumbnail(svgElementRef);
                 if (thumbnailUrl) {
                   importedState.thumbnail = thumbnailUrl;
                 }
 
-                // 保存到历史记录
-                const existingHistory = localStorage.getItem('fretboard-history');
-                let historyArray = [];
-                if (existingHistory) {
-                  try {
-                    historyArray = JSON.parse(existingHistory);
-                  } catch (e) {
-                    console.error('解析历史记录失败:', e);
-                    historyArray = [];
+                // 使用 storageService 保存
+                try {
+                  let updatedStates = [...historyStates];
+                  const existingIndex = updatedStates.findIndex(item => item.id === importedState.id);
+                  if (existingIndex !== -1) {
+                    updatedStates[existingIndex] = importedState;
+                  } else {
+                    updatedStates.unshift(importedState);
                   }
+                  
+                  if (updatedStates.length > 50) {
+                    updatedStates = updatedStates.slice(0, 50);
+                  }
+                  
+                  await storageService.saveAll(directories, updatedStates);
+                  setHistoryStates(updatedStates);
+                } catch (error) {
+                  console.error('保存导入状态失败:', error);
                 }
-
-                // 检查是否已存在（避免重复添加）
-                const existingIndex = historyArray.findIndex(item => item.id === importedState.id);
-                if (existingIndex !== -1) {
-                  // 更新已存在的项（更新缩略图）
-                  historyArray[existingIndex] = importedState;
-                } else {
-                  // 添加到数组开头
-                  historyArray.unshift(importedState);
-                }
-
-                // 限制最大数量
-                if (historyArray.length > 50) {
-                  historyArray = historyArray.slice(0, 50);
-                }
-
-                // 保存到 localStorage
-                localStorage.setItem('fretboard-history', JSON.stringify(historyArray));
-                setHistoryStates(historyArray);
               }, 100); // 给 SVG 100ms 时间完成渲染
             });
 
@@ -868,6 +1051,8 @@ function Fretboard() {
             setToastType('error');
           }
         }}
+        isAuthenticated={auth.isAuthenticated}
+        onShowLogin={() => setShowLoginModal(true)}
       />
       
       <Toast 
@@ -876,6 +1061,21 @@ function Fretboard() {
         duration={toastType === 'error' ? 3000 : 2000}
         onClose={() => setToastMessage('')}
       />
+      
+      {showLoginModal && (
+        <LoginModal 
+          onLogin={async (username) => {
+            const result = await auth.login(username);
+            if (result.success) {
+              setShowLoginModal(false);
+              setToastMessage(result.message);
+              setToastType('success');
+            }
+            return result;
+          }}
+          onClose={() => setShowLoginModal(false)}
+        />
+      )}
     </>
   );
 }
