@@ -35,7 +35,7 @@ services:
 
   # MongoDB 数据库
   mongodb:
-    image: mongo:7
+    image: mongo:7.0
     container_name: fretboard-mongodb
     restart: unless-stopped
     volumes:
