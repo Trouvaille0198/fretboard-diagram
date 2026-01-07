@@ -18,7 +18,7 @@ import { FretboardMenu } from './components/FretboardMenu';
 import { FretboardGallery } from './components/FretboardGallery';
 import { Toast } from './components/Toast';
 import { FretboardSVG } from './components/FretboardSVG';
-import { saveFretboardState, restoreFretboardState, generateThumbnail, saveFretboardStateSilently } from './utils/fretboardHistory';
+import { saveFretboardState, restoreFretboardState, generateThumbnail, saveFretboardStateSilently, exportAllData } from './utils/fretboardHistory';
 
 function Fretboard() {
   // 使用自定义hooks
@@ -48,7 +48,11 @@ function Fretboard() {
     selectedHistoryState, setSelectedHistoryState,
     currentDateTime,
     dataRef,
-    selectedTimeoutRef
+    selectedTimeoutRef,
+    // 目录管理
+    directories, setDirectories,
+    currentDirectoryId, setCurrentDirectoryId,
+    createDirectory, renameDirectory, deleteDirectory
   } = fretboardState;
 
   const {
@@ -430,9 +434,10 @@ function Fretboard() {
       setToastType,
       selectedHistoryState,
       setSelectedHistoryState,
-      forceNew
+      forceNew,
+      currentDirectoryId // 传入当前目录 ID
     });
-  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, setHistoryStates, setToastMessage, setToastType, selectedHistoryState, setSelectedHistoryState]);
+  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, setHistoryStates, setToastMessage, setToastType, selectedHistoryState, setSelectedHistoryState, currentDirectoryId]);
 
   // 恢复指板状态
   const restoreFretboardStateMemo = useCallback((stateSnapshot) => {
@@ -500,28 +505,70 @@ function Fretboard() {
     <>
       <div className="title-header">
         <h1>Fretboard Diagram Generator</h1>
-        <div className="datetime">{currentDateTime}</div>
         {selectedHistoryState && (
-          <div className="selected-state-name" title="当前选中的历史状态，保存将更新此状态">
-            📌 {selectedHistoryState.name}
+          <>
+            <div className="selected-state-name" title="当前选中的历史状态,保存将更新此状态" style={{ backgroundColor: 'rgba(74, 144, 226, 0.3)', color: 'white' }}>
+              <span 
+                contentEditable
+                suppressContentEditableWarning
+                onDoubleClick={(e) => {
+                  const selection = window.getSelection();
+                  const range = document.createRange();
+                  range.selectNodeContents(e.target);
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                }}
+                onBlur={(e) => {
+                  const newName = e.target.textContent.trim();
+                  if (newName && newName !== selectedHistoryState.name) {
+                    const updatedStates = historyStates.map(state => 
+                      state.id === selectedHistoryState.id 
+                        ? { ...state, name: newName } 
+                        : state
+                    );
+                    setHistoryStates(updatedStates);
+                    setSelectedHistoryState({ ...selectedHistoryState, name: newName });
+                    saveFretboardStateSilently(updatedStates);
+                  } else {
+                    e.target.textContent = selectedHistoryState.name;
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.target.blur();
+                  } else if (e.key === 'Escape') {
+                    e.target.textContent = selectedHistoryState.name;
+                    e.target.blur();
+                  }
+                }}
+                style={{
+                  cursor: 'text',
+                  outline: 'none'
+                }}
+                title="双击编辑"
+              >
+                {selectedHistoryState.name}
+              </span>
+            </div>
             <button
               className="new-state-btn"
               onClick={() => setSelectedHistoryState(null)}
-              title="创建新状态（清除选中，保留当前指板状态）"
+              title="创建新状态(清除选中,保留当前指板状态)"
               style={{
-                marginLeft: '8px',
-                padding: '2px 8px',
-                fontSize: '12px',
+                marginLeft: '6px',
+                padding: '1px 6px',
+                fontSize: '10px',
                 backgroundColor: 'transparent',
                 border: '1px solid currentColor',
-                borderRadius: '4px',
+                borderRadius: '3px',
                 cursor: 'pointer',
                 color: 'inherit'
               }}
             >
               new
             </button>
-          </div>
+          </>
         )}
       </div>
       <figure id="fretboard-diagram-creator" className="half-full">
@@ -637,6 +684,31 @@ function Fretboard() {
         selectedHistoryState={selectedHistoryState}
         onSelect={setSelectedHistoryState}
         onRestore={restoreFretboardStateMemo}
+        // 目录管理
+        directories={directories}
+        currentDirectoryId={currentDirectoryId}
+        onDirectoryChange={setCurrentDirectoryId}
+        onDirectoryCreate={createDirectory}
+        onDirectoryRename={renameDirectory}
+        onDirectoryDelete={deleteDirectory}
+        onExportAll={() => {
+          const result = exportAllData();
+          setToastMessage(result.message);
+          setToastType(result.success ? 'success' : 'error');
+        }}
+        onBatchImport={(result) => {
+          if (result.success) {
+            // 更新目录和状态
+            setDirectories(result.directories);
+            setHistoryStates(result.historyStates);
+            setCurrentDirectoryId('default');
+            setToastMessage(result.message);
+            setToastType('success');
+          } else {
+            setToastMessage(result.message);
+            setToastType('error');
+          }
+        }}
         onDelete={(stateSnapshot) => {
           try {
             const existingHistory = localStorage.getItem('fretboard-history');
@@ -735,6 +807,7 @@ function Fretboard() {
             
             const importedState = {
               id: Date.now().toString(),
+              directoryId: currentDirectoryId, // 添加当前目录 ID
               timestamp: Date.now(),
               name: importedName,
               thumbnail: null,
