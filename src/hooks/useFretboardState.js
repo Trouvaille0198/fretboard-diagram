@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { CONSTS } from '../constants';
 import { LEVEL1_COLORS } from '../colorConfig';
 import { initializeDirectories, migrateHistoryData, generateUniqueDirName, validateDirectoryName } from '../utils/fretboardHistory';
+import { storageService } from '../services/storageService';
 
 export function useFretboardState() {
     const [selected, setSelected] = useState(null);
@@ -11,20 +12,44 @@ export function useFretboardState() {
     const [selectedColor, setSelectedColor] = useState(firstLevel1Color); // 当前选中的调色盘颜色名称
     const [hoveredNoteId, setHoveredNoteId] = useState(null); // 当前hover的note ID（用于x键删除）
     const [hoveredConnectionId, setHoveredConnectionId] = useState(null); // 当前hover的连线ID（用于backspace删除）
-    const [visibility, setVisibility] = useState('transparent');
-    const [startFret, setStartFret] = useState(0);
-    const [endFret, setEndFret] = useState(15);
-    const [enharmonic, setEnharmonic] = useState(1); // 默认降号
-    const [displayMode, setDisplayMode] = useState('note'); // 默认音名模式
-    const [rootNote, setRootNote] = useState(null); // 默认不选中任何琴键
-    const [data, setData] = useState({});
+
+    // 从 localStorage 初始化状态
+    const getInitialState = () => {
+        try {
+            const savedState = localStorage.getItem('fretboard-current-state');
+            if (savedState) {
+                return JSON.parse(savedState);
+            }
+        } catch (error) {
+            console.error('读取保存状态失败:', error);
+        }
+        return null;
+    };
+
+    const initialState = getInitialState();
+
+    const [visibility, setVisibility] = useState(initialState?.visibility || 'transparent');
+    const [startFret, setStartFret] = useState(initialState?.startFret ?? 0);
+    const [endFret, setEndFret] = useState(() => {
+        if (initialState && typeof initialState.endFret === 'number') {
+            return initialState.endFret;
+        }
+        return Math.min(
+            Math.floor((window.innerWidth - 2 * CONSTS.offsetX) / CONSTS.fretWidth),
+            15
+        );
+    });
+    const [enharmonic, setEnharmonic] = useState(initialState?.enharmonic ?? 1);
+    const [displayMode, setDisplayMode] = useState(initialState?.displayMode || 'note');
+    const [rootNote, setRootNote] = useState(initialState?.rootNote ?? null);
+    const [data, setData] = useState(initialState?.data || {});
     const [errorMessage, setErrorMessage] = useState('');
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState('info');
     const [historyStates, setHistoryStates] = useState([]);
     const [selectedHistoryState, setSelectedHistoryState] = useState(null); // 当前选中的历史状态
     const [currentDateTime, setCurrentDateTime] = useState('');
-    
+
     // 目录管理状态
     const [directories, setDirectories] = useState([]);
     const [currentDirectoryId, setCurrentDirectoryId] = useState('default');
@@ -36,38 +61,6 @@ export function useFretboardState() {
     useEffect(() => {
         dataRef.current = data;
     }, [data]);
-
-    // 从 localStorage 恢复当前状态（页面刷新时）- 必须在初始化之前
-    useEffect(() => {
-        try {
-            const savedState = localStorage.getItem('fretboard-current-state');
-            if (savedState) {
-                const state = JSON.parse(savedState);
-                if (state.data) setData(state.data);
-                if (typeof state.startFret === 'number') setStartFret(state.startFret);
-                if (typeof state.endFret === 'number') setEndFret(state.endFret);
-                if (typeof state.enharmonic === 'number') setEnharmonic(state.enharmonic);
-                if (state.displayMode) setDisplayMode(state.displayMode);
-                if (state.rootNote !== undefined) setRootNote(state.rootNote);
-                if (state.visibility) setVisibility(state.visibility);
-            } else {
-                // 如果没有保存的状态，才初始化endFret
-                const initialEndFret = Math.min(
-                    Math.floor((window.innerWidth - 2 * CONSTS.offsetX) / CONSTS.fretWidth),
-                    15
-                );
-                setEndFret(initialEndFret);
-            }
-        } catch (error) {
-            console.error('恢复当前状态失败:', error);
-            // 如果恢复失败，初始化endFret
-            const initialEndFret = Math.min(
-                Math.floor((window.innerWidth - 2 * CONSTS.offsetX) / CONSTS.fretWidth),
-                15
-            );
-            setEndFret(initialEndFret);
-        }
-    }, []);
 
     // 更新当前日期时间
     useEffect(() => {
@@ -88,57 +81,21 @@ export function useFretboardState() {
         return () => clearInterval(interval);
     }, []);
 
-    // 从 localStorage 加载历史状态和目录
+    // 初始化目录
+    // 注意：完全不加载历史数据，由父组件根据登录状态决定
     useEffect(() => {
         try {
-            // 初始化目录
-            const dirs = initializeDirectories();
-            setDirectories(dirs);
-            
-            // 迁移旧版数据
-            const migratedHistory = migrateHistoryData();
-            if (migratedHistory.length > 0) {
-                setHistoryStates(migratedHistory);
-            } else {
-                // 加载历史状态
-                const existingHistory = localStorage.getItem('fretboard-history');
-                if (existingHistory) {
-                    const historyArray = JSON.parse(existingHistory);
-                    setHistoryStates(historyArray);
-
-                    // 尝试匹配当前状态到历史记录中的某一项
-                    const savedState = localStorage.getItem('fretboard-current-state');
-                    if (savedState && historyArray.length > 0) {
-                        const currentState = JSON.parse(savedState);
-                        // 查找最近保存的状态（默认是数组第一项）
-                        const latestHistoryState = historyArray[0];
-
-                        // 比较当前状态和最新历史状态是否一致
-                        const currentStateStr = JSON.stringify({
-                            data: currentState.data || {},
-                            startFret: currentState.startFret,
-                            endFret: currentState.endFret,
-                            enharmonic: currentState.enharmonic,
-                            displayMode: currentState.displayMode,
-                            rootNote: currentState.rootNote,
-                            visibility: currentState.visibility
-                        });
-                        const historyStateStr = JSON.stringify(latestHistoryState.state);
-
-                        if (currentStateStr === historyStateStr) {
-                            // 状态一致，自动选中这个历史状态
-                            setSelectedHistoryState(latestHistoryState);
-                        }
-                    }
-                }
+            // 只初始化目录（如果为空）
+            if (directories.length === 0) {
+                const dirs = initializeDirectories();
+                setDirectories(dirs);
             }
         } catch (error) {
-            console.error('加载历史状态失败:', error);
+            console.error('初始化失败:', error);
         }
     }, []);
 
     // 自动保存当前状态到 localStorage（状态变化时）
-    // 使用 useRef 来避免初始化时立即保存
     const isInitialMount = useRef(true);
     useEffect(() => {
         // 跳过首次渲染（此时状态可能还在恢复中）
@@ -226,7 +183,7 @@ export function useFretboardState() {
             if (!validation.valid) {
                 return { success: false, message: validation.message };
             }
-            const updatedDirs = directories.map(dir => 
+            const updatedDirs = directories.map(dir =>
                 dir.id === dirId ? { ...dir, name: validation.name } : dir
             );
             setDirectories(updatedDirs);
@@ -238,19 +195,19 @@ export function useFretboardState() {
             if (!dirToDelete || dirToDelete.isDefault) {
                 return { success: false, message: '无法删除默认目录' };
             }
-            
+
             // 将该目录下的状态迁移到 default
-            const updatedStates = historyStates.map(state => 
+            const updatedStates = historyStates.map(state =>
                 state.directoryId === dirId ? { ...state, directoryId: 'default' } : state
             );
             setHistoryStates(updatedStates);
             localStorage.setItem('fretboard-history', JSON.stringify(updatedStates));
-            
+
             // 删除目录
             const updatedDirs = directories.filter(d => d.id !== dirId);
             setDirectories(updatedDirs);
             localStorage.setItem('fretboard-directories', JSON.stringify(updatedDirs));
-            
+
             // 切换到 default
             setCurrentDirectoryId('default');
             return { success: true };
