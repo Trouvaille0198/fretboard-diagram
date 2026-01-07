@@ -1,40 +1,85 @@
 .fretboard-gallery {
-    margin-top: 40px;
-    padding: 20px;
-    width: 100%;
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 420px;
+    height: 100vh;
+    background: var(--background-color);
+    border-right: 2px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    transform: translateX(-100%);
+}
+
+.fretboard-gallery.open {
+    transform: translateX(0);
+}
+
+/* 侧边栏切换按钮 */
+.gallery-toggle-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    transition: all 0.3s ease;
+    color: var(--text-color);
+    font-size: 20px;
+}
+
+.gallery-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.gallery-toggle-btn.open {
+    left: 440px;
 }
 
 .gallery-header {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    gap: 20px;
-    margin-bottom: 20px;
+    gap: 10px;
+    padding: 15px;
     position: relative;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
 }
 
 .gallery-title {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: bold;
     color: var(--text-color);
     margin: 0;
-    text-align: center;
+    text-align: left;
+    flex: 1;
 }
 
 .gallery-clear-btn {
-    padding: 8px 20px;
+    padding: 6px 12px;
     background: transparent;
     color: #F44336;
     border: 2px solid #F44336;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     white-space: nowrap;
-    min-width: 60px;
+    min-width: 50px;
     transition: background-color 0.2s, color 0.2s;
     box-sizing: border-box;
     display: inline-flex;
@@ -55,16 +100,16 @@
 }
 
 .gallery-import-btn {
-    padding: 8px 20px;
+    padding: 6px 12px;
     background: transparent;
-    color: #2196F3;
-    border: 2px solid #2196F3;
+    color: #5ba3d0;
+    border: 2px solid #5ba3d0;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     white-space: nowrap;
-    min-width: 60px;
+    min-width: 50px;
     transition: background-color 0.2s, color 0.2s;
     box-sizing: border-box;
     display: inline-flex;
@@ -76,44 +121,73 @@
 }
 
 .gallery-import-btn:hover {
-    background: #2196F3;
+    background: #5ba3d0;
     color: white;
 }
 
 .gallery-import-btn:active {
-    background: rgba(33, 150, 243, 0.8);
+    background: rgba(91, 163, 208, 0.8);
 }
 
 .gallery-empty {
     text-align: center;
     color: var(--text-color);
     opacity: 0.6;
-    padding: 40px;
-    font-size: 16px;
+    padding: 40px 20px;
+    font-size: 14px;
 }
 
 .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
-    justify-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+}
+
+/* 滚动条样式 */
+.gallery-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.gallery-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.gallery-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.gallery-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .gallery-item {
-    width: 200px;
+    width: 100%;
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border-radius: 8px;
-    overflow: hidden;
-    background: var(--background-color);
+    border-radius: 6px;
+    overflow: visible;
+    background: rgba(255, 255, 255, 0.03);
     border: 2px solid transparent;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+    gap: 6px;
+    box-sizing: border-box;
 }
 
 .gallery-item:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    border-color: var(--text-color);
+    transform: translateX(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .gallery-item.selected {
@@ -128,15 +202,15 @@
     position: absolute;
     top: 8px;
     right: 8px;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     background: #4CAF50;
     color: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     box-shadow: 0 2px 8px rgba(76, 175, 80, 0.6);
     z-index: 10;
@@ -146,15 +220,17 @@
 .gallery-thumbnail-wrapper {
     position: relative;
     width: 100%;
-    height: 140px;
+    height: 120px;
     background: var(--background-color);
     overflow: hidden;
+    border-radius: 4px;
+    flex-shrink: 0;
 }
 
 .gallery-thumbnail {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     background: var(--background-color);
 }
 
@@ -174,14 +250,14 @@
     position: absolute;
     top: 4px;
     right: 4px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
     background: rgba(0, 0, 0, 0.7);
     color: white;
     border: none;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 14px;
     line-height: 1;
     display: flex;
     align-items: center;
@@ -200,16 +276,16 @@
 
 .gallery-share-btn {
     position: absolute;
-    top: 4px;
-    left: 4px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
+    bottom: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
     background: rgba(0, 0, 0, 0.7);
     color: white;
     border: none;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
     line-height: 1;
     display: flex;
     align-items: center;
@@ -228,14 +304,15 @@
 }
 
 .gallery-item-info {
-    padding: 8px;
+    width: 100%;
     text-align: center;
+    min-width: 0;
 }
 
 .gallery-item-name {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-color);
-    opacity: 0.8;
+    opacity: 0.9;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -243,6 +320,7 @@
     padding: 2px 4px;
     border-radius: 3px;
     transition: background-color 0.2s;
+    line-height: 1.4;
 }
 
 .gallery-item-name:hover {
@@ -277,7 +355,7 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    z-index: 99999999 !important;
+    z-index: 9999 !important;
     isolation: isolate !important;
 }
 
@@ -291,7 +369,7 @@
     max-height: 80vh !important;
     overflow-y: auto !important;
     position: relative !important;
-    z-index: 99999999 !important;
+    z-index: 10000 !important;
 }
 
 .import-dialog h3 {
@@ -329,59 +407,227 @@
 
 @media (max-width: 768px) {
 
-    /* 禁止横向滚动 */
+    /* 移动端时侧边栏占满屏幕或更窄 */
     .fretboard-gallery {
-        overflow-x: hidden !important;
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-        padding: 20px 16px !important;
+        width: 280px;
     }
 
-    /* 每行显示两个缩略图 */
+    .gallery-toggle-btn.open {
+        left: 300px;
+    }
+
+    .gallery-header {
+        padding: 10px;
+    }
+
+    .gallery-title {
+        font-size: 16px;
+    }
+
     .gallery-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 15px;
-        overflow-x: hidden !important;
-        padding: 0 !important;
-        box-sizing: border-box;
-        width: 100%;
+        padding: 10px;
+        gap: 10px;
     }
 
     .gallery-item {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow-x: hidden !important;
-        overflow-y: hidden !important;
-        box-sizing: border-box;
-        min-width: 0;
+        padding: 6px;
+        gap: 8px;
     }
 
     .gallery-thumbnail-wrapper {
-        height: 100px !important;
-        width: 100% !important;
-        overflow: hidden !important;
-        position: relative;
+        width: 240px;
+        height: 105px;
     }
 
-    .gallery-thumbnail {
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: contain !important;
-        display: block !important;
-        background: var(--background-color);
-    }
-
-    .gallery-thumbnail-placeholder {
-        width: 100% !important;
-        height: 100% !important;
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
+    .gallery-item-name {
+        font-size: 12px;
     }
 
     .import-dialog {
         width: 95%;
         padding: 15px;
     }
+
+    .directory-tab {
+        min-width: 50px;
+        max-width: 100px;
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+
+    .directory-tab-add {
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+    }
+}
+
+/* 目录标签栏样式 */
+.directory-tabs {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+}
+
+.directory-tabs::-webkit-scrollbar {
+    height: 4px;
+}
+
+.directory-tabs::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.directory-tabs::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.directory-tabs::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.tabs-container {
+    display: flex;
+    gap: 4px;
+    min-width: fit-content;
+}
+
+.directory-tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    min-width: 60px;
+    max-width: 150px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.directory-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.directory-tab.active {
+    background: var(--background-color);
+    border-color: rgba(255, 255, 255, 0.1);
+    border-bottom-color: var(--background-color);
+    margin-bottom: -1px;
+    padding-bottom: 7px;
+}
+
+.directory-tab-name {
+    flex: 1;
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.directory-tab.active .directory-tab-name {
+    opacity: 1;
+    font-weight: 500;
+}
+
+.directory-tab-input {
+    flex: 1;
+    font-size: 12px;
+    color: var(--text-color);
+    background: var(--background-color);
+    border: 1px solid var(--text-color);
+    border-radius: 3px;
+    padding: 2px 4px;
+    outline: none;
+    min-width: 50px;
+}
+
+.directory-tab-input:focus {
+    border-color: #2196F3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
+}
+
+.directory-tab-close {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--text-color);
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.directory-tab-close:hover {
+    opacity: 1;
+    background: rgba(200, 0, 0, 0.2);
+    color: #ff6b6b;
+}
+
+.directory-tab-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin: 2px 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.directory-tab-add:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.gallery-export-btn {
+    padding: 6px 12px;
+    background: transparent;
+    color: #5ba3d0;
+    border: 2px solid #5ba3d0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    min-width: 50px;
+    transition: background-color 0.2s, color 0.2s;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin: 0;
+    font-family: inherit;
+}
+
+.gallery-export-btn:hover {
+    background: #5ba3d0;
+    color: white;
+}
+
+.gallery-export-btn:active {
+    background: rgba(91, 163, 208, 0.8);
 }
