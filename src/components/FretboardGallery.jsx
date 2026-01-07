@@ -35,6 +35,50 @@ export function FretboardGallery({
   // 侧边栏展开/收起状态
   const [isOpen, setIsOpen] = React.useState(false);
   
+  // 删除历史记录（用于撤销）
+  const [deleteHistory, setDeleteHistory] = React.useState([]);
+  
+  // 右键菜单状态
+  const [contextMenu, setContextMenu] = React.useState(null);
+  const [contextMenuDirectory, setContextMenuDirectory] = React.useState(null);
+  
+  // Ctrl+Z 撤销删除
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (deleteHistory.length > 0) {
+          e.preventDefault();
+          // 恢复最后删除的状态
+          const lastDeleted = deleteHistory[deleteHistory.length - 1];
+          const existingHistory = localStorage.getItem('fretboard-history');
+          let historyArray = [];
+          if (existingHistory) {
+            historyArray = JSON.parse(existingHistory);
+          }
+          // 添加回去
+          historyArray.unshift(lastDeleted);
+          localStorage.setItem('fretboard-history', JSON.stringify(historyArray));
+          
+          // 更新状态
+          if (onBatchImport) {
+            onBatchImport({ 
+              success: true, 
+              historyStates: historyArray,
+              directories: directories,
+              message: '已撤销删除' 
+            });
+          }
+          
+          // 移除历史记录中的最后一项
+          setDeleteHistory(prev => prev.slice(0, -1));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [deleteHistory, directories, onBatchImport]);
+  
   // 点击外部区域关闭侧边栏
   React.useEffect(() => {
     if (!isOpen) return;
@@ -59,6 +103,22 @@ export function FretboardGallery({
       document.removeEventListener('click', handleClickOutside);
     };
   }, [isOpen]);
+  
+  // 关闭右键菜单
+  React.useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    const handleScroll = () => setContextMenu(null);
+    
+    if (contextMenu) {
+      document.addEventListener('click', handleClick);
+      document.addEventListener('scroll', handleScroll, true);
+    }
+    
+    return () => {
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [contextMenu]);
   
   // 目录编辑状态
   const [editingDirectoryId, setEditingDirectoryId] = React.useState(null);
@@ -224,6 +284,10 @@ export function FretboardGallery({
 
   const handleDelete = (e, stateSnapshot) => {
     e.stopPropagation(); // 阻止触发恢复
+    
+    // 记录到删除历史
+    setDeleteHistory(prev => [...prev, stateSnapshot]);
+    
     if (onDelete) {
       onDelete(stateSnapshot);
     }
@@ -305,6 +369,56 @@ export function FretboardGallery({
     if (onDirectoryChange) {
       onDirectoryChange(dirId);
     }
+  };
+  
+  // 右键目录
+  const handleDirectoryContextMenu = (e, dir) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuDirectory(dir);
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+  
+  // 导出当前目录的状态
+  const handleExportDirectory = () => {
+    try {
+      const dirStates = historyStates.filter(state => state.directoryId === contextMenuDirectory.id);
+      
+      if (dirStates.length === 0) {
+        if (onImport) {
+          onImport({ success: false, message: '该目录下没有状态' });
+        }
+        return;
+      }
+      
+      const exportData = {
+        version: '1.0',
+        exportTime: new Date().toISOString(),
+        directories: [contextMenuDirectory],
+        historyStates: dirStates
+      };
+      
+      const jsonStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${contextMenuDirectory.name}_${new Date().getTime()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      if (onImport) {
+        onImport({ success: true, message: `已导出 ${dirStates.length} 个状态` });
+      }
+    } catch (error) {
+      console.error('导出失败:', error);
+      if (onImport) {
+        onImport({ success: false, message: '导出失败：' + error.message });
+      }
+    }
+    setContextMenu(null);
   };
   
   const handleDirectoryDoubleClick = (e, dir) => {
@@ -422,6 +536,7 @@ export function FretboardGallery({
               className={`directory-tab ${dir.id === currentDirectoryId ? 'active' : ''}`}
               onClick={() => handleDirectoryClick(dir.id)}
               onDoubleClick={(e) => handleDirectoryDoubleClick(e, dir)}
+              onContextMenu={(e) => handleDirectoryContextMenu(e, dir)}
               onMouseEnter={() => setHoveredDirectoryId(dir.id)}
               onMouseLeave={() => setHoveredDirectoryId(null)}
               title={dir.name}
@@ -633,6 +748,25 @@ export function FretboardGallery({
                 取消
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      
+      {/* 右键菜单 */}
+      {contextMenu && contextMenuDirectory && ReactDOM.createPortal(
+        <div 
+          className="directory-context-menu"
+          style={{
+            position: 'fixed',
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
+            zIndex: 100000
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="context-menu-item" onClick={handleExportDirectory}>
+            导出该目录状态
           </div>
         </div>,
         document.body

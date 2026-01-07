@@ -631,3 +631,26 @@
 .gallery-export-btn:active {
     background: rgba(91, 163, 208, 0.8);
 }
+
+/* 右键菜单 */
+.directory-context-menu {
+    background: rgba(30, 30, 30, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    min-width: 160px;
+}
+
+.context-menu-item {
+    padding: 10px 16px;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background 0.2s;
+    font-size: 14px;
+    user-select: none;
+}
+
+.context-menu-item:hover {
+    background: rgba(74, 144, 226, 0.2);
+}
