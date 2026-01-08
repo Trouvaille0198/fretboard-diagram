@@ -8,6 +8,7 @@ import { useConnectionState } from './hooks/useConnectionState';
 import { useHistory } from './hooks/useHistory';
 import { useNoteEditing } from './hooks/useNoteEditing';
 import { useAuth } from './hooks/useAuth';
+import { useAltKey } from './hooks/useAltKey';
 import { computeNoteIndex, computeNoteName, generateNotes, generateMarkers, generateFretPath, generateStringPath, getNotePosition } from './utils/fretboardCalculations';
 import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors } from './utils/connectionUtils';
 import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow, replaceAllTintNotes } from './utils/fretboardActions';
@@ -27,6 +28,9 @@ import { storageService } from './services/storageService';
 function Fretboard() {
   // 认证状态
   const auth = useAuth();
+  
+  // Alt 键音频模式
+  const { audioMode } = useAltKey();
   
   // 同步认证状态到 storageService
   useEffect(() => {
@@ -287,11 +291,12 @@ function Fretboard() {
     connectionMode, connectionStartNote,
     setConnectionStartNote, setConnectionStartPosition, setMousePosition,
     setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote,
-    connections, connectionType, connectionArrowDirection, updateNote: updateNote
+    connections, connectionType, connectionArrowDirection, updateNote: updateNote,
+    audioMode // 传入音频模式
   }), [data, setData, visibility, selected, setSelected, selectedColorLevel, selectedColor,
       setSelectedColorLevel, setSelectedColor,
       connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionType, connectionArrowDirection]);
+      setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionType, connectionArrowDirection, audioMode]);
 
   const handleNoteContextMenu = useCallback(createNoteContextMenuHandler({
     selected, setSelected, data, setData, updateNote: updateNote
@@ -665,7 +670,22 @@ function Fretboard() {
     <>
       <div className="title-header">
         <div>
-          <h1>Fretboard Diagram Generator</h1>
+          <h1>
+            Fretboard Diagram Generator
+            {audioMode && (
+              <span style={{ 
+                marginLeft: '15px', 
+                fontSize: '16px', 
+                color: '#4CAF50',
+                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                padding: '4px 12px',
+                borderRadius: '4px',
+                border: '1px solid #4CAF50'
+              }}>
+                🎵 音频模式
+              </span>
+            )}
+          </h1>
           {selectedHistoryState && (
             <>
               <div className="selected-state-name" title="当前选中的历史状态,保存将更新此状态" style={{ backgroundColor: 'rgba(74, 144, 226, 0.3)', color: 'white' }}>
@@ -772,7 +792,9 @@ function Fretboard() {
           )}
         </div>
       </div>
-      <figure id="fretboard-diagram-creator" className="half-full">
+      <figure id="fretboard-diagram-creator" className="half-full" style={{
+        cursor: audioMode ? "url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22><text x=%2212%22 y=%2218%22 font-size=%2220%22 text-anchor=%22middle%22>🎵</text></svg>') 12 12, pointer" : 'default'
+      }}>
         <FretboardSVG
           svgElementRef={svgElementRef}
           svgWidth={svgWidth}
@@ -835,6 +857,7 @@ function Fretboard() {
           setConnectionToolbarVisible={setConnectionToolbarVisible}
           setSelectedConnection={setSelectedConnection}
           showNotes={showNotes}
+          audioMode={audioMode}
         />
       </figure>
       <FretboardMenu

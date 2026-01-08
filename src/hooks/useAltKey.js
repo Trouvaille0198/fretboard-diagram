@@ -2,17 +2,20 @@ import { useState, useEffect } from 'react';
 
 export function useAltKey() {
     const [isAltPressed, setIsAltPressed] = useState(false);
+    const [audioMode, setAudioMode] = useState(false);
 
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (event.key === 'Alt' || event.altKey) {
                 setIsAltPressed(true);
+                setAudioMode(true);
             }
         };
 
         const handleKeyUp = (event) => {
             if (event.key === 'Alt' || !event.altKey) {
                 setIsAltPressed(false);
+                setAudioMode(false);
             }
         };
 
@@ -25,5 +28,5 @@ export function useAltKey() {
         };
     }, []);
 
-    return isAltPressed;
+    return { isAltPressed, audioMode };
 }

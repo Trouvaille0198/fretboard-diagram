@@ -67,7 +67,8 @@ export function FretboardSVG({
   setData,
   setConnectionToolbarVisible,
   setSelectedConnection,
-  showNotes
+  showNotes,
+  audioMode
 }) {
   return (
     <svg
@@ -197,7 +198,11 @@ export function FretboardSVG({
           const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
           const currentColor = noteData.color || 'white';
           const currentColor2 = noteData.color2 || null;
-          const currentVisibility = selected?.id === note.id ? 'selected' : (noteData.visibility || visibility);
+          
+          // 在 audioMode 下，临时设置所有音符为 transparent
+          const effectiveVisibility = audioMode ? 'transparent' : (selected?.id === note.id ? 'selected' : (noteData.visibility || visibility));
+          const currentVisibility = effectiveVisibility;
+          
           const isPreviewHover = connectionMode && connectionStartNote && previewHoverNote === note.id;
           
           // 当toggle处于hidden状态时，trans note显示为0.3透明度而不是完全隐藏
@@ -249,6 +254,33 @@ export function FretboardSVG({
               data-open={note.isOpen}
               onClick={(e) => handleNoteClick(e, note.id)}
               onMouseDown={(e) => {
+                // audioMode 下左键播放音频
+                if (audioMode && e.button === 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  // 从 noteId 解析品位和弦
+                  let fret = -1;
+                  let string = 0;
+                  
+                  if (note.id.startsWith('o-s')) {
+                    string = parseInt(note.id.substring(3));
+                    fret = -1;
+                  } else if (note.id.startsWith('f') && note.id.includes('-s')) {
+                    const parts = note.id.substring(1).split('-s');
+                    fret = parseInt(parts[0]);
+                    string = parseInt(parts[1]);
+                  }
+                  
+                  // 动态导入并播放
+                  import('../services/audioService').then(module => {
+                    module.default.playFretNote(fret, string, 0.8).catch(err => {
+                      console.error('Failed to play audio:', err);
+                    });
+                  });
+                  return;
+                }
+                
                 // 如果是中键，在连线模式下处理颜色切换
                 if (e.button === 1 && connectionMode && connectionStartNote) {
                   const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
@@ -270,7 +302,7 @@ export function FretboardSVG({
               }}
               onMouseEnter={() => setHoveredNoteId(note.id)}
               onMouseLeave={() => setHoveredNoteId(null)}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: audioMode ? 'pointer' : 'pointer' }}
             >
               {/* 填充的circle */}
               <circle
