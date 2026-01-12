@@ -481,10 +481,10 @@ export function FretboardGallery({
     handleDirectoryRenameConfirm(dir);
   };
   
-  const handleDirectoryRenameConfirm = (dir) => {
+  const handleDirectoryRenameConfirm = async (dir) => {
     const newName = editingDirectoryName.trim();
     if (newName && newName !== dir.name && onDirectoryRename) {
-      const result = onDirectoryRename(dir.id, newName);
+      const result = await onDirectoryRename(dir.id, newName);
       if (!result.success && onImport) {
         onImport({ success: false, message: result.message });
       }

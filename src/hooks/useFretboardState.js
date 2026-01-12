@@ -188,7 +188,7 @@ export function useFretboardState() {
             );
             setDirectories(updatedDirs);
             localStorage.setItem('fretboard-directories', JSON.stringify(updatedDirs));
-            return { success: true };
+            return { success: true, directories: updatedDirs };
         },
         deleteDirectory: (dirId) => {
             const dirToDelete = directories.find(d => d.id === dirId);
