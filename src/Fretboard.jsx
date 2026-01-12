@@ -581,9 +581,10 @@ function Fretboard() {
     const result = renameDirectory(dirId, newName);
     
     if (result.success) {
-      // 同步到存储
+      // 同步到存储，使用更新后的目录列表
       try {
-        await storageService.saveAll(directories, historyStates);
+        const updatedDirs = result.directories || directories;
+        await storageService.saveAll(updatedDirs, historyStates);
       } catch (error) {
         console.error('同步目录重命名失败:', error);
       }
