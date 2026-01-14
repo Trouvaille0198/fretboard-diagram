@@ -36,6 +36,10 @@ export function FretboardMenu({
   setCopyOnly,
   showNotes,
   setShowNotes,
+  horizontalCrop,
+  setHorizontalCrop,
+  verticalCrop,
+  setVerticalCrop,
   onReplaceAllTintNotes
 }) {
   // 如果选中的是第一层颜色且不是trans，生成淡色版本
@@ -176,40 +180,63 @@ export function FretboardMenu({
             </button>
           </div>
         </div>
-        {/* 下载区域 - 放在最底下，一行显示 */}
-        <div id="download-section" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', marginTop: '8px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
-            <input
-              type="checkbox"
-              checked={includeMarkers}
-              onChange={(e) => setIncludeMarkers(e.target.checked)}
-              style={{ cursor: 'pointer' }}
-            />
-            <span>包含品数</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
-            <input
-              type="checkbox"
-              checked={showNotes}
-              onChange={(e) => setShowNotes(e.target.checked)}
-              style={{ cursor: 'pointer' }}
-            />
-            <span>显示音符</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
-            <input
-              type="checkbox"
-              checked={copyOnly}
-              onChange={(e) => setCopyOnly(e.target.checked)}
-              style={{ cursor: 'pointer' }}
-            />
-            <span>仅复制</span>
-          </label>
+        {/* 下载区域 - 放在最底下，分两行显示 */}
+        <div id="download-section" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', padding: '8px', marginTop: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
+                <input
+                  type="checkbox"
+                  checked={includeMarkers}
+                  onChange={(e) => setIncludeMarkers(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span>包含品数</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
+                <input
+                  type="checkbox"
+                  checked={showNotes}
+                  onChange={(e) => setShowNotes(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span>显示音符</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
+                <input
+                  type="checkbox"
+                  checked={horizontalCrop}
+                  onChange={(e) => setHorizontalCrop(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span>水平截断</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
+                <input
+                  type="checkbox"
+                  checked={verticalCrop}
+                  onChange={(e) => setVerticalCrop(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span>垂直截断</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
+                <input
+                  type="checkbox"
+                  checked={copyOnly}
+                  onChange={(e) => setCopyOnly(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span>仅复制</span>
+              </label>
+            </div>
+          </div>
           <button 
             className="button" 
             onClick={onSaveSVG}
             title={copyOnly ? "复制到剪贴板" : "下载 SVG"}
-            style={{ marginLeft: 'auto' }}
           >
             {copyOnly ? 'CopyCopy' : 'Download'}
           </button>

@@ -435,7 +435,9 @@ export function saveSVG(
 	setToastMessage = null,
 	setToastType = null,
 	currentVisibility = "transparent",
-	setVisibility = null
+	setVisibility = null,
+	horizontalCrop = true,
+	verticalCrop = true
 ) {
 	// 直接导出，不再在这里处理 visibility 切换
 	// 切换逻辑已经在 Fretboard.jsx 的 saveSVGMemo 中处理
@@ -716,8 +718,9 @@ export function saveSVG(
 		}
 	});
 
-	// 如果找到了有效的note，计算Y坐标范围
+	// 如果找到了有效的note，计算Y坐标范围（垂直方向截断）
 	if (
+		verticalCrop &&
 		hasValidNotes &&
 		minStringIndex !== Infinity &&
 		maxStringIndex !== -Infinity
@@ -733,9 +736,9 @@ export function saveSVG(
 			CONSTS.circleRadius;
 
 		// 计算顶部和底部marker的位置
-		const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.7;
+		const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.3;
 		const bottomMarkerY =
-			CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing;
+			CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.4;
 		// 计算SVG的顶部和底部边缘（包括markers的padding，与Fretboard.jsx中的计算一致）
 		// 如果originalY和originalHeight存在，说明viewBox已经包含了markers，直接使用
 		// 否则使用默认计算（topMarkerY - 20 到 bottomMarkerY + 20）
@@ -758,17 +761,27 @@ export function saveSVG(
 
 		if (keepTop) {
 			// 保留顶部完整（包括顶部markers），只截断底部
+			// 保留到最底部note所在品格的底部（该品格的完整部分）
+			const bottomFretBottom =
+				CONSTS.offsetY + CONSTS.stringSpacing * (maxStringIndex + 1);
 			newY = topEdge;
-			newHeight = maxY - topEdge + padding;
+			newHeight = bottomFretBottom - topEdge + padding;
 		} else {
 			// 保留底部完整（包括底部markers），只截断顶部
-			newY = minY - padding;
+			// 保留到最顶部note所在品格的顶部（该品格的完整部分）
+			const topFretTop = CONSTS.offsetY + CONSTS.stringSpacing * minStringIndex;
+			newY = topFretTop - padding;
 			newHeight = bottomEdge - newY;
 		}
 	}
 
 	// 如果找到了有颜色的 note，以品丝边界进行裁剪（水平方向截断）
-	if (hasColoredNotes && minFret !== Infinity && maxFret !== -Infinity) {
+	if (
+		horizontalCrop &&
+		hasColoredNotes &&
+		minFret !== Infinity &&
+		maxFret !== -Infinity
+	) {
 		// 计算品丝边界位置
 		// 第0品丝（开放弦的左边界）：CONSTS.offsetX
 		// 第i品丝：CONSTS.offsetX + CONSTS.fretWidth * (i - startFret)
@@ -799,20 +812,24 @@ export function saveSVG(
 			svgCopy.setAttribute("height", newHeight);
 		}
 	} else {
-		// 即使没有水平方向截断，也要应用垂直方向截断
+		// 没有水平方向截断，根据垂直截断设置viewBox
 		const originalWidth =
 			parseFloat(svgCopy.getAttribute("width")) ||
 			parseFloat(svgCopy.getAttribute("viewBox")?.split(" ")[2]) ||
 			800;
 		const originalX =
 			parseFloat(svgCopy.getAttribute("viewBox")?.split(" ")[0]) || 0;
-		svgCopy.setAttribute(
-			"viewBox",
-			`${originalX} ${newY} ${originalWidth} ${newHeight}`
-		);
-		if (newHeight > 0) {
-			svgCopy.setAttribute("height", newHeight);
+		// 如果垂直截断开启，应用垂直截断；否则保持原始尺寸
+		if (verticalCrop) {
+			svgCopy.setAttribute(
+				"viewBox",
+				`${originalX} ${newY} ${originalWidth} ${newHeight}`
+			);
+			if (newHeight > 0) {
+				svgCopy.setAttribute("height", newHeight);
+			}
 		}
+		// 如果两个截断都关闭，保持原始viewBox（不需要修改）
 	}
 
 	// 设置 SVG 背景色（从 CSS 变量获取）
@@ -1117,14 +1134,14 @@ export function setFretWindow(
 		setEndFret(end);
 		return;
 	}
-	if (end - start > 16) {
-		setErrorMessage(
-			"Maximal number of displayable frets is 16, e.g., 1st to 16th or 4th to 19th!"
-		);
-		setStartFret(start);
-		setEndFret(end);
-		return;
-	}
+	// if (end - start > 16) {
+	// 	setErrorMessage(
+	// 		"Maximal number of displayable frets is 16, e.g., 1st to 16th or 4th to 19th!"
+	// 	);
+	// 	setStartFret(start);
+	// 	setEndFret(end);
+	// 	return;
+	// }
 
 	setStartFret(start);
 	setEndFret(end);
