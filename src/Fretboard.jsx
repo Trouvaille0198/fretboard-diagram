@@ -96,6 +96,8 @@ function Fretboard() {
   const [includeMarkers, setIncludeMarkers] = useState(true);
   const [copyOnly, setCopyOnly] = useState(true);
   const [showNotes, setShowNotes] = useState(false);
+  const [horizontalCrop, setHorizontalCrop] = useState(true);
+  const [verticalCrop, setVerticalCrop] = useState(true);
 
   // 异色模式标记
   const [inTintMode, setInTintMode] = useState(false);
@@ -116,8 +118,8 @@ function Fretboard() {
   const zeroFretLeftEdge = zeroFretX - CONSTS.circleRadius;
   const svgViewBoxX = zeroFretLeftEdge - 5;
   const svgViewBoxWidth = svgWidth - svgViewBoxX;
-  const bottomMarkerY = CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing;
-  const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.7;
+  const bottomMarkerY = CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.4;
+  const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.3;
   const svgHeight = bottomMarkerY + 20;
   const svgViewBoxY = topMarkerY - 20;
   const svgViewBoxHeight = svgHeight - svgViewBoxY;
@@ -415,8 +417,8 @@ function Fretboard() {
   }, [visibility, setData, setSelected, data, setStartFret, setEndFret, setDisplayMode, setRootNote, setEnharmonic]);
 
   const saveSVGMemo = useCallback(() => {
-    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility);
-  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility]);
+    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility, horizontalCrop, verticalCrop);
+  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility, horizontalCrop, verticalCrop]);
 
   const setFretWindowMemo = useCallback((fretWindow) => {
     setFretWindow(fretWindow, startFret, endFret, selected, setSelected, data, setData, updateNote, setToastMessage, setStartFret, setEndFret);
@@ -873,6 +875,10 @@ function Fretboard() {
         setCopyOnly={setCopyOnly}
         showNotes={showNotes}
         setShowNotes={setShowNotes}
+        horizontalCrop={horizontalCrop}
+        setHorizontalCrop={setHorizontalCrop}
+        verticalCrop={verticalCrop}
+        setVerticalCrop={setVerticalCrop}
         onSaveState={saveFretboardStateMemo}
         onReset={resetMemo}
         rootNote={rootNote}
