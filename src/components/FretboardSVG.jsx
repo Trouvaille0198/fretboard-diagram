@@ -67,8 +67,7 @@ export function FretboardSVG({
   setData,
   setConnectionToolbarVisible,
   setSelectedConnection,
-  showNotes,
-  audioMode
+  showNotes
 }) {
   return (
     <svg
@@ -199,8 +198,7 @@ export function FretboardSVG({
           const currentColor = noteData.color || 'white';
           const currentColor2 = noteData.color2 || null;
           
-          // 在 audioMode 下，临时设置所有音符为 transparent
-          const effectiveVisibility = audioMode ? 'transparent' : (selected?.id === note.id ? 'selected' : (noteData.visibility || visibility));
+          const effectiveVisibility = selected?.id === note.id ? 'selected' : (noteData.visibility || visibility);
           const currentVisibility = effectiveVisibility;
           
           const isPreviewHover = connectionMode && connectionStartNote && previewHoverNote === note.id;
@@ -254,8 +252,8 @@ export function FretboardSVG({
               data-open={note.isOpen}
               onClick={(e) => handleNoteClick(e, note.id)}
               onMouseDown={(e) => {
-                // audioMode 下左键播放音频
-                if (audioMode && e.button === 0) {
+                // 鼠标中键播放音频
+                if (e.button === 1) {
                   e.preventDefault();
                   e.stopPropagation();
                   
@@ -281,28 +279,11 @@ export function FretboardSVG({
                   return;
                 }
                 
-                // 如果是中键，在连线模式下处理颜色切换
-                if (e.button === 1 && connectionMode && connectionStartNote) {
-                  const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
-                  const hasColor2 = noteData.color2 && noteData.color2 !== null;
-                  
-                  // 只有当note有两层颜色时才能切换
-                  if (hasColor2) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // 确保previewHoverNote设置正确
-                    if (previewHoverNote !== note.id) {
-                      setPreviewHoverNote(note.id);
-                    }
-                    // 全局切换颜色层级
-                    setUseColor2Level(prev => !prev);
-                    return false;
-                  }
-                }
+                // 注意：中键现在用于播放音频，连线模式下的颜色切换功能已移除
               }}
               onMouseEnter={() => setHoveredNoteId(note.id)}
               onMouseLeave={() => setHoveredNoteId(null)}
-              style={{ cursor: audioMode ? 'pointer' : 'pointer' }}
+              style={{ cursor: 'pointer' }}
             >
               {/* 填充的circle */}
               <circle

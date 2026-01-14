@@ -28,38 +28,13 @@ export function createNoteClickHandler(params) {
         connections,
         connectionType,
         connectionArrowDirection,
-        updateNote: updateNoteFn,
-        audioMode // 新增：音频模式标识
+        updateNote: updateNoteFn
     } = params;
 
     return (event, noteId) => {
         event.stopPropagation();
         const noteElement = event.currentTarget;
         noteElement.focus();
-
-        // 音频模式：播放音符声音并直接返回
-        if (audioMode) {
-            // 从 noteId 解析品位和弦
-            let fret = -1;
-            let string = 0;
-
-            if (noteId.startsWith('o-s')) {
-                // 空弦：o-s0 到 o-s5
-                string = parseInt(noteId.substring(3));
-                fret = -1;
-            } else if (noteId.startsWith('f') && noteId.includes('-s')) {
-                // 品位音符：f0-s0 到 f24-s5
-                const parts = noteId.substring(1).split('-s');
-                fret = parseInt(parts[0]);
-                string = parseInt(parts[1]);
-            }
-
-            // 播放音符
-            audioService.playFretNote(fret, string, 0.8).catch(err => {
-                console.error('Failed to play audio:', err);
-            });
-            return; // 音频模式下不执行其他操作
-        }
 
         const noteData = data[noteId] || { type: 'note', color: 'white', visibility: visibility };
         const currentColor = noteData.color || 'white';
