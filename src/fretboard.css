@@ -120,9 +120,21 @@ g.note.transparent {
     opacity: 0.3;
 }
 
+/* transparent 状态下，文字保持完全不透明，并保持原有颜色 */
+g.note.transparent>text {
+    opacity: 1;
+    /* 确保文字颜色不被透明状态影响 */
+    color: inherit;
+}
+
 /* 当toggle处于hidden状态时，强制trans note显示为0.3透明度 */
 g.note.force-transparent {
     opacity: 0.5 !important;
+}
+
+/* force-transparent 状态下，文字保持完全不透明 */
+g.note.force-transparent>text {
+    opacity: 1 !important;
 }
 
 g.note.visible {
