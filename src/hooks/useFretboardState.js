@@ -43,6 +43,13 @@ export function useFretboardState() {
     const [displayMode, setDisplayMode] = useState(initialState?.displayMode || 'note');
     const [rootNote, setRootNote] = useState(initialState?.rootNote ?? null);
     const [data, setData] = useState(initialState?.data || {});
+    
+    // Checkbox 状态（下载设置）
+    const [includeMarkers, setIncludeMarkers] = useState(initialState?.includeMarkers ?? true);
+    const [copyOnly, setCopyOnly] = useState(initialState?.copyOnly ?? true);
+    const [showNotes, setShowNotes] = useState(initialState?.showNotes ?? false);
+    const [horizontalCrop, setHorizontalCrop] = useState(initialState?.horizontalCrop ?? true);
+    const [verticalCrop, setVerticalCrop] = useState(initialState?.verticalCrop ?? true);
     const [errorMessage, setErrorMessage] = useState('');
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState('info');
@@ -112,13 +119,18 @@ export function useFretboardState() {
                 enharmonic,
                 displayMode,
                 rootNote,
-                visibility
+                visibility,
+                includeMarkers,
+                copyOnly,
+                showNotes,
+                horizontalCrop,
+                verticalCrop
             };
             localStorage.setItem('fretboard-current-state', JSON.stringify(currentState));
         } catch (error) {
             console.error('保存当前状态失败:', error);
         }
-    }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility]);
+    }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, includeMarkers, copyOnly, showNotes, horizontalCrop, verticalCrop]);
 
     return {
         selected,
@@ -158,6 +170,17 @@ export function useFretboardState() {
         currentDateTime,
         dataRef,
         selectedTimeoutRef,
+        // Checkbox 状态（下载设置）
+        includeMarkers,
+        setIncludeMarkers,
+        copyOnly,
+        setCopyOnly,
+        showNotes,
+        setShowNotes,
+        horizontalCrop,
+        setHorizontalCrop,
+        verticalCrop,
+        setVerticalCrop,
         // 目录管理
         directories,
         setDirectories,
