@@ -57,6 +57,11 @@ function Fretboard() {
     toastMessage, setToastMessage,
     toastType, setToastType,
     historyStates, setHistoryStates,
+    includeMarkers, setIncludeMarkers,
+    copyOnly, setCopyOnly,
+    showNotes, setShowNotes,
+    horizontalCrop, setHorizontalCrop,
+    verticalCrop, setVerticalCrop,
     selectedHistoryState, setSelectedHistoryState,
     currentDateTime,
     dataRef,
@@ -93,11 +98,6 @@ function Fretboard() {
   } = noteEditing;
 
   // 下载选项状态
-  const [includeMarkers, setIncludeMarkers] = useState(true);
-  const [copyOnly, setCopyOnly] = useState(true);
-  const [showNotes, setShowNotes] = useState(false);
-  const [horizontalCrop, setHorizontalCrop] = useState(true);
-  const [verticalCrop, setVerticalCrop] = useState(true);
 
   // 异色模式标记
   const [inTintMode, setInTintMode] = useState(false);
