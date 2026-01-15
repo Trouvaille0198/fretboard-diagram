@@ -110,7 +110,7 @@ export function generateMarkers(startFret, endFret) {
 				CONSTS.offsetX +
 				(i - 1 - startFret) * CONSTS.fretWidth +
 				CONSTS.fretWidth / 2,
-			y: CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.4, // 使用stringSpacing的40%，更靠近指板
+			y: CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7, // 更靠近指板
 			number: i,
 			position: "bottom",
 		});
@@ -123,7 +123,7 @@ export function generateMarkers(startFret, endFret) {
 				CONSTS.offsetX +
 				(i - 1 - startFret) * CONSTS.fretWidth +
 				CONSTS.fretWidth / 2,
-			y: CONSTS.offsetY - CONSTS.stringSpacing * 0.3, // 使用stringSpacing的30%作为padding，更靠近指板
+			y: CONSTS.offsetY - CONSTS.stringSpacing * 0.5, // 更靠近指板
 			number: i,
 			position: "top",
 		});
