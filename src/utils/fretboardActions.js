@@ -123,7 +123,7 @@ export function cycleLevel1Color(
 						? 0
 						: tintVariants.length - 1
 					: (currentIndex + direction + tintVariants.length) %
-					  tintVariants.length;
+					tintVariants.length;
 			selectColor(1, actualColorName, tintVariants[nextIndex]);
 		} else {
 			// 否则切换到下一个主颜色
@@ -135,7 +135,7 @@ export function cycleLevel1Color(
 						? 0
 						: LEVEL1_COLOR_ORDER.length - 1
 					: (currentIndex + direction + LEVEL1_COLOR_ORDER.length) %
-					  LEVEL1_COLOR_ORDER.length;
+					LEVEL1_COLOR_ORDER.length;
 			selectColor(1, LEVEL1_COLOR_ORDER[nextIndex]);
 		}
 	} else {
@@ -178,7 +178,7 @@ export function cycleLevel2Color(
 						? 0
 						: tintVariants.length - 1
 					: (currentIndex + direction + tintVariants.length) %
-					  tintVariants.length;
+					tintVariants.length;
 			selectColor(2, actualColorName, tintVariants[nextIndex]);
 		} else {
 			// 否则切换到下一个主颜色
@@ -190,7 +190,7 @@ export function cycleLevel2Color(
 						? 0
 						: LEVEL2_COLOR_ORDER.length - 1
 					: (currentIndex + direction + LEVEL2_COLOR_ORDER.length) %
-					  LEVEL2_COLOR_ORDER.length;
+					LEVEL2_COLOR_ORDER.length;
 			selectColor(2, LEVEL2_COLOR_ORDER[nextIndex]);
 		}
 	} else {
@@ -672,47 +672,50 @@ export function saveSVG(
 	// 计算上下边界（垂直方向截断）- 独立于水平方向截断
 	// 逻辑：只有有染色的note要完整显示，transparent和hidden的部分都要截断
 	// 必须保留一个方向的完整（要么是顶部要么是底部），不能两个方向都截断
-	let newY = originalY || 0;
-	let newHeight = originalHeight || svgCopy.getAttribute("height") || 0;
+	// 初始值：如果没有原始值，使用marker的实际位置来计算
+	let newY = originalY;
+	let newHeight = originalHeight;
+	if (!newY && !newHeight) {
+		// 如果没有原始值，先使用默认值，后面会根据marker实际位置调整
+		newY = 0;
+		newHeight = parseFloat(svgCopy.getAttribute("height")) || 0;
+	}
 
 	// 计算实际内容的上下边界（无论是否包含品数标记都要执行垂直方向截断）
 	let minStringIndex = Infinity;
 	let maxStringIndex = -Infinity;
 	let hasValidNotes = false;
 
-	// 查找所有有颜色的note，提取string索引
+	// 查找所有非hidden的note，提取string索引（用于垂直截断）
+	// 包括visible、selected、transparent的note，只排除hidden的
 	noteElements.forEach((noteElement) => {
 		const noteId = noteElement.getAttribute("id");
 		if (!noteId) return;
 
-		const noteData = data[noteId];
-		if (!noteData) return;
+		// 检查是否不是hidden（包括visible、selected、transparent都算）
+		const classList = noteElement.classList;
+		const isHidden = classList.contains("hidden");
+		if (isHidden) return;
 
-		const hasColor =
-			noteData.color &&
-			(noteData.visibility === "visible" || noteData.visibility === "selected");
-		const hasColor2 = noteData.color2 && noteData.color2 !== null;
-
-		if (hasColor || hasColor2) {
-			// 从noteId提取string索引
-			// 格式：f{i}-s{j} 或 o-s{j}
-			let stringIndex;
-			if (noteId.startsWith("o-s")) {
-				stringIndex = parseInt(noteId.substring(3), 10);
-			} else {
-				const match = noteId.match(/-s(\d+)$/);
-				if (match) {
-					stringIndex = parseInt(match[1], 10);
-				}
-			}
-
-			if (stringIndex !== undefined && !isNaN(stringIndex)) {
-				minStringIndex = Math.min(minStringIndex, stringIndex);
-				maxStringIndex = Math.max(maxStringIndex, stringIndex);
-				hasValidNotes = true;
+		// 从noteId提取string索引
+		// 格式：f{i}-s{j} 或 o-s{j}
+		let stringIndex;
+		if (noteId.startsWith("o-s")) {
+			stringIndex = parseInt(noteId.substring(3), 10);
+		} else {
+			const match = noteId.match(/-s(\d+)$/);
+			if (match) {
+				stringIndex = parseInt(match[1], 10);
 			}
 		}
+
+		if (stringIndex !== undefined && !isNaN(stringIndex)) {
+			minStringIndex = Math.min(minStringIndex, stringIndex);
+			maxStringIndex = Math.max(maxStringIndex, stringIndex);
+			hasValidNotes = true;
+		}
 	});
+
 
 	// 检查顶部和底部是否有note（包括transparent，只有hidden不算有note）
 	// 需要检查DOM中实际存在的note元素，看它们的class来判断visibility
@@ -754,6 +757,11 @@ export function saveSVG(
 
 	// 根据是否有note动态调整marker位置（通过CSS transform）
 	// 如果没有note，通过transform靠近指板；如果有note，保持原始位置
+	// 记录marker调整后的实际位置，用于计算viewBox边界
+	let actualTopMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5; // 默认原始位置
+	let actualBottomMarkerY =
+		CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7; // 默认原始位置
+
 	if (includeMarkers) {
 		const markersGroup = svgCopy.querySelector("g.markers");
 		if (markersGroup) {
@@ -766,17 +774,34 @@ export function saveSVG(
 					// 底部marker的y坐标应该大于offsetY + fretHeight（因为y = offsetY + fretHeight + stringSpacing * 0.7）
 					if (currentY < CONSTS.offsetY) {
 						// 顶部marker：如果没有note，向下移动（靠近指板）
-						// 从0.5到0.3，移动0.2倍
 						if (!hasTopNote) {
-							const moveDistance = CONSTS.stringSpacing * 0.2;
+							const moveDistance = CONSTS.stringSpacing * 0.3;
 							marker.setAttribute("transform", `translate(0, ${moveDistance})`);
+							const adjustedY = currentY + moveDistance;
+							if (adjustedY > actualTopMarkerY) {
+								actualTopMarkerY = adjustedY;
+							}
+						} else {
+							if (currentY > actualTopMarkerY) {
+								actualTopMarkerY = currentY;
+							}
 						}
 					} else if (currentY > CONSTS.offsetY + CONSTS.fretHeight) {
 						// 底部marker：如果没有note，向上移动（靠近指板）
-						// 从0.7到0.4，移动-0.3倍
 						if (!hasBottomNote) {
-							const moveDistance = -CONSTS.stringSpacing * 0.3;
+							const moveDistance = -CONSTS.stringSpacing * 0.4;
 							marker.setAttribute("transform", `translate(0, ${moveDistance})`);
+							const adjustedY = currentY + moveDistance;
+							if (adjustedY < actualBottomMarkerY) {
+								actualBottomMarkerY = adjustedY;
+							}
+						} else {
+							const moveDistance = -CONSTS.stringSpacing * 0.1;
+							marker.setAttribute("transform", `translate(0, ${moveDistance})`);
+							const adjustedY = currentY + moveDistance;
+							if (adjustedY < actualBottomMarkerY) {
+								actualBottomMarkerY = adjustedY;
+							}
 						}
 					}
 				}
@@ -784,62 +809,393 @@ export function saveSVG(
 		}
 	}
 
-	// 如果找到了有效的note，计算Y坐标范围（垂直方向截断）
-	if (
-		verticalCrop &&
-		hasValidNotes &&
-		minStringIndex !== Infinity &&
-		maxStringIndex !== -Infinity
-	) {
-		// 根据string索引计算Y坐标
-		const minY =
-			CONSTS.offsetY +
-			CONSTS.stringSpacing * minStringIndex -
-			CONSTS.circleRadius;
-		const maxY =
-			CONSTS.offsetY +
-			CONSTS.stringSpacing * maxStringIndex +
-			CONSTS.circleRadius;
+	// 计算垂直方向的边界（无论是否开启垂直截断都需要计算）
+	// 如果verticalCrop=false，使用新的边界计算逻辑（marker > note > 弦）
+	// 如果verticalCrop=true，使用原有的截断逻辑
+	if (!verticalCrop) {
+		// 辅助函数：计算上下边界（按照优先级：marker > note > 弦）
+		const calculateVerticalBounds = () => {
+			const PADDING = 6; // 6px padding
+			let topEdge = null;
+			let bottomEdge = null;
 
-		// 计算顶部和底部marker的位置（使用原始距离）
-		const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5;
-		const bottomMarkerY =
-			CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7;
-		// 计算SVG的顶部和底部边缘（包括markers的padding，与Fretboard.jsx中的计算一致）
-		// 如果originalY和originalHeight存在，说明viewBox已经包含了markers，直接使用
-		// 否则使用默认计算（topMarkerY - 20 到 bottomMarkerY + 20）
-		const topEdge =
-			originalY !== undefined && originalHeight ? originalY : topMarkerY - 20;
-		const bottomEdge =
-			originalY !== undefined && originalHeight
-				? originalY + originalHeight
-				: bottomMarkerY + 20;
+			// 1. 检查顶部和底部是否有marker（优先级最高）
+			if (includeMarkers) {
+				const markersGroup = svgCopy.querySelector("g.markers");
+				if (markersGroup) {
+					const markers = markersGroup.querySelectorAll(".marker");
+					let minTopMarkerY = Infinity;
+					let maxBottomMarkerY = -Infinity;
 
-		// 计算最边缘的note到顶部和底部的距离
-		const distanceToTop = minY - topEdge;
-		const distanceToBottom = bottomEdge - maxY;
+					// 获取marker的font-size（从CSS或第一个marker元素的计算样式）
+					let markerFontSize = 16; // 默认值
+					if (markers.length > 0) {
+						try {
+							// 尝试从原始DOM获取计算样式
+							const originalSvg = document.getElementById("fretboard-svg");
+							if (originalSvg) {
+								const originalMarker = originalSvg.querySelector("text.marker");
+								if (originalMarker) {
+									const computedStyle = window.getComputedStyle(originalMarker);
+									const fontSize = parseFloat(computedStyle.fontSize);
+									if (!isNaN(fontSize)) {
+										markerFontSize = fontSize;
+									}
+								}
+							}
+						} catch (e) {
+							// 如果获取失败，使用默认值
+						}
+					}
+					// 注意：如果没有 dominant-baseline: middle，SVG text 的 y 往往是“基线”，
+					// 用“上下各半个字号”的算法会导致顶部裁切过紧、底部留白过多。
+					// 这里根据 dominant-baseline 动态选择算法：
+					// - middle: 上下各 markerFontSize/2
+					// - 其他(含 auto/baseline): 使用近似的上升/下降比例（更贴近字体真实盒子）
+					let dominantBaseline = "auto";
+					try {
+						const originalSvg = document.getElementById("fretboard-svg");
+						const originalMarker = originalSvg?.querySelector("text.marker");
+						if (originalMarker) {
+							const computedStyle = window.getComputedStyle(originalMarker);
+							dominantBaseline =
+								(computedStyle.dominantBaseline || "").trim() || "auto";
+						}
+					} catch (e) {
+						// ignore
+					}
 
-		// 判断最边缘的note靠近哪边，保留那一边的完整（包括markers）
-		// 如果两边一样近，默认优先保留顶部
-		const keepTop = distanceToTop <= distanceToBottom;
+					const isMiddleBaseline = dominantBaseline === "middle";
+					const ascent = isMiddleBaseline ? markerFontSize / 2 : markerFontSize * 0.8;
+					const descent = isMiddleBaseline ? markerFontSize / 2 : markerFontSize * 0.2;
 
-		const padding = 15; // 留15px的padding
+					// marker的transform已经在第768-816行设置过了，这里直接使用
+					markers.forEach((marker) => {
+						const currentY = parseFloat(marker.getAttribute("y"));
+						if (!isNaN(currentY)) {
+							// 读取已有的transform（在第768-816行已设置）
+							const transform = marker.getAttribute("transform");
+							let actualY = currentY;
+							if (transform) {
+								const match = transform.match(/translate\([^,]+,\s*([^)]+)\)/);
+								if (match) {
+									actualY = currentY + parseFloat(match[1]);
+								}
+							}
 
-		if (keepTop) {
-			// 保留顶部完整（包括顶部markers），只截断底部
-			// 保留到最底部note所在的那条弦（包括note的半径）
-			const bottomStringY =
-				CONSTS.offsetY + CONSTS.stringSpacing * maxStringIndex;
-			const bottomNoteBottom = bottomStringY + CONSTS.circleRadius;
-			newY = topEdge;
-			newHeight = bottomNoteBottom - topEdge + padding;
-		} else {
-			// 保留底部完整（包括底部markers），只截断顶部
-			// 保留到最顶部note所在的那条弦（包括note的半径）
+							// marker是text元素：若是 middle baseline，y≈中心；否则 y≈基线
+							if (currentY < CONSTS.offsetY) {
+								// 顶部marker - 使用文本的上边缘
+								const markerTop = actualY - ascent;
+								if (markerTop < minTopMarkerY) {
+									minTopMarkerY = markerTop;
+								}
+							} else if (currentY > CONSTS.offsetY + CONSTS.fretHeight) {
+								// 底部marker - 使用文本的下边缘
+								const markerBottom = actualY + descent;
+								if (markerBottom > maxBottomMarkerY) {
+									maxBottomMarkerY = markerBottom;
+								}
+							}
+						}
+					});
+
+					// 确保上下留空一致：都使用PADDING
+					if (minTopMarkerY !== Infinity) {
+						topEdge = minTopMarkerY - PADDING;
+					}
+					if (maxBottomMarkerY !== -Infinity) {
+						bottomEdge = maxBottomMarkerY + PADDING;
+					}
+				}
+			}
+
+			// 2. 如果顶部边界未确定，检查1弦（stringIndex=0）上是否有note
+			if (topEdge === null) {
+				let topNoteY = null;
+				noteElements.forEach((noteElement) => {
+					const noteId = noteElement.getAttribute("id");
+					if (!noteId) return;
+
+					// 从noteId提取string索引
+					let stringIndex;
+					if (noteId.startsWith("o-s")) {
+						stringIndex = parseInt(noteId.substring(3), 10);
+					} else {
+						const match = noteId.match(/-s(\d+)$/);
+						if (match) {
+							stringIndex = parseInt(match[1], 10);
+						}
+					}
+
+					if (stringIndex === 0) {
+						// 检查是否不是hidden
+						const classList = noteElement.classList;
+						const isHidden = classList.contains("hidden");
+						if (!isHidden) {
+							// 获取note的Y坐标：优先使用data-y，否则从transform中提取
+							let noteY = parseFloat(noteElement.getAttribute("data-y"));
+							if (isNaN(noteY)) {
+								const transform = noteElement.getAttribute("transform");
+								if (transform) {
+									const match = transform.match(/translate\([^,]+,\s*([^)]+)\)/);
+									if (match) {
+										noteY = parseFloat(match[1]);
+									}
+								}
+							}
+							if (!isNaN(noteY)) {
+								if (topNoteY === null || noteY < topNoteY) {
+									topNoteY = noteY;
+								}
+							}
+						}
+					}
+				});
+
+				if (topNoteY !== null) {
+					topEdge = topNoteY - CONSTS.circleRadius - PADDING;
+				}
+			}
+
+			// 3. 如果底部边界未确定，检查6弦（stringIndex=CONSTS.numStrings-1）上是否有note
+			if (bottomEdge === null) {
+				let bottomNoteY = null;
+				noteElements.forEach((noteElement) => {
+					const noteId = noteElement.getAttribute("id");
+					if (!noteId) return;
+
+					// 从noteId提取string索引
+					let stringIndex;
+					if (noteId.startsWith("o-s")) {
+						stringIndex = parseInt(noteId.substring(3), 10);
+					} else {
+						const match = noteId.match(/-s(\d+)$/);
+						if (match) {
+							stringIndex = parseInt(match[1], 10);
+						}
+					}
+
+					if (stringIndex === CONSTS.numStrings - 1) {
+						// 检查是否不是hidden
+						const classList = noteElement.classList;
+						const isHidden = classList.contains("hidden");
+						if (!isHidden) {
+							// 获取note的Y坐标：优先使用data-y，否则从transform中提取
+							let noteY = parseFloat(noteElement.getAttribute("data-y"));
+							if (isNaN(noteY)) {
+								const transform = noteElement.getAttribute("transform");
+								if (transform) {
+									const match = transform.match(/translate\([^,]+,\s*([^)]+)\)/);
+									if (match) {
+										noteY = parseFloat(match[1]);
+									}
+								}
+							}
+							if (!isNaN(noteY)) {
+								if (bottomNoteY === null || noteY > bottomNoteY) {
+									bottomNoteY = noteY;
+								}
+							}
+						}
+					}
+				});
+
+				if (bottomNoteY !== null) {
+					bottomEdge = bottomNoteY + CONSTS.circleRadius + PADDING;
+				}
+			}
+
+			// 4. 如果顶部边界仍未确定，使用1弦的位置
+			if (topEdge === null) {
+				topEdge = CONSTS.offsetY - PADDING;
+			}
+
+			// 5. 如果底部边界仍未确定，使用6弦的位置
+			if (bottomEdge === null) {
+				bottomEdge = CONSTS.offsetY + CONSTS.stringSpacing * (CONSTS.numStrings - 1) + PADDING;
+			}
+
+			return { topEdge, bottomEdge };
+		};
+
+		const { topEdge, bottomEdge } = calculateVerticalBounds();
+		newY = topEdge;
+		newHeight = bottomEdge - topEdge;
+	} else if (verticalCrop) {
+		// 如果verticalCrop=true，执行垂直截断
+		if (
+			hasValidNotes &&
+			minStringIndex !== Infinity &&
+			maxStringIndex !== -Infinity
+		) {
+			// 根据string索引计算Y坐标范围
 			const topStringY = CONSTS.offsetY + CONSTS.stringSpacing * minStringIndex;
+			const bottomStringY = CONSTS.offsetY + CONSTS.stringSpacing * maxStringIndex;
 			const topNoteTop = topStringY - CONSTS.circleRadius;
-			newY = topNoteTop - padding;
-			newHeight = bottomEdge - newY;
+			const bottomNoteBottom = bottomStringY + CONSTS.circleRadius;
+
+			// 辅助函数：计算单边边界（顶部或底部），使用与verticalCrop=false时相同的逻辑
+			const calculateSingleEdge = (isTop) => {
+				const PADDING = 6; // 6px padding
+				let edge = null;
+
+				// 1. 检查是否有marker（优先级最高）
+				if (includeMarkers) {
+					const markersGroup = svgCopy.querySelector("g.markers");
+					if (markersGroup) {
+						const markers = markersGroup.querySelectorAll(".marker");
+						let markerEdge = isTop ? Infinity : -Infinity;
+
+						let markerFontSize = 16;
+						if (markers.length > 0) {
+							try {
+								const originalSvg = document.getElementById("fretboard-svg");
+								const originalMarker = originalSvg?.querySelector("text.marker");
+								if (originalMarker) {
+									const computedStyle = window.getComputedStyle(originalMarker);
+									const fontSize = parseFloat(computedStyle.fontSize);
+									if (!isNaN(fontSize)) {
+										markerFontSize = fontSize;
+									}
+								}
+							} catch (e) {
+								// ignore
+							}
+						}
+
+						let dominantBaseline = "auto";
+						try {
+							const originalSvg = document.getElementById("fretboard-svg");
+							const originalMarker = originalSvg?.querySelector("text.marker");
+							if (originalMarker) {
+								const computedStyle = window.getComputedStyle(originalMarker);
+								dominantBaseline =
+									(computedStyle.dominantBaseline || "").trim() || "auto";
+							}
+						} catch (e) {
+							// ignore
+						}
+
+						const isMiddleBaseline = dominantBaseline === "middle";
+						const ascent = isMiddleBaseline ? markerFontSize / 2 : markerFontSize * 0.8;
+						const descent = isMiddleBaseline ? markerFontSize / 2 : markerFontSize * 0.2;
+
+						markers.forEach((marker) => {
+							const currentY = parseFloat(marker.getAttribute("y"));
+							if (!isNaN(currentY)) {
+								const transform = marker.getAttribute("transform");
+								let actualY = currentY;
+								if (transform) {
+									const match = transform.match(/translate\([^,]+,\s*([^)]+)\)/);
+									if (match) {
+										actualY = currentY + parseFloat(match[1]);
+									}
+								}
+
+								if (isTop && currentY < CONSTS.offsetY) {
+									const markerTop = actualY - ascent;
+									if (markerTop < markerEdge) {
+										markerEdge = markerTop;
+									}
+								} else if (!isTop && currentY > CONSTS.offsetY + CONSTS.fretHeight) {
+									const markerBottom = actualY + descent;
+									if (markerBottom > markerEdge) {
+										markerEdge = markerBottom;
+									}
+								}
+							}
+						});
+
+						if (markerEdge !== Infinity && markerEdge !== -Infinity) {
+							edge = isTop ? markerEdge - PADDING : markerEdge + PADDING;
+						}
+					}
+				}
+
+				// 2. 如果边界未确定，检查边缘弦上的note
+				if (edge === null) {
+					const targetStringIndex = isTop ? 0 : CONSTS.numStrings - 1;
+					let noteY = null;
+					noteElements.forEach((noteElement) => {
+						const noteId = noteElement.getAttribute("id");
+						if (!noteId) return;
+
+						let stringIndex;
+						if (noteId.startsWith("o-s")) {
+							stringIndex = parseInt(noteId.substring(3), 10);
+						} else {
+							const match = noteId.match(/-s(\d+)$/);
+							if (match) {
+								stringIndex = parseInt(match[1], 10);
+							}
+						}
+
+						if (stringIndex === targetStringIndex) {
+							const classList = noteElement.classList;
+							const isHidden = classList.contains("hidden");
+							if (!isHidden) {
+								let y = parseFloat(noteElement.getAttribute("data-y"));
+								if (isNaN(y)) {
+									const transform = noteElement.getAttribute("transform");
+									if (transform) {
+										const match = transform.match(/translate\([^,]+,\s*([^)]+)\)/);
+										if (match) {
+											y = parseFloat(match[1]);
+										}
+									}
+								}
+								if (!isNaN(y)) {
+									if (noteY === null || (isTop ? y < noteY : y > noteY)) {
+										noteY = y;
+									}
+								}
+							}
+						}
+					});
+
+					if (noteY !== null) {
+						edge = isTop
+							? noteY - CONSTS.circleRadius - PADDING
+							: noteY + CONSTS.circleRadius + PADDING;
+					}
+				}
+
+				// 3. 如果边界仍未确定，使用边缘弦的位置
+				if (edge === null) {
+					edge = isTop
+						? CONSTS.offsetY - PADDING
+						: CONSTS.offsetY + CONSTS.stringSpacing * (CONSTS.numStrings - 1) + PADDING;
+				}
+
+				return edge;
+			};
+
+			// 计算顶部和底部边界（用于判断保留哪边）
+			const calculatedTopEdge = calculateSingleEdge(true);
+			const calculatedBottomEdge = calculateSingleEdge(false);
+
+			// 计算最边缘的note到顶部和底部的距离
+			const distanceToTop = topNoteTop - calculatedTopEdge;
+			const distanceToBottom = calculatedBottomEdge - bottomNoteBottom;
+
+			// 判断最边缘的note靠近哪边，保留那一边的完整
+			// 如果两边一样近，默认优先保留顶部
+			const keepTop = distanceToTop <= distanceToBottom;
+
+			const padding = 6; // 被截断的一边使用6px padding
+
+			if (keepTop) {
+				// 保留顶部完整（使用计算出的顶部边界），只截断底部
+				const finalBottom = bottomNoteBottom + padding;
+				newY = calculatedTopEdge;
+				newHeight = finalBottom - calculatedTopEdge;
+			} else {
+				// 保留底部完整（使用计算出的底部边界），只截断顶部
+				const finalTop = topNoteTop - padding;
+				newY = finalTop;
+				newHeight = calculatedBottomEdge - finalTop;
+			}
 		}
 	}
 
@@ -887,7 +1243,7 @@ export function saveSVG(
 			800;
 		const originalX =
 			parseFloat(svgCopy.getAttribute("viewBox")?.split(" ")[0]) || 0;
-		// 如果垂直截断开启，应用垂直截断；否则保持原始尺寸
+		// 如果垂直截断开启，应用垂直截断
 		if (verticalCrop) {
 			svgCopy.setAttribute(
 				"viewBox",
@@ -896,8 +1252,31 @@ export function saveSVG(
 			if (newHeight > 0) {
 				svgCopy.setAttribute("height", newHeight);
 			}
+		} else {
+			// 没有水平方向截断，根据垂直截断设置viewBox
+			// 如果verticalCrop=false，newY和newHeight已经在上面计算过了
+			// 如果verticalCrop=true，newY和newHeight也在上面计算过了
+			// 如果verticalCrop=true但没有有效note，使用原始值
+			if (verticalCrop) {
+				svgCopy.setAttribute(
+					"viewBox",
+					`${originalX} ${newY} ${originalWidth} ${newHeight}`
+				);
+				if (newHeight > 0) {
+					svgCopy.setAttribute("height", newHeight);
+				}
+			} else {
+				// verticalCrop=false，使用已计算的newY和newHeight
+				svgCopy.setAttribute(
+					"viewBox",
+					`${originalX} ${newY} ${originalWidth} ${newHeight}`
+				);
+				svgCopy.setAttribute("width", originalWidth);
+				if (newHeight > 0) {
+					svgCopy.setAttribute("height", newHeight);
+				}
+			}
 		}
-		// 如果两个截断都关闭，保持原始viewBox（不需要修改）
 	}
 
 	// 设置 SVG 背景色（从 CSS 变量获取）

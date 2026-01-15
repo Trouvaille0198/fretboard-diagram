@@ -272,6 +272,7 @@ div.menu {
 
 text.marker {
     text-anchor: middle;
+    dominant-baseline: middle;
     font-size: 16px;
     font-weight: bold;
     fill: var(--text-color);
