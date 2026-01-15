@@ -118,8 +118,8 @@ function Fretboard() {
   const zeroFretLeftEdge = zeroFretX - CONSTS.circleRadius;
   const svgViewBoxX = zeroFretLeftEdge - 5;
   const svgViewBoxWidth = svgWidth - svgViewBoxX;
-  const bottomMarkerY = CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.4;
-  const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.3;
+  const bottomMarkerY = CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7;
+  const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5;
   const svgHeight = bottomMarkerY + 20;
   const svgViewBoxY = topMarkerY - 20;
   const svgViewBoxHeight = svgHeight - svgViewBoxY;
