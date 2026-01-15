@@ -498,12 +498,8 @@ export function saveSVG(
 
 	// 设置复制 SVG 中的样式
 	if (showNotes) {
-		// 隐藏 transparent note 的文本
-		const notes = svgCopy.querySelectorAll("g.note.transparent");
-		notes.forEach((note) => {
-			const text = note.querySelector("text");
-			if (text) text.style.opacity = "0";
-		});
+		// showNotes 为 true 时，显示所有 note 的文字（包括 transparent）
+		// 不需要隐藏 transparent note 的文字
 	} else {
 		// 执行 Toggle 切换
 		const notes = svgCopy.querySelectorAll("g.note");
@@ -718,6 +714,76 @@ export function saveSVG(
 		}
 	});
 
+	// 检查顶部和底部是否有note（包括transparent，只有hidden不算有note）
+	// 需要检查DOM中实际存在的note元素，看它们的class来判断visibility
+	let hasTopNote = false; // 顶部（stringIndex = 0）是否有note
+	let hasBottomNote = false; // 底部（stringIndex = CONSTS.numStrings - 1）是否有note
+
+	// 检查DOM中所有的note元素
+	noteElements.forEach((noteElement) => {
+		const noteId = noteElement.getAttribute("id");
+		if (!noteId) return;
+
+		// 从noteId提取string索引
+		let stringIndex;
+		if (noteId.startsWith("o-s")) {
+			stringIndex = parseInt(noteId.substring(3), 10);
+		} else {
+			const match = noteId.match(/-s(\d+)$/);
+			if (match) {
+				stringIndex = parseInt(match[1], 10);
+			}
+		}
+
+		if (stringIndex === undefined || isNaN(stringIndex)) return;
+
+		// 检查class来判断visibility：visible、selected、transparent都算有note，只有hidden不算
+		const classList = noteElement.classList;
+		const isHidden = classList.contains("hidden");
+
+		// 如果不是hidden，就算有note
+		if (!isHidden) {
+			if (stringIndex === 0) {
+				hasTopNote = true;
+			}
+			if (stringIndex === CONSTS.numStrings - 1) {
+				hasBottomNote = true;
+			}
+		}
+	});
+
+	// 根据是否有note动态调整marker位置（通过CSS transform）
+	// 如果没有note，通过transform靠近指板；如果有note，保持原始位置
+	if (includeMarkers) {
+		const markersGroup = svgCopy.querySelector("g.markers");
+		if (markersGroup) {
+			const markers = markersGroup.querySelectorAll(".marker");
+			markers.forEach((marker) => {
+				const currentY = parseFloat(marker.getAttribute("y"));
+				if (!isNaN(currentY)) {
+					// 判断是顶部还是底部marker
+					// 顶部marker的y坐标应该小于offsetY（因为y = offsetY - stringSpacing * 0.5）
+					// 底部marker的y坐标应该大于offsetY + fretHeight（因为y = offsetY + fretHeight + stringSpacing * 0.7）
+					if (currentY < CONSTS.offsetY) {
+						// 顶部marker：如果没有note，向下移动（靠近指板）
+						// 从0.5到0.3，移动0.2倍
+						if (!hasTopNote) {
+							const moveDistance = CONSTS.stringSpacing * 0.2;
+							marker.setAttribute("transform", `translate(0, ${moveDistance})`);
+						}
+					} else if (currentY > CONSTS.offsetY + CONSTS.fretHeight) {
+						// 底部marker：如果没有note，向上移动（靠近指板）
+						// 从0.7到0.4，移动-0.3倍
+						if (!hasBottomNote) {
+							const moveDistance = -CONSTS.stringSpacing * 0.3;
+							marker.setAttribute("transform", `translate(0, ${moveDistance})`);
+						}
+					}
+				}
+			});
+		}
+	}
+
 	// 如果找到了有效的note，计算Y坐标范围（垂直方向截断）
 	if (
 		verticalCrop &&
@@ -735,10 +801,10 @@ export function saveSVG(
 			CONSTS.stringSpacing * maxStringIndex +
 			CONSTS.circleRadius;
 
-		// 计算顶部和底部marker的位置
-		const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.3;
+		// 计算顶部和底部marker的位置（使用原始距离）
+		const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5;
 		const bottomMarkerY =
-			CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.4;
+			CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7;
 		// 计算SVG的顶部和底部边缘（包括markers的padding，与Fretboard.jsx中的计算一致）
 		// 如果originalY和originalHeight存在，说明viewBox已经包含了markers，直接使用
 		// 否则使用默认计算（topMarkerY - 20 到 bottomMarkerY + 20）
@@ -761,16 +827,18 @@ export function saveSVG(
 
 		if (keepTop) {
 			// 保留顶部完整（包括顶部markers），只截断底部
-			// 保留到最底部note所在品格的底部（该品格的完整部分）
-			const bottomFretBottom =
-				CONSTS.offsetY + CONSTS.stringSpacing * (maxStringIndex + 1);
+			// 保留到最底部note所在的那条弦（包括note的半径）
+			const bottomStringY =
+				CONSTS.offsetY + CONSTS.stringSpacing * maxStringIndex;
+			const bottomNoteBottom = bottomStringY + CONSTS.circleRadius;
 			newY = topEdge;
-			newHeight = bottomFretBottom - topEdge + padding;
+			newHeight = bottomNoteBottom - topEdge + padding;
 		} else {
 			// 保留底部完整（包括底部markers），只截断顶部
-			// 保留到最顶部note所在品格的顶部（该品格的完整部分）
-			const topFretTop = CONSTS.offsetY + CONSTS.stringSpacing * minStringIndex;
-			newY = topFretTop - padding;
+			// 保留到最顶部note所在的那条弦（包括note的半径）
+			const topStringY = CONSTS.offsetY + CONSTS.stringSpacing * minStringIndex;
+			const topNoteTop = topStringY - CONSTS.circleRadius;
+			newY = topNoteTop - padding;
 			newHeight = bottomEdge - newY;
 		}
 	}
