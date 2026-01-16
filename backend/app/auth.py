@@ -32,6 +32,14 @@ def create_or_login_user(username: str) -> tuple[str, bool]:
         )
         return token, False
     else:
+        # 创建新用户前，检查用户总数
+        user_count = db.users.count_documents({})
+        if user_count >= 1000:
+            raise HTTPException(
+                status_code=403,
+                detail="用户数量超上限，请联系作者"
+            )
+        
         # 创建新用户
         token = generate_token()
         db.users.insert_one({
