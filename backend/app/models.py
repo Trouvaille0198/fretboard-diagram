@@ -80,3 +80,109 @@ class LoadDataResponse(BaseModel):
     success: bool
     directories: List[dict]
     states: List[dict]
+
+# RESTful API 请求/响应模型
+class CreateDirectoryRequest(BaseModel):
+    id: str
+    name: str
+    createdAt: int
+    isDefault: bool = False
+
+class UpdateDirectoryRequest(BaseModel):
+    name: Optional[str] = None
+    isDefault: Optional[bool] = None
+
+class DirectoryResponse(BaseModel):
+    id: str
+    name: str
+    createdAt: int
+    isDefault: bool
+
+class CreateStateRequest(BaseModel):
+    id: str
+    directoryId: str = Field(alias='directoryId')
+    timestamp: int
+    name: str
+    thumbnail: Optional[str] = None
+    state: dict
+
+    class Config:
+        populate_by_name = True
+
+class UpdateStateRequest(BaseModel):
+    directoryId: Optional[str] = Field(None, alias='directoryId')
+    name: Optional[str] = None
+    timestamp: Optional[int] = None
+    thumbnail: Optional[str] = None
+    state: Optional[dict] = None
+
+    class Config:
+        populate_by_name = True
+
+class StateResponse(BaseModel):
+    id: str
+    directoryId: str = Field(alias='directoryId')
+    timestamp: int
+    name: str
+    thumbnail: Optional[str] = None
+    state: dict
+
+    class Config:
+        populate_by_name = True
+
+class StandardResponse(BaseModel):
+    success: bool
+    message: str
+
+# RESTful API 请求/响应模型
+class CreateDirectoryRequest(BaseModel):
+    id: str
+    name: str
+    createdAt: int
+    isDefault: bool = False
+
+class UpdateDirectoryRequest(BaseModel):
+    name: Optional[str] = None
+    isDefault: Optional[bool] = None
+
+class DirectoryResponse(BaseModel):
+    id: str
+    name: str
+    createdAt: int
+    isDefault: bool
+
+class CreateStateRequest(BaseModel):
+    id: str
+    directoryId: str = Field(alias='directoryId')
+    timestamp: int
+    name: str
+    thumbnail: Optional[str] = None
+    state: dict
+
+    class Config:
+        populate_by_name = True
+
+class UpdateStateRequest(BaseModel):
+    directoryId: Optional[str] = Field(None, alias='directoryId')
+    name: Optional[str] = None
+    timestamp: Optional[int] = None
+    thumbnail: Optional[str] = None
+    state: Optional[dict] = None
+
+    class Config:
+        populate_by_name = True
+
+class StateResponse(BaseModel):
+    id: str
+    directoryId: str = Field(alias='directoryId')
+    timestamp: int
+    name: str
+    thumbnail: Optional[str] = None
+    state: dict
+
+    class Config:
+        populate_by_name = True
+
+class SuccessResponse(BaseModel):
+    success: bool
+    message: str
