@@ -459,7 +459,13 @@ function Fretboard() {
             enharmonic,
             displayMode,
             rootNote,
-            visibility
+            visibility,
+            // 保存配置项
+            includeMarkers,
+            copyOnly,
+            showNotes,
+            horizontalCrop,
+            verticalCrop
           }
         };
         
@@ -496,7 +502,13 @@ function Fretboard() {
             enharmonic,
             displayMode,
             rootNote,
-            visibility
+            visibility,
+            // 保存配置项
+            includeMarkers,
+            copyOnly,
+            showNotes,
+            horizontalCrop,
+            verticalCrop
           }
         };
         
@@ -514,8 +526,20 @@ function Fretboard() {
         updatedStates = updatedStates.slice(0, 50);
       }
       
-      // 使用 storageService 保存
-      await storageService.saveAll(directories, updatedStates);
+      // 使用增量更新方法保存
+      if (isUpdate) {
+        // 更新现有状态
+        await storageService.updateState(stateSnapshot.id, {
+          name: stateSnapshot.name,
+          timestamp: stateSnapshot.timestamp,
+          thumbnail: stateSnapshot.thumbnail,
+          state: stateSnapshot.state
+        });
+      } else {
+        // 创建新状态
+        await storageService.createState(stateSnapshot);
+      }
+      
       setHistoryStates(updatedStates);
       
       // 保存成功后才设置选中状态（只在新建状态时）
@@ -530,7 +554,7 @@ function Fretboard() {
       setToastMessage('保存失败: ' + error.message);
       setToastType('error');
     }
-  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, setHistoryStates, setToastMessage, setToastType, selectedHistoryState, setSelectedHistoryState, currentDirectoryId, directories, historyStates, svgElementRef]);
+  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, includeMarkers, copyOnly, showNotes, horizontalCrop, verticalCrop, setHistoryStates, setToastMessage, setToastType, selectedHistoryState, setSelectedHistoryState, currentDirectoryId, directories, historyStates, svgElementRef]);
 
   // 恢复指板状态
   const restoreFretboardStateMemo = useCallback((stateSnapshot) => {
@@ -553,57 +577,79 @@ function Fretboard() {
       setConnectionToolbarVisible,
       setToastMessage,
       setToastType,
-      setSelectedHistoryState
+      setSelectedHistoryState,
+      // 恢复配置项
+      setIncludeMarkers,
+      setCopyOnly,
+      setShowNotes,
+      setHorizontalCrop,
+      setVerticalCrop
     });
   }, [setData, setStartFret, setEndFret, setEnharmonic, setDisplayMode, setRootNote, setVisibility,
       setSelected, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
       setMousePosition, setPreviewHoverNote, setUseColor2Level, setSelectedConnection,
-      setConnectionToolbarVisible, setToastMessage, setToastType, setSelectedHistoryState]);
+      setConnectionToolbarVisible, setToastMessage, setToastType, setSelectedHistoryState,
+      setIncludeMarkers, setCopyOnly, setShowNotes, setHorizontalCrop, setVerticalCrop]);
 
-  // 包装目录操作函数，使用 storageService
+  // 包装目录操作函数，使用增量更新
   const wrappedCreateDirectory = useCallback(async (baseName = 'new') => {
     const result = createDirectory(baseName);
     
-    // 同步到存储
-    try {
-      await storageService.saveAll(directories, historyStates);
-    } catch (error) {
-      console.error('同步目录失败:', error);
+    // 使用增量更新同步到服务器
+    if (result && result.id) {
+      try {
+        await storageService.createDirectory(result);
+      } catch (error) {
+        console.error('同步目录失败:', error);
+        setToastMessage('创建目录成功，但同步到服务器失败: ' + error.message);
+        setToastType('warning');
+      }
     }
     
     return result;
-  }, [createDirectory, directories, historyStates]);
+  }, [createDirectory, setToastMessage, setToastType]);
   
   const wrappedRenameDirectory = useCallback(async (dirId, newName) => {
     const result = renameDirectory(dirId, newName);
     
     if (result.success) {
-      // 同步到存储，使用更新后的目录列表
+      // 使用增量更新同步到服务器
       try {
-        const updatedDirs = result.directories || directories;
-        await storageService.saveAll(updatedDirs, historyStates);
+        await storageService.updateDirectory(dirId, { name: result.name || newName });
       } catch (error) {
         console.error('同步目录重命名失败:', error);
+        setToastMessage('重命名目录成功，但同步到服务器失败: ' + error.message);
+        setToastType('warning');
       }
     }
     
     return result;
-  }, [renameDirectory, directories, historyStates]);
+  }, [renameDirectory, setToastMessage, setToastType]);
   
   const wrappedDeleteDirectory = useCallback(async (dirId) => {
     const result = deleteDirectory(dirId);
     
     if (result.success) {
-      // 同步到存储
+      // 使用增量更新同步到服务器
       try {
-        await storageService.saveAll(directories, historyStates);
+        // 先更新该目录下的所有状态到default目录
+        const statesToUpdate = historyStates.filter(state => state.directoryId === dirId);
+        const updatePromises = statesToUpdate.map(state => 
+          storageService.updateState(state.id, { directoryId: 'default' })
+        );
+        await Promise.all(updatePromises);
+        
+        // 然后删除目录
+        await storageService.deleteDirectory(dirId);
       } catch (error) {
         console.error('同步目录删除失败:', error);
+        setToastMessage('删除目录成功，但同步到服务器失败: ' + error.message);
+        setToastType('warning');
       }
     }
     
     return result;
-  }, [deleteDirectory, directories, historyStates]);
+  }, [deleteDirectory, historyStates, setToastMessage, setToastType]);
 
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
   const handlerParamsRef = useRef();
@@ -907,20 +953,21 @@ function Fretboard() {
           setToastMessage(result.message);
           setToastType(result.success ? 'success' : 'error');
         }}
-        onBatchImport={(result) => {
+        onBatchImport={async (result) => {
           if (result.success) {
-            // 使用 storageService 保存
-            storageService.saveAll(result.directories, result.historyStates).then(() => {
+            // 批量导入：使用saveAll兼容接口（因为需要同步所有数据）
+            try {
+              await storageService.saveAll(result.directories, result.historyStates);
               setDirectories(result.directories);
               setHistoryStates(result.historyStates);
               setCurrentDirectoryId('default');
               setToastMessage(result.message);
               setToastType('success');
-            }).catch(error => {
+            } catch (error) {
               console.error('保存失败:', error);
               setToastMessage('保存失败: ' + error.message);
               setToastType('error');
-            });
+            }
           } else {
             setToastMessage(result.message);
             setToastType('error');
@@ -928,8 +975,9 @@ function Fretboard() {
         }}
         onDelete={async (stateSnapshot) => {
           try {
+            // 使用增量更新删除状态
+            await storageService.deleteState(stateSnapshot.id);
             const updatedStates = historyStates.filter(item => item.id !== stateSnapshot.id);
-            await storageService.saveAll(directories, updatedStates);
             setHistoryStates(updatedStates);
             if (selectedHistoryState && selectedHistoryState.id === stateSnapshot.id) {
               setSelectedHistoryState(null);
@@ -944,7 +992,14 @@ function Fretboard() {
         }}
         onClearAll={async () => {
           try {
-            await storageService.saveAll(directories, []);
+            // 删除所有状态：逐个删除
+            const deletePromises = historyStates.map(state => 
+              storageService.deleteState(state.id).catch(err => {
+                console.error(`删除状态 ${state.id} 失败:`, err);
+                return null; // 继续删除其他状态
+              })
+            );
+            await Promise.all(deletePromises);
             setHistoryStates([]);
             setSelectedHistoryState(null);
             setToastMessage('所有历史状态已清空！');
@@ -957,10 +1012,11 @@ function Fretboard() {
         }}
         onRename={async (stateSnapshot, newName) => {
           try {
+            // 使用增量更新重命名状态
+            await storageService.updateState(stateSnapshot.id, { name: newName });
             const updatedStates = historyStates.map(item =>
               item.id === stateSnapshot.id ? { ...item, name: newName } : item
             );
-            await storageService.saveAll(directories, updatedStates);
             setHistoryStates(updatedStates);
             if (selectedHistoryState && selectedHistoryState.id === stateSnapshot.id) {
               setSelectedHistoryState(updatedStates.find(item => item.id === stateSnapshot.id));
@@ -1031,13 +1087,23 @@ function Fretboard() {
                   importedState.thumbnail = thumbnailUrl;
                 }
 
-                // 使用 storageService 保存
+                // 使用增量更新保存导入的状态
                 try {
                   let updatedStates = [...historyStates];
                   const existingIndex = updatedStates.findIndex(item => item.id === importedState.id);
+                  
                   if (existingIndex !== -1) {
+                    // 更新现有状态
+                    await storageService.updateState(importedState.id, {
+                      name: importedState.name,
+                      timestamp: importedState.timestamp,
+                      thumbnail: importedState.thumbnail,
+                      state: importedState.state
+                    });
                     updatedStates[existingIndex] = importedState;
                   } else {
+                    // 创建新状态
+                    await storageService.createState(importedState);
                     updatedStates.unshift(importedState);
                   }
                   
@@ -1045,7 +1111,6 @@ function Fretboard() {
                     updatedStates = updatedStates.slice(0, 50);
                   }
                   
-                  await storageService.saveAll(directories, updatedStates);
                   setHistoryStates(updatedStates);
                 } catch (error) {
                   console.error('保存导入状态失败:', error);
