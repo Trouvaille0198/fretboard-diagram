@@ -288,6 +288,12 @@ export function restoreFretboardState(
 		setToastMessage,
 		setToastType,
 		setSelectedHistoryState,
+		// 配置项恢复函数（可选）
+		setIncludeMarkers,
+		setCopyOnly,
+		setShowNotes,
+		setHorizontalCrop,
+		setVerticalCrop,
 	}
 ) {
 	try {
@@ -319,6 +325,23 @@ export function restoreFretboardState(
 			setDisplayMode(savedState.displayMode ?? "note");
 			setRootNote(savedState.rootNote ?? null);
 			setVisibility(restoredVisibility);
+
+			// 恢复配置项（如果存在）
+			if (setIncludeMarkers && savedState.includeMarkers !== undefined) {
+				setIncludeMarkers(savedState.includeMarkers);
+			}
+			if (setCopyOnly && savedState.copyOnly !== undefined) {
+				setCopyOnly(savedState.copyOnly);
+			}
+			if (setShowNotes && savedState.showNotes !== undefined) {
+				setShowNotes(savedState.showNotes);
+			}
+			if (setHorizontalCrop && savedState.horizontalCrop !== undefined) {
+				setHorizontalCrop(savedState.horizontalCrop);
+			}
+			if (setVerticalCrop && savedState.verticalCrop !== undefined) {
+				setVerticalCrop(savedState.verticalCrop);
+			}
 
 			// 然后更新 data，使用函数式更新确保完全替换
 			setTimeout(() => {

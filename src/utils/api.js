@@ -139,3 +139,82 @@ export function getCurrentUsername() {
 export function isLoggedIn() {
     return !!localStorage.getItem('auth-token');
 }
+
+// ========== 目录管理 RESTful API ==========
+
+/**
+ * 创建目录
+ */
+export async function createDirectory(directory) {
+    return await request('/data/directories', {
+        method: 'POST',
+        body: JSON.stringify(directory),
+    });
+}
+
+/**
+ * 获取所有目录
+ */
+export async function getDirectories() {
+    return await request('/data/directories');
+}
+
+/**
+ * 更新目录
+ */
+export async function updateDirectory(directoryId, data) {
+    return await request(`/data/directories/${directoryId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+}
+
+/**
+ * 删除目录
+ */
+export async function deleteDirectory(directoryId) {
+    return await request(`/data/directories/${directoryId}`, {
+        method: 'DELETE',
+    });
+}
+
+// ========== 状态管理 RESTful API ==========
+
+/**
+ * 创建状态
+ */
+export async function createState(state) {
+    return await request('/data/states', {
+        method: 'POST',
+        body: JSON.stringify(state),
+    });
+}
+
+/**
+ * 获取状态（可选按目录筛选）
+ */
+export async function getStates(directoryId = null) {
+    const url = directoryId 
+        ? `/data/states?directoryId=${encodeURIComponent(directoryId)}`
+        : '/data/states';
+    return await request(url);
+}
+
+/**
+ * 更新状态
+ */
+export async function updateState(stateId, data) {
+    return await request(`/data/states/${stateId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+}
+
+/**
+ * 删除状态
+ */
+export async function deleteState(stateId) {
+    return await request(`/data/states/${stateId}`, {
+        method: 'DELETE',
+    });
+}
