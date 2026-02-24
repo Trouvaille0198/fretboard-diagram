@@ -1206,6 +1206,21 @@ export function saveSVG(
 		minFret !== Infinity &&
 		maxFret !== -Infinity
 	) {
+		// 确保至少有三品宽
+		const MIN_FRETS = 3;
+		const fretRange = maxFret - minFret + 1; // 当前品数范围
+
+		if (fretRange < MIN_FRETS) {
+			if (fretRange === 1) {
+				// 一品宽：左右各加一个空品格（音符居中显示）
+				minFret = Math.max(0, minFret - 1); // 不低于0品
+				maxFret = maxFret + 1;
+			} else if (fretRange === 2) {
+				// 二品宽：右侧加一个空品格
+				maxFret = maxFret + 1;
+			}
+		}
+
 		// 计算品丝边界位置
 		// 第0品丝（开放弦的左边界）：CONSTS.offsetX
 		// 第i品丝：CONSTS.offsetX + CONSTS.fretWidth * (i - startFret)
