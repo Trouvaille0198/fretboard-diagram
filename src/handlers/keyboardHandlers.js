@@ -11,6 +11,8 @@ export function createKeyboardHandler(params) {
         cycleLevel2ColorReverse,
         undo,
         redo,
+        undoDockAction,
+        redoDockAction,
         hoveredNoteId,
         hoveredConnectionId,
         data,
@@ -40,20 +42,20 @@ export function createKeyboardHandler(params) {
             return;
         }
 
-        // Ctrl+Shift+S 强制新建状态保存
+        // Ctrl+Shift+S 强制新建保存到指板堆
         if (event.ctrlKey && event.shiftKey && event.code === 'KeyS') {
             event.preventDefault();
             if (saveFretboardState) {
-                saveFretboardState(true); // forceNew = true
+                saveFretboardState(true);
             }
             return;
         }
 
-        // Ctrl+S 保存到当前状态
+        // Ctrl+S 保存到当前选中项；若无选中项则新建
         if (event.ctrlKey && event.code === 'KeyS' && !event.shiftKey) {
             event.preventDefault();
             if (saveFretboardState) {
-                saveFretboardState(false); // forceNew = false
+                saveFretboardState(false);
             }
             return;
         }
@@ -61,6 +63,9 @@ export function createKeyboardHandler(params) {
         // Ctrl+Shift+Z 重做
         if (event.ctrlKey && event.shiftKey && event.code === 'KeyZ') {
             event.preventDefault();
+            if (redoDockAction && redoDockAction()) {
+                return;
+            }
             if (redo) {
                 redo();
             }
@@ -70,6 +75,9 @@ export function createKeyboardHandler(params) {
         // Ctrl+Z 撤销
         if (event.ctrlKey && event.code === 'KeyZ' && !event.shiftKey) {
             event.preventDefault();
+            if (undoDockAction && undoDockAction()) {
+                return;
+            }
             undo();
             return;
         }
