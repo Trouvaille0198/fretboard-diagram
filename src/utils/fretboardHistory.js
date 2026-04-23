@@ -55,7 +55,7 @@ export function createStateSnapshot({
 	copyOnly = true,
 	showNotes = false,
 	horizontalCrop = true,
-	verticalCrop = true,
+	verticalCrop = false,
 	currentDirectoryId = "default",
 	nameSuffix = "",
 }) {
