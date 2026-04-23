@@ -3,41 +3,63 @@
 
 // 第一层级颜色配置（用于音符填充和调色盘按钮）
 // 注意：顺序很重要，所有地方都会按照这个顺序
+// ColorBrewer Dark2 qualitative palette — 感知等距、色相均匀分布
+// blue(H:243°) / red(H:328°) / green(H:163°) / brown(H:26°) / gray(中性)
 export const LEVEL1_COLORS = {
     trans: {
         fill: 'var(--background-color)',  // 音符填充色（透明色，黑色）
         button: 'var(--background-color)' // 调色盘按钮背景色
     },
-    blue: {
-        fill: '#2c6cca',           // 音符填充色
-        button: '#2c6cca'          // 调色盘按钮背景色
+    navy: {
+        fill: '#2c6cca',           // 经典蓝（提亮版）
+        button: '#2c6cca'
     },
-    red: {
-        fill: '#cd5c5c',           // 音符填充色
-        button: '#cd5c5c'          // 调色盘按钮背景色
+    crimson: {
+        fill: '#cd5c5c',           // 经典红（提亮版）
+        button: '#cd5c5c'
     },
     green: {
-        fill: '#2bb046',             // 音符填充色
-        button: '#2bb046'            // 调色盘按钮背景色
+        fill: '#1b9e77',           // Dark2 #1 青绿（H:163°）
+        button: '#1b9e77'
+    },
+    blue: {
+        fill: '#7570b3',           // Dark2 #3 紫蓝（H:243°）
+        button: '#7570b3'
+    },
+    red: {
+        fill: '#e7298a',           // Dark2 #4 洋红（H:328°）
+        button: '#e7298a'
     },
     brown: {
-        fill: '#f8bb24',             // 音符填充色
-        button: '#f8bb24'            // 调色盘按钮背景色
+        fill: '#d95f02',           // Dark2 #2 橙（H:26°）
+        button: '#d95f02'
     },
     gray: {
-        fill: '#aaaaaa',             // 音符填充色（灰色）
-        button: '#aaaaaa'            // 调色盘按钮背景色
+        fill: '#666666',           // Dark2 #8 中性灰
+        button: '#666666'
     },
 };
 
 // 第二层级颜色配置（用于描边）
 export const LEVEL2_COLORS = {
-    orange: '#ff8c00',        // 橙色
-    cyan: '#2c6cca',          // 蓝色
-    pink: '#cd5c5c',          // 红色
-    'grass-green': '#2bb046', // 绿色
-    yellow: '#f8bb24',        // 黄色
-    white: '#aaaaaa'          // 白色
+    orange: '#d95f02',        // Dark2 橙
+    cyan:   '#7570b3',        // Dark2 紫蓝
+    pink:   '#e7298a',        // Dark2 洋红
+    'grass-green': '#1b9e77', // Dark2 青绿
+    yellow: '#e6ab02',        // Dark2 #6 琥珀黄（与 orange 形成暖色对）
+    white:  '#666666'         // Dark2 中性灰
+};
+
+const PRESET_TINT_VARIANTS = {
+    // 每个基色用不同的明度/饱和度节奏，避免整套音符只是“同一层级换色相”。
+    '#7570b3': ['rgb(201, 196, 233)', 'rgb(132, 122, 214)', 'rgb(73, 61, 171)', 'rgb(42, 34, 103)'],
+    '#e7298a': ['rgb(245, 185, 218)', 'rgb(244, 82, 170)', 'rgb(211, 16, 121)', 'rgb(122, 9, 68)'],
+    '#1b9e77': ['rgb(174, 236, 216)', 'rgb(59, 206, 162)', 'rgb(13, 146, 108)', 'rgb(8, 86, 64)'],
+    '#d95f02': ['rgb(246, 198, 154)', 'rgb(255, 141, 36)', 'rgb(203, 84, 0)', 'rgb(108, 42, 0)'],
+    '#e6ab02': ['rgb(250, 227, 157)', 'rgb(255, 204, 27)', 'rgb(196, 142, 0)', 'rgb(96, 70, 0)'],
+    '#2c6cca': ['rgb(181, 210, 246)', 'rgb(63, 137, 242)', 'rgb(18, 88, 194)', 'rgb(9, 46, 103)'],
+    '#cd5c5c': ['rgb(241, 190, 190)', 'rgb(228, 109, 109)', 'rgb(187, 46, 46)', 'rgb(101, 20, 20)'],
+    '#666666': ['rgb(200, 203, 208)', 'rgb(124, 131, 140)', 'rgb(78, 84, 92)', 'rgb(36, 40, 46)']
 };
 
 // 获取第一层级颜色（用于音符填充）
@@ -55,7 +77,7 @@ export function getLevel2Color(colorName) {
     return LEVEL2_COLORS[colorName] || '#ffffff';
 }
 
-// 生成颜色的淡色版本（5个从深到浅）
+// 生成颜色的四档 tint，从浅亮到深沉。
 export function generateTintVariants(baseColor) {
     // 将颜色转为RGB
     const parseColor = (color) => {
@@ -70,75 +92,28 @@ export function generateTintVariants(baseColor) {
         return [128, 128, 128];
     };
 
-    const [r, g, b] = parseColor(baseColor);
-    const [h, s, l] = rgbToHsl(r, g, b);
-    const variants = [];
-
-    // 生成5个版本：浓二档、浓一档、原色、淡一档、淡二档
-    // 浓：增加饱和度，降低亮度（向色轮边缘移动）
-    // 淡：降低饱和度，增加亮度（向色轮中心移动）
-    const adjustments = [
-        { s: 25, l: -35 },  // 浓二档
-        { s: 20, l: -15 },   // 浓一档
-        { s: 0, l: 10 },     // 原色
-        { s: -20, l: 25 },  // 淡一档
-        // { s: -30, l: 20 }   // 淡二档
+    const mixRgb = (source, target, ratio) => [
+        Math.round(source[0] + (target[0] - source[0]) * ratio),
+        Math.round(source[1] + (target[1] - source[1]) * ratio),
+        Math.round(source[2] + (target[2] - source[2]) * ratio)
     ];
 
-    adjustments.forEach(({ s: sAdj, l: lAdj }) => {
-        const newS = Math.max(0, Math.min(100, s + sAdj));
-        const newL = Math.max(0, Math.min(100, l + lAdj));
-        const [nr, ng, nb] = hslToRgb(h, newS, newL);
-        variants.push(`rgb(${nr}, ${ng}, ${nb})`);
-    });
+    const toRgbString = ([red, green, blue]) => `rgb(${red}, ${green}, ${blue})`;
+    const normalizedColor = baseColor.toLowerCase();
 
-    // 反转数组，使浅色在最上面（淡二档 -> 淡一档 -> 原色 -> 浓一档 -> 浓二档）
-    return variants.reverse();
-}
-
-// RGB 转 HSL
-function rgbToHsl(r, g, b) {
-    r /= 255; g /= 255; b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    let h, s, l = (max + min) / 2;
-
-    if (max === min) {
-        h = s = 0;
-    } else {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch (max) {
-            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-            case g: h = ((b - r) / d + 2) / 6; break;
-            case b: h = ((r - g) / d + 4) / 6; break;
-        }
+    if (PRESET_TINT_VARIANTS[normalizedColor]) {
+        return PRESET_TINT_VARIANTS[normalizedColor];
     }
-    return [h * 360, s * 100, l * 100];
-}
 
-// HSL 转 RGB
-function hslToRgb(h, s, l) {
-    h /= 360; s /= 100; l /= 100;
-    let r, g, b;
+    const baseRgb = parseColor(baseColor);
 
-    if (s === 0) {
-        r = g = b = l;
-    } else {
-        const hue2rgb = (p, q, t) => {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1 / 6) return p + (q - p) * 6 * t;
-            if (t < 1 / 2) return q;
-            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-            return p;
-        };
-        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        const p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1 / 3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1 / 3);
-    }
-    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    // fallback 拉开明度差，减少“不同色相但同一明暗模板”的撞脸感。
+    const pale = mixRgb(baseRgb, [255, 255, 255], 0.48);
+    const vivid = mixRgb(baseRgb, [255, 255, 255], 0.12);
+    const rich = mixRgb(baseRgb, [0, 0, 0], 0.32);
+    const deep = mixRgb(baseRgb, [0, 0, 0], 0.6);
+
+    return [pale, vivid, rich, deep].map(toRgbString);
 }
 
 // 初始化CSS变量（在组件挂载时调用）

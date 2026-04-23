@@ -437,7 +437,7 @@ export function saveSVG(
 	currentVisibility = "transparent",
 	setVisibility = null,
 	horizontalCrop = true,
-	verticalCrop = true
+	verticalCrop = false
 ) {
 	// 直接导出，不再在这里处理 visibility 切换
 	// 切换逻辑已经在 Fretboard.jsx 的 saveSVGMemo 中处理

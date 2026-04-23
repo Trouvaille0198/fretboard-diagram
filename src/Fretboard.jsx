@@ -769,6 +769,19 @@ function Fretboard() {
           setToastType('success');
         }}
         onClear={() => {
+          const currentDirectoryStates = historyStates.filter(
+            (state) => state.directoryId === currentDirectoryId
+          );
+
+          if (currentDirectoryStates.length === 0) {
+            return;
+          }
+
+          const confirmed = window.confirm('确定要清空当前指板堆吗？此操作不可恢复。');
+          if (!confirmed) {
+            return;
+          }
+
           const filteredStates = historyStates.filter(
             (state) => state.directoryId !== currentDirectoryId
           );
