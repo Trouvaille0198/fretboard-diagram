@@ -84,6 +84,84 @@ export function getLevel2Color(colorName) {
     return getLevel2ColorFromConfig(colorName);
 }
 
+export function normalizeSplitMode(splitMode) {
+    switch (splitMode) {
+        case 'rl':
+        case 'tb':
+        case 'bt':
+        case 'lr':
+            return splitMode;
+        default:
+            return 'lr';
+    }
+}
+
+export function getNoteSplitMode(noteData) {
+    if (noteData?.splitMode) {
+        return normalizeSplitMode(noteData.splitMode);
+    }
+
+    if (noteData?.splitDirection) {
+        return noteData.splitDirection === 'horizontal' ? 'tb' : 'lr';
+    }
+
+    return 'lr';
+}
+
+export function getSplitTargetFromPoint(splitMode, x, y) {
+    switch (normalizeSplitMode(splitMode)) {
+        case 'rl':
+            return x < 0 ? 'color2' : 'color';
+        case 'tb':
+            return y < 0 ? 'color2' : 'color';
+        case 'bt':
+            return y < 0 ? 'color' : 'color2';
+        case 'lr':
+        default:
+            return x < 0 ? 'color' : 'color2';
+    }
+}
+
+export function resolveNoteColorValue(color, preferredLevel = 1) {
+    if (!color) return null;
+    if (typeof color === 'object' && color.custom) {
+        return color.custom;
+    }
+
+    const colorName = getColorName(color);
+    if (!colorName || colorName === 'white') {
+        return null;
+    }
+
+    if (colorName in LEVEL1_COLORS) {
+        return getLevel1FillColor(colorName);
+    }
+
+    if (colorName in LEVEL2_COLORS) {
+        return getLevel2Color(colorName);
+    }
+
+    return preferredLevel === 2 ? getLevel2Color(colorName) : getLevel1FillColor(colorName);
+}
+
+function applyNoteColorAttributes(elem, state) {
+    const entries = [
+        ['data-color-name', state.color && typeof state.color === 'object' ? state.color.name : state.color],
+        ['data-color-custom', state.color && typeof state.color === 'object' ? state.color.custom : null],
+        ['data-color2-name', state.color2 && typeof state.color2 === 'object' ? state.color2.name : state.color2],
+        ['data-color2-custom', state.color2 && typeof state.color2 === 'object' ? state.color2.custom : null],
+        ['data-split-mode', state.color2 ? getNoteSplitMode(state) : null]
+    ];
+
+    entries.forEach(([attr, value]) => {
+        if (value === null || value === undefined || value === '') {
+            elem.removeAttribute(attr);
+            return;
+        }
+        elem.setAttribute(attr, String(value));
+    });
+}
+
 // 生成类名
 export function generateClassValue(elem, update) {
     const classVal = elem.className?.baseVal || elem.getAttribute('class') || 'note white transparent';
@@ -135,26 +213,11 @@ export function updateNote(elem, data, update) {
         }
     }
 
-    // 处理第二层级颜色（color2）- 设置到 circle 的 stroke 属性
+    // 第二层级颜色由渲染层在圆内部处理，这里不再直接写 stroke
     if ('color2' in update) {
         if (circleElem) {
-            if (update.color2 && update.color2 !== null) {
-                // 处理自定义颜色对象（与 FretboardSVG.jsx 中的逻辑一致）
-                let level2Color;
-                if (typeof update.color2 === 'object' && update.color2.custom) {
-                    level2Color = update.color2.custom;
-                } else if (typeof update.color2 === 'object' && update.color2.name) {
-                    level2Color = getLevel2Color(update.color2.name);
-                } else {
-                    level2Color = getLevel2Color(update.color2);
-                }
-                circleElem.setAttribute('stroke', level2Color);
-                circleElem.setAttribute('stroke-width', '4.5');
-            } else {
-                // 清除第二层级颜色
-                circleElem.removeAttribute('stroke');
-                circleElem.removeAttribute('stroke-width');
-            }
+            circleElem.removeAttribute('stroke');
+            circleElem.removeAttribute('stroke-width');
         }
     }
 
@@ -162,6 +225,8 @@ export function updateNote(elem, data, update) {
     for (const [key, value] of Object.entries(update)) {
         noteData[key] = value;
     }
+
+    applyNoteColorAttributes(elem, noteData);
 }
 
 // 内联 CSS
