@@ -1,0 +1,160 @@
+.scale-display {
+  width: min(100%, 560px);
+  margin-top: 6px;
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background:
+    radial-gradient(120% 120% at 8% 0%, rgba(252, 201, 95, 0.2) 0%, rgba(252, 201, 95, 0) 55%),
+    radial-gradient(110% 130% at 100% 100%, rgba(82, 163, 255, 0.18) 0%, rgba(82, 163, 255, 0) 58%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  position: relative;
+}
+
+.scale-display::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 56px;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.35),
+    rgba(255, 255, 255, 0)
+  );
+}
+
+.scale-display-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.scale-display-kicker {
+  margin: 0;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(232, 238, 249, 0.72);
+}
+
+.scale-display-title {
+  margin: 3px 0 0;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #f6f9ff;
+}
+
+.scale-display-hint {
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(239, 243, 252, 0.9);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.scale-display-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scale-degree-card {
+  min-width: 0;
+  padding: 7px 4px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.93), rgba(236, 242, 252, 0.86));
+  text-align: center;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+  box-shadow: 0 2px 8px rgba(17, 28, 45, 0.18);
+}
+
+.scale-degree-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(17, 28, 45, 0.28);
+}
+
+.scale-degree-card.is-root {
+  border-color: rgba(255, 187, 77, 0.95);
+  background: linear-gradient(180deg, rgba(255, 247, 226, 0.96), rgba(255, 237, 205, 0.9));
+}
+
+.scale-degree-index {
+  margin: 0;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #6e798d;
+}
+
+.scale-degree-chord {
+  margin: 2px 0 0;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.scale-degree-note {
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #112238;
+}
+
+.scale-degree-symbol {
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  margin-left: 1px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #4b5567;
+}
+
+.scale-degree-symbol.is-diminished {
+  color: #ab2323;
+}
+
+.scale-degree-roman {
+  margin: 2px 0 0;
+  font-family: "JetBrains Mono", "Fira Code", "Menlo", "Consolas", monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #2a3d58;
+}
+
+@media (max-width: 900px) {
+  .scale-display {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .scale-display-grid {
+    overflow-x: auto;
+    grid-template-columns: repeat(7, minmax(66px, 1fr));
+    padding-bottom: 4px;
+  }
+
+  .scale-display-grid::-webkit-scrollbar {
+    height: 5px;
+  }
+
+  .scale-display-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+  }
+}
+

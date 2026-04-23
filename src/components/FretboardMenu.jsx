@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CONSTS } from '../constants';
 import PianoKeyboard from '../PianoKeyboard';
 import { ColorPalette } from './ColorPalette';
 import { FretRangeSlider } from './FretRangeSlider';
+import { ScaleDisplay } from './ScaleDisplay';
 import { getLevel1FillColor, getLevel2Color, generateTintVariants } from '../colorConfig';
 
 export function FretboardMenu({
@@ -50,6 +51,9 @@ export function FretboardMenu({
   // 如果选中的是第二层颜色，生成淡色版本
   const showLevel2TintVariants = inTintMode && selectedColorLevel === 2 && colorName;
   const level2TintVariants = showLevel2TintVariants ? generateTintVariants(getLevel2Color(colorName)) : [];
+
+  // 小调状态
+  const [isMinor, setIsMinor] = useState(false);
 
   return (
     <div className="menu">
@@ -231,6 +235,15 @@ export function FretboardMenu({
                 />
                 <span>仅复制</span>
               </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '14px' }}>
+                <input
+                  type="checkbox"
+                  checked={isMinor}
+                  onChange={(e) => setIsMinor(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span>小调</span>
+              </label>
             </div>
           </div>
           <button 
@@ -258,11 +271,15 @@ export function FretboardMenu({
             }}
           />
         </div>
-        <FretRangeSlider 
+        <FretRangeSlider
           startFret={startFret}
           endFret={endFret}
           onFretWindowChange={onFretWindowChange}
         />
+      </div>
+
+      <div className="menu-scale-bottom">
+        <ScaleDisplay rootNote={rootNote} isMinor={isMinor} enharmonic={enharmonic} />
       </div>
     </div>
   );

@@ -256,6 +256,12 @@ div.menu {
     flex-wrap: wrap;
 }
 
+.menu-scale-bottom {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
 .menu-left {
     display: flex;
     flex-direction: column;

@@ -5,14 +5,14 @@ import { exportFretboardState, importFretboardState, copyToClipboard, readFromCl
 import { parseSVGToFretboardState } from '../utils/svgImport';
 import { exportAllData, importBatchData } from '../utils/fretboardHistory';
 
-export function FretboardGallery({ 
-  historyStates, 
-  onRestore, 
-  onDelete, 
-  selectedHistoryState, 
-  onSelect, 
-  onClearAll, 
-  onImport, 
+export function FretboardGallery({
+  historyStates,
+  onRestore,
+  onDelete,
+  selectedHistoryState,
+  onSelect,
+  onClearAll,
+  onImport,
   onRename,
   // 目录管理
   directories = [],
@@ -23,9 +23,9 @@ export function FretboardGallery({
   onDirectoryDelete,
   onExportAll,
   onBatchImport,
-  // 认证状态
-  isAuthenticated = false,
-  onShowLogin
+  isOpen: controlledIsOpen,
+  onOpenChange,
+  hideToggleButton = false
 }) {
   const [showImportDialog, setShowImportDialog] = React.useState(false);
   const [importText, setImportText] = React.useState('');
@@ -36,7 +36,9 @@ export function FretboardGallery({
   const jsonFileInputRef = React.useRef(null);
   
   // 侧边栏展开/收起状态
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [internalIsOpen, setInternalIsOpen] = React.useState(false);
+  const isOpen = controlledIsOpen ?? internalIsOpen;
+  const setIsOpen = onOpenChange ?? setInternalIsOpen;
   
   // 删除历史记录（用于撤销）
   const [deleteHistory, setDeleteHistory] = React.useState([]);
@@ -82,29 +84,22 @@ export function FretboardGallery({
         // 检查是否在输入框中
         const activeElement = document.activeElement;
         const isInputActive = activeElement && (
-          activeElement.tagName === 'INPUT' || 
+          activeElement.tagName === 'INPUT' ||
           activeElement.tagName === 'TEXTAREA' ||
           activeElement.isContentEditable
         );
-        
+
         // 如果不在输入框中，则切换侧边栏
         if (!isInputActive) {
           e.preventDefault();
-          if (!isAuthenticated && !isOpen) {
-            // 未登录时提示
-            if (onShowLogin) {
-              onShowLogin();
-            }
-          } else {
-            setIsOpen(!isOpen);
-          }
+          setIsOpen(!isOpen);
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isAuthenticated, onShowLogin]);
+  }, [isOpen]);
   
   // 点击外部区域关闭侧边栏
   React.useEffect(() => {
@@ -325,7 +320,7 @@ export function FretboardGallery({
   };
 
   const handleClearAll = () => {
-    if (window.confirm('确定要清空所有历史状态吗？此操作不可恢复。')) {
+    if (window.confirm('确定要清空整个指板堆吗？此操作不可恢复。')) {
       if (onClearAll) {
         onClearAll();
       }
@@ -524,66 +519,21 @@ export function FretboardGallery({
 
   return (
     <>
-      {/* 侧边栏切换按钮 */}
-      <button 
-        className={`gallery-toggle-btn ${isOpen ? 'open' : ''}`}
-        onClick={() => {
-          if (!isAuthenticated && !isOpen) {
-            // 未登录时提示
-            if (onShowLogin) {
-              onShowLogin();
-            }
-            return;
-          }
-          setIsOpen(!isOpen);
-        }}
-        title={isOpen ? '隐藏历史状态' : '显示历史状态'}
-      >
-        {isOpen ? '«' : '»'}
-      </button>
+      {!hideToggleButton && (
+        <button
+          className={`gallery-toggle-btn ${isOpen ? 'open' : ''}`}
+          onClick={() => {
+            setIsOpen(!isOpen);
+          }}
+          title={isOpen ? '隐藏指板堆管理' : '显示指板堆管理'}
+        >
+          {isOpen ? '«' : '»'}
+        </button>
+      )}
 
       <div className={`fretboard-gallery ${isOpen ? 'open' : ''}`}>
-        {!isAuthenticated ? (
-          // 未登录提示
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            padding: '40px 20px',
-            textAlign: 'center',
-            color: '#888'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔒</div>
-            <h3 style={{ color: '#fff', marginBottom: '10px' }}>需要登录</h3>
-            <p style={{ marginBottom: '20px', lineHeight: '1.6' }}>
-              历史状态功能需要登录后使用<br/>
-              登录后可以保存和管理您的指板图
-            </p>
-            {onShowLogin && (
-              <button 
-                onClick={onShowLogin}
-                style={{
-                  padding: '10px 24px',
-                  background: 'linear-gradient(135deg, #4a90e2 0%, #357abd 100%)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                立即登录
-              </button>
-            )}
-          </div>
-        ) : (
-          // 已登录，显示正常内容
-          <>
         <div className="gallery-header">
-          <h3 className="gallery-title">历史状态</h3>
+          <h3 className="gallery-title">指板堆管理</h3>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <button 
               className="gallery-export-btn"
@@ -660,7 +610,7 @@ export function FretboardGallery({
             key={stateSnapshot.id}
             className={`gallery-item ${selectedHistoryState && selectedHistoryState.id === stateSnapshot.id ? 'selected' : ''}`}
             onClick={(e) => handleThumbnailClick(stateSnapshot, e)}
-            title={`点击恢复状态 - ${stateSnapshot.name}${selectedHistoryState && selectedHistoryState.id === stateSnapshot.id ? ' (已选中，保存将更新此状态)' : ''}`}
+            title={`点击应用到当前指板 - ${stateSnapshot.name}`}
           >
             <div className="gallery-thumbnail-wrapper">
               {stateSnapshot.thumbnail ? (
@@ -827,7 +777,7 @@ export function FretboardGallery({
         </div>,
         document.body
       )}
-      
+
       {/* 右键菜单 */}
       {contextMenu && contextMenuDirectory && ReactDOM.createPortal(
         <div 
@@ -846,8 +796,6 @@ export function FretboardGallery({
         </div>,
         document.body
       )}
-      </>
-        )}
       </div>
     </>
   );
