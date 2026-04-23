@@ -131,6 +131,21 @@ function getColorNameFromValue(colorValue, level = null) {
     return null;
 }
 
+function parseSerializedColor(noteElement, prefix) {
+    const name = noteElement.getAttribute(`data-${prefix}-name`);
+    const custom = noteElement.getAttribute(`data-${prefix}-custom`);
+
+    if (!name) {
+        return null;
+    }
+
+    if (custom) {
+        return { name, custom };
+    }
+
+    return name;
+}
+
 /**
  * 从 SVG 文件解析并还原指板状态
  * @param {string|File} svgInput - SVG 文件内容（字符串）或 File 对象
@@ -279,15 +294,17 @@ export async function parseSVGToFretboardState(svgInput) {
         const className = noteElement.getAttribute('class') || '';
         const classes = className.split(/\s+/);
 
-        let color = 'white';
-        let color2 = null;
+        let color = parseSerializedColor(noteElement, 'color') || 'white';
+        let color2 = parseSerializedColor(noteElement, 'color2');
         let visibility = 'transparent';
+        const serializedSplitMode = noteElement.getAttribute('data-split-mode');
+        const serializedSplitDirection = noteElement.getAttribute('data-split-direction');
 
         // 查找颜色类名（blue, green, red, black, white, trans, brown, gray）
         const colorClasses = ['blue', 'green', 'red', 'black', 'white', 'trans', 'brown', 'gray'];
         for (const colorClass of colorClasses) {
             if (classes.includes(colorClass)) {
-                color = colorClass;
+                color = typeof color === 'string' && color !== 'white' ? color : colorClass;
                 break;
             }
         }
@@ -319,14 +336,25 @@ export async function parseSVGToFretboardState(svgInput) {
             }
 
             // 提取 color2（从 stroke 颜色判断）
-            const stroke = circle.getAttribute('stroke') || circle.style.stroke;
-            const strokeWidth = circle.getAttribute('stroke-width') || circle.style.strokeWidth;
+            if (!color2) {
+                const secondaryFillElement = noteElement.querySelector('.note-secondary-fill');
+                if (secondaryFillElement) {
+                    const secondaryFill = secondaryFillElement.getAttribute('fill') || secondaryFillElement.style.fill;
+                    const color2Name = getColorNameFromValue(secondaryFill, 2) || getColorNameFromValue(secondaryFill, 1);
+                    if (color2Name) {
+                        color2 = color2Name;
+                    }
+                } else {
+                    const stroke = circle.getAttribute('stroke') || circle.style.stroke;
+                    const strokeWidth = circle.getAttribute('stroke-width') || circle.style.strokeWidth;
 
-            // 如果有描边且宽度较大（>2px），说明有 color2
-            if (stroke && stroke !== 'none' && parseFloat(strokeWidth) > 2) {
-                const color2Name = getColorNameFromValue(stroke, 2);
-                if (color2Name) {
-                    color2 = color2Name;
+                    // 兼容旧版外框型 color2
+                    if (stroke && stroke !== 'none' && parseFloat(strokeWidth) > 2) {
+                        const color2Name = getColorNameFromValue(stroke, 2);
+                        if (color2Name) {
+                            color2 = color2Name;
+                        }
+                    }
                 }
             }
         }
@@ -391,6 +419,14 @@ export async function parseSVGToFretboardState(svgInput) {
 
         if (color2) {
             noteData.color2 = color2;
+        }
+
+        if (color2) {
+            if (serializedSplitMode) {
+                noteData.splitMode = ['lr', 'rl', 'tb', 'bt'].includes(serializedSplitMode) ? serializedSplitMode : 'lr';
+            } else if (serializedSplitDirection) {
+                noteData.splitMode = serializedSplitDirection === 'horizontal' ? 'tb' : 'lr';
+            }
         }
 
         if (noteText) {

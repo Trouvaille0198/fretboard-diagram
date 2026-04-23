@@ -43,11 +43,13 @@ export function FretboardDock({
   const stackCountLabel = dockStates.length > 99 ? '99+' : String(dockStates.length);
 
   return (
-    <div className={`fretboard-dock ${isExpanded ? 'expanded' : ''}`}>
+    <div
+      className={`fretboard-dock ${isExpanded ? 'expanded' : ''}`}
+      onMouseEnter={openDock}
+      onMouseLeave={scheduleCloseDock}
+    >
       <div
         className={`dock-stack ${isExpanded ? 'visible' : ''}`}
-        onMouseEnter={openDock}
-        onMouseLeave={scheduleCloseDock}
       >
         {dockStates.length === 0 ? (
           <div className="dock-empty">按 Ctrl+S 把当前指板加入指板堆</div>
@@ -59,55 +61,63 @@ export function FretboardDock({
             const tilt = Math.min(depth * 1.5, 6);
 
             return (
-            <div
-              key={stateSnapshot.id}
-              className={`dock-item ${selectedHistoryState?.id === stateSnapshot.id ? 'selected' : ''}`}
-              title={`${stateSnapshot.name} · 点击应用，右键删除`}
-              style={{
-                '--dock-depth': depth,
-                '--dock-curve-offset': `${curveOffset}px`,
-                '--dock-lift-offset': `${liftOffset}px`,
-                '--dock-tilt': `${tilt}deg`
-              }}
-            >
-              <button
-                className="dock-item-apply"
-                onClick={() => onRestore?.(stateSnapshot)}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  onDelete?.(stateSnapshot);
+              <div
+                key={stateSnapshot.id}
+                className={`dock-item ${selectedHistoryState?.id === stateSnapshot.id ? 'selected' : ''}`}
+                title={`${stateSnapshot.name} · 点击应用，右键删除`}
+                style={{
+                  '--dock-depth': depth,
+                  '--dock-curve-offset': `${curveOffset}px`,
+                  '--dock-lift-offset': `${liftOffset}px`,
+                  '--dock-tilt': `${tilt}deg`
                 }}
-                title={`应用：${stateSnapshot.name}`}
               >
-                {stateSnapshot.thumbnail ? (
-                  <img
-                    src={stateSnapshot.thumbnail}
-                    alt={stateSnapshot.name}
-                    className="dock-item-thumbnail"
-                  />
-                ) : (
-                  <div className="dock-item-placeholder">无缩略图</div>
-                )}
-              </button>
-            </div>
+                <button
+                  className="dock-item-apply"
+                  onClick={() => onRestore?.(stateSnapshot)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    onDelete?.(stateSnapshot);
+                  }}
+                  title={`应用：${stateSnapshot.name}`}
+                >
+                  {stateSnapshot.thumbnail ? (
+                    <img
+                      src={stateSnapshot.thumbnail}
+                      alt={stateSnapshot.name}
+                      className="dock-item-thumbnail"
+                    />
+                  ) : (
+                    <div className="dock-item-placeholder">无缩略图</div>
+                  )}
+                </button>
+              </div>
             );
           })
         )}
       </div>
 
       <div className="dock-bar">
-        <div className="dock-meta">
-          <div className="dock-title">指板堆</div>
-          <div className="dock-subtitle">
-            {dockStates.length === 0 ? '空堆' : `当前 ${stackCountLabel} 张`}
+        <div className="dock-meta-col">
+          <div className="dock-meta">
+            <div className="dock-title">指板堆</div>
+            <div className="dock-subtitle">
+              {dockStates.length === 0 ? '空堆' : `当前 ${stackCountLabel} 张`}
+            </div>
           </div>
+
+          <button
+            className="dock-clear-btn"
+            onClick={onClear}
+            title="清空当前指板堆"
+          >
+            Clear
+          </button>
         </div>
 
         <button
           className="dock-primary"
           onClick={() => latestState && onRestore?.(latestState)}
-          onMouseEnter={openDock}
-          onMouseLeave={scheduleCloseDock}
           title={latestState ? `应用最近快照：${latestState.name}` : '指板堆'}
         >
           <span className="dock-stack-shadow dock-stack-shadow-back" />
@@ -126,14 +136,6 @@ export function FretboardDock({
           {dockStates.length > 0 && (
             <span className="dock-count-badge">{stackCountLabel}</span>
           )}
-        </button>
-
-        <button
-          className="dock-clear-btn"
-          onClick={onClear}
-          title="清空当前指板堆"
-        >
-          Clear
         </button>
       </div>
     </div>

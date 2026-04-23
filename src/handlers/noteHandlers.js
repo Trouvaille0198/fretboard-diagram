@@ -1,7 +1,6 @@
-import { updateNote } from '../utils';
+import { updateNote, getNoteSplitMode, getSplitTargetFromPoint, getColorName } from '../utils';
 import { calculateConnectionColor } from '../utils';
 import { LEVEL1_COLORS } from '../colorConfig';
-import audioService from '../services/audioService';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
 
@@ -31,6 +30,17 @@ export function createNoteClickHandler(params) {
         updateNote: updateNoteFn
     } = params;
 
+    const colorsMatch = (left, right) => {
+        if (left === right) return true;
+        if (!left || !right) return false;
+        if (typeof left === 'object' && typeof right === 'object') {
+            return left.name === right.name && left.custom === right.custom;
+        }
+        return false;
+    };
+
+    const isSingleOnlyColor = (color) => getColorName(color) === 'trans';
+
     return (event, noteId) => {
         event.stopPropagation();
         const noteElement = event.currentTarget;
@@ -40,6 +50,11 @@ export function createNoteClickHandler(params) {
         const currentColor = noteData.color || 'white';
         const currentColor2 = noteData.color2 || null;
         const currentVisibility = noteData.visibility || visibility;
+        const pointerX = ('clientX' in event) ? event.clientX : 0;
+        const pointerY = ('clientY' in event) ? event.clientY : 0;
+        const circleRect = noteElement.querySelector('circle')?.getBoundingClientRect();
+        const localX = circleRect ? pointerX - (circleRect.left + circleRect.width / 2) : 0;
+        const localY = circleRect ? pointerY - (circleRect.top + circleRect.height / 2) : 0;
 
         // 连线模式处理
         if (connectionMode) {
@@ -192,114 +207,52 @@ export function createNoteClickHandler(params) {
             }
         }
 
-        // 如果选中了第一层级调色盘
+        // 单排调色盘：统一通过选中的颜色驱动 note 的第一色/第二色
         if (selectedColorLevel === 1 && selectedColor !== null) {
-            // 获取实际的颜色名称用于比较
-            const actualSelectedColorName = typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
-            const actualCurrentColorName = currentColor && typeof currentColor === 'object' ? currentColor.name : currentColor;
-            // 检查选中的是否是异色（有 custom 字段）
-            const isSelectedTint = typeof selectedColor === 'object' && selectedColor.custom;
+            const hasPrimaryColor = currentColor && currentColor !== 'white';
+            const hasSecondaryColor = currentColor2 && currentColor2 !== null;
+            const selectedIsSingleOnly = isSingleOnlyColor(selectedColor);
+            const currentHasSingleOnlyColor = isSingleOnlyColor(currentColor) || isSingleOnlyColor(currentColor2);
 
-            if (actualCurrentColorName === actualSelectedColorName) {
-                // 如果选中的是异色，且当前也是异色（同色），清除颜色
-                const isCurrentTint = typeof currentColor === 'object' && currentColor.custom;
-                if (isSelectedTint && isCurrentTint) {
-                    // 检查是否是同一个异色（custom 值相同）
-                    const currentCustom = currentColor.custom;
-                    const selectedCustom = selectedColor.custom;
-                    if (currentCustom === selectedCustom) {
-                        // 同色异色，清除
-                        if (currentColor2 && currentColor2 !== null) {
-                            updateNoteFn(noteElement, data, { color: 'white', visibility: 'visible' });
-                            setData(prevData => {
-                                const newData = { ...prevData };
-                                if (!(noteId in newData)) {
-                                    newData[noteId] = {};
-                                }
-                                newData[noteId] = { ...newData[noteId], color: 'white', visibility: 'visible' };
-                                return newData;
-                            });
-                        } else {
-                            updateNoteFn(noteElement, data, { color: 'white', visibility: visibility });
-                            setData(prevData => {
-                                const newData = { ...prevData };
-                                if (!(noteId in newData)) {
-                                    newData[noteId] = {};
-                                }
-                                newData[noteId] = { ...newData[noteId], color: 'white', visibility: visibility };
-                                return newData;
-                            });
-                        }
-                    } else {
-                        // 不同异色，覆盖
-                        updateNoteFn(noteElement, data, { color: selectedColor, visibility: 'visible' });
-                        setData(prevData => {
-                            const newData = { ...prevData };
-                            if (!(noteId in newData)) {
-                                newData[noteId] = {};
-                            }
-                            newData[noteId] = { ...newData[noteId], color: selectedColor, visibility: 'visible' };
-                            return newData;
-                        });
-                    }
-                } else if (isSelectedTint && !isCurrentTint) {
-                    // 选中的是异色，但当前不是异色，应用异色
-                    updateNoteFn(noteElement, data, { color: selectedColor, visibility: 'visible' });
-                    setData(prevData => {
-                        const newData = { ...prevData };
-                        if (!(noteId in newData)) {
-                            newData[noteId] = {};
-                        }
-                        newData[noteId] = { ...newData[noteId], color: selectedColor, visibility: 'visible' };
-                        return newData;
-                    });
-                } else if (currentVisibility === 'visible') {
-                    // 如果选中的不是异色，且当前是visible，清除颜色
-                    if (currentColor2 && currentColor2 !== null) {
-                        updateNoteFn(noteElement, data, { color: 'white', visibility: 'visible' });
-                        setData(prevData => {
-                            const newData = { ...prevData };
-                            if (!(noteId in newData)) {
-                                newData[noteId] = {};
-                            }
-                            newData[noteId] = { ...newData[noteId], color: 'white', visibility: 'visible' };
-                            return newData;
-                        });
-                    } else {
-                        updateNoteFn(noteElement, data, { color: 'white', visibility: visibility });
-                        setData(prevData => {
-                            const newData = { ...prevData };
-                            if (!(noteId in newData)) {
-                                newData[noteId] = {};
-                            }
-                            newData[noteId] = { ...newData[noteId], color: 'white', visibility: visibility };
-                            return newData;
-                        });
-                    }
+            let update;
+
+            if (!hasPrimaryColor || currentVisibility !== 'visible') {
+                update = { color: selectedColor, color2: null, visibility: 'visible' };
+            } else if (selectedIsSingleOnly || currentHasSingleOnlyColor) {
+                if (colorsMatch(currentColor, selectedColor) && !hasSecondaryColor) {
+                    update = { visibility: 'visible' };
                 } else {
-                    // 如果选中的不是异色，且当前不是visible，应用颜色
-                    updateNoteFn(noteElement, data, { color: selectedColor, visibility: 'visible' });
-                    setData(prevData => {
-                        const newData = { ...prevData };
-                        if (!(noteId in newData)) {
-                            newData[noteId] = {};
-                        }
-                        newData[noteId] = { ...newData[noteId], color: selectedColor, visibility: 'visible' };
-                        return newData;
-                    });
+                    update = { color: selectedColor, color2: null, visibility: 'visible' };
+                }
+            } else if (!hasSecondaryColor) {
+                if (colorsMatch(currentColor, selectedColor)) {
+                    update = { visibility: 'visible' };
+                } else {
+                    update = { color2: selectedColor, visibility: 'visible' };
                 }
             } else {
-                // 颜色名称不同，直接应用选中的颜色
-                updateNoteFn(noteElement, data, { color: selectedColor, visibility: 'visible' });
-                setData(prevData => {
-                    const newData = { ...prevData };
-                    if (!(noteId in newData)) {
-                        newData[noteId] = {};
-                    }
-                    newData[noteId] = { ...newData[noteId], color: selectedColor, visibility: 'visible' };
-                    return newData;
-                });
+                const targetKey = getSplitTargetFromPoint(getNoteSplitMode(noteData), localX, localY);
+                const targetColor = targetKey === 'color' ? currentColor : currentColor2;
+                const otherKey = targetKey === 'color' ? 'color2' : 'color';
+                const otherColor = otherKey === 'color' ? currentColor : currentColor2;
+                if (colorsMatch(targetColor, selectedColor)) {
+                    update = { visibility: 'visible' };
+                } else if (colorsMatch(otherColor, selectedColor)) {
+                    update = { color: selectedColor, color2: null, visibility: 'visible' };
+                } else {
+                    update = { [targetKey]: selectedColor, visibility: 'visible' };
+                }
             }
+
+            updateNoteFn(noteElement, data, update);
+            setData(prevData => {
+                const newData = { ...prevData };
+                if (!(noteId in newData)) {
+                    newData[noteId] = {};
+                }
+                newData[noteId] = { ...newData[noteId], ...update };
+                return newData;
+            });
             return;
         }
 

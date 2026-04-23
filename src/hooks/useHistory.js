@@ -1,27 +1,27 @@
 import { useRef, useEffect, useCallback } from 'react';
 
-export function useHistory(data, setData) {
+export function useHistory(stateSnapshot, applySnapshot) {
     const historyRef = useRef([]); // 历史记录数组
     const historyIndexRef = useRef(-1); // 当前历史记录索引
     const isUndoingRef = useRef(false); // 是否正在执行撤销操作
     const isRedoingRef = useRef(false); // 是否正在执行重做操作
-    const prevDataRef = useRef(JSON.stringify(data));
+    const prevStateRef = useRef(JSON.stringify(stateSnapshot));
 
     // 保存历史记录
-    const saveToHistory = useCallback((newData) => {
+    const saveToHistory = useCallback((nextSnapshot) => {
         if (isUndoingRef.current || isRedoingRef.current) {
             // 如果正在执行撤销或重做操作，不保存历史
             return;
         }
 
-        const dataStr = JSON.stringify(newData);
+        const snapshotStr = JSON.stringify(nextSnapshot);
         const currentHistory = historyRef.current;
         const currentIndex = historyIndexRef.current;
 
         // 如果当前不在历史记录的末尾，删除后面的记录（分支历史）
         const newHistory = currentHistory.slice(0, currentIndex + 1);
         // 添加新的历史记录
-        newHistory.push(dataStr);
+        newHistory.push(snapshotStr);
         // 限制历史记录数量（最多50条）
         if (newHistory.length > 50) {
             newHistory.shift();
@@ -43,8 +43,8 @@ export function useHistory(data, setData) {
             const prevDataStr = currentHistory[prevIndex];
             if (prevDataStr) {
                 try {
-                    const prevData = JSON.parse(prevDataStr);
-                    setData(prevData);
+                    const prevSnapshot = JSON.parse(prevDataStr);
+                    applySnapshot(prevSnapshot);
                     historyIndexRef.current = prevIndex;
                 } catch (e) {
                     console.error('撤销失败：无法解析历史记录', e);
@@ -55,7 +55,7 @@ export function useHistory(data, setData) {
                 isUndoingRef.current = false;
             }, 0);
         }
-    }, [setData]);
+    }, [applySnapshot]);
 
     // 重做操作
     const redo = useCallback(() => {
@@ -68,8 +68,8 @@ export function useHistory(data, setData) {
             const nextDataStr = currentHistory[nextIndex];
             if (nextDataStr) {
                 try {
-                    const nextData = JSON.parse(nextDataStr);
-                    setData(nextData);
+                    const nextSnapshot = JSON.parse(nextDataStr);
+                    applySnapshot(nextSnapshot);
                     historyIndexRef.current = nextIndex;
                 } catch (e) {
                     console.error('重做失败：无法解析历史记录', e);
@@ -80,26 +80,26 @@ export function useHistory(data, setData) {
                 isRedoingRef.current = false;
             }, 0);
         }
-    }, [setData]);
+    }, [applySnapshot]);
 
-    // 监听 data 变化，保存历史记录
+    // 监听快照变化，保存历史记录
     useEffect(() => {
-        const currentDataStr = JSON.stringify(data);
-        if (currentDataStr !== prevDataRef.current && !isUndoingRef.current && !isRedoingRef.current) {
-            saveToHistory(data);
-            prevDataRef.current = currentDataStr;
+        const currentSnapshotStr = JSON.stringify(stateSnapshot);
+        if (currentSnapshotStr !== prevStateRef.current && !isUndoingRef.current && !isRedoingRef.current) {
+            saveToHistory(stateSnapshot);
+            prevStateRef.current = currentSnapshotStr;
         }
-    }, [data, saveToHistory]);
+    }, [stateSnapshot, saveToHistory]);
 
     // 初始化历史记录
     useEffect(() => {
         if (historyRef.current.length === 0) {
-            const initialDataStr = JSON.stringify(data);
-            historyRef.current = [initialDataStr];
+            const initialSnapshotStr = JSON.stringify(stateSnapshot);
+            historyRef.current = [initialSnapshotStr];
             historyIndexRef.current = 0;
-            prevDataRef.current = initialDataStr;
+            prevStateRef.current = initialSnapshotStr;
         }
-    }, []);
+    }, [stateSnapshot]);
 
     return {
         undo,

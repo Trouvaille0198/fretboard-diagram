@@ -4,14 +4,16 @@
     right: 20px;
     min-width: 200px;
     max-width: 400px;
-    padding: 12px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    padding: 14px 18px;
+    border-radius: 18px;
+    border: 1px solid var(--app-border);
+    box-shadow: var(--app-shadow-md);
     z-index: 10000;
     animation: slideIn 0.3s ease-out;
     font-size: 14px;
     line-height: 1.5;
     word-wrap: break-word;
+    backdrop-filter: blur(18px);
 }
 
 .toast.exiting {
@@ -19,28 +21,37 @@
 }
 
 .toast-content {
-    color: white;
-    text-align: center;
+    color: var(--app-text);
+    text-align: left;
+    font-weight: 600;
 }
 
 .toast.info {
-    background: rgba(33, 150, 243, 0.95);
-    border-left: 4px solid #2196F3;
+    background:
+        linear-gradient(180deg, rgba(243, 186, 98, 0.18), rgba(255, 255, 255, 0.04)),
+        var(--app-panel-strong);
+    border-color: rgba(243, 186, 98, 0.28);
 }
 
 .toast.success {
-    background: rgba(76, 175, 80, 0.95);
-    border-left: 4px solid #4CAF50;
+    background:
+        linear-gradient(180deg, rgba(136, 211, 159, 0.18), rgba(255, 255, 255, 0.04)),
+        var(--app-panel-strong);
+    border-color: rgba(136, 211, 159, 0.3);
 }
 
 .toast.error {
-    background: rgba(244, 67, 54, 0.95);
-    border-left: 4px solid #F44336;
+    background:
+        linear-gradient(180deg, rgba(240, 138, 132, 0.18), rgba(255, 255, 255, 0.04)),
+        var(--app-panel-strong);
+    border-color: rgba(240, 138, 132, 0.3);
 }
 
 .toast.warning {
-    background: rgba(255, 152, 0, 0.95);
-    border-left: 4px solid #FF9800;
+    background:
+        linear-gradient(180deg, rgba(243, 186, 98, 0.18), rgba(255, 255, 255, 0.04)),
+        var(--app-panel-strong);
+    border-color: rgba(243, 186, 98, 0.32);
 }
 
 @keyframes slideIn {

@@ -55,8 +55,8 @@ function PianoKeyboard({ enharmonic, selectedNote, onNoteSelect }) {
         {/* 渲染黑键（绝对定位） */}
         {blackKeys.map((blackKey) => {
           const blackIsSelected = selectedNote === blackKey.noteIndex;
-          const blackKeyName = enharmonic === 0 
-            ? blackKey.sharpName 
+          const blackKeyName = enharmonic === 0
+            ? blackKey.sharpName
             : blackKey.flatName;
           // 计算黑键的左侧位置
           // 白键宽度45px，白键右边距2px，容器padding 4px，黑键宽度28px
@@ -64,9 +64,9 @@ function PianoKeyboard({ enharmonic, selectedNote, onNoteSelect }) {
           // 前一个白键的中心位置 + 白键宽度/2 + 间距/2 - 黑键宽度/2
           const whiteKeyWidth = 45;
           const whiteKeyMargin = 2;
-          const containerPadding = 4;
+          const containerPadding = 8;
           const blackKeyWidth = 28;
-          
+
           // 前一个白键的左边缘位置
           const prevWhiteKeyLeft = containerPadding + blackKey.position * (whiteKeyWidth + whiteKeyMargin);
           // 前一个白键的中心位置

@@ -1,6 +1,6 @@
 import React from 'react';
 import { CONSTS } from '../constants';
-import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, calculateArcPath, getPointOnNoteEdge, getPointOnPathAtDistance, getColorName } from '../utils';
+import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, calculateArcPath, getPointOnNoteEdge, getPointOnPathAtDistance, getColorName, getNoteSplitMode, resolveNoteColorValue } from '../utils';
 import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from '../colorConfig';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
@@ -86,9 +86,9 @@ export function FretboardSVG({
       <defs>
         {/* 毛玻璃效果filter */}
         <filter id="glassmorphism" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="0.8"/>
-          <feColorMatrix 
-            type="matrix" 
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.8" />
+          <feColorMatrix
+            type="matrix"
             values="0.5 0.5 0.5 0 0
                     0.5 0.5 0.5 0 0
                     0.5 0.5 0.5 0 0
@@ -102,48 +102,48 @@ export function FretboardSVG({
             const gradientColors = conn.gradientColors || { start: 'white', end: 'white' };
             let startColorName = gradientColors.start;
             let endColorName = gradientColors.end;
-            
+
             // 处理自定义颜色对象（淡色版本）
             let startColorValue = null;
             let endColorValue = null;
-            
+
             if (typeof startColorName === 'object' && startColorName.custom) {
               // 自定义颜色，直接使用 custom 颜色值
               startColorValue = startColorName.custom;
               startColorName = startColorName.name; // 用于判断 white/trans
             }
-            
+
             if (typeof endColorName === 'object' && endColorName.custom) {
               // 自定义颜色，直接使用 custom 颜色值
               endColorValue = endColorName.custom;
               endColorName = endColorName.name; // 用于判断 white/trans
             }
-            
+
             // 判断颜色是第一层级还是第二层级
             const isStartLevel1 = startColorName in LEVEL1_COLORS;
             const isEndLevel1 = endColorName in LEVEL1_COLORS;
             const startColor = startColorValue || (isStartLevel1 ? getLevel1FillColor(startColorName) : getLevel2Color(startColorName));
             const endColor = endColorValue || (isEndLevel1 ? getLevel1FillColor(endColorName) : getLevel2Color(endColorName));
-            
+
             // 获取起点和终点的位置，用于设置渐变方向
             const startNotePos = getNotePositionMemo(conn.startNoteId);
             const endNotePos = getNotePositionMemo(conn.endNoteId);
-            
+
             if (!startNotePos || !endNotePos) {
               return null;
             }
-            
+
             // 计算边缘点（与连线渲染时使用的相同）
             const startEdge = getPointOnNoteEdge(startNotePos.x, startNotePos.y, endNotePos.x, endNotePos.y, CONSTS.circleRadius);
             const endEdge = getPointOnNoteEdge(endNotePos.x, endNotePos.y, startNotePos.x, startNotePos.y, CONSTS.circleRadius);
-            
+
             // 对于所有连线，都使用 userSpaceOnUse 和实际坐标（边缘点）
             const gradientUnits = "userSpaceOnUse";
             const gradientX1 = startEdge.x;
             const gradientY1 = startEdge.y;
             const gradientX2 = endEdge.x;
             const gradientY2 = endEdge.y;
-            
+
             const finalStartColor = startColorName === 'white' || startColorName === 'trans' ? '#aaaaaa' : startColor;
             const finalEndColor = endColorName === 'white' || endColorName === 'trans' ? '#aaaaaa' : endColor;
             const safeStartColor = finalStartColor || '#aaaaaa';
@@ -151,14 +151,14 @@ export function FretboardSVG({
             const finalStartColorStr = String(safeStartColor);
             const finalEndColorStr = String(safeEndColor);
             const gradientId = conn.color;
-            
+
             return (
-              <linearGradient 
-                key={conn.id} 
-                id={gradientId} 
-                x1={gradientX1} 
-                y1={gradientY1} 
-                x2={gradientX2} 
+              <linearGradient
+                key={conn.id}
+                id={gradientId}
+                x1={gradientX1}
+                y1={gradientY1}
+                x2={gradientX2}
                 y2={gradientY2}
                 gradientUnits={gradientUnits}
               >
@@ -170,9 +170,9 @@ export function FretboardSVG({
           return null;
         })}
       </defs>
-      
+
       <path className="frets" d={fretPath} />
-      
+
       <g className="markers">
         {markers.map(marker => (
           <text key={`${marker.position}-${marker.number}`} className="marker" x={marker.x} y={marker.y}>
@@ -180,7 +180,7 @@ export function FretboardSVG({
           </text>
         ))}
       </g>
-      
+
       <g className="strings" style={{ pointerEvents: 'none' }}>
         {Array.from({ length: CONSTS.numStrings }).map((_, i) => (
           <path
@@ -191,45 +191,47 @@ export function FretboardSVG({
           />
         ))}
       </g>
-      
+
       <g className="notes" ref={notesElementRef}>
         {notes.map(note => {
           const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
           const currentColor = noteData.color || 'white';
           const currentColor2 = noteData.color2 || null;
-          
+          const splitMode = getNoteSplitMode(noteData);
+
           const effectiveVisibility = selected?.id === note.id ? 'selected' : (noteData.visibility || visibility);
           const currentVisibility = effectiveVisibility;
-          
+
           const isPreviewHover = connectionMode && connectionStartNote && previewHoverNote === note.id;
-          
+
           // 当toggle处于hidden状态时，trans note显示为0.3透明度而不是完全隐藏
           const colorName = typeof currentColor === 'object' ? getColorName(currentColor) : currentColor;
           const isTransColor = colorName === 'trans';
           const shouldApplyTransparentStyle = visibility === 'hidden' && isTransColor;
-          
-          const className = `note ${currentColor} ${currentVisibility} ${isPreviewHover ? 'preview-hover' : ''} ${shouldApplyTransparentStyle ? 'force-transparent' : ''}`;
-          
-          // 根据 color2 设置描边颜色
-          let hasColor2 = currentColor2 && currentColor2 !== null;
-          let strokeColor = note.isOpen ? 'none' : undefined;
-          let strokeWidth = undefined;
-          if (hasColor2) {
-            // 处理自定义颜色对象（与 color2-strokes 组中的逻辑一致）
-            if (typeof currentColor2 === 'object' && currentColor2.custom) {
-              strokeColor = currentColor2.custom;
-            } else if (typeof currentColor2 === 'object' && currentColor2.name) {
-              strokeColor = getLevel2Color(currentColor2.name);
-            } else {
-              strokeColor = getLevel2Color(currentColor2);
+
+          const colorClassName = getColorName(currentColor) || 'white';
+          const className = `note ${colorClassName} ${currentVisibility} ${isPreviewHover ? 'preview-hover' : ''} ${shouldApplyTransparentStyle ? 'force-transparent' : ''}`;
+          const color1IsWhite = !currentColor || getColorName(currentColor) === 'white';
+          const hasColor2 = currentColor2 && currentColor2 !== null;
+          const primaryFill = resolveNoteColorValue(currentColor, 1);
+          const secondaryFill = resolveNoteColorValue(currentColor2, 2);
+          const shouldSplitFill = !color1IsWhite && hasColor2 && secondaryFill;
+          const fullFill = primaryFill || secondaryFill || undefined;
+          const textColor = (hasColor2 && (color1IsWhite || shouldSplitFill)) ? 'white' : undefined;
+          const secondaryHalfPath = (() => {
+            switch (splitMode) {
+              case 'rl':
+                return `M 0 ${-CONSTS.circleRadius} A ${CONSTS.circleRadius} ${CONSTS.circleRadius} 0 0 0 0 ${CONSTS.circleRadius} Z`;
+              case 'tb':
+                return `M ${-CONSTS.circleRadius} 0 A ${CONSTS.circleRadius} ${CONSTS.circleRadius} 0 0 1 ${CONSTS.circleRadius} 0 Z`;
+              case 'bt':
+                return `M ${-CONSTS.circleRadius} 0 A ${CONSTS.circleRadius} ${CONSTS.circleRadius} 0 0 0 ${CONSTS.circleRadius} 0 Z`;
+              case 'lr':
+              default:
+                return `M 0 ${-CONSTS.circleRadius} A ${CONSTS.circleRadius} ${CONSTS.circleRadius} 0 0 1 0 ${CONSTS.circleRadius} Z`;
             }
-            strokeWidth = '3.5';
-          }
-          
-          // 如果note只有color2（没有color1或color1是white），设置文本颜色为白色
-          const color1IsWhite = !currentColor || currentColor === 'white';
-          const textColor = (hasColor2 && color1IsWhite) ? 'white' : undefined;
-          
+          })();
+
           let originalNoteName = '';
           if (note.id.startsWith('o-s')) {
             const string = parseInt(note.id.substring(3));
@@ -240,59 +242,69 @@ export function FretboardSVG({
             const string = parseInt(parts[1]);
             originalNoteName = computeNoteNameMemo(fret, string);
           }
-          
+
           return (
             <g
               key={note.id}
-              id={note.id}
-              className={className}
-              transform={`translate(${note.x}, ${note.y})`}
-              data-x={note.x}
-              data-y={note.y}
-              data-open={note.isOpen}
-              onClick={(e) => handleNoteClick(e, note.id)}
-              onMouseDown={(e) => {
-                // 鼠标中键播放音频
-                if (e.button === 1) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  
-                  // 从 noteId 解析品位和弦
-                  let fret = -1;
-                  let string = 0;
-                  
-                  if (note.id.startsWith('o-s')) {
-                    string = parseInt(note.id.substring(3));
-                    fret = -1;
-                  } else if (note.id.startsWith('f') && note.id.includes('-s')) {
-                    const parts = note.id.substring(1).split('-s');
-                    fret = parseInt(parts[0]);
-                    string = parseInt(parts[1]);
-                  }
-                  
-                  // 动态导入并播放
-                  import('../services/audioService').then(module => {
-                    module.default.playFretNote(fret, string, 0.8).catch(err => {
-                      console.error('Failed to play audio:', err);
+                id={note.id}
+                className={className}
+                transform={`translate(${note.x}, ${note.y})`}
+                data-x={note.x}
+                data-y={note.y}
+                data-open={note.isOpen}
+                data-color-name={currentColor && typeof currentColor === 'object' ? currentColor.name : currentColor}
+                data-color-custom={currentColor && typeof currentColor === 'object' ? currentColor.custom : undefined}
+                data-color2-name={currentColor2 && typeof currentColor2 === 'object' ? currentColor2.name : currentColor2}
+                data-color2-custom={currentColor2 && typeof currentColor2 === 'object' ? currentColor2.custom : undefined}
+                data-split-mode={hasColor2 ? splitMode : undefined}
+                onClick={(e) => handleNoteClick(e, note.id)}
+                onMouseDown={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!shouldSplitFill) {
+                      return;
+                    }
+                    setData(prevData => {
+                      const prevNoteData = prevData[note.id] || {};
+                      const splitModes = ['lr', 'rl', 'tb', 'bt'];
+                      const currentMode = getNoteSplitMode(prevNoteData);
+                      const currentIndex = splitModes.indexOf(currentMode);
+                      const nextMode = splitModes[(currentIndex + 1) % splitModes.length];
+                      return {
+                        ...prevData,
+                        [note.id]: {
+                          ...prevNoteData,
+                          type: prevNoteData.type || 'note',
+                          splitMode: nextMode
+                        }
+                      };
                     });
-                  });
-                  return;
-                }
-                
-                // 注意：中键现在用于播放音频，连线模式下的颜色切换功能已移除
-              }}
-              onMouseEnter={() => setHoveredNoteId(note.id)}
-              onMouseLeave={() => setHoveredNoteId(null)}
-              style={{ cursor: 'pointer' }}
+                    return;
+                  }
+                }}
+                onMouseEnter={() => setHoveredNoteId(note.id)}
+                onMouseLeave={() => setHoveredNoteId(null)}
+                style={{ cursor: 'pointer' }}
             >
-              {/* 填充的circle */}
               <circle
+                className="note-circle"
                 r={CONSTS.circleRadius}
                 stroke={note.isOpen ? 'none' : undefined}
+                fill={fullFill}
               />
-              <text 
+              {shouldSplitFill && (
+                <path
+                  className="note-secondary-fill"
+                  d={secondaryHalfPath}
+                  fill={secondaryFill}
+                  pointerEvents="none"
+                />
+              )}
+              <text
+                className="note-label"
                 data-note={originalNoteName}
-                style={{ 
+                style={{
                   opacity: editingNote === note.id ? 0 : 1,
                   fill: textColor,
                   stroke: textColor
@@ -304,38 +316,38 @@ export function FretboardSVG({
           );
         })}
       </g>
-      
+
       {/* 连线渲染 - 放在最后，确保在最上层 */}
       <g className="connections">
         {Object.values(connections).map(conn => {
           const startCenter = getNotePositionMemo(conn.startNoteId);
           const endCenter = getNotePositionMemo(conn.endNoteId);
-          
+
           // 如果起点或终点note不存在，不渲染连线
           if (!startCenter || !endCenter) {
             return null;
           }
-          
+
           // 获取起点和终点的note数据，用于检查是否被删除
           const startNoteData = data[conn.startNoteId] || { type: 'note', color: 'white', visibility: visibility };
           const endNoteData = data[conn.endNoteId] || { type: 'note', color: 'white', visibility: visibility };
-          
+
           // 如果note被删除了（color是white且visibility不是visible），不渲染连线
           const startIsDeleted = startNoteData.color === 'white' && startNoteData.visibility !== 'visible';
           const endIsDeleted = endNoteData.color === 'white' && endNoteData.visibility !== 'visible';
           if (startIsDeleted || endIsDeleted) {
             return null;
           }
-          
+
           // 从gradientColors中获取实际使用的颜色（如果存在）
           let startColor = startNoteData.color || 'white';
           let endColor = endNoteData.color || 'white';
-          
+
           if (conn.gradientColors) {
             startColor = conn.gradientColors.start || startColor;
             endColor = conn.gradientColors.end || endColor;
           }
-          
+
           // 如果从gradientColors获取的颜色还是'white'，尝试从DOM元素中提取
           if (startColor === 'white') {
             const startNoteElement = document.getElementById(conn.startNoteId);
@@ -347,7 +359,7 @@ export function FretboardSVG({
               }
             }
           }
-          
+
           if (endColor === 'white') {
             const endNoteElement = document.getElementById(conn.endNoteId);
             if (endNoteElement) {
@@ -358,23 +370,23 @@ export function FretboardSVG({
               }
             }
           }
-          
+
           // 检查起点和终点是否都是 trans note（用于设置连线透明度）
           const startColorName = typeof startColor === 'object' ? getColorName(startColor) : startColor;
           const endColorName = typeof endColor === 'object' ? getColorName(endColor) : endColor;
           const isTransConnection = (startColorName === 'trans' || endColorName === 'trans');
           const connectionOpacity = (visibility === 'hidden' && isTransConnection) ? 0.3 : undefined;
-          
+
           // 计算连线颜色：如果是渐变ID，使用url引用；否则使用起点颜色
           const isGradient = conn.color && conn.color.startsWith('gradient-');
           let strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColorName === 'white' || startColorName === 'trans' ? '#aaaaaa' : reduceColorSaturation(startColor, 0.6)));
-          
+
           // 如果启用了灰色效果，使用半透明灰色
           const isGrayed = conn.isGrayed || false;
           if (isGrayed) {
             strokeColor = 'rgba(200, 200, 200, 0.7)';
           }
-          
+
           // 箭头颜色：每个箭头使用自己接触的note的颜色（降低饱和度）
           const getArrowColor = (color) => {
             const colorName = getColorName(color);
@@ -384,30 +396,30 @@ export function FretboardSVG({
           };
           let startArrowColor = getArrowColor(startColor);
           let endArrowColor = getArrowColor(endColor);
-          
+
           // 如果启用了灰色效果，箭头也使用灰色
           if (isGrayed) {
             startArrowColor = 'rgba(200, 200, 200, 0.7)';
             endArrowColor = 'rgba(200, 200, 200, 0.7)';
           }
-          
+
           // 计算边缘上的点
           const hasArrowStart = conn.arrowDirection === 'start' || conn.arrowDirection === 'both';
           const hasArrowEnd = conn.arrowDirection === 'end' || conn.arrowDirection === 'both';
-          const arrowLength = CONSTS.circleRadius * (2/3);
-          
+          const arrowLength = CONSTS.circleRadius * (2 / 3);
+
           // 先计算圆边线上的点
           const startEdge = getPointOnNoteEdge(startCenter.x, startCenter.y, endCenter.x, endCenter.y, CONSTS.circleRadius);
           const endEdge = getPointOnNoteEdge(endCenter.x, endCenter.y, startCenter.x, startCenter.y, CONSTS.circleRadius);
-          
+
           const strokeWidth = conn.strokeWidth || 3;
-          
+
           // 计算实际的路径端点
           let pathStartX = startEdge.x;
           let pathStartY = startEdge.y;
           let pathEndX = endEdge.x;
           let pathEndY = endEdge.y;
-          
+
           // 对于无箭头的情况，端点需要稍微向外偏移，以补偿strokeLinecap的影响
           if (!hasArrowStart) {
             const dx = startEdge.x - startCenter.x;
@@ -420,7 +432,7 @@ export function FretboardSVG({
               pathStartY = startEdge.y + unitY * (strokeWidth / 2);
             }
           }
-          
+
           if (!hasArrowEnd) {
             const dx = endEdge.x - endCenter.x;
             const dy = endEdge.y - endCenter.y;
@@ -432,21 +444,21 @@ export function FretboardSVG({
               pathEndY = endEdge.y + unitY * (strokeWidth / 2);
             }
           }
-          
+
           const markerStart = (conn.arrowDirection === 'start' || conn.arrowDirection === 'both') ? `url(#arrowhead-start-${conn.id})` : undefined;
           const markerEnd = (conn.arrowDirection === 'end' || conn.arrowDirection === 'both') ? `url(#arrowhead-end-${conn.id})` : undefined;
-          
+
           if (conn.type === 'arc') {
             // 对于弧线，需要沿着路径计算缩进点
             if (hasArrowStart || hasArrowEnd) {
               const fullPathString = calculateArcPath(startEdge.x, startEdge.y, endEdge.x, endEdge.y, conn.arcCurvature);
-              
+
               if (hasArrowStart) {
                 const startOffsetPoint = getPointOnPathAtDistance(fullPathString, arrowLength);
                 pathStartX = startOffsetPoint.x;
                 pathStartY = startOffsetPoint.y;
               }
-              
+
               if (hasArrowEnd) {
                 const svgNS = 'http://www.w3.org/2000/svg';
                 const tempPath = document.createElementNS(svgNS, 'path');
@@ -457,7 +469,7 @@ export function FretboardSVG({
                 pathEndY = endOffsetPoint.y;
               }
             }
-            
+
             const path = calculateArcPath(pathStartX, pathStartY, pathEndX, pathEndY, conn.arcCurvature);
             return (
               <g key={conn.id}>
@@ -500,7 +512,7 @@ export function FretboardSVG({
                   onContextMenu={(e) => handleConnectionContextMenuMemo(e, conn.id)}
                   onMouseEnter={() => setHoveredConnectionId(conn.id)}
                   onMouseLeave={() => setHoveredConnectionId(null)}
-                  style={{ 
+                  style={{
                     cursor: 'pointer',
                     strokeWidth: `${conn.strokeWidth || 3}px`,
                     strokeDasharray: conn.strokeDasharray || undefined,
@@ -513,13 +525,13 @@ export function FretboardSVG({
             // 对于直线
             if (hasArrowStart || hasArrowEnd) {
               const linePathString = `M ${startEdge.x} ${startEdge.y} L ${endEdge.x} ${endEdge.y}`;
-              
+
               if (hasArrowStart) {
                 const startOffsetPoint = getPointOnPathAtDistance(linePathString, arrowLength);
                 pathStartX = startOffsetPoint.x;
                 pathStartY = startOffsetPoint.y;
               }
-              
+
               if (hasArrowEnd) {
                 const svgNS = 'http://www.w3.org/2000/svg';
                 const tempPath = document.createElementNS(svgNS, 'path');
@@ -530,7 +542,7 @@ export function FretboardSVG({
                 pathEndY = endOffsetPoint.y;
               }
             }
-            
+
             return (
               <g key={conn.id}>
                 {(conn.arrowDirection === 'start' || conn.arrowDirection === 'both') && (
@@ -576,7 +588,7 @@ export function FretboardSVG({
                   onContextMenu={(e) => handleConnectionContextMenuMemo(e, conn.id)}
                   onMouseEnter={() => setHoveredConnectionId(conn.id)}
                   onMouseLeave={() => setHoveredConnectionId(null)}
-                  style={{ 
+                  style={{
                     cursor: 'pointer',
                     strokeWidth: `${conn.strokeWidth || 3}px`,
                     strokeDasharray: conn.strokeDasharray || undefined,
@@ -590,7 +602,7 @@ export function FretboardSVG({
           }
         })}
       </g>
-      
+
       {/* 白色分隔描边 - 当note同时有第一层和第二层颜色时，在第一层和第二层之间添加白色描边 */}
       <g className="white-separator-strokes">
         {notes.map(note => {
@@ -599,13 +611,14 @@ export function FretboardSVG({
           const currentColor2 = noteData.color2 || null;
           const hasColor1 = currentColor && currentColor !== 'white';
           const hasColor2 = currentColor2 && currentColor2 !== null;
-          
+
           // 只有当同时有第一层和第二层颜色时才显示白色分隔描边
           if (!hasColor1 || !hasColor2) return null;
-          
+
           return (
             <circle
               key={`white-separator-${note.id}`}
+              className="note-separator-stroke"
               cx={note.x}
               cy={note.y}
               r={CONSTS.circleRadius}
@@ -617,48 +630,14 @@ export function FretboardSVG({
           );
         })}
       </g>
-      
-      {/* 第二层颜色描边 - 放在连线之后，确保覆盖连线 */}
-      <g className="color2-strokes">
-        {notes.map(note => {
-          const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
-          const currentColor2 = noteData.color2 || null;
-          const hasColor2 = currentColor2 && currentColor2 !== null;
-          
-          if (!hasColor2) return null;
-          
-          // 处理自定义颜色对象
-          let strokeColor;
-          if (typeof currentColor2 === 'object' && currentColor2.custom) {
-            strokeColor = currentColor2.custom;
-          } else if (typeof currentColor2 === 'object' && currentColor2.name) {
-            strokeColor = getLevel2Color(currentColor2.name);
-          } else {
-            strokeColor = getLevel2Color(currentColor2);
-          }
-          
-          return (
-            <circle
-              key={`color2-${note.id}`}
-              cx={note.x}
-              cy={note.y}
-              r={CONSTS.circleRadius}
-              stroke={strokeColor}
-              strokeWidth="3.5"
-              fill="none"
-              pointerEvents="none"
-            />
-          );
-        })}
-      </g>
-      
+
       {/* 预览线 */}
       {connectionMode && connectionStartNote && connectionStartPosition && mousePosition && (
         <g className="connection-preview">
           {(() => {
             let startNoteData = data[connectionStartNote] || { type: 'note', color: 'white', visibility: visibility };
             let endNoteData = null;
-            
+
             // 处理起点note的颜色（考虑全局颜色层级）
             const startColor1IsWhite = !startNoteData.color || startNoteData.color === 'white';
             if (startNoteData.color2 && startNoteData.color2 !== null) {
@@ -668,11 +647,11 @@ export function FretboardSVG({
                 startNoteData = { ...startNoteData, color: startNoteData.color2 };
               }
             }
-            
+
             // 如果有预览悬停的note，获取其数据（考虑color2切换）
             if (previewHoverNote && previewHoverNote !== connectionStartNote) {
               endNoteData = data[previewHoverNote] || { type: 'note', color: 'white', visibility: visibility };
-              
+
               const color1IsWhite = !endNoteData.color || endNoteData.color === 'white';
               if (endNoteData.color2 && endNoteData.color2 !== null) {
                 if (color1IsWhite) {
@@ -682,56 +661,56 @@ export function FretboardSVG({
                 }
               }
             }
-            
+
             // 计算预览线颜色
             let previewColor;
             if (endNoteData) {
               const tempConnectionId = 'preview-temp';
               previewColor = calculateConnectionColor(startNoteData, endNoteData, tempConnectionId);
-              
+
               if (previewColor.startsWith('gradient-')) {
                 previewColor = startNoteData.color === 'white' || startNoteData.color === 'trans'
-                  ? '#aaaaaa' 
+                  ? '#aaaaaa'
                   : reduceColorSaturation(startNoteData.color, 0.6);
               }
             } else {
               previewColor = startNoteData.color === 'white' || startNoteData.color === 'trans'
-                ? '#aaaaaa' 
+                ? '#aaaaaa'
                 : reduceColorSaturation(startNoteData.color, 0.6);
             }
-            
+
             let endX, endY;
             let startEdgeX = connectionStartPosition.x;
             let startEdgeY = connectionStartPosition.y;
-            
+
             if (previewHoverNote) {
               const hoveredNote = notes.find(n => n.id === previewHoverNote);
               if (hoveredNote) {
                 const startEdge = getPointOnNoteEdge(
-                  connectionStartPosition.x, 
-                  connectionStartPosition.y, 
-                  hoveredNote.x, 
-                  hoveredNote.y, 
+                  connectionStartPosition.x,
+                  connectionStartPosition.y,
+                  hoveredNote.x,
+                  hoveredNote.y,
                   CONSTS.circleRadius
                 );
                 startEdgeX = startEdge.x;
                 startEdgeY = startEdge.y;
-                
+
                 const endEdge = getPointOnNoteEdge(
-                  hoveredNote.x, 
-                  hoveredNote.y, 
-                  connectionStartPosition.x, 
-                  connectionStartPosition.y, 
+                  hoveredNote.x,
+                  hoveredNote.y,
+                  connectionStartPosition.x,
+                  connectionStartPosition.y,
                   CONSTS.circleRadius
                 );
                 endX = endEdge.x;
                 endY = endEdge.y;
               } else {
                 const startEdge = getPointOnNoteEdge(
-                  connectionStartPosition.x, 
-                  connectionStartPosition.y, 
-                  mousePosition.x, 
-                  mousePosition.y, 
+                  connectionStartPosition.x,
+                  connectionStartPosition.y,
+                  mousePosition.x,
+                  mousePosition.y,
                   CONSTS.circleRadius
                 );
                 startEdgeX = startEdge.x;
@@ -741,10 +720,10 @@ export function FretboardSVG({
               }
             } else {
               const startEdge = getPointOnNoteEdge(
-                connectionStartPosition.x, 
-                connectionStartPosition.y, 
-                mousePosition.x, 
-                mousePosition.y, 
+                connectionStartPosition.x,
+                connectionStartPosition.y,
+                mousePosition.x,
+                mousePosition.y,
                 CONSTS.circleRadius
               );
               startEdgeX = startEdge.x;
@@ -752,14 +731,14 @@ export function FretboardSVG({
               endX = mousePosition.x;
               endY = mousePosition.y;
             }
-            
+
             return (
               <line
+                className="connection-preview connection-preview-line"
                 x1={startEdgeX}
                 y1={startEdgeY}
                 x2={endX}
                 y2={endY}
-                className="connection-preview"
                 stroke={previewColor}
                 strokeWidth={3}
                 strokeDasharray="5,5"
@@ -770,7 +749,7 @@ export function FretboardSVG({
           })()}
         </g>
       )}
-      
+
       {editableDivVisible && (
         <foreignObject
           x={editableDivX}
@@ -802,7 +781,7 @@ export function FretboardSVG({
           </div>
         </foreignObject>
       )}
-      
+
       {/* 连线工具栏 */}
       {connectionToolbarVisible && selectedConnection && connections[selectedConnection] && (
         <foreignObject
@@ -863,8 +842,8 @@ export function FretboardSVG({
                       }
                       if (newData.connections[connId]) {
                         if (currentType === 'line') {
-                          const newArcCurvature = (currentConn.arcCurvature === 0 || currentConn.arcCurvature < 0) 
-                            ? 0.7 
+                          const newArcCurvature = (currentConn.arcCurvature === 0 || currentConn.arcCurvature < 0)
+                            ? 0.7
                             : (currentConn.arcCurvature || 0.7);
                           newData.connections[connId] = {
                             ...newData.connections[connId],
@@ -979,7 +958,7 @@ export function FretboardSVG({
                   粗
                 </button>
                 {toolbarDropdown === 'width' && (
-                  <div 
+                  <div
                     className={`toolbar-dropdown toolbar-dropdown-${toolbarDropdownDirection}`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1035,7 +1014,7 @@ export function FretboardSVG({
                     弯
                   </button>
                   {toolbarDropdown === 'curvature' && (
-                    <div 
+                    <div
                       className={`toolbar-dropdown toolbar-dropdown-${toolbarDropdownDirection}`}
                       onClick={(e) => {
                         e.stopPropagation();

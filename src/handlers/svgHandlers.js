@@ -120,65 +120,21 @@ export function createSvgMouseMoveHandler(params) {
 }
 
 export function createSvgMouseDownHandler(params) {
-    const {
-        connectionMode,
-        connectionStartNote,
-        previewHoverNote,
-        data,
-        visibility,
-        useColor2Level,
-        setUseColor2Level
-    } = params;
+    const {} = params;
 
     return (e) => {
         // 如果点击的是工具栏按钮，不处理
         if (e.target.closest('.toolbar-icon-btn') || e.target.closest('.connection-toolbar')) {
             return;
         }
-
-        if (connectionMode && connectionStartNote && e.button === 1) {
-            // 鼠标中键（button === 1）
-            e.preventDefault();
-            e.stopPropagation();
-
-            // 优先使用悬停的note，如果没有则使用起点note
-            const targetNoteId = previewHoverNote || connectionStartNote;
-            const targetNoteData = data[targetNoteId] || { type: 'note', color: 'white', visibility: visibility };
-            const hasColor2 = targetNoteData.color2 && targetNoteData.color2 !== null;
-
-            // 只有当note有两层颜色时才能切换层级
-            if (hasColor2) {
-                // 全局切换颜色层级
-                setUseColor2Level(prev => !prev);
-            }
-            return false;
-        }
     };
 }
 
 export function createSvgWheelHandler(params) {
-    const {
-        connectionMode,
-        connectionStartNote,
-        previewHoverNote,
-        data,
-        visibility,
-        useColor2Level,
-        setUseColor2Level
-    } = params;
+    const {} = params;
 
     return (e) => {
-        if (connectionMode && connectionStartNote && previewHoverNote) {
-            const hoveredNoteData = data[previewHoverNote] || { type: 'note', color: 'white', visibility: visibility };
-            const hasColor2 = hoveredNoteData.color2 && hoveredNoteData.color2 !== null;
-
-            // 只有当note有两层颜色时才能切换
-            if (hasColor2) {
-                e.preventDefault();
-                e.stopPropagation();
-                setUseColor2Level(prev => !prev);
-            }
-        }
+        return e;
     };
 }
 
