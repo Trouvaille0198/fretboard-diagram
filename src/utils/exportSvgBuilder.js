@@ -12,7 +12,7 @@ export function buildExportSvg({
 	includeMarkers = true,
 	showNotes = true,
 	horizontalCrop = true,
-	verticalCrop = true,
+	verticalCrop = false,
 }) {
 	if (!svgElementRef.current) {
 		return null;

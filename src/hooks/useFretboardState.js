@@ -62,7 +62,7 @@ export function useFretboardState() {
 		initialState?.horizontalCrop ?? true
 	);
 	const [verticalCrop, setVerticalCrop] = useState(
-		initialState?.verticalCrop ?? true
+		initialState?.verticalCrop ?? false
 	);
 	const [errorMessage, setErrorMessage] = useState("");
 	const [toastMessage, setToastMessage] = useState("");

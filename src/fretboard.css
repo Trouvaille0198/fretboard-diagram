@@ -150,7 +150,7 @@ g.note.transparent:hover {
 
 g.note {
     fill: var(--background-color);
-    stroke-width: 1px;
+    stroke-width: 1.5px;
     stroke: var(--text-color);
     user-select: none;
     -webkit-user-select: none;
@@ -246,6 +246,24 @@ g.note.brown {
 }
 
 g.note.brown>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.navy {
+    fill: var(--color-level1-navy-fill);
+}
+
+g.note.navy>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.crimson {
+    fill: var(--color-level1-crimson-fill);
+}
+
+g.note.crimson>text {
     stroke: white;
     fill: white;
 }
@@ -617,6 +635,14 @@ button {
 
 .color.gray {
     background-color: var(--color-level1-gray-button);
+}
+
+.color.navy {
+    background-color: var(--color-level1-navy-button);
+}
+
+.color.crimson {
+    background-color: var(--color-level1-crimson-button);
 }
 
 /* 第二层级调色盘颜色 - 配置在 src/colorConfig.js 中，通过CSS变量自动应用 */

@@ -301,7 +301,7 @@ export async function parseSVGToFretboardState(svgInput) {
         const serializedSplitDirection = noteElement.getAttribute('data-split-direction');
 
         // 查找颜色类名（blue, green, red, black, white, trans, brown, gray）
-        const colorClasses = ['blue', 'green', 'red', 'black', 'white', 'trans', 'brown', 'gray'];
+        const colorClasses = ['blue', 'green', 'red', 'black', 'white', 'trans', 'brown', 'gray', 'navy', 'crimson'];
         for (const colorClass of colorClasses) {
             if (classes.includes(colorClass)) {
                 color = typeof color === 'string' && color !== 'white' ? color : colorClass;
@@ -1064,7 +1064,7 @@ export async function parseSVGToFretboardState(svgInput) {
                     const className = startNoteElement.getAttribute('class') || '';
                     const classes = className.split(/\s+/);
                     // 先尝试第一层级颜色
-                    const level1ColorClasses = ['blue', 'green', 'red', 'black', 'white', 'trans', 'brown', 'gray'];
+                    const level1ColorClasses = ['blue', 'green', 'red', 'black', 'white', 'trans', 'brown', 'gray', 'navy', 'crimson'];
                     for (const colorClass of level1ColorClasses) {
                         if (classes.includes(colorClass) && colorClass !== 'white') {
                             startColor = colorClass;
@@ -1093,7 +1093,7 @@ export async function parseSVGToFretboardState(svgInput) {
                     const className = endNoteElement.getAttribute('class') || '';
                     const classes = className.split(/\s+/);
                     // 先尝试第一层级颜色
-                    const level1ColorClasses = ['blue', 'green', 'red', 'black', 'white', 'trans', 'brown', 'gray'];
+                    const level1ColorClasses = ['blue', 'green', 'red', 'black', 'white', 'trans', 'brown', 'gray', 'navy', 'crimson'];
                     for (const colorClass of level1ColorClasses) {
                         if (classes.includes(colorClass) && colorClass !== 'white') {
                             endColor = colorClass;
