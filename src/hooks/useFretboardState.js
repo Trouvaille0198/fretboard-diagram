@@ -7,7 +7,6 @@ import {
 	generateUniqueDirName,
 	validateDirectoryName,
 } from "../utils/fretboardHistory";
-import { storageService } from "../services/storageService";
 
 export function useFretboardState() {
 	const [selected, setSelected] = useState(null);
@@ -68,13 +67,19 @@ export function useFretboardState() {
 	const [errorMessage, setErrorMessage] = useState("");
 	const [toastMessage, setToastMessage] = useState("");
 	const [toastType, setToastType] = useState("info");
-	const [historyStates, setHistoryStates] = useState([]);
+	const [historyStates, setHistoryStates] = useState(() => migrateHistoryData());
 	const [selectedHistoryState, setSelectedHistoryState] = useState(null); // 当前选中的历史状态
 	const [currentDateTime, setCurrentDateTime] = useState("");
 
 	// 目录管理状态
-	const [directories, setDirectories] = useState([]);
-	const [currentDirectoryId, setCurrentDirectoryId] = useState("default");
+	const [directories, setDirectories] = useState(() => initializeDirectories());
+	const [currentDirectoryId, setCurrentDirectoryId] = useState(() => {
+		try {
+			return localStorage.getItem("fretboard-current-directory") || "default";
+		} catch (error) {
+			return "default";
+		}
+	});
 
 	const dataRef = useRef(data); // 存储最新的 data 状态，避免闭包问题
 	const selectedTimeoutRef = useRef(null);
@@ -103,20 +108,6 @@ export function useFretboardState() {
 		const interval = setInterval(updateDateTime, 1000);
 
 		return () => clearInterval(interval);
-	}, []);
-
-	// 初始化目录
-	// 注意：完全不加载历史数据，由父组件根据登录状态决定
-	useEffect(() => {
-		try {
-			// 只初始化目录（如果为空）
-			if (directories.length === 0) {
-				const dirs = initializeDirectories();
-				setDirectories(dirs);
-			}
-		} catch (error) {
-			console.error("初始化失败:", error);
-		}
 	}, []);
 
 	// 自动保存当前状态到 localStorage（状态变化时）
@@ -164,6 +155,45 @@ export function useFretboardState() {
 		horizontalCrop,
 		verticalCrop,
 	]);
+
+	useEffect(() => {
+		if (historyStates.length > 50) {
+			setHistoryStates((prev) => prev.slice(0, 50));
+		}
+	}, [historyStates]);
+
+	useEffect(() => {
+		try {
+			localStorage.setItem("fretboard-history", JSON.stringify(historyStates));
+		} catch (error) {
+			console.error("保存指板堆失败:", error);
+		}
+	}, [historyStates]);
+
+	useEffect(() => {
+		if (
+			selectedHistoryState &&
+			!historyStates.some((state) => state.id === selectedHistoryState.id)
+		) {
+			setSelectedHistoryState(null);
+		}
+	}, [historyStates, selectedHistoryState]);
+
+	useEffect(() => {
+		try {
+			localStorage.setItem("fretboard-directories", JSON.stringify(directories));
+		} catch (error) {
+			console.error("保存目录失败:", error);
+		}
+	}, [directories]);
+
+	useEffect(() => {
+		try {
+			localStorage.setItem("fretboard-current-directory", currentDirectoryId);
+		} catch (error) {
+			console.error("保存当前目录失败:", error);
+		}
+	}, [currentDirectoryId]);
 
 	return {
 		selected,

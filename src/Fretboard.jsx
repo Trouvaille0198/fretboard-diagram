@@ -7,7 +7,6 @@ import { useFretboardState } from './hooks/useFretboardState';
 import { useConnectionState } from './hooks/useConnectionState';
 import { useHistory } from './hooks/useHistory';
 import { useNoteEditing } from './hooks/useNoteEditing';
-import { useAuth } from './hooks/useAuth';
 import { computeNoteIndex, computeNoteName, generateNotes, generateMarkers, generateFretPath, generateStringPath, getNotePosition } from './utils/fretboardCalculations';
 import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors } from './utils/connectionUtils';
 import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow, replaceAllTintNotes } from './utils/fretboardActions';
@@ -16,23 +15,12 @@ import { createNoteClickHandler, createNoteContextMenuHandler, createDeleteNoteH
 import { createSvgClickHandler, createSvgContextMenuHandler, createSvgMouseMoveHandler, createSvgMouseDownHandler, createSvgWheelHandler, createEditableKeyDownHandler, createEditableClickHandler } from './handlers/svgHandlers';
 import { createKeyboardHandler } from './handlers/keyboardHandlers';
 import { FretboardMenu } from './components/FretboardMenu';
-import { FretboardGallery } from './components/FretboardGallery';
+import { FretboardDock } from './components/FretboardDock';
 import { Toast } from './components/Toast';
 import { FretboardSVG } from './components/FretboardSVG';
-import { LoginModal } from './components/LoginModal';
-import { saveFretboardState, restoreFretboardState, generateThumbnail, saveFretboardStateSilently, exportAllData } from './utils/fretboardHistory';
-import { saveData, loadData } from './utils/api';
-import { storageService } from './services/storageService';
+import { restoreFretboardState, generateThumbnail, createStateSnapshot } from './utils/fretboardHistory';
 
 function Fretboard() {
-  // 认证状态
-  const auth = useAuth();
-  
-  // 同步认证状态到 storageService
-  useEffect(() => {
-    storageService.setAuthState(auth.isAuthenticated, auth.username);
-  }, [auth.isAuthenticated, auth.username]);
-  
   // 使用自定义hooks
   const fretboardState = useFretboardState();
   const connectionState = useConnectionState();
@@ -67,9 +55,7 @@ function Fretboard() {
     dataRef,
     selectedTimeoutRef,
     // 目录管理
-    directories, setDirectories,
-    currentDirectoryId, setCurrentDirectoryId,
-    createDirectory, renameDirectory, deleteDirectory
+    currentDirectoryId
   } = fretboardState;
 
   const {
@@ -108,6 +94,8 @@ function Fretboard() {
   const toolbarRef = useRef(null);
   const buttonClickRef = useRef({ type: false, arrow: false });
   const prevNoteColorsRef = useRef({});
+  const dockUndoHistoryRef = useRef([]);
+  const dockRedoHistoryRef = useRef([]);
 
   // 计算值
   const numFrets = endFret - startFret;
@@ -139,6 +127,55 @@ function Fretboard() {
 
   // 获取note位置
   const getNotePositionMemo = useCallback((noteId) => getNotePosition(noteId, notes), [notes]);
+
+  const createDockSnapshot = useCallback((states, selectedState) => ({
+    historyStates: [...states],
+    selectedHistoryStateId: selectedState?.id ?? null
+  }), []);
+
+  const applyDockSnapshot = useCallback((snapshot) => {
+    setHistoryStates(snapshot.historyStates);
+    const nextSelectedState = snapshot.selectedHistoryStateId
+      ? snapshot.historyStates.find((state) => state.id === snapshot.selectedHistoryStateId) || null
+      : null;
+    setSelectedHistoryState(nextSelectedState);
+  }, [setHistoryStates, setSelectedHistoryState]);
+
+  const pushDockHistoryEntry = useCallback((beforeSnapshot, afterSnapshot) => {
+    dockUndoHistoryRef.current = [
+      ...dockUndoHistoryRef.current,
+      { before: beforeSnapshot, after: afterSnapshot }
+    ].slice(-50);
+    dockRedoHistoryRef.current = [];
+  }, []);
+
+  const undoDockAction = useCallback(() => {
+    const lastEntry = dockUndoHistoryRef.current[dockUndoHistoryRef.current.length - 1];
+    if (!lastEntry) {
+      return false;
+    }
+
+    dockUndoHistoryRef.current = dockUndoHistoryRef.current.slice(0, -1);
+    dockRedoHistoryRef.current = [...dockRedoHistoryRef.current, lastEntry].slice(-50);
+    applyDockSnapshot(lastEntry.before);
+    setToastMessage('已撤销指板堆操作');
+    setToastType('success');
+    return true;
+  }, [applyDockSnapshot, setToastMessage, setToastType]);
+
+  const redoDockAction = useCallback(() => {
+    const lastEntry = dockRedoHistoryRef.current[dockRedoHistoryRef.current.length - 1];
+    if (!lastEntry) {
+      return false;
+    }
+
+    dockRedoHistoryRef.current = dockRedoHistoryRef.current.slice(0, -1);
+    dockUndoHistoryRef.current = [...dockUndoHistoryRef.current, lastEntry].slice(-50);
+    applyDockSnapshot(lastEntry.after);
+    setToastMessage('已重做指板堆操作');
+    setToastType('success');
+    return true;
+  }, [applyDockSnapshot, setToastMessage, setToastType]);
 
   // 初始化
   useEffect(() => {
@@ -435,89 +472,56 @@ function Fretboard() {
     lastSaveTimeRef.current = now;
     
     try {
-      // 构建状态快照
-      let stateSnapshot;
+      dockRedoHistoryRef.current = [];
       let updatedStates = [...historyStates];
-      let isUpdate = false;
-      
-      if (selectedHistoryState && !forceNew) {
-        // 更新现有状态
-        stateSnapshot = {
-          ...selectedHistoryState,
-          timestamp: Date.now(),
-          name: new Date().toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-          }),
-          state: {
-            data: JSON.parse(JSON.stringify(data)),
-            startFret,
-            endFret,
-            enharmonic,
-            displayMode,
-            rootNote,
-            visibility,
-            // 保存配置项
-            includeMarkers,
-            copyOnly,
-            showNotes,
-            horizontalCrop,
-            verticalCrop
-          }
-        };
-        
-        // 生成缩略图
-        const thumbnailUrl = generateThumbnail(svgElementRef);
-        if (thumbnailUrl) {
-          stateSnapshot.thumbnail = thumbnailUrl;
-        }
-        
-        const index = updatedStates.findIndex(item => item.id === selectedHistoryState.id);
-        if (index !== -1) {
-          updatedStates[index] = stateSnapshot;
-          updatedStates.splice(index, 1);
+      const stateSnapshot = createStateSnapshot({
+        data,
+        startFret,
+        endFret,
+        enharmonic,
+        displayMode,
+        rootNote,
+        visibility,
+        includeMarkers,
+        copyOnly,
+        showNotes,
+        horizontalCrop,
+        verticalCrop,
+        currentDirectoryId,
+      });
+
+      const thumbnailUrl = generateThumbnail(svgElementRef, {
+        selected,
+        data,
+        displayMode,
+        rootNote,
+        enharmonic,
+        startFret,
+        includeMarkers,
+        showNotes,
+        horizontalCrop,
+        verticalCrop,
+      });
+      if (thumbnailUrl) {
+        stateSnapshot.thumbnail = thumbnailUrl;
+      }
+
+      const canOverwriteSelected = selectedHistoryState && !forceNew;
+      if (canOverwriteSelected) {
+        const selectedId = selectedHistoryState.id;
+        const existingIndex = updatedStates.findIndex((item) => item.id === selectedId);
+
+        if (existingIndex !== -1) {
+          stateSnapshot.id = selectedHistoryState.id;
+          stateSnapshot.timestamp = Date.now();
+          stateSnapshot.name = selectedHistoryState.name;
+          updatedStates[existingIndex] = stateSnapshot;
+          updatedStates.splice(existingIndex, 1);
           updatedStates.unshift(stateSnapshot);
-          isUpdate = true;
+        } else {
+          updatedStates.unshift(stateSnapshot);
         }
       } else {
-        // 新建状态
-        stateSnapshot = {
-          id: Date.now().toString(),
-          directoryId: currentDirectoryId,
-          timestamp: Date.now(),
-          name: new Date().toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-          }),
-          state: {
-            data: JSON.parse(JSON.stringify(data)),
-            startFret,
-            endFret,
-            enharmonic,
-            displayMode,
-            rootNote,
-            visibility,
-            // 保存配置项
-            includeMarkers,
-            copyOnly,
-            showNotes,
-            horizontalCrop,
-            verticalCrop
-          }
-        };
-        
-        // 生成缩略图
-        const thumbnailUrl = generateThumbnail(svgElementRef);
-        if (thumbnailUrl) {
-          stateSnapshot.thumbnail = thumbnailUrl;
-        }
-        
         updatedStates.unshift(stateSnapshot);
       }
       
@@ -525,36 +529,17 @@ function Fretboard() {
       if (updatedStates.length > 50) {
         updatedStates = updatedStates.slice(0, 50);
       }
-      
-      // 使用增量更新方法保存
-      if (isUpdate) {
-        // 更新现有状态
-        await storageService.updateState(stateSnapshot.id, {
-          name: stateSnapshot.name,
-          timestamp: stateSnapshot.timestamp,
-          thumbnail: stateSnapshot.thumbnail,
-          state: stateSnapshot.state
-        });
-      } else {
-        // 创建新状态
-        await storageService.createState(stateSnapshot);
-      }
-      
+
       setHistoryStates(updatedStates);
-      
-      // 保存成功后才设置选中状态（只在新建状态时）
-      if (!isUpdate) {
-        setSelectedHistoryState(stateSnapshot);
-      }
-      
-      setToastMessage(isUpdate ? '状态已更新！' : '状态已保存！');
+      setSelectedHistoryState(stateSnapshot);
+      setToastMessage(canOverwriteSelected ? '已覆盖当前指板快照！' : '已加入指板堆！');
       setToastType('success');
     } catch (error) {
       console.error('保存失败:', error);
       setToastMessage('保存失败: ' + error.message);
       setToastType('error');
     }
-  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, includeMarkers, copyOnly, showNotes, horizontalCrop, verticalCrop, setHistoryStates, setToastMessage, setToastType, selectedHistoryState, setSelectedHistoryState, currentDirectoryId, directories, historyStates, svgElementRef]);
+  }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, includeMarkers, copyOnly, showNotes, horizontalCrop, verticalCrop, setHistoryStates, setToastMessage, setToastType, setSelectedHistoryState, currentDirectoryId, historyStates, selectedHistoryState, svgElementRef, selected]);
 
   // 恢复指板状态
   const restoreFretboardStateMemo = useCallback((stateSnapshot) => {
@@ -591,72 +576,12 @@ function Fretboard() {
       setConnectionToolbarVisible, setToastMessage, setToastType, setSelectedHistoryState,
       setIncludeMarkers, setCopyOnly, setShowNotes, setHorizontalCrop, setVerticalCrop]);
 
-  // 包装目录操作函数，使用增量更新
-  const wrappedCreateDirectory = useCallback(async (baseName = 'new') => {
-    const result = createDirectory(baseName);
-    
-    // 使用增量更新同步到服务器
-    if (result && result.id) {
-      try {
-        await storageService.createDirectory(result);
-      } catch (error) {
-        console.error('同步目录失败:', error);
-        setToastMessage('创建目录成功，但同步到服务器失败: ' + error.message);
-        setToastType('warning');
-      }
-    }
-    
-    return result;
-  }, [createDirectory, setToastMessage, setToastType]);
-  
-  const wrappedRenameDirectory = useCallback(async (dirId, newName) => {
-    const result = renameDirectory(dirId, newName);
-    
-    if (result.success) {
-      // 使用增量更新同步到服务器
-      try {
-        await storageService.updateDirectory(dirId, { name: result.name || newName });
-      } catch (error) {
-        console.error('同步目录重命名失败:', error);
-        setToastMessage('重命名目录成功，但同步到服务器失败: ' + error.message);
-        setToastType('warning');
-      }
-    }
-    
-    return result;
-  }, [renameDirectory, setToastMessage, setToastType]);
-  
-  const wrappedDeleteDirectory = useCallback(async (dirId) => {
-    const result = deleteDirectory(dirId);
-    
-    if (result.success) {
-      // 使用增量更新同步到服务器
-      try {
-        // 先更新该目录下的所有状态到default目录
-        const statesToUpdate = historyStates.filter(state => state.directoryId === dirId);
-        const updatePromises = statesToUpdate.map(state => 
-          storageService.updateState(state.id, { directoryId: 'default' })
-        );
-        await Promise.all(updatePromises);
-        
-        // 然后删除目录
-        await storageService.deleteDirectory(dirId);
-      } catch (error) {
-        console.error('同步目录删除失败:', error);
-        setToastMessage('删除目录成功，但同步到服务器失败: ' + error.message);
-        setToastType('warning');
-      }
-    }
-    
-    return result;
-  }, [deleteDirectory, historyStates, setToastMessage, setToastType]);
-
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
   const handlerParamsRef = useRef();
   handlerParamsRef.current = {
     selected, deleteNote, selectColor: selectColorMemo, cycleLevel1Color: cycleLevel1ColorMemo,
     cycleLevel1ColorReverse: cycleLevel1ColorReverseMemo, cycleLevel2Color: cycleLevel2ColorMemo,
-    cycleLevel2ColorReverse: cycleLevel2ColorReverseMemo, undo, redo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
+    cycleLevel2ColorReverse: cycleLevel2ColorReverseMemo, undo, redo, undoDockAction, redoDockAction, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
     connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardState: saveFretboardStateMemo,
     toggleVisibility: toggleVisibilityMemo, reset: resetMemo, saveSVG: saveSVGMemo,
@@ -681,34 +606,7 @@ function Fretboard() {
   // 生成字符串路径
   const generateStringPathMemo = useCallback((stringIndex) => generateStringPath(stringIndex, fretboardWidth), [fretboardWidth]);
 
-  // 加载初始数据（仅登录后）
-  const hasLoadedRef = useRef(false);
-  useEffect(() => {
-    if (auth.isLoading) return; // 等待认证检查完成
-    if (hasLoadedRef.current) return; // 已经加载过
-    if (!auth.isAuthenticated) return; // 未登录不加载历史
-    
-    hasLoadedRef.current = true;
-    
-    // 从服务器加载
-    storageService.loadAll().then(({ directories: loadedDirs, states: loadedStates }) => {
-      if (loadedDirs && loadedDirs.length > 0) {
-        setDirectories(loadedDirs);
-      }
-      if (loadedStates && loadedStates.length > 0) {
-        setHistoryStates(loadedStates);
-      }
-      setToastMessage('数据已从服务器加载');
-      setToastType('success');
-    }).catch(error => {
-      console.error('加载数据失败:', error);
-      setToastMessage(`加载数据失败: ${error.message}`);
-      setToastType('error');
-    });
-  }, [auth.isAuthenticated, auth.isLoading]);
-
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
     <>
@@ -719,7 +617,7 @@ function Fretboard() {
           </h1>
           {selectedHistoryState && (
             <>
-              <div className="selected-state-name" title="当前选中的历史状态,保存将更新此状态" style={{ backgroundColor: 'rgba(74, 144, 226, 0.3)', color: 'white' }}>
+              <div className="selected-state-name" title="当前应用中的指板堆快照" style={{ backgroundColor: 'rgba(74, 144, 226, 0.3)', color: 'white' }}>
                 <span 
                   contentEditable
                   suppressContentEditableWarning
@@ -740,7 +638,6 @@ function Fretboard() {
                       );
                       setHistoryStates(updatedStates);
                       setSelectedHistoryState({ ...selectedHistoryState, name: newName });
-                      saveFretboardStateSilently(updatedStates);
                     } else {
                       e.target.textContent = selectedHistoryState.name;
                     }
@@ -763,63 +660,7 @@ function Fretboard() {
                   {selectedHistoryState.name}
                 </span>
               </div>
-              <button
-                className="new-state-btn"
-                onClick={() => setSelectedHistoryState(null)}
-                title="创建新状态(清除选中,保留当前指板状态)"
-                style={{
-                  marginLeft: '6px',
-                  padding: '1px 6px',
-                  fontSize: '10px',
-                  backgroundColor: 'transparent',
-                  border: '1px solid currentColor',
-                  borderRadius: '3px',
-                  cursor: 'pointer',
-                  color: 'inherit'
-                }}
-              >
-                new
-              </button>
             </>
-          )}
-        </div>
-        <div className="login-status">
-          {auth.isAuthenticated ? (
-            <>
-              <span style={{ fontSize: '14px', color: '#666' }}>
-                用户: {auth.username}
-              </span>
-              <button
-                onClick={auth.logout}
-                style={{
-                  padding: '4px 12px',
-                  fontSize: '12px',
-                  backgroundColor: '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                登出
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setShowLoginModal(true)}
-              style={{
-                padding: '4px 12px',
-                fontSize: '12px',
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-              title="登录后可将数据同步到服务器"
-            >
-              登录
-            </button>
           )}
         </div>
       </div>
@@ -935,222 +776,48 @@ function Fretboard() {
         endFret={endFret}
         onFretWindowChange={setFretWindowMemo}
       />
-      
-      <FretboardGallery
+
+      <FretboardDock
         historyStates={historyStates}
-        selectedHistoryState={selectedHistoryState}
-        onSelect={setSelectedHistoryState}
-        onRestore={restoreFretboardStateMemo}
-        // 目录管理
-        directories={directories}
         currentDirectoryId={currentDirectoryId}
-        onDirectoryChange={setCurrentDirectoryId}
-        onDirectoryCreate={wrappedCreateDirectory}
-        onDirectoryRename={wrappedRenameDirectory}
-        onDirectoryDelete={wrappedDeleteDirectory}
-        onExportAll={() => {
-          const result = exportAllData();
-          setToastMessage(result.message);
-          setToastType(result.success ? 'success' : 'error');
+        selectedHistoryState={selectedHistoryState}
+        onRestore={restoreFretboardStateMemo}
+        onDelete={(stateSnapshot) => {
+          const beforeSnapshot = createDockSnapshot(historyStates, selectedHistoryState);
+          const updatedStates = historyStates.filter(item => item.id !== stateSnapshot.id);
+          const nextSelectedState = selectedHistoryState?.id === stateSnapshot.id
+            ? null
+            : selectedHistoryState;
+          const afterSnapshot = createDockSnapshot(updatedStates, nextSelectedState);
+          pushDockHistoryEntry(beforeSnapshot, afterSnapshot);
+          setHistoryStates(updatedStates);
+          setSelectedHistoryState(nextSelectedState);
+          setToastMessage('已从指板堆删除');
+          setToastType('success');
         }}
-        onBatchImport={async (result) => {
-          if (result.success) {
-            // 批量导入：使用saveAll兼容接口（因为需要同步所有数据）
-            try {
-              await storageService.saveAll(result.directories, result.historyStates);
-              setDirectories(result.directories);
-              setHistoryStates(result.historyStates);
-              setCurrentDirectoryId('default');
-              setToastMessage(result.message);
-              setToastType('success');
-            } catch (error) {
-              console.error('保存失败:', error);
-              setToastMessage('保存失败: ' + error.message);
-              setToastType('error');
-            }
-          } else {
-            setToastMessage(result.message);
-            setToastType('error');
-          }
+        onClear={() => {
+          const beforeSnapshot = createDockSnapshot(historyStates, selectedHistoryState);
+          const filteredStates = historyStates.filter(
+            (state) => state.directoryId !== currentDirectoryId
+          );
+          const nextSelectedState = selectedHistoryState?.directoryId === currentDirectoryId
+            ? null
+            : selectedHistoryState;
+          const afterSnapshot = createDockSnapshot(filteredStates, nextSelectedState);
+          pushDockHistoryEntry(beforeSnapshot, afterSnapshot);
+          setHistoryStates(filteredStates);
+          setSelectedHistoryState(nextSelectedState);
+          setToastMessage('当前指板堆已清空');
+          setToastType('success');
         }}
-        onDelete={async (stateSnapshot) => {
-          try {
-            // 使用增量更新删除状态
-            await storageService.deleteState(stateSnapshot.id);
-            const updatedStates = historyStates.filter(item => item.id !== stateSnapshot.id);
-            setHistoryStates(updatedStates);
-            if (selectedHistoryState && selectedHistoryState.id === stateSnapshot.id) {
-              setSelectedHistoryState(null);
-            }
-            setToastMessage('状态已删除！');
-            setToastType('success');
-          } catch (error) {
-            console.error('删除状态失败:', error);
-            setToastMessage('删除失败：' + error.message);
-            setToastType('error');
-          }
-        }}
-        onClearAll={async () => {
-          try {
-            // 删除所有状态：逐个删除
-            const deletePromises = historyStates.map(state => 
-              storageService.deleteState(state.id).catch(err => {
-                console.error(`删除状态 ${state.id} 失败:`, err);
-                return null; // 继续删除其他状态
-              })
-            );
-            await Promise.all(deletePromises);
-            setHistoryStates([]);
-            setSelectedHistoryState(null);
-            setToastMessage('所有历史状态已清空！');
-            setToastType('success');
-          } catch (error) {
-            console.error('清空历史状态失败:', error);
-            setToastMessage('清空失败：' + error.message);
-            setToastType('error');
-          }
-        }}
-        onRename={async (stateSnapshot, newName) => {
-          try {
-            // 使用增量更新重命名状态
-            await storageService.updateState(stateSnapshot.id, { name: newName });
-            const updatedStates = historyStates.map(item =>
-              item.id === stateSnapshot.id ? { ...item, name: newName } : item
-            );
-            setHistoryStates(updatedStates);
-            if (selectedHistoryState && selectedHistoryState.id === stateSnapshot.id) {
-              setSelectedHistoryState(updatedStates.find(item => item.id === stateSnapshot.id));
-            }
-            setToastMessage('重命名成功！');
-            setToastType('success');
-          } catch (error) {
-            console.error('重命名失败:', error);
-            setToastMessage('重命名失败：' + error.message);
-            setToastType('error');
-          }
-        }}
-        onImport={async (result) => {
-          try {
-            if (!result.success) {
-              setToastMessage(result.message || '操作失败');
-              setToastType('error');
-              return;
-            }
-
-            // 如果只有消息没有数据，说明是分享操作，只显示消息
-            if (!result.data || !result.data.state) {
-              if (result.message) {
-                setToastMessage(result.message);
-                setToastType('success');
-                return;
-              } else {
-                setToastMessage('导入数据格式错误');
-                setToastType('error');
-                return;
-              }
-            }
-
-            // 创建新的状态快照对象
-            // 如果导入的数据包含名称，使用导入的名称，否则使用默认名称
-            const importedName = result.data.name 
-              ? result.data.name 
-              : new Date().toLocaleString('zh-CN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }) + ' (导入)';
-            
-            // 使用导入的状态数据（包括从 SVG 推断的显示模式）
-            const importedStateData = { ...result.data.state };
-            
-            const importedState = {
-              id: Date.now().toString(),
-              directoryId: currentDirectoryId, // 添加当前目录 ID
-              timestamp: Date.now(),
-              name: importedName,
-              thumbnail: null,
-              state: importedStateData
-            };
-
-            // 先恢复导入的状态（这样 SVG 会更新）
-            restoreFretboardStateMemo(importedState);
-
-            // 等待 SVG 更新后生成缩略图
-            // 使用 requestAnimationFrame 确保 DOM 已更新
-            requestAnimationFrame(() => {
-              setTimeout(async () => {
-                // 生成缩略图
-                const thumbnailUrl = generateThumbnail(svgElementRef);
-                if (thumbnailUrl) {
-                  importedState.thumbnail = thumbnailUrl;
-                }
-
-                // 使用增量更新保存导入的状态
-                try {
-                  let updatedStates = [...historyStates];
-                  const existingIndex = updatedStates.findIndex(item => item.id === importedState.id);
-                  
-                  if (existingIndex !== -1) {
-                    // 更新现有状态
-                    await storageService.updateState(importedState.id, {
-                      name: importedState.name,
-                      timestamp: importedState.timestamp,
-                      thumbnail: importedState.thumbnail,
-                      state: importedState.state
-                    });
-                    updatedStates[existingIndex] = importedState;
-                  } else {
-                    // 创建新状态
-                    await storageService.createState(importedState);
-                    updatedStates.unshift(importedState);
-                  }
-                  
-                  if (updatedStates.length > 50) {
-                    updatedStates = updatedStates.slice(0, 50);
-                  }
-                  
-                  setHistoryStates(updatedStates);
-                } catch (error) {
-                  console.error('保存导入状态失败:', error);
-                }
-              }, 100); // 给 SVG 100ms 时间完成渲染
-            });
-
-            setToastMessage(result.message || '导入成功！');
-            setToastType('success');
-          } catch (error) {
-            console.error('导入处理失败:', error);
-            setToastMessage('导入处理失败：' + error.message);
-            setToastType('error');
-          }
-        }}
-        isAuthenticated={auth.isAuthenticated}
-        onShowLogin={() => setShowLoginModal(true)}
       />
       
-      <Toast 
-        message={toastMessage} 
+      <Toast
+        message={toastMessage}
         type={toastType}
         duration={toastType === 'error' ? 3000 : 2000}
         onClose={() => setToastMessage('')}
       />
-      
-      {showLoginModal && (
-        <LoginModal 
-          onLogin={async (username) => {
-            const result = await auth.login(username);
-            if (result.success) {
-              setShowLoginModal(false);
-              setToastMessage(result.message);
-              setToastType('success');
-            }
-            return result;
-          }}
-          onClose={() => setShowLoginModal(false)}
-        />
-      )}
     </>
   );
 }

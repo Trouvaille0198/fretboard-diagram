@@ -1,0 +1,286 @@
+.fretboard-dock {
+    position: fixed;
+    left: 22px;
+    bottom: 22px;
+    z-index: 1100;
+    display: block;
+    pointer-events: none;
+}
+
+.dock-stack {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 14px);
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 14px;
+    align-items: flex-start;
+    min-width: 236px;
+    padding: 22px 26px 24px 24px;
+    max-height: min(70vh, 760px);
+    overflow-y: auto;
+    overflow-x: visible;
+    border-radius: 28px;
+    background:
+        linear-gradient(180deg, rgba(34, 39, 44, 0.96), rgba(18, 21, 25, 0.92));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+        0 28px 50px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(18px);
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+    pointer-events: none;
+    transform-origin: left bottom;
+    transition: opacity 0.24s ease, transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dock-stack.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.dock-stack::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dock-stack::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+}
+
+.dock-item {
+    width: 168px;
+    height: 112px;
+    position: relative;
+    flex: 0 0 auto;
+    transform-origin: left bottom;
+    transform:
+        translateX(var(--dock-curve-offset, 0px))
+        translateY(var(--dock-lift-offset, 0px))
+        rotate(var(--dock-tilt, 0deg));
+    transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.22s ease;
+}
+
+.dock-item:hover {
+    transform: translateX(12px) scale(1.06) rotate(0deg);
+}
+
+.dock-item.selected {
+    filter: drop-shadow(0 0 14px rgba(91, 163, 208, 0.34));
+}
+
+.dock-item-apply {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 18px;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+    cursor: pointer;
+    display: block;
+    box-shadow:
+        0 10px 22px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.dock-item-apply:hover {
+    border-color: rgba(91, 163, 208, 0.92);
+}
+
+.dock-item-thumbnail,
+.dock-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: var(--background-color);
+}
+
+.dock-item-placeholder,
+.dock-label,
+.dock-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    text-align: center;
+}
+
+.dock-item-placeholder {
+    width: 100%;
+    height: 100%;
+    font-size: 12px;
+}
+
+.dock-empty {
+    min-width: 220px;
+    min-height: 90px;
+    padding: 0 14px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.dock-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px 12px 12px;
+    border-radius: 26px;
+    background:
+        linear-gradient(180deg, rgba(36, 40, 45, 0.96), rgba(18, 21, 25, 0.94));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+        0 28px 48px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(18px);
+    pointer-events: auto;
+}
+
+.dock-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 72px;
+}
+
+.dock-title {
+    color: #f2f4f6;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.dock-subtitle {
+    color: rgba(255, 255, 255, 0.52);
+    font-size: 11px;
+}
+
+.dock-primary {
+    position: relative;
+    width: 76px;
+    height: 76px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+}
+
+.dock-primary-face,
+.dock-stack-shadow {
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.dock-stack-shadow {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dock-stack-shadow-back {
+    transform: translate(-10px, -8px) scale(0.94);
+    opacity: 0.34;
+}
+
+.dock-stack-shadow-mid {
+    transform: translate(-5px, -4px) scale(0.97);
+    opacity: 0.55;
+}
+
+.dock-primary-face {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    box-shadow:
+        0 14px 24px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.dock-primary:hover .dock-primary-face {
+    border-color: rgba(91, 163, 208, 0.94);
+}
+
+.dock-count-badge {
+    position: absolute;
+    right: -7px;
+    bottom: -7px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #6db7e1, #4f94c0);
+    color: #09141b;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 10px 20px rgba(61, 121, 160, 0.36);
+}
+
+.dock-label {
+    width: 100%;
+    height: 100%;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.dock-clear-btn {
+    height: 38px;
+    padding: 0 13px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.dock-clear-btn:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .fretboard-dock {
+        left: 12px;
+        bottom: 12px;
+        gap: 10px;
+    }
+
+    .dock-stack {
+        max-height: 54vh;
+        min-width: 188px;
+        padding: 16px 18px 18px 16px;
+    }
+
+    .dock-item {
+        width: 132px;
+        height: 90px;
+    }
+
+    .dock-bar {
+        gap: 10px;
+        padding: 10px 12px;
+    }
+
+    .dock-meta {
+        min-width: 60px;
+    }
+
+    .dock-primary {
+        width: 68px;
+        height: 68px;
+    }
+}

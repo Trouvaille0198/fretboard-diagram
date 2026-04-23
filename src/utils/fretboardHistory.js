@@ -1,21 +1,99 @@
 import { inlineCSS } from "../utils";
+import { buildExportSvg } from "./exportSvgBuilder";
+
+function getSnapshotName(suffix = "") {
+	return (
+		new Date().toLocaleString("zh-CN", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit",
+		}) + suffix
+	);
+}
+
+function serializeCurrentState({
+	data,
+	startFret,
+	endFret,
+	enharmonic,
+	displayMode,
+	rootNote,
+	visibility,
+	includeMarkers,
+	copyOnly,
+	showNotes,
+	horizontalCrop,
+	verticalCrop,
+}) {
+	return {
+		data: JSON.parse(JSON.stringify(data)),
+		startFret,
+		endFret,
+		enharmonic,
+		displayMode,
+		rootNote,
+		visibility,
+		includeMarkers,
+		copyOnly,
+		showNotes,
+		horizontalCrop,
+		verticalCrop,
+	};
+}
+
+export function createStateSnapshot({
+	data,
+	startFret,
+	endFret,
+	enharmonic,
+	displayMode,
+	rootNote,
+	visibility,
+	includeMarkers = true,
+	copyOnly = true,
+	showNotes = false,
+	horizontalCrop = true,
+	verticalCrop = true,
+	currentDirectoryId = "default",
+	nameSuffix = "",
+}) {
+	return {
+		id: Date.now().toString(),
+		directoryId: currentDirectoryId,
+		timestamp: Date.now(),
+		name: getSnapshotName(nameSuffix),
+		thumbnail: null,
+		state: serializeCurrentState({
+			data,
+			startFret,
+			endFret,
+			enharmonic,
+			displayMode,
+			rootNote,
+			visibility,
+			includeMarkers,
+			copyOnly,
+			showNotes,
+			horizontalCrop,
+			verticalCrop,
+		}),
+	};
+}
 
 // 生成缩略图
-export function generateThumbnail(svgElementRef) {
+export function generateThumbnail(svgElementRef, exportOptions = null) {
 	if (!svgElementRef.current) return null;
 
 	try {
-		// 使用 inlineCSS 处理 SVG
-		const svgCopy = inlineCSS(svgElementRef.current);
-
-		// 克隆 SVG 以便修改
-		const clonedSvg = svgCopy.cloneNode(true);
-
-		// 获取原始 viewBox
-		const originalViewBox = svgElementRef.current.getAttribute("viewBox");
-		if (originalViewBox) {
-			clonedSvg.setAttribute("viewBox", originalViewBox);
-		}
+		const exported = exportOptions
+			? buildExportSvg({
+					svgElementRef,
+					...exportOptions,
+			  })
+			: null;
+		const clonedSvg = exported?.svgCopy || inlineCSS(svgElementRef.current).cloneNode(true);
 
 		// 设置较小的尺寸用于缩略图
 		clonedSvg.setAttribute("width", "300");
