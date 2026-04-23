@@ -24,7 +24,6 @@ function Fretboard() {
   // 使用自定义hooks
   const fretboardState = useFretboardState();
   const connectionState = useConnectionState();
-  const { undo, redo } = useHistory(fretboardState.data, fretboardState.setData);
   const noteEditing = useNoteEditing();
 
   // 解构状态
@@ -55,8 +54,43 @@ function Fretboard() {
     dataRef,
     selectedTimeoutRef,
     // 目录管理
-    currentDirectoryId
+    currentDirectoryId,
+    setCurrentDirectoryId
   } = fretboardState;
+
+  const historySnapshot = useMemo(() => ({
+    data,
+    startFret,
+    endFret,
+    enharmonic,
+    displayMode,
+    rootNote,
+    visibility,
+    historyStates,
+    selectedHistoryStateId: selectedHistoryState?.id ?? null,
+    currentDirectoryId
+  }), [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, historyStates, selectedHistoryState, currentDirectoryId]);
+
+  const applyHistorySnapshot = useCallback((snapshot) => {
+    setData(snapshot?.data || {});
+    setStartFret(typeof snapshot?.startFret === 'number' ? snapshot.startFret : 0);
+    setEndFret(typeof snapshot?.endFret === 'number' ? snapshot.endFret : 12);
+    setEnharmonic(typeof snapshot?.enharmonic === 'number' ? snapshot.enharmonic : 1);
+    setDisplayMode(snapshot?.displayMode || 'note');
+    setRootNote(snapshot?.rootNote ?? null);
+    setVisibility(snapshot?.visibility || 'transparent');
+    const nextHistoryStates = Array.isArray(snapshot?.historyStates) ? snapshot.historyStates : [];
+    setHistoryStates(nextHistoryStates);
+    const nextSelectedState = snapshot?.selectedHistoryStateId
+      ? nextHistoryStates.find((state) => state.id === snapshot.selectedHistoryStateId) || null
+      : null;
+    setSelectedHistoryState(nextSelectedState);
+    if (snapshot?.currentDirectoryId) {
+      setCurrentDirectoryId(snapshot.currentDirectoryId);
+    }
+  }, [setData, setStartFret, setEndFret, setEnharmonic, setDisplayMode, setRootNote, setVisibility, setHistoryStates, setSelectedHistoryState, setCurrentDirectoryId]);
+
+  const { undo, redo } = useHistory(historySnapshot, applyHistorySnapshot);
 
   const {
     connectionMode, setConnectionMode,
@@ -94,8 +128,6 @@ function Fretboard() {
   const toolbarRef = useRef(null);
   const buttonClickRef = useRef({ type: false, arrow: false });
   const prevNoteColorsRef = useRef({});
-  const dockUndoHistoryRef = useRef([]);
-  const dockRedoHistoryRef = useRef([]);
 
   // 计算值
   const numFrets = endFret - startFret;
@@ -117,7 +149,7 @@ function Fretboard() {
   const computeNoteNameMemo = useCallback((fret, string) => computeNoteName(fret, string, enharmonic), [enharmonic]);
 
   // 生成数据
-  const notes = useMemo(() => 
+  const notes = useMemo(() =>
     generateNotes(startFret, endFret, data, displayMode, rootNote, enharmonic, visibility, computeNoteNameMemo, computeNoteIndexMemo, noteToSolfege),
     [startFret, endFret, data, displayMode, rootNote, enharmonic, visibility, computeNoteNameMemo, computeNoteIndexMemo]
   );
@@ -127,55 +159,6 @@ function Fretboard() {
 
   // 获取note位置
   const getNotePositionMemo = useCallback((noteId) => getNotePosition(noteId, notes), [notes]);
-
-  const createDockSnapshot = useCallback((states, selectedState) => ({
-    historyStates: [...states],
-    selectedHistoryStateId: selectedState?.id ?? null
-  }), []);
-
-  const applyDockSnapshot = useCallback((snapshot) => {
-    setHistoryStates(snapshot.historyStates);
-    const nextSelectedState = snapshot.selectedHistoryStateId
-      ? snapshot.historyStates.find((state) => state.id === snapshot.selectedHistoryStateId) || null
-      : null;
-    setSelectedHistoryState(nextSelectedState);
-  }, [setHistoryStates, setSelectedHistoryState]);
-
-  const pushDockHistoryEntry = useCallback((beforeSnapshot, afterSnapshot) => {
-    dockUndoHistoryRef.current = [
-      ...dockUndoHistoryRef.current,
-      { before: beforeSnapshot, after: afterSnapshot }
-    ].slice(-50);
-    dockRedoHistoryRef.current = [];
-  }, []);
-
-  const undoDockAction = useCallback(() => {
-    const lastEntry = dockUndoHistoryRef.current[dockUndoHistoryRef.current.length - 1];
-    if (!lastEntry) {
-      return false;
-    }
-
-    dockUndoHistoryRef.current = dockUndoHistoryRef.current.slice(0, -1);
-    dockRedoHistoryRef.current = [...dockRedoHistoryRef.current, lastEntry].slice(-50);
-    applyDockSnapshot(lastEntry.before);
-    setToastMessage('已撤销指板堆操作');
-    setToastType('success');
-    return true;
-  }, [applyDockSnapshot, setToastMessage, setToastType]);
-
-  const redoDockAction = useCallback(() => {
-    const lastEntry = dockRedoHistoryRef.current[dockRedoHistoryRef.current.length - 1];
-    if (!lastEntry) {
-      return false;
-    }
-
-    dockRedoHistoryRef.current = dockRedoHistoryRef.current.slice(0, -1);
-    dockUndoHistoryRef.current = [...dockUndoHistoryRef.current, lastEntry].slice(-50);
-    applyDockSnapshot(lastEntry.after);
-    setToastMessage('已重做指板堆操作');
-    setToastType('success');
-    return true;
-  }, [applyDockSnapshot, setToastMessage, setToastType]);
 
   // 初始化
   useEffect(() => {
@@ -188,7 +171,7 @@ function Fretboard() {
       clearTimeout(selectedTimeoutRef.current);
       selectedTimeoutRef.current = null;
     }
-    
+
     if (selected) {
       selectedTimeoutRef.current = setTimeout(() => {
         const noteElement = selected.element || document.getElementById(selected.id);
@@ -206,7 +189,7 @@ function Fretboard() {
         selectedTimeoutRef.current = null;
       }, 500);
     }
-    
+
     return () => {
       if (selectedTimeoutRef.current) {
         clearTimeout(selectedTimeoutRef.current);
@@ -230,7 +213,7 @@ function Fretboard() {
         }));
       }
     });
-    
+
     if (selected) {
       const noteIds = notes.map(n => n.id);
       if (!noteIds.includes(selected.id)) {
@@ -246,7 +229,7 @@ function Fretboard() {
         const noteElement = document.getElementById(note.id);
         if (noteElement) {
           const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
-          updateNote(noteElement, data, { 
+          updateNote(noteElement, data, {
             type: noteData.type || 'note',
             color: noteData.color || 'white',
             color2: noteData.color2 || null,
@@ -328,9 +311,9 @@ function Fretboard() {
     setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote,
     connections, connectionType, connectionArrowDirection, updateNote: updateNote
   }), [data, setData, visibility, selected, setSelected, selectedColorLevel, selectedColor,
-      setSelectedColorLevel, setSelectedColor,
-      connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionType, connectionArrowDirection]);
+    setSelectedColorLevel, setSelectedColor,
+    connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
+    setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionType, connectionArrowDirection]);
 
   const handleNoteContextMenu = useCallback(createNoteContextMenuHandler({
     selected, setSelected, data, setData, updateNote: updateNote
@@ -350,14 +333,14 @@ function Fretboard() {
     data, setData, connectionToolbarVisible, setConnectionToolbarVisible, setToolbarDropdown,
     updateNote: updateNote
   }), [connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, setUseColor2Level, selected, setSelected,
-      data, setData, connectionToolbarVisible, setConnectionToolbarVisible, setToolbarDropdown]);
+    setMousePosition, setPreviewHoverNote, setUseColor2Level, selected, setSelected,
+    data, setData, connectionToolbarVisible, setConnectionToolbarVisible, setToolbarDropdown]);
 
   const handleSvgContextMenu = useCallback(createSvgContextMenuHandler({
     connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level
   }), [connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, setUseColor2Level]);
+    setMousePosition, setPreviewHoverNote, setUseColor2Level]);
 
   const handleSvgMouseMove = useCallback(createSvgMouseMoveHandler({
     connectionMode, connectionStartNote, svgElementRef, setMousePosition,
@@ -398,32 +381,25 @@ function Fretboard() {
     }
   }, [selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor]);
 
-  // 双击颜色：进入异色版本模式
-  // 第一层异色：默认选中第三个（浓一档，index 2）
-  // 第二层异色：默认选中第一个（淡一档，index 0）
-  const doubleClickColorMemo = useCallback((level, color) => {
-    const baseColor = level === 1 ? getLevel1FillColor(color) : getLevel2Color(color);
-    const variants = generateTintVariants(baseColor);
-    // 根据层级选择不同的默认索引
-    // 数组已反转：index 0=淡一档, 1=原色, 2=浓一档, 3=浓二档
-    const defaultIndex = level === 1 ? 2 : 0; // 第一层选浓一档，第二层选淡一档
-    selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor, variants[defaultIndex]);
-    setInTintMode(true);
+  // 单击颜色：选中基色并展开异色版本面板
+  const openTintPaletteMemo = useCallback((level, color) => {
+    selectColor(level, color, selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor);
+    setInTintMode(color !== 'trans');
   }, [selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor]);
 
-    const cycleLevel1ColorMemo = useCallback(() => {
+  const cycleLevel1ColorMemo = useCallback(() => {
     cycleLevel1Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel1FillColor, inTintMode, 1);
   }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
 
-    const cycleLevel1ColorReverseMemo = useCallback(() => {
+  const cycleLevel1ColorReverseMemo = useCallback(() => {
     cycleLevel1Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel1FillColor, inTintMode, -1);
   }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
 
-    const cycleLevel2ColorMemo = useCallback(() => {
+  const cycleLevel2ColorMemo = useCallback(() => {
     cycleLevel2Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel2Color, inTintMode, 1);
   }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
 
-    const cycleLevel2ColorReverseMemo = useCallback(() => {
+  const cycleLevel2ColorReverseMemo = useCallback(() => {
     cycleLevel2Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel2Color, inTintMode, -1);
   }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
 
@@ -470,9 +446,8 @@ function Fretboard() {
       return;
     }
     lastSaveTimeRef.current = now;
-    
+
     try {
-      dockRedoHistoryRef.current = [];
       let updatedStates = [...historyStates];
       const stateSnapshot = createStateSnapshot({
         data,
@@ -524,7 +499,7 @@ function Fretboard() {
       } else {
         updatedStates.unshift(stateSnapshot);
       }
-      
+
       // 限制最大数量
       if (updatedStates.length > 50) {
         updatedStates = updatedStates.slice(0, 50);
@@ -571,17 +546,17 @@ function Fretboard() {
       setVerticalCrop
     });
   }, [setData, setStartFret, setEndFret, setEnharmonic, setDisplayMode, setRootNote, setVisibility,
-      setSelected, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
-      setMousePosition, setPreviewHoverNote, setUseColor2Level, setSelectedConnection,
-      setConnectionToolbarVisible, setToastMessage, setToastType, setSelectedHistoryState,
-      setIncludeMarkers, setCopyOnly, setShowNotes, setHorizontalCrop, setVerticalCrop]);
+    setSelected, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
+    setMousePosition, setPreviewHoverNote, setUseColor2Level, setSelectedConnection,
+    setConnectionToolbarVisible, setToastMessage, setToastType, setSelectedHistoryState,
+    setIncludeMarkers, setCopyOnly, setShowNotes, setHorizontalCrop, setVerticalCrop]);
 
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
   const handlerParamsRef = useRef();
   handlerParamsRef.current = {
     selected, deleteNote, selectColor: selectColorMemo, cycleLevel1Color: cycleLevel1ColorMemo,
     cycleLevel1ColorReverse: cycleLevel1ColorReverseMemo, cycleLevel2Color: cycleLevel2ColorMemo,
-    cycleLevel2ColorReverse: cycleLevel2ColorReverseMemo, undo, redo, undoDockAction, redoDockAction, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
+    cycleLevel2ColorReverse: cycleLevel2ColorReverseMemo, undo, redo, hoveredNoteId, hoveredConnectionId, data, setData, visibility,
     connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardState: saveFretboardStateMemo,
     toggleVisibility: toggleVisibilityMemo, reset: resetMemo, saveSVG: saveSVGMemo,
@@ -594,7 +569,7 @@ function Fretboard() {
       if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable) {
         return;
       }
-      
+
       const handler = createKeyboardHandler(handlerParamsRef.current);
       handler(event);
     };
@@ -611,14 +586,15 @@ function Fretboard() {
   return (
     <>
       <div className="title-header">
-        <div>
+        <div className="title-header-inner">
           <h1>
             Fretboard Diagram Generator
           </h1>
+          <div className="datetime">{currentDateTime}</div>
           {selectedHistoryState && (
             <>
-              <div className="selected-state-name" title="当前应用中的指板堆快照" style={{ backgroundColor: 'rgba(74, 144, 226, 0.3)', color: 'white' }}>
-                <span 
+              <div className="selected-state-name" title="当前应用中的指板堆快照">
+                <span
                   contentEditable
                   suppressContentEditableWarning
                   onDoubleClick={(e) => {
@@ -631,9 +607,9 @@ function Fretboard() {
                   onBlur={(e) => {
                     const newName = e.target.textContent.trim();
                     if (newName && newName !== selectedHistoryState.name) {
-                      const updatedStates = historyStates.map(state => 
-                        state.id === selectedHistoryState.id 
-                          ? { ...state, name: newName } 
+                      const updatedStates = historyStates.map(state =>
+                        state.id === selectedHistoryState.id
+                          ? { ...state, name: newName }
                           : state
                       );
                       setHistoryStates(updatedStates);
@@ -735,7 +711,7 @@ function Fretboard() {
         selectedColor={selectedColor}
         inTintMode={inTintMode}
         onSelectColor={selectColorMemo}
-        onDoubleClickColor={doubleClickColorMemo}
+        onOpenTintPalette={openTintPaletteMemo}
         onReplaceAllTintNotes={replaceAllTintNotesMemo}
         enharmonic={enharmonic}
         onToggleEnharmonic={toggleEnharmonicMemo}
@@ -783,35 +759,29 @@ function Fretboard() {
         selectedHistoryState={selectedHistoryState}
         onRestore={restoreFretboardStateMemo}
         onDelete={(stateSnapshot) => {
-          const beforeSnapshot = createDockSnapshot(historyStates, selectedHistoryState);
           const updatedStates = historyStates.filter(item => item.id !== stateSnapshot.id);
           const nextSelectedState = selectedHistoryState?.id === stateSnapshot.id
             ? null
             : selectedHistoryState;
-          const afterSnapshot = createDockSnapshot(updatedStates, nextSelectedState);
-          pushDockHistoryEntry(beforeSnapshot, afterSnapshot);
           setHistoryStates(updatedStates);
           setSelectedHistoryState(nextSelectedState);
           setToastMessage('已从指板堆删除');
           setToastType('success');
         }}
         onClear={() => {
-          const beforeSnapshot = createDockSnapshot(historyStates, selectedHistoryState);
           const filteredStates = historyStates.filter(
             (state) => state.directoryId !== currentDirectoryId
           );
           const nextSelectedState = selectedHistoryState?.directoryId === currentDirectoryId
             ? null
             : selectedHistoryState;
-          const afterSnapshot = createDockSnapshot(filteredStates, nextSelectedState);
-          pushDockHistoryEntry(beforeSnapshot, afterSnapshot);
           setHistoryStates(filteredStates);
           setSelectedHistoryState(nextSelectedState);
           setToastMessage('当前指板堆已清空');
           setToastType('success');
         }}
       />
-      
+
       <Toast
         message={toastMessage}
         type={toastType}

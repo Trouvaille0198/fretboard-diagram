@@ -11,8 +11,6 @@ export function createKeyboardHandler(params) {
         cycleLevel2ColorReverse,
         undo,
         redo,
-        undoDockAction,
-        redoDockAction,
         hoveredNoteId,
         hoveredConnectionId,
         data,
@@ -63,9 +61,6 @@ export function createKeyboardHandler(params) {
         // Ctrl+Shift+Z 重做
         if (event.ctrlKey && event.shiftKey && event.code === 'KeyZ') {
             event.preventDefault();
-            if (redoDockAction && redoDockAction()) {
-                return;
-            }
             if (redo) {
                 redo();
             }
@@ -75,9 +70,6 @@ export function createKeyboardHandler(params) {
         // Ctrl+Z 撤销
         if (event.ctrlKey && event.code === 'KeyZ' && !event.shiftKey) {
             event.preventDefault();
-            if (undoDockAction && undoDockAction()) {
-                return;
-            }
             undo();
             return;
         }

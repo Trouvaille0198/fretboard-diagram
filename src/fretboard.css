@@ -6,14 +6,45 @@
  */
 
 :root {
-    --background-color: black;
-    --text-color: #aaaaaa;
+    --app-bg: #0b1216;
+    --app-bg-secondary: #101b21;
+    --app-panel: rgba(15, 24, 30, 0.9);
+    --app-panel-strong: rgba(19, 31, 39, 0.96);
+    --app-panel-soft: rgba(255, 255, 255, 0.05);
+    --app-border: rgba(183, 216, 228, 0.16);
+    --app-border-strong: rgba(183, 216, 228, 0.3);
+    --app-text: #e6edf2;
+    --app-text-muted: rgba(230, 237, 242, 0.72);
+    --app-text-soft: rgba(230, 237, 242, 0.52);
+    --app-accent: #f3ba62;
+    --app-accent-strong: #de9d42;
+    --app-accent-warm: #f7cf8d;
+    --app-success: #88d39f;
+    --app-danger: #f08a84;
+    --app-warning: #f3ba62;
+    --app-shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.38);
+    --app-shadow-md: 0 16px 32px rgba(0, 0, 0, 0.28);
+    --app-radius-xl: 28px;
+    --app-radius-lg: 22px;
+    --app-radius-md: 16px;
+    --app-radius-sm: 12px;
+    --background-color: var(--app-bg);
+    --text-color: var(--app-text-muted);
+    color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --background-color: #161718;
+        --background-color: var(--app-bg);
     }
+}
+
+html {
+    min-height: 100%;
+    background:
+        radial-gradient(circle at top left, rgba(243, 186, 98, 0.16), transparent 28%),
+        radial-gradient(circle at right 18%, rgba(243, 186, 98, 0.12), transparent 26%),
+        linear-gradient(180deg, #0d161b 0%, #081015 100%);
 }
 
 body {
@@ -24,6 +55,12 @@ body {
     min-height: 100vh;
     position: relative;
     overflow-x: hidden;
+    color: var(--app-text);
+    font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(243, 186, 98, 0.16), transparent 28%),
+        radial-gradient(circle at right 18%, rgba(243, 186, 98, 0.12), transparent 26%),
+        linear-gradient(180deg, #0d161b 0%, #081015 100%);
 }
 
 main {
@@ -34,22 +71,38 @@ main {
     align-items: center;
     overflow-x: hidden;
     box-sizing: border-box;
-    padding: 0 20px;
+    padding: 0 20px 80px;
     transition: margin-left 0.3s ease;
 }
 
 /* Title Header */
 .title-header {
-    padding: 20px 40px;
-    margin-bottom: 5px;
+    width: min(100%, 680px);
+    min-height: auto;
+    padding: 8px 0 10px;
+    margin: 18px 0 10px;
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.title-header-inner {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .title-header h1 {
     margin: 0;
-    font-size: 24px;
-    font-weight: bold;
-    color: var(--text-color);
+    font-size: clamp(24px, 3vw, 32px);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    color: var(--app-text);
 }
 
 /* 登录状态 - 固定在右上角 */
@@ -64,28 +117,28 @@ main {
 }
 
 .title-header .datetime {
-    margin-top: 8px;
     font-size: 14px;
-    color: var(--text-color);
-    opacity: 0.8;
+    color: var(--app-text-soft);
 }
 
 .title-header .selected-state-name {
-    margin-top: 16px;
+    margin-top: 4px;
     font-size: 13px;
-    color: #4CAF50;
-    font-weight: 500;
-    padding: 4px 12px;
-    border-radius: 4px;
-    background: rgba(76, 175, 80, 0.1);
+    color: var(--app-success);
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(136, 211, 159, 0.28);
+    background: rgba(136, 211, 159, 0.1);
     display: inline-block;
     cursor: help;
     transition: all 0.2s ease;
 }
 
 .title-header .selected-state-name:hover {
-    background: rgba(76, 175, 80, 0.2);
-    transform: scale(1.02);
+    background: rgba(136, 211, 159, 0.16);
+    border-color: rgba(136, 211, 159, 0.42);
+    transform: translateY(-1px);
 }
 
 
@@ -242,7 +295,7 @@ g.note>text {
 
 div.menu {
     text-align: center;
-    padding: 20px 0;
+    padding: 24px 0;
     position: relative;
     z-index: 1;
     isolation: isolate;
@@ -265,15 +318,154 @@ div.menu {
 .menu-left {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
     align-items: center;
+    padding: 22px 24px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-xl);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
+        var(--app-panel);
+    box-shadow: var(--app-shadow-md);
+    backdrop-filter: blur(18px);
 }
 
 .menu-right {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
     align-items: center;
+    padding: 22px 24px;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-xl);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
+        var(--app-panel);
+    box-shadow: var(--app-shadow-md);
+    backdrop-filter: blur(18px);
+}
+
+.menu-palette-shell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    overflow: visible;
+}
+
+.menu-tint-variants {
+    position: absolute;
+    left: -74px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(230, 237, 242, 0.1);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+        rgba(9, 16, 21, 0.92);
+    box-shadow:
+        0 16px 30px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(16px);
+    z-index: 3;
+}
+
+.menu-tint-variants::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: -7px;
+    width: 14px;
+    height: 14px;
+    transform: translateY(-50%) rotate(45deg);
+    border-top: 1px solid rgba(230, 237, 242, 0.08);
+    border-right: 1px solid rgba(230, 237, 242, 0.08);
+    background: rgba(12, 20, 26, 0.9);
+}
+
+.menu-section-panel {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 0 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.menu-connection-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.menu-control-button-primary {
+    margin-right: 0;
+    min-width: 0;
+}
+
+.menu-control-button-compact {
+    min-width: 0;
+    padding-inline: 12px;
+}
+
+.menu-download-panel {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(230, 237, 242, 0.08);
+}
+
+.menu-download-options {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.menu-download-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.menu-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--app-text-muted);
+    white-space: nowrap;
+}
+
+.menu-checkbox input {
+    accent-color: var(--app-accent-strong);
+    cursor: pointer;
+}
+
+.menu-download-button {
+    min-width: 126px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--app-text-muted);
+    border-color: var(--app-border);
+    box-shadow: none;
+}
+
+.menu-download-button:hover {
+    background: rgba(243, 186, 98, 0.12);
+    color: var(--app-text);
 }
 
 text.marker {
@@ -302,13 +494,14 @@ g.markers {
 
 #color-selector {
     margin: 0;
-    padding: 12px 16px;
+    padding: 10px 8px 12px;
     width: 400px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     background: transparent;
     border: none;
+    border-radius: 0;
     box-shadow: none;
 }
 
@@ -316,13 +509,13 @@ g.markers {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     padding: 0;
 }
 
 .palette-label {
     font-size: 13px;
-    color: var(--text-color);
+    color: var(--app-text-soft);
     width: 55px;
     text-align: right;
     margin-right: 6px;
@@ -331,38 +524,41 @@ g.markers {
 button.color {
     width: 40px;
     height: 40px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    border: 1px solid rgba(230, 237, 242, 0.18);
     cursor: pointer;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
 }
 
 /* 淡色版本按钮样式 */
 button.color.color-tint {
     width: 32px;
     height: 32px;
-    border-radius: 4px;
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22);
 }
 
 /* 淡色版本选中效果 */
 button.color.color-tint.selected {
-    box-shadow: 0 0 0 3px var(--text-color), 0 0 8px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 3px rgba(230, 237, 242, 0.88), 0 0 12px rgba(243, 186, 98, 0.34);
     transform: scale(1.1);
     border-width: 2px;
 }
 
 button.color:hover {
-    border-color: rgba(255, 255, 255, 0.4);
+    border-color: rgba(230, 237, 242, 0.34);
+    transform: translateY(-1px);
 }
 
 button.color.selected {
-    box-shadow: 0 0 0 2px var(--text-color);
+    box-shadow: 0 0 0 2px rgba(230, 237, 242, 0.88), 0 0 14px rgba(243, 186, 98, 0.26);
 }
 
 /* 第二层颜色选中状态优化 */
 button.color.level2.selected {
     border-width: 7px;
-    box-shadow: 0 0 0 1px var(--text-color);
+    box-shadow: 0 0 0 1px rgba(230, 237, 242, 0.88), 0 0 12px rgba(243, 186, 98, 0.22);
 }
 
 button {
@@ -372,27 +568,29 @@ button {
 /* 全局操作按钮样式 */
 .button {
     background: rgba(255, 255, 255, 0.05);
-    color: var(--text-color);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    color: var(--app-text-muted);
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
     padding: 6px 14px;
     cursor: pointer;
     font-size: 14px;
     min-width: 70px;
-    height: 32px;
+    height: 36px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s, color 0.2s;
 }
 
 .button:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(243, 186, 98, 0.12);
+    border-color: var(--app-border-strong);
+    color: var(--app-text);
+    transform: translateY(-1px);
 }
 
 .button:active {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(243, 186, 98, 0.16);
 }
 
 
@@ -457,63 +655,72 @@ button {
 /* 删除调色盘按钮 */
 #delete-palette {
     width: 60px;
-    background-color: #ff4444;
-    color: white;
-    border: 1px solid var(--text-color);
-    border-radius: 4px;
+    background-color: rgba(240, 138, 132, 0.22);
+    color: #ffd9d6;
+    border: 1px solid rgba(240, 138, 132, 0.42);
+    border-radius: 999px;
     cursor: pointer;
 }
 
 #delete-palette:hover {
-    background-color: #ff6666;
-    transform: scale(1.05);
+    background-color: rgba(240, 138, 132, 0.28);
+    transform: translateY(-1px);
 }
 
 #delete-palette.selected {
-    border: 2px solid var(--text-color);
-    box-shadow: 0 0 8px rgba(255, 68, 68, 0.8);
+    border: 2px solid rgba(255, 230, 228, 0.88);
+    box-shadow: 0 0 10px rgba(240, 138, 132, 0.5);
 }
 
 /* Enharmonic 按钮样式 */
 #enharmonic {
     background: rgba(255, 255, 255, 0.05);
-    color: var(--text-color);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    color: var(--app-text);
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
     padding: 0;
     cursor: pointer;
     font-size: 16px;
     min-width: 32px;
     width: 32px;
-    height: 32px;
+    height: 36px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
 }
 
 #enharmonic:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(243, 186, 98, 0.14);
+    border-color: rgba(243, 186, 98, 0.34);
+    transform: translateY(-1px);
 }
 
 #enharmonic:active {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(243, 186, 98, 0.2);
 }
 
 /* Global actions */
 
 #global-actions {
     margin: 0;
-    width: auto;
-    display: flex;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 40px repeat(4, minmax(0, 1fr));
     justify-content: center;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
-    padding: 0;
+    padding: 12px 0 14px;
     background: transparent;
     border: none;
+    border-radius: 18px;
+    box-shadow: none;
+}
+
+#global-actions .button,
+#global-actions .menu-download-button {
+    width: 100%;
+    min-width: 0;
 }
 
 figure.half-full {
@@ -521,12 +728,18 @@ figure.half-full {
     justify-content: center;
     width: 100%;
     max-width: 100%;
-    margin: 0 auto;
+    margin: 0 auto 12px;
     position: relative;
     z-index: 1;
     isolation: isolate;
     overflow-x: auto;
     box-sizing: border-box;
+    padding: 8px 0 4px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
 }
 
 figure.half-full svg {
@@ -536,6 +749,7 @@ figure.half-full svg {
     isolation: isolate;
     max-width: 100%;
     height: auto;
+    border-radius: 0;
 }
 
 .error {
@@ -567,16 +781,20 @@ figure.half-full svg {
 
 .mode-switch span {
     font-size: 14px;
-    color: var(--text-color);
+    color: var(--app-text-muted);
 }
 
 /* Piano Keyboard */
 #piano-keyboard-container {
     display: flex;
     justify-content: center;
-    padding: 15px 0;
+    padding: 12px 0 14px;
     position: relative;
     z-index: 1;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
 }
 
 .piano-keyboard {
@@ -586,25 +804,27 @@ figure.half-full svg {
 .piano-keys {
     display: flex;
     position: relative;
-    border: 1px solid var(--text-color);
-    border-radius: 4px;
-    padding: 4px;
-    background-color: var(--background-color);
+    border: 1px solid var(--app-border);
+    border-radius: 18px;
+    padding: 8px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
     height: 130px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
 }
 
 .piano-key {
     cursor: pointer;
     user-select: none;
     transition: all 0.1s ease;
+    box-sizing: border-box;
 }
 
 .piano-key.white-key {
     width: 45px;
     height: 130px;
-    background: white;
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 0 0 4px 4px;
+    background: linear-gradient(180deg, #fefefe 0%, #dfe6ea 100%);
+    border: 1px solid rgba(17, 34, 44, 0.18);
+    border-radius: 0 0 14px 14px;
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -613,53 +833,59 @@ figure.half-full svg {
     margin-right: 2px;
 }
 
+.piano-key.white-key:last-of-type {
+    margin-right: 0;
+}
+
 .piano-key.white-key:hover {
-    background: #f5f5f5;
+    background: linear-gradient(180deg, #ffffff 0%, #e9f0f4 100%);
 }
 
 .piano-key.white-key.selected {
-    background: #d0d0ff;
-    border-color: steelblue;
+    background: linear-gradient(180deg, #f9e1b9 0%, #f0bd72 100%);
+    border-color: var(--app-accent-strong);
     border-width: 2px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.48);
 }
 
 .piano-key.black-key {
     width: 28px;
     height: 80px;
-    background: #333;
-    border: 1px solid #000;
-    border-radius: 0 0 3px 3px;
+    background: linear-gradient(180deg, #2b3942 0%, #10181d 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0 0 10px 10px;
     display: flex;
     align-items: flex-end;
     justify-content: center;
     padding-bottom: 8px;
     position: absolute;
-    top: 4px;
+    top: 8px;
     z-index: 2;
+    box-shadow: 0 10px 16px rgba(0, 0, 0, 0.22);
 }
 
 .piano-key.black-key:hover {
-    background: #444;
+    background: linear-gradient(180deg, #31434d 0%, #141e24 100%);
 }
 
 .piano-key.black-key.selected {
-    background: #6b6bff;
-    border-color: steelblue;
+    background: linear-gradient(180deg, #f1bb67 0%, #c88426 100%);
+    border-color: #ffe2b1;
     border-width: 2px;
 }
 
 .key-label {
     font-size: 13px;
     font-weight: bold;
-    color: var(--text-color);
+    color: var(--app-text-muted);
 }
 
 .piano-key.white-key .key-label {
-    color: #333;
+    color: #21323d;
 }
 
 .piano-key.white-key.selected .key-label {
-    color: #000;
+    color: #0d222b;
 }
 
 .piano-key.black-key .key-label {
@@ -729,9 +955,9 @@ figure.half-full svg {
 
 .toolbar-icon-btn {
     background: rgba(255, 255, 255, 0.05);
-    color: var(--text-color);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    color: var(--app-text-muted);
+    border: 1px solid rgba(230, 237, 242, 0.12);
+    border-radius: 10px;
     padding: 6px 10px;
     cursor: pointer;
     font-size: 14px;
@@ -740,7 +966,7 @@ figure.half-full svg {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
     white-space: nowrap;
     pointer-events: auto !important;
     position: relative;
@@ -748,8 +974,10 @@ figure.half-full svg {
 }
 
 .toolbar-icon-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(243, 186, 98, 0.12);
+    border-color: rgba(243, 186, 98, 0.28);
+    color: var(--app-text);
+    transform: translateY(-1px);
 }
 
 .toolbar-icon-btn:active {
@@ -757,9 +985,9 @@ figure.half-full svg {
 }
 
 .toolbar-icon-btn.active {
-    background: rgba(70, 130, 180, 0.2);
-    border-color: steelblue;
-    color: #a0c4e8;
+    background: rgba(243, 186, 98, 0.16);
+    border-color: rgba(243, 186, 98, 0.34);
+    color: #ffe1ac;
 }
 
 .toolbar-icon-btn.delete-icon-btn {
@@ -777,15 +1005,17 @@ figure.half-full svg {
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+        rgba(11, 19, 24, 0.96);
+    border: 1px solid rgba(230, 237, 242, 0.12);
+    border-radius: 14px;
+    box-shadow: var(--app-shadow-md);
     min-width: 100px;
     width: max-content;
     max-width: none;
     z-index: 103 !important;
-    padding: 4px;
+    padding: 6px;
     white-space: nowrap;
     overflow: visible !important;
     display: block !important;
@@ -794,7 +1024,7 @@ figure.half-full svg {
     clip: auto !important;
     transform: translateZ(0);
     will-change: transform;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(16px);
 }
 
 /* 向上展开的下拉菜单 - 使用更具体的选择器确保覆盖 */
@@ -809,9 +1039,9 @@ figure.half-full svg {
     width: 100%;
     min-width: 100px;
     background-color: transparent;
-    color: var(--text-color);
+    color: var(--app-text-muted);
     border: none;
-    border-radius: 3px;
+    border-radius: 10px;
     padding: 6px 12px;
     cursor: pointer;
     font-size: 14px;
@@ -822,12 +1052,13 @@ figure.half-full svg {
 }
 
 .toolbar-dropdown button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(243, 186, 98, 0.12);
+    color: var(--app-text);
 }
 
 .toolbar-dropdown button.active {
-    background-color: rgba(70, 130, 180, 0.3);
-    color: #a0c4e8;
+    background-color: rgba(243, 186, 98, 0.18);
+    color: #ffe1ac;
 }
 
 .toolbar-slider-wrapper {
@@ -855,42 +1086,42 @@ figure.half-full svg {
     width: 16px;
     height: 16px;
     background: #ffffff;
-    border: 2px solid #4a90e2;
+    border: 2px solid #e4a54b;
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 10px rgba(17, 34, 44, 0.24);
     margin-top: -5px;
 }
 
 .toolbar-slider-wrapper input[type="range"]::-webkit-slider-runnable-track {
     width: 100%;
     height: 6px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
+    background: rgba(230, 237, 242, 0.18);
+    border-radius: 999px;
 }
 
 .toolbar-slider-wrapper input[type="range"]::-moz-range-thumb {
     width: 16px;
     height: 16px;
     background: #ffffff;
-    border: 2px solid #4a90e2;
+    border: 2px solid #e4a54b;
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 10px rgba(17, 34, 44, 0.24);
 }
 
 .toolbar-slider-wrapper input[type="range"]::-moz-range-track {
     width: 100%;
     height: 6px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
+    background: rgba(230, 237, 242, 0.18);
+    border-radius: 999px;
 }
 
 .toolbar-slider-wrapper span {
     min-width: 35px;
     text-align: right;
     font-size: 12px;
-    color: var(--text-color);
+    color: var(--app-text-muted);
 }
 
 /* 品格范围滑块 - 完全重新设计 */
@@ -898,18 +1129,23 @@ figure.half-full svg {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 10px;
-    margin: 12px auto;
+    padding: 10px 0 0;
+    margin: 0 auto;
     max-width: 500px;
     width: 100%;
     box-sizing: border-box;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 /* 双滑块范围选择器 */
 .dual-range-slider {
     position: relative;
-    width: 100%;
+    width: min(100%, 300px);
     height: 50px;
+    margin: 0 auto;
 }
 
 .dual-range-inputs-container {
@@ -927,8 +1163,8 @@ figure.half-full svg {
     left: 9px;
     right: 9px;
     height: 6px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
+    background: rgba(230, 237, 242, 0.18);
+    border-radius: 999px;
     z-index: 0;
 }
 
@@ -937,8 +1173,9 @@ figure.half-full svg {
     position: absolute;
     top: 40px;
     height: 6px;
-    background: #4a90e2;
-    border-radius: 3px;
+    background: linear-gradient(90deg, #e4a54b, #f3c67d);
+    border-radius: 999px;
+    box-shadow: 0 0 10px rgba(228, 165, 75, 0.28);
     pointer-events: none;
     z-index: 1;
     transition: left 0.1s ease, width 0.1s ease;
@@ -968,19 +1205,20 @@ figure.half-full svg {
     width: 18px;
     height: 18px;
     background: #ffffff;
-    border: 2px solid #4a90e2;
+    border: 2px solid #e4a54b;
     border-radius: 50%;
     cursor: pointer;
     pointer-events: all;
     position: relative;
     z-index: 3;
     margin-top: -6px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: border-color 0.2s;
+    box-shadow: 0 4px 12px rgba(17, 34, 44, 0.28);
+    transition: border-color 0.2s, transform 0.2s;
 }
 
 .dual-range-input::-webkit-slider-thumb:hover {
-    border-color: #5a9fe2;
+    border-color: #f3c67d;
+    transform: scale(1.05);
 }
 
 /* 滑块手柄 - Firefox */
@@ -988,18 +1226,19 @@ figure.half-full svg {
     width: 18px;
     height: 18px;
     background: #ffffff;
-    border: 2px solid #4a90e2;
+    border: 2px solid #e4a54b;
     border-radius: 50%;
     cursor: pointer;
     pointer-events: all;
     position: relative;
     z-index: 3;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: border-color 0.2s;
+    box-shadow: 0 4px 12px rgba(17, 34, 44, 0.28);
+    transition: border-color 0.2s, transform 0.2s;
 }
 
 .dual-range-input::-moz-range-thumb:hover {
-    border-color: #5a9fe2;
+    border-color: #f3c67d;
+    transform: scale(1.05);
 }
 
 /* 滑块轨道 */
@@ -1007,14 +1246,14 @@ figure.half-full svg {
     width: 100%;
     height: 6px;
     background: transparent;
-    border-radius: 3px;
+    border-radius: 999px;
 }
 
 .dual-range-input::-moz-range-track {
     width: 100%;
     height: 6px;
     background: transparent;
-    border-radius: 3px;
+    border-radius: 999px;
 }
 
 .dual-range-input-min {
@@ -1028,10 +1267,10 @@ figure.half-full svg {
 /* 数字提示框 */
 .fret-value-tooltip {
     position: absolute;
-    top: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-color);
+    top: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--app-text-muted);
     white-space: nowrap;
     pointer-events: none;
     z-index: 4;
@@ -1041,9 +1280,9 @@ figure.half-full svg {
 
 /* 连线模式下的按钮高亮 */
 .button.selected {
-    background: rgba(70, 130, 180, 0.2);
-    border: 1px solid steelblue;
-    color: #a0c4e8;
+    background: rgba(243, 186, 98, 0.16);
+    border: 1px solid rgba(243, 186, 98, 0.36);
+    color: #ffe1ac;
 }
 
 /* 预览悬停note的高亮 */
@@ -1054,7 +1293,31 @@ g.note.preview-hover {
 g.note.preview-hover>circle {
     stroke-dasharray: 3, 3;
     stroke-width: 2px;
-    stroke: var(--text-color);
+    stroke: var(--app-accent);
+}
+
+@media (max-width: 1024px) {
+    div.menu {
+        gap: 18px;
+    }
+
+    .menu-left,
+    .menu-right {
+        width: min(100%, 420px);
+    }
+
+    .menu-download-panel {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .menu-download-button {
+        width: 100%;
+    }
+
+    #global-actions {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 }
 
 /* 通用响应式 - 确保SVG在所有屏幕上自适应 */
@@ -1149,12 +1412,25 @@ g.note.preview-hover>circle {
         margin: 0;
     }
 
+    .menu-palette-shell {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .menu-tint-variants {
+        position: static;
+        flex-direction: row;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
     .menu-left,
     .menu-right {
         width: 100% !important;
         max-width: 100% !important;
         overflow-x: hidden !important;
-        padding: 0 !important;
+        padding: 18px 14px !important;
         box-sizing: border-box;
         margin: 0;
     }
@@ -1164,7 +1440,7 @@ g.note.preview-hover>circle {
         max-width: 100% !important;
         overflow-x: hidden !important;
         box-sizing: border-box;
-        padding: 12px 0 !important;
+        padding: 10px 0 12px !important;
         margin: 0;
     }
 
@@ -1173,9 +1449,10 @@ g.note.preview-hover>circle {
         max-width: 100% !important;
         overflow-x: hidden !important;
         box-sizing: border-box;
-        padding: 0 !important;
+        padding: 8px 0 12px !important;
         margin: 0;
         justify-content: center;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     #connection-tool-section {
@@ -1183,8 +1460,11 @@ g.note.preview-hover>circle {
         max-width: 100% !important;
         overflow-x: hidden !important;
         box-sizing: border-box;
-        padding: 8px 0 !important;
+        padding: 12px 0 0 !important;
         margin: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
     }
 
     #connection-tool-section>div {
@@ -1193,8 +1473,8 @@ g.note.preview-hover>circle {
         overflow-x: hidden !important;
         flex-wrap: wrap !important;
         box-sizing: border-box;
-        justify-content: center;
-        gap: 4px !important;
+        justify-content: stretch;
+        gap: 8px !important;
     }
 
     #connection-tool-section>div button {
@@ -1208,22 +1488,26 @@ g.note.preview-hover>circle {
         overflow-x: hidden !important;
         box-sizing: border-box;
         flex-wrap: wrap !important;
-        padding: 8px 0 !important;
+        padding: 12px 0 0 !important;
         margin: 0 !important;
         margin-top: 0 !important;
         justify-content: center;
         gap: 8px !important;
         align-items: center;
+        border: none;
+        border-radius: 0;
+        background: transparent;
     }
 
     #download-section label {
         margin: 0 !important;
-        white-space: nowrap;
+        white-space: normal;
     }
 
     #download-section button {
         margin-left: 0 !important;
         flex-shrink: 0;
+        width: 100%;
     }
 
     #piano-keyboard-container {
@@ -1231,7 +1515,7 @@ g.note.preview-hover>circle {
         max-width: 100% !important;
         overflow-x: hidden !important;
         box-sizing: border-box;
-        padding: 15px 0 !important;
+        padding: 12px 0 10px !important;
         margin: 0;
     }
 
@@ -1250,7 +1534,7 @@ g.note.preview-hover>circle {
         max-width: 100% !important;
         overflow-x: hidden !important;
         box-sizing: border-box;
-        padding: 10px 0 !important;
+        padding: 8px 0 0 !important;
         margin: 0;
     }
 }
