@@ -679,8 +679,7 @@ function Fretboard() {
           )}
         </div>
       </div>
-      <figure id="fretboard-diagram-creator" className="half-full" style={{
-      }}>
+      <figure className="fretboard-stage">
         <FretboardSVG
           svgElementRef={svgElementRef}
           svgWidth={svgWidth}
@@ -791,8 +790,6 @@ function Fretboard() {
         startFret={startFret}
         endFret={endFret}
         onFretWindowChange={setFretWindowMemo}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
 
       <FretboardDock

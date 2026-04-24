@@ -98,13 +98,29 @@ export function FretboardDock({
       </div>
 
       <div className="dock-bar">
-        <div className="dock-meta-col">
-          <div className="dock-meta">
-            <div className="dock-title">指板堆</div>
-            <div className="dock-subtitle">
-              {dockStates.length === 0 ? '空堆' : `当前 ${stackCountLabel} 张`}
-            </div>
-          </div>
+        <div className="dock-primary-col">
+          <button
+            className="dock-primary"
+            onClick={() => latestState && onRestore?.(latestState)}
+            title={latestState ? `应用最近快照：${latestState.name}` : '指板堆'}
+          >
+            <span className="dock-stack-shadow dock-stack-shadow-back" />
+            <span className="dock-stack-shadow dock-stack-shadow-mid" />
+            <span className="dock-primary-face">
+              {latestState?.thumbnail ? (
+                <img
+                  src={latestState.thumbnail}
+                  alt={latestState.name}
+                  className="dock-preview"
+                />
+              ) : (
+                <span className="dock-label">指板堆</span>
+              )}
+            </span>
+            {dockStates.length > 0 && (
+              <span className="dock-count-badge">{stackCountLabel}</span>
+            )}
+          </button>
 
           <button
             className="dock-clear-btn"
@@ -114,29 +130,6 @@ export function FretboardDock({
             Clear
           </button>
         </div>
-
-        <button
-          className="dock-primary"
-          onClick={() => latestState && onRestore?.(latestState)}
-          title={latestState ? `应用最近快照：${latestState.name}` : '指板堆'}
-        >
-          <span className="dock-stack-shadow dock-stack-shadow-back" />
-          <span className="dock-stack-shadow dock-stack-shadow-mid" />
-          <span className="dock-primary-face">
-            {latestState?.thumbnail ? (
-              <img
-                src={latestState.thumbnail}
-                alt={latestState.name}
-                className="dock-preview"
-              />
-            ) : (
-              <span className="dock-label">指板堆</span>
-            )}
-          </span>
-          {dockStates.length > 0 && (
-            <span className="dock-count-badge">{stackCountLabel}</span>
-          )}
-        </button>
       </div>
     </div>
   );

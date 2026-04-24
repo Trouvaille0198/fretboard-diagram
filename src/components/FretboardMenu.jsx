@@ -43,8 +43,6 @@ export function FretboardMenu({
   verticalCrop,
   setVerticalCrop,
   onReplaceAllTintNotes,
-  theme,
-  onToggleTheme,
 }) {
   // 如果选中的是第一层颜色且不是trans，生成淡色版本
   const colorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
@@ -110,9 +108,8 @@ export function FretboardMenu({
             onCycleTintColor={onCycleTintColor}
           />
         </div>
-        <div id="global-actions">
+        <div className="menu-global-actions">
           <button
-            id="enharmonic"
             className="enharmonic-button"
             onClick={onToggleEnharmonic}
             title="切换升降号"
@@ -151,7 +148,7 @@ export function FretboardMenu({
           </button>
         </div>
         {/* 连线工具区域 */}
-        <div id="connection-tool-section" className="menu-section-panel menu-connection-panel">
+        <div className="menu-section-panel menu-connection-panel">
           <div className="menu-connection-actions">
             <button
               className={`button menu-control-button-primary ${connectionMode ? 'selected' : ''}`}
@@ -186,7 +183,7 @@ export function FretboardMenu({
           </div>
         </div>
         {/* 下载区域 - 放在最底下，分两行显示 */}
-        <div id="download-section" className="menu-section-panel menu-download-panel">
+        <div className="menu-section-panel menu-download-panel">
           <div className="menu-download-options">
             <div className="menu-download-row">
               <label className="menu-checkbox">
@@ -245,7 +242,7 @@ export function FretboardMenu({
       </div>
       {/* 右侧：钢琴+指板slider */}
       <div className="menu-right">
-        <div id="piano-keyboard-container">
+        <div className="menu-piano-keyboard">
           <PianoKeyboard
             enharmonic={enharmonic}
             selectedNote={rootNote}
