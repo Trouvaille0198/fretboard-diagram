@@ -57,7 +57,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPale
   };
 
   return (
-    <div id="color-selector" ref={paletteRef}>
+    <div className="color-selector" ref={paletteRef}>
       <div className="color-palette-row">
         {LEVEL1_COLOR_ORDER.map(colorName => (
           <button

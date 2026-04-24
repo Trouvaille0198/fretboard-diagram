@@ -130,8 +130,8 @@
 .dock-bar {
     display: inline-flex;
     align-items: flex-start;
-    gap: 16px;
-    padding: 16px 18px 16px 16px;
+    justify-content: center;
+    padding: 14px;
     border-radius: var(--app-radius-xl);
     background:
         linear-gradient(160deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.025) 100%),
@@ -144,35 +144,17 @@
     pointer-events: auto;
 }
 
-.dock-meta {
+.dock-primary-col {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    min-width: 104px;
-}
-
-.dock-meta-col {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.dock-title {
-    color: var(--app-text);
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-}
-
-.dock-subtitle {
-    color: var(--app-text-soft);
-    font-size: 12px;
+    align-items: center;
+    gap: 12px;
 }
 
 .dock-primary {
     position: relative;
-    width: 104px;
-    height: 104px;
+    width: 116px;
+    height: 116px;
     border: none;
     background: transparent;
     padding: 0;
@@ -244,8 +226,9 @@
 }
 
 .dock-clear-btn {
-    height: 38px;
-    padding: 0 18px;
+    width: 100%;
+    height: 34px;
+    padding: 0 16px;
     border: 1px solid var(--app-border);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.04);
@@ -262,6 +245,38 @@
     background: rgba(240, 138, 132, 0.12);
     color: var(--app-text);
     transform: translateY(-1px);
+}
+
+html[data-theme="light"] .dock-stack,
+html[data-theme="light"] .dock-bar {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(244, 248, 252, 0.96)),
+        var(--app-panel-strong);
+    border-color: rgba(44, 76, 109, 0.14);
+    box-shadow:
+        0 18px 34px rgba(70, 100, 130, 0.16),
+        0 0 0 1px rgba(255, 255, 255, 0.76),
+        inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+html[data-theme="light"] .dock-item-apply,
+html[data-theme="light"] .dock-primary-face {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 247, 251, 0.95)),
+        rgba(238, 244, 250, 0.98);
+    border-color: rgba(44, 76, 109, 0.14);
+    box-shadow:
+        0 10px 20px rgba(70, 100, 130, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+html[data-theme="light"] .dock-stack-shadow {
+    border-color: rgba(44, 76, 109, 0.10);
+    background: rgba(230, 238, 246, 0.72);
+}
+
+html[data-theme="light"] .dock-count-badge {
+    box-shadow: 0 0 0 2px rgba(236, 243, 249, 0.92), 0 8px 20px rgba(222, 157, 66, 0.28), 0 0 12px rgba(243, 186, 98, 0.24);
 }
 
 @media (max-width: 768px) {
@@ -283,12 +298,7 @@
     }
 
     .dock-bar {
-        gap: 10px;
-        padding: 10px 12px;
-    }
-
-    .dock-meta {
-        min-width: 84px;
+        padding: 10px;
     }
 
     .dock-primary {
