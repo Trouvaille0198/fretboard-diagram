@@ -100,9 +100,8 @@
 .form-group input:focus {
     outline: none;
     background: rgba(10, 19, 24, 0.96);
-    border-color: var(--app-border-strong);
-    box-shadow: 0 0 0 3px rgba(243, 186, 98, 0.15),
-        0 0 20px rgba(243, 186, 98, 0.08);
+    border-color: rgba(150, 200, 230, 0.34);
+    box-shadow: 0 0 0 3px rgba(243, 186, 98, 0.13), 0 0 0 1px rgba(130, 190, 220, 0.16), 0 0 20px rgba(243, 186, 98, 0.08);
 }
 
 .form-group input:disabled {
@@ -247,8 +246,8 @@
 }
 
 .close-button:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.10);
     border-color: var(--app-border-strong);
     color: var(--app-text);
-    transform: rotate(90deg);
+    transform: rotate(90deg) scale(1.10);
 }

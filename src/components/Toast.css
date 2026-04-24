@@ -9,7 +9,7 @@
     border: 1px solid var(--app-border);
     box-shadow: var(--app-shadow-md);
     z-index: 10000;
-    animation: slideIn 0.3s ease-out;
+    animation: slideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     font-size: 14px;
     line-height: 1.5;
     word-wrap: break-word;
@@ -17,7 +17,7 @@
 }
 
 .toast.exiting {
-    animation: slideOut 0.3s ease-in forwards;
+    animation: slideOut 0.22s cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
 
 .toast-content {
@@ -28,30 +28,34 @@
 
 .toast.info {
     background:
-        linear-gradient(180deg, rgba(243, 186, 98, 0.18), rgba(255, 255, 255, 0.04)),
+        linear-gradient(180deg, rgba(243, 186, 98, 0.16), rgba(255, 255, 255, 0.04)),
         var(--app-panel-strong);
-    border-color: rgba(243, 186, 98, 0.28);
+    border-color: rgba(243, 186, 98, 0.26);
+    border-left: 3px solid rgba(243, 186, 98, 0.70);
 }
 
 .toast.success {
     background:
-        linear-gradient(180deg, rgba(136, 211, 159, 0.18), rgba(255, 255, 255, 0.04)),
+        linear-gradient(180deg, rgba(136, 211, 159, 0.16), rgba(255, 255, 255, 0.04)),
         var(--app-panel-strong);
-    border-color: rgba(136, 211, 159, 0.3);
+    border-color: rgba(136, 211, 159, 0.28);
+    border-left: 3px solid rgba(136, 211, 159, 0.72);
 }
 
 .toast.error {
     background:
-        linear-gradient(180deg, rgba(240, 138, 132, 0.18), rgba(255, 255, 255, 0.04)),
+        linear-gradient(180deg, rgba(240, 138, 132, 0.16), rgba(255, 255, 255, 0.04)),
         var(--app-panel-strong);
-    border-color: rgba(240, 138, 132, 0.3);
+    border-color: rgba(240, 138, 132, 0.28);
+    border-left: 3px solid rgba(240, 138, 132, 0.72);
 }
 
 .toast.warning {
     background:
-        linear-gradient(180deg, rgba(243, 186, 98, 0.18), rgba(255, 255, 255, 0.04)),
+        linear-gradient(180deg, rgba(243, 186, 98, 0.16), rgba(255, 255, 255, 0.04)),
         var(--app-panel-strong);
-    border-color: rgba(243, 186, 98, 0.32);
+    border-color: rgba(243, 186, 98, 0.30);
+    border-left: 3px solid rgba(243, 186, 98, 0.72);
 }
 
 @keyframes slideIn {
