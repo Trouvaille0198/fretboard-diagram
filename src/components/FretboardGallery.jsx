@@ -670,25 +670,22 @@ export function FretboardGallery({
           <div className="import-dialog" onClick={(e) => e.stopPropagation()}>
             <h3>导入指板状态</h3>
             <div style={{ marginBottom: '15px' }}>
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <button
-                  className={importMode === 'string' ? 'gallery-import-btn' : 'gallery-clear-btn'}
+                  className={`mode-tab${importMode === 'string' ? ' active' : ''}`}
                   onClick={() => setImportMode('string')}
-                  style={{ flex: 1 }}
                 >
                   分享字符串
                 </button>
                 <button
-                  className={importMode === 'svg' ? 'gallery-import-btn' : 'gallery-clear-btn'}
+                  className={`mode-tab${importMode === 'svg' ? ' active' : ''}`}
                   onClick={() => setImportMode('svg')}
-                  style={{ flex: 1 }}
                 >
                   SVG 文件
                 </button>
                 <button
-                  className={importMode === 'json' ? 'gallery-import-btn' : 'gallery-clear-btn'}
+                  className={`mode-tab${importMode === 'json' ? ' active' : ''}`}
                   onClick={() => setImportMode('json')}
-                  style={{ flex: 1 }}
                 >
                   JSON 批量导入
                 </button>
@@ -724,16 +721,7 @@ export function FretboardGallery({
                       setImportText('');
                     }
                   }}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid var(--text-color)',
-                    borderRadius: '4px',
-                    background: 'var(--background-color)',
-                    color: 'var(--text-color)',
-                    cursor: 'pointer',
-                    marginBottom: '10px'
-                  }}
+                  className="import-file-input"
                 />
               </>
             ) : (
@@ -752,16 +740,7 @@ export function FretboardGallery({
                       setImportText('');
                     }
                   }}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid var(--text-color)',
-                    borderRadius: '4px',
-                    background: 'var(--background-color)',
-                    color: 'var(--text-color)',
-                    cursor: 'pointer',
-                    marginBottom: '10px'
-                  }}
+                  className="import-file-input"
                 />
               </>
             )}

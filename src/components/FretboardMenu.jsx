@@ -12,6 +12,7 @@ export function FretboardMenu({
   inTintMode,
   onSelectColor,
   onOpenTintPalette,
+  onCycleTintColor,
   enharmonic,
   onToggleEnharmonic,
   onToggleVisibility,
@@ -41,7 +42,9 @@ export function FretboardMenu({
   setHorizontalCrop,
   verticalCrop,
   setVerticalCrop,
-  onReplaceAllTintNotes
+  onReplaceAllTintNotes,
+  theme,
+  onToggleTheme,
 }) {
   // 如果选中的是第一层颜色且不是trans，生成淡色版本
   const colorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
@@ -104,6 +107,7 @@ export function FretboardMenu({
             onSelectColor={onSelectColor}
             onOpenTintPalette={onOpenTintPalette}
             onReplaceAllTintNotes={onReplaceAllTintNotes}
+            onCycleTintColor={onCycleTintColor}
           />
         </div>
         <div id="global-actions">
