@@ -89,10 +89,27 @@ export function createSvgMouseMoveHandler(params) {
         data,
         visibility,
         setPreviewHoverNote,
-        previewHoverNote
+        previewHoverNote,
+        shouldBrushPaint,
+        applyBrushPaintToNote,
+        markBrushDragging
     } = params;
 
     return (e) => {
+        if (!connectionMode && shouldBrushPaint && shouldBrushPaint(e) && svgElementRef.current) {
+            const svg = svgElementRef.current;
+            const point = svg.createSVGPoint();
+            point.x = e.clientX;
+            point.y = e.clientY;
+            const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
+            const hoveredNote = detectNoteAtPosition(svgPoint.x, svgPoint.y, notes, CONSTS.circleRadius);
+
+            if (hoveredNote && applyBrushPaintToNote) {
+                markBrushDragging?.();
+                applyBrushPaintToNote(hoveredNote.id);
+            }
+        }
+
         if (connectionMode && connectionStartNote && svgElementRef.current) {
             const svg = svgElementRef.current;
             const point = svg.createSVGPoint();
@@ -120,12 +137,16 @@ export function createSvgMouseMoveHandler(params) {
 }
 
 export function createSvgMouseDownHandler(params) {
-    const {} = params;
+    const { startBrushPaint } = params;
 
     return (e) => {
         // 如果点击的是工具栏按钮，不处理
         if (e.target.closest('.toolbar-icon-btn') || e.target.closest('.connection-toolbar')) {
             return;
+        }
+
+        if (e.button === 0) {
+            startBrushPaint?.();
         }
     };
 }

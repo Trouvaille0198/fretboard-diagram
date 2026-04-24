@@ -5,6 +5,8 @@ export function useHistory(stateSnapshot, applySnapshot) {
     const historyIndexRef = useRef(-1); // 当前历史记录索引
     const isUndoingRef = useRef(false); // 是否正在执行撤销操作
     const isRedoingRef = useRef(false); // 是否正在执行重做操作
+    const isBatchingRef = useRef(false); // 是否正在批量更新
+    const pendingBatchSnapshotRef = useRef(null); // 批量更新期间的最终快照
     const prevStateRef = useRef(JSON.stringify(stateSnapshot));
 
     // 保存历史记录
@@ -82,10 +84,47 @@ export function useHistory(stateSnapshot, applySnapshot) {
         }
     }, [applySnapshot]);
 
+    const beginBatch = useCallback(() => {
+        if (isUndoingRef.current || isRedoingRef.current) {
+            return;
+        }
+
+        isBatchingRef.current = true;
+        pendingBatchSnapshotRef.current = null;
+    }, []);
+
+    const endBatch = useCallback(() => {
+        if (!isBatchingRef.current) {
+            return;
+        }
+
+        isBatchingRef.current = false;
+
+        const pendingSnapshot = pendingBatchSnapshotRef.current;
+        pendingBatchSnapshotRef.current = null;
+
+        if (!pendingSnapshot) {
+            return;
+        }
+
+        const pendingSnapshotStr = JSON.stringify(pendingSnapshot);
+        if (pendingSnapshotStr === prevStateRef.current) {
+            return;
+        }
+
+        saveToHistory(pendingSnapshot);
+        prevStateRef.current = pendingSnapshotStr;
+    }, [saveToHistory]);
+
     // 监听快照变化，保存历史记录
     useEffect(() => {
         const currentSnapshotStr = JSON.stringify(stateSnapshot);
         if (currentSnapshotStr !== prevStateRef.current && !isUndoingRef.current && !isRedoingRef.current) {
+            if (isBatchingRef.current) {
+                pendingBatchSnapshotRef.current = stateSnapshot;
+                return;
+            }
+
             saveToHistory(stateSnapshot);
             prevStateRef.current = currentSnapshotStr;
         }
@@ -103,6 +142,8 @@ export function useHistory(stateSnapshot, applySnapshot) {
 
     return {
         undo,
-        redo
+        redo,
+        beginBatch,
+        endBatch
     };
 }

@@ -27,6 +27,7 @@ export function createNoteClickHandler(params) {
         connections,
         connectionType,
         connectionArrowDirection,
+        consumePendingBrushClick,
         updateNote: updateNoteFn
     } = params;
 
@@ -42,6 +43,12 @@ export function createNoteClickHandler(params) {
     const isSingleOnlyColor = (color) => getColorName(color) === 'trans';
 
     return (event, noteId) => {
+        if (consumePendingBrushClick && consumePendingBrushClick()) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+
         event.stopPropagation();
         const noteElement = event.currentTarget;
         noteElement.focus();
