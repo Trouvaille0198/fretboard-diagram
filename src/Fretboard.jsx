@@ -90,7 +90,7 @@ function Fretboard() {
     }
   }, [setData, setStartFret, setEndFret, setEnharmonic, setDisplayMode, setRootNote, setVisibility, setHistoryStates, setSelectedHistoryState, setCurrentDirectoryId]);
 
-  const { undo, redo } = useHistory(historySnapshot, applyHistorySnapshot);
+  const { undo, redo, beginBatch, endBatch } = useHistory(historySnapshot, applyHistorySnapshot);
 
   const {
     connectionMode, setConnectionMode,
@@ -140,6 +140,8 @@ function Fretboard() {
   const toolbarRef = useRef(null);
   const buttonClickRef = useRef({ type: false, arrow: false });
   const prevNoteColorsRef = useRef({});
+  const brushPaintStateRef = useRef({ armed: false, dragged: false, lastPaintedNoteId: null });
+  const suppressBrushClickRef = useRef(false);
 
   // 计算值
   const numFrets = endFret - startFret;
@@ -268,6 +270,101 @@ function Fretboard() {
     }
   }, [toolbarDropdown, toolbarDropdownDirection, setToolbarDropdownDirection]);
 
+  useEffect(() => {
+    const stopBrushPaint = () => {
+      const wasBatching = brushPaintStateRef.current.armed;
+      brushPaintStateRef.current.armed = false;
+      brushPaintStateRef.current.lastPaintedNoteId = null;
+
+      if (wasBatching) {
+        endBatch();
+      }
+    };
+
+    window.addEventListener('mouseup', stopBrushPaint);
+    window.addEventListener('blur', stopBrushPaint);
+
+    return () => {
+      window.removeEventListener('mouseup', stopBrushPaint);
+      window.removeEventListener('blur', stopBrushPaint);
+    };
+  }, [endBatch]);
+
+  const colorsMatch = useCallback((left, right) => {
+    if (left === right) return true;
+    if (!left || !right) return false;
+    if (typeof left === 'object' && typeof right === 'object') {
+      return left.name === right.name && left.custom === right.custom;
+    }
+    return false;
+  }, []);
+
+  const startBrushPaint = useCallback(() => {
+    if (connectionMode || selectedColorLevel === null || selectedColor === null) {
+      brushPaintStateRef.current.armed = false;
+      brushPaintStateRef.current.dragged = false;
+      brushPaintStateRef.current.lastPaintedNoteId = null;
+      return;
+    }
+
+    brushPaintStateRef.current.armed = true;
+    brushPaintStateRef.current.dragged = false;
+    brushPaintStateRef.current.lastPaintedNoteId = null;
+    beginBatch();
+  }, [connectionMode, selectedColorLevel, selectedColor, beginBatch]);
+
+  const shouldBrushPaint = useCallback((event) => {
+    return brushPaintStateRef.current.armed && (event.buttons & 1) === 1 && selectedColorLevel !== null && selectedColor !== null;
+  }, [selectedColorLevel, selectedColor]);
+
+  const markBrushDragging = useCallback(() => {
+    brushPaintStateRef.current.dragged = true;
+  }, []);
+
+  const applyBrushPaintToNote = useCallback((noteId) => {
+    if (selectedColorLevel === null || !selectedColor || brushPaintStateRef.current.lastPaintedNoteId === noteId) {
+      return;
+    }
+
+    const noteElement = document.getElementById(noteId);
+    if (!noteElement) {
+      return;
+    }
+
+    const noteData = dataRef.current[noteId] || { type: 'note', color: 'white', visibility };
+    const currentColor = noteData.color || 'white';
+    const currentColor2 = noteData.color2 || null;
+    const currentVisibility = noteData.visibility || visibility;
+    const nextUpdate = { color: selectedColor, color2: null, visibility: 'visible' };
+
+    if (colorsMatch(currentColor, selectedColor) && currentColor2 === null && currentVisibility === 'visible') {
+      brushPaintStateRef.current.lastPaintedNoteId = noteId;
+      return;
+    }
+
+    updateNote(noteElement, dataRef.current, nextUpdate);
+    brushPaintStateRef.current.lastPaintedNoteId = noteId;
+    suppressBrushClickRef.current = true;
+
+    setData(prevData => {
+      const newData = { ...prevData };
+      if (!(noteId in newData)) {
+        newData[noteId] = {};
+      }
+      newData[noteId] = { ...newData[noteId], ...nextUpdate };
+      return newData;
+    });
+  }, [selectedColorLevel, selectedColor, visibility, colorsMatch, setData, dataRef]);
+
+  const consumePendingBrushClick = useCallback(() => {
+    if (!suppressBrushClickRef.current) {
+      return false;
+    }
+
+    suppressBrushClickRef.current = false;
+    return true;
+  }, []);
+
   // 全局点击事件
   useEffect(() => {
     const handleDocumentClick = (event) => {
@@ -321,11 +418,11 @@ function Fretboard() {
     connectionMode, connectionStartNote,
     setConnectionStartNote, setConnectionStartPosition, setMousePosition,
     setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote,
-    connections, connectionType, connectionArrowDirection, updateNote: updateNote
+    connections, connectionType, connectionArrowDirection, consumePendingBrushClick, updateNote: updateNote
   }), [data, setData, visibility, selected, setSelected, selectedColorLevel, selectedColor,
     setSelectedColorLevel, setSelectedColor,
     connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
-    setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionType, connectionArrowDirection]);
+    setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionType, connectionArrowDirection, consumePendingBrushClick]);
 
   const handleNoteContextMenu = useCallback(createNoteContextMenuHandler({
     selected, setSelected, data, setData, updateNote: updateNote
@@ -356,12 +453,13 @@ function Fretboard() {
 
   const handleSvgMouseMove = useCallback(createSvgMouseMoveHandler({
     connectionMode, connectionStartNote, svgElementRef, setMousePosition,
-    notes, data, visibility, setPreviewHoverNote, previewHoverNote
-  }), [connectionMode, connectionStartNote, setMousePosition, notes, data, visibility, setPreviewHoverNote, previewHoverNote]);
+    notes, data, visibility, setPreviewHoverNote, previewHoverNote,
+    shouldBrushPaint, applyBrushPaintToNote, markBrushDragging
+  }), [connectionMode, connectionStartNote, setMousePosition, notes, data, visibility, setPreviewHoverNote, previewHoverNote, shouldBrushPaint, applyBrushPaintToNote, markBrushDragging]);
 
   const handleSvgMouseDown = useCallback(createSvgMouseDownHandler({
-    connectionMode, connectionStartNote, previewHoverNote, data, visibility, useColor2Level, setUseColor2Level
-  }), [connectionMode, connectionStartNote, previewHoverNote, data, visibility, useColor2Level, setUseColor2Level]);
+    connectionMode, connectionStartNote, previewHoverNote, data, visibility, useColor2Level, setUseColor2Level, startBrushPaint
+  }), [connectionMode, connectionStartNote, previewHoverNote, data, visibility, useColor2Level, setUseColor2Level, startBrushPaint]);
 
   const handleSvgWheel = useCallback(createSvgWheelHandler({
     connectionMode, connectionStartNote, previewHoverNote, data, visibility, useColor2Level, setUseColor2Level

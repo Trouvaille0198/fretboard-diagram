@@ -14,23 +14,22 @@
     bottom: calc(100% + 14px);
     display: flex;
     flex-direction: column-reverse;
-    gap: 14px;
+    gap: 12px;
     align-items: flex-start;
-    min-width: 320px;
-    padding: 26px 30px 44px 28px;
+    min-width: 300px;
+    padding: 22px 18px 30px 22px;
     max-height: min(70vh, 760px);
     overflow-y: auto;
-    overflow-x: visible;
-    scroll-padding-bottom: 36px;
+    overflow-x: hidden;
+    scroll-padding-bottom: 28px;
+    scrollbar-gutter: stable;
     border-radius: var(--app-radius-xl);
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
-        var(--app-panel-strong);
-    border: 1px solid var(--app-border);
+    background: rgba(9, 15, 20, 0.08);
+    border: 1px solid rgba(150, 200, 230, 0.1);
     box-shadow:
-        var(--app-shadow-lg),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(18px);
+        0 10px 22px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(6px) saturate(105%);
     opacity: 0;
     transform: translateY(16px) scale(0.97);
     pointer-events: none;
@@ -48,14 +47,18 @@
     width: 6px;
 }
 
+.dock-stack::-webkit-scrollbar-track {
+    background: transparent;
+}
+
 .dock-stack::-webkit-scrollbar-thumb {
     background: rgba(230, 237, 242, 0.2);
     border-radius: 999px;
 }
 
 .dock-item {
-    width: 224px;
-    height: 146px;
+    width: 210px;
+    height: 136px;
     position: relative;
     flex: 0 0 auto;
     transform-origin: left bottom;
@@ -65,7 +68,7 @@
 }
 
 .dock-item:hover {
-    transform: translateX(12px) scale(1.06) rotate(0deg);
+    transform: translateX(8px) scale(1.04) rotate(0deg);
 }
 
 .dock-item.selected {
@@ -249,14 +252,12 @@
 
 html[data-theme="light"] .dock-stack,
 html[data-theme="light"] .dock-bar {
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(244, 248, 252, 0.96)),
-        var(--app-panel-strong);
-    border-color: rgba(44, 76, 109, 0.14);
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(44, 76, 109, 0.1);
     box-shadow:
-        0 18px 34px rgba(70, 100, 130, 0.16),
-        0 0 0 1px rgba(255, 255, 255, 0.76),
-        inset 0 1px 0 rgba(255, 255, 255, 0.94);
+        0 12px 24px rgba(70, 100, 130, 0.08),
+        0 0 0 1px rgba(255, 255, 255, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 html[data-theme="light"] .dock-item-apply,
@@ -288,13 +289,13 @@ html[data-theme="light"] .dock-count-badge {
 
     .dock-stack {
         max-height: 54vh;
-        min-width: 250px;
-        padding: 18px 20px 30px 18px;
+        min-width: 240px;
+        padding: 16px 12px 22px 16px;
     }
 
     .dock-item {
-        width: 176px;
-        height: 114px;
+        width: 168px;
+        height: 108px;
     }
 
     .dock-bar {
