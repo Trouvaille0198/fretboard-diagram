@@ -42,7 +42,10 @@
   font-size: 24px;
   font-weight: 700;
   line-height: 1.1;
-  color: var(--app-text);
+  background: linear-gradient(135deg, var(--app-accent-warm) 0%, var(--app-text) 60%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .scale-display-grid {
@@ -58,13 +61,14 @@
   border: 1px solid rgba(230, 237, 242, 0.12);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   text-align: center;
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
 .scale-degree-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.22);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(243, 186, 98, 0.18);
+  border-color: rgba(243, 186, 98, 0.22);
 }
 
 .scale-degree-index {

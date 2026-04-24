@@ -122,6 +122,18 @@ function Fretboard() {
   // 异色模式标记
   const [inTintMode, setInTintMode] = useState(false);
 
+  // 主题
+  const [theme, setTheme] = useState(() => localStorage.getItem('fretboard-theme') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('fretboard-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(t => t === 'dark' ? 'light' : 'dark');
+  }, []);
+
   // Refs
   const svgElementRef = useRef(null);
   const notesElementRef = useRef(null);
@@ -403,6 +415,21 @@ function Fretboard() {
     cycleLevel2Color(selectedColorLevel, selectedColor, selectColorMemo, generateTintVariants, getLevel2Color, inTintMode, -1);
   }, [selectedColorLevel, selectedColor, selectColorMemo, inTintMode]);
 
+  const cyclePaletteTintColorMemo = useCallback((colorName, direction = 1) => {
+    const tintVariants = generateTintVariants(getLevel1FillColor(colorName));
+    const actualColorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
+    const currentCustom = selectedColor && typeof selectedColor === 'object' ? selectedColor.custom : null;
+    const currentIndex = selectedColorLevel === 1 && actualColorName === colorName && currentCustom
+      ? tintVariants.indexOf(currentCustom)
+      : -1;
+    const nextIndex = currentIndex === -1
+      ? direction > 0 ? 0 : tintVariants.length - 1
+      : (currentIndex + direction + tintVariants.length) % tintVariants.length;
+
+    selectColorMemo(1, colorName, tintVariants[nextIndex]);
+    setInTintMode(true);
+  }, [selectedColorLevel, selectedColor, selectColorMemo, setInTintMode]);
+
   const toggleVisibilityMemo = useCallback(() => {
     toggleVisibility(visibility, setVisibility, notesElementRef, data, updateNote);
     setData(prevData => {
@@ -585,6 +612,18 @@ function Fretboard() {
 
   return (
     <>
+      <button
+        className={`theme-switch${theme === 'light' ? ' theme-switch--light' : ''}`}
+        onClick={toggleTheme}
+        title={theme === 'dark' ? '切换亮色模式' : '切换暗色模式'}
+        aria-label="Toggle theme"
+      >
+        <span className="theme-switch__track">
+          <span className="theme-switch__thumb">
+            <span className="theme-switch__icon">{theme === 'dark' ? '☾' : '☀'}</span>
+          </span>
+        </span>
+      </button>
       <div className="title-header">
         <div className="title-header-inner">
           <h1>
@@ -712,6 +751,7 @@ function Fretboard() {
         inTintMode={inTintMode}
         onSelectColor={selectColorMemo}
         onOpenTintPalette={openTintPaletteMemo}
+        onCycleTintColor={cyclePaletteTintColorMemo}
         onReplaceAllTintNotes={replaceAllTintNotesMemo}
         enharmonic={enharmonic}
         onToggleEnharmonic={toggleEnharmonicMemo}
@@ -751,6 +791,8 @@ function Fretboard() {
         startFret={startFret}
         endFret={endFret}
         onFretWindowChange={setFretWindowMemo}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <FretboardDock

@@ -16,7 +16,7 @@
     margin: 0;
     overflow: hidden;
     z-index: 1000;
-    transition: transform 0.3s ease;
+    transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
     transform: translateX(-100%);
 }
 
@@ -32,28 +32,29 @@
     width: 48px;
     height: 48px;
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+        linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%),
         var(--app-panel);
     border: 1px solid var(--app-border);
     border-radius: 16px;
     box-shadow: var(--app-shadow-md);
-    backdrop-filter: blur(18px);
+    backdrop-filter: blur(22px) saturate(140%);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 999;
-    transition: all 0.3s ease;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
     color: var(--app-text);
     font-size: 20px;
 }
 
 .gallery-toggle-btn:hover {
     background:
-        linear-gradient(180deg, rgba(243, 186, 98, 0.16), rgba(255, 255, 255, 0.04)),
+        linear-gradient(160deg, rgba(243, 186, 98, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%),
         var(--app-panel);
-    border-color: var(--app-border-strong);
-    transform: translateY(-1px);
+    border-color: rgba(243, 186, 98, 0.38);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: var(--app-shadow-md), 0 0 0 1px rgba(243, 186, 98, 0.16), 0 0 22px rgba(243, 186, 98, 0.14);
 }
 
 .gallery-toggle-btn.open {
@@ -198,11 +199,11 @@
 
 .gallery-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
-    border-color: var(--app-border);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(243, 186, 98, 0.14);
+    border-color: rgba(243, 186, 98, 0.24);
     background:
-        linear-gradient(180deg, rgba(243, 186, 98, 0.08), rgba(255, 255, 255, 0.02)),
-        rgba(8, 15, 20, 0.78);
+        linear-gradient(180deg, rgba(243, 186, 98, 0.09), rgba(255, 255, 255, 0.02)),
+        rgba(8, 15, 20, 0.86);
 }
 
 .gallery-item.selected {
@@ -291,8 +292,9 @@
 }
 
 .gallery-delete-btn:hover {
-    background: rgba(240, 138, 132, 0.22);
-    transform: translateY(-1px);
+    background: rgba(240, 138, 132, 0.24);
+    border-color: rgba(240, 138, 132, 0.36);
+    transform: translateY(-1px) scale(1.08);
 }
 
 .gallery-share-btn {
@@ -306,8 +308,9 @@
 }
 
 .gallery-share-btn:hover {
-    background: rgba(243, 186, 98, 0.18);
-    transform: translateY(-1px);
+    background: rgba(243, 186, 98, 0.20);
+    border-color: rgba(243, 186, 98, 0.32);
+    transform: translateY(-1px) scale(1.08);
 }
 
 .gallery-item-info {
@@ -383,9 +386,13 @@
 }
 
 .import-dialog h3 {
-    margin: 0 0 10px 0;
-    color: var(--app-text);
+    margin: 0 0 16px 0;
     font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-warm) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .import-textarea {
@@ -528,9 +535,9 @@
 }
 
 .directory-tab.active {
-    background: rgba(243, 186, 98, 0.12);
-    border-color: rgba(243, 186, 98, 0.26);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    background: rgba(243, 186, 98, 0.14);
+    border-color: rgba(243, 186, 98, 0.32);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(243, 186, 98, 0.10);
 }
 
 .directory-tab-name {
@@ -543,7 +550,7 @@
 }
 
 .directory-tab.active .directory-tab-name {
-    color: var(--app-text);
+    color: #f3c67d;
     font-weight: 600;
 }
 
@@ -602,14 +609,15 @@
     cursor: pointer;
     font-size: 16px;
     line-height: 1;
-    transition: all 0.2s ease;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
     padding: 0;
 }
 
 .directory-tab-add:hover {
-    background: rgba(243, 186, 98, 0.12);
-    border-color: rgba(243, 186, 98, 0.26);
+    background: rgba(243, 186, 98, 0.13);
+    border-color: rgba(243, 186, 98, 0.30);
     color: var(--app-text);
+    transform: scale(1.14);
 }
 
 .gallery-export-btn:hover {
@@ -647,4 +655,56 @@
 .context-menu-item:hover {
     background: rgba(243, 186, 98, 0.12);
     color: var(--app-text);
+}
+
+/* 导入模式切换标签 */
+.mode-tab {
+    flex: 1;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--app-text-muted);
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    white-space: nowrap;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mode-tab:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--app-text);
+    border-color: var(--app-border-strong);
+}
+
+.mode-tab.active {
+    background: rgba(243, 186, 98, 0.14);
+    border-color: rgba(243, 186, 98, 0.32);
+    color: #ffe1ac;
+    box-shadow: 0 0 0 1px rgba(243, 186, 98, 0.12);
+}
+
+/* 导入文件输入框 */
+.import-file-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--app-border);
+    border-radius: 12px;
+    background: rgba(7, 14, 18, 0.92);
+    color: var(--app-text);
+    cursor: pointer;
+    margin-bottom: 14px;
+    font-size: 13px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+    font-family: inherit;
+}
+
+.import-file-input:hover {
+    border-color: var(--app-border-strong);
 }

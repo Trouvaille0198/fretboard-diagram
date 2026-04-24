@@ -90,7 +90,8 @@
 }
 
 .dock-item-apply:hover {
-    border-color: var(--app-border-strong);
+    border-color: rgba(243, 186, 98, 0.42);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(243, 186, 98, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .dock-item-thumbnail,
@@ -133,13 +134,13 @@
     padding: 16px 18px 16px 16px;
     border-radius: var(--app-radius-xl);
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+        linear-gradient(160deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.025) 100%),
         var(--app-panel-strong);
     border: 1px solid var(--app-border);
     box-shadow:
         var(--app-shadow-lg),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(18px);
+        inset 0 1px 0 rgba(200, 230, 255, 0.10);
+    backdrop-filter: blur(22px) saturate(140%);
     pointer-events: auto;
 }
 
@@ -226,11 +227,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(180deg, var(--app-accent), var(--app-accent-strong));
+    background: linear-gradient(145deg, var(--app-accent-warm), var(--app-accent-strong));
     color: #071118;
     font-size: 12px;
-    font-weight: 700;
-    box-shadow: 0 10px 20px rgba(222, 157, 66, 0.34);
+    font-weight: 800;
+    box-shadow: 0 0 0 2px rgba(8, 14, 18, 0.6), 0 8px 20px rgba(222, 157, 66, 0.46), 0 0 12px rgba(243, 186, 98, 0.30);
 }
 
 .dock-label {
@@ -246,20 +247,21 @@
     height: 38px;
     padding: 0 18px;
     border: 1px solid var(--app-border);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
     color: var(--app-text-muted);
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.02em;
     cursor: pointer;
-    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .dock-clear-btn:hover {
-    border-color: rgba(240, 138, 132, 0.45);
+    border-color: rgba(240, 138, 132, 0.48);
     background: rgba(240, 138, 132, 0.12);
     color: var(--app-text);
+    transform: translateY(-1px);
 }
 
 @media (max-width: 768px) {
