@@ -235,7 +235,12 @@ export function createNoteClickHandler(params) {
                 if (colorsMatch(currentColor, selectedColor)) {
                     update = { visibility: 'visible' };
                 } else {
-                    update = { color2: selectedColor, visibility: 'visible' };
+                    const targetKey = getSplitTargetFromPoint(getNoteSplitMode(noteData), localX, localY);
+                    if (targetKey === 'color') {
+                        update = { color: selectedColor, color2: currentColor, visibility: 'visible' };
+                    } else {
+                        update = { color: currentColor, color2: selectedColor, visibility: 'visible' };
+                    }
                 }
             } else {
                 const targetKey = getSplitTargetFromPoint(getNoteSplitMode(noteData), localX, localY);

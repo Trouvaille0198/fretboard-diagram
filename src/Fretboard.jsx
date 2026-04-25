@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import './fretboard.css';
 import { CONSTS } from './constants';
-import { updateNote, inlineCSS, noteToSolfege, calculateConnectionColor } from './utils';
+import { updateNote, inlineCSS, noteToSolfege, calculateConnectionColor, getColorName } from './utils';
 import { initColorCSSVariables } from './colorConfig';
 import { useFretboardState } from './hooks/useFretboardState';
 import { useConnectionState } from './hooks/useConnectionState';
@@ -335,14 +335,32 @@ function Fretboard() {
     const currentColor = noteData.color || 'white';
     const currentColor2 = noteData.color2 || null;
     const currentVisibility = noteData.visibility || visibility;
-    const nextUpdate = { color: selectedColor, color2: null, visibility: 'visible' };
+    let nextUpdate;
 
-    if (colorsMatch(currentColor, selectedColor) && currentColor2 === null && currentVisibility === 'visible') {
+    if (selectedColorLevel === 1) {
+      const selectedIsSingleOnly = getColorName(selectedColor) === 'trans';
+      const currentHasSingleOnlyColor = getColorName(currentColor) === 'trans' || getColorName(currentColor2) === 'trans';
+
+      if (colorsMatch(currentColor, selectedColor) && currentColor2 === null && currentVisibility === 'visible') {
+        nextUpdate = { visibility: 'visible' };
+      } else if (selectedIsSingleOnly || currentHasSingleOnlyColor) {
+        nextUpdate = { color: selectedColor, color2: null, visibility: 'visible' };
+      } else {
+        nextUpdate = { color: selectedColor, color2: null, visibility: 'visible' };
+      }
+    } else {
+      nextUpdate = { color2: selectedColor, visibility: 'visible' };
+    }
+
+    const nextColor = 'color' in nextUpdate ? nextUpdate.color : currentColor;
+    const nextColor2 = 'color2' in nextUpdate ? nextUpdate.color2 : currentColor2;
+    const nextVisibility = nextUpdate.visibility || currentVisibility;
+
+    if (colorsMatch(currentColor, nextColor) && colorsMatch(currentColor2, nextColor2) && currentVisibility === nextVisibility) {
       brushPaintStateRef.current.lastPaintedNoteId = noteId;
       return;
     }
 
-    updateNote(noteElement, dataRef.current, nextUpdate);
     brushPaintStateRef.current.lastPaintedNoteId = noteId;
     suppressBrushClickRef.current = true;
 
@@ -352,6 +370,7 @@ function Fretboard() {
         newData[noteId] = {};
       }
       newData[noteId] = { ...newData[noteId], ...nextUpdate };
+      dataRef.current = newData;
       return newData;
     });
   }, [selectedColorLevel, selectedColor, visibility, colorsMatch, setData, dataRef]);

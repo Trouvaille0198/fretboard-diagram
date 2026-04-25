@@ -106,7 +106,10 @@ export function createSvgMouseMoveHandler(params) {
 
             if (hoveredNote && applyBrushPaintToNote) {
                 markBrushDragging?.();
-                applyBrushPaintToNote(hoveredNote.id);
+                applyBrushPaintToNote(hoveredNote.id, {
+                    x: svgPoint.x - hoveredNote.x,
+                    y: svgPoint.y - hoveredNote.y
+                });
             }
         }
 
@@ -152,7 +155,7 @@ export function createSvgMouseDownHandler(params) {
 }
 
 export function createSvgWheelHandler(params) {
-    const {} = params;
+    const { } = params;
 
     return (e) => {
         return e;
