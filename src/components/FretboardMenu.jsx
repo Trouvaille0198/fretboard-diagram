@@ -43,6 +43,7 @@ export function FretboardMenu({
   verticalCrop,
   setVerticalCrop,
   onReplaceAllTintNotes,
+  t,
 }) {
   // 如果选中的是第一层颜色且不是trans，生成淡色版本
   const colorName = selectedColor && typeof selectedColor === 'object' ? selectedColor.name : selectedColor;
@@ -55,6 +56,8 @@ export function FretboardMenu({
 
   // 小调状态
   const [isMinor, setIsMinor] = useState(false);
+
+  const tm = t?.menu ?? {};
 
   return (
     <div className="menu">
@@ -76,7 +79,7 @@ export function FretboardMenu({
                     className={`color color-tint ${isSelected ? 'selected' : ''}`}
                     style={{ backgroundColor: color }}
                     onClick={() => onSelectColor(1, colorName, color)}
-                    title={`异色版本 ${index + 1}`}
+                    title={tm.tintVariantTitle ? tm.tintVariantTitle(index + 1) : `Tint ${index + 1}`}
                   />
                 );
               })}
@@ -92,7 +95,7 @@ export function FretboardMenu({
                     className={`color color-tint level2 ${isSelected ? 'selected' : ''}`}
                     style={{ borderColor: color, borderWidth: '6px', borderStyle: 'solid' }}
                     onClick={() => onSelectColor(2, colorName, color)}
-                    title={`异色版本 ${index + 1}`}
+                    title={tm.tintVariantTitle ? tm.tintVariantTitle(index + 1) : `Tint ${index + 1}`}
                   />
                 );
               })}
@@ -106,45 +109,46 @@ export function FretboardMenu({
             onOpenTintPalette={onOpenTintPalette}
             onReplaceAllTintNotes={onReplaceAllTintNotes}
             onCycleTintColor={onCycleTintColor}
+            t={t}
           />
         </div>
         <div className="menu-global-actions">
           <button
             className="enharmonic-button"
             onClick={onToggleEnharmonic}
-            title="切换升降号"
+            title={tm.toggleAccidental ?? 'Toggle accidental'}
           >
             {CONSTS.sign[enharmonic]}
           </button>
           <button
             className="button"
             onClick={onToggleVisibility}
-            title="Toggle (Z)"
+            title={tm.toggleTitle ?? 'Toggle (Z)'}
           >
-            Toggle
+            {tm.toggle ?? 'Toggle'}
           </button>
           {onSaveState && (
             <button
               className="button"
               onClick={onSaveState}
-              title="Save current fretboard state (Ctrl+S)"
+              title={tm.saveTitle ?? 'Save (Ctrl+S)'}
             >
-              Save
+              {tm.save ?? 'Save'}
             </button>
           )}
           <button
             className="button"
             onClick={onReset}
-            title="Reset (Ctrl+D)"
+            title={tm.resetTitle ?? 'Reset (Ctrl+D)'}
           >
-            Reset
+            {tm.reset ?? 'Reset'}
           </button>
           <button
             className="button menu-download-button"
             onClick={onSaveSVG}
-            title={copyOnly ? "复制到剪贴板" : "下载 SVG"}
+            title={copyOnly ? (tm.copySvgTitle ?? 'Copy to clipboard') : (tm.downloadSvgTitle ?? 'Download SVG')}
           >
-            {copyOnly ? 'Copy SVG' : 'Download SVG'}
+            {copyOnly ? (tm.copySvg ?? 'Copy SVG') : (tm.downloadSvg ?? 'Download SVG')}
           </button>
         </div>
         {/* 连线工具区域 */}
@@ -153,17 +157,17 @@ export function FretboardMenu({
             <button
               className={`button menu-control-button-primary ${connectionMode ? 'selected' : ''}`}
               onClick={onToggleConnectionMode}
-              title="Connection Tool (S)"
+              title={tm.connectTitle ?? 'Connection tool (S)'}
             >
-              Connect
+              {tm.connect ?? 'Connect'}
             </button>
             <button
               className="button menu-control-button-compact"
               onClick={() => setConnectionType(connectionType === 'line' ? 'arc' : 'line')}
               disabled={!connectionMode}
-              title={connectionType === 'line' ? '直线' : '弧线'}
+              title={connectionType === 'line' ? (tm.lineTitle ?? 'Line') : (tm.arcTitle ?? 'Arc')}
             >
-              {connectionType === 'line' ? 'Line' : 'Arc'}
+              {connectionType === 'line' ? (tm.line ?? 'Line') : (tm.arc ?? 'Arc')}
             </button>
             <button
               className="button menu-control-button-compact"
@@ -174,11 +178,11 @@ export function FretboardMenu({
                 setConnectionArrowDirection(directions[nextIndex]);
               }}
               disabled={!connectionMode}
-              title={`箭头：${connectionArrowDirection === 'none' ? '无' : connectionArrowDirection === 'start' ? '起点' : connectionArrowDirection === 'end' ? '终点' : '双向'}`}
+              title={tm.arrowTitle ? tm.arrowTitle(connectionArrowDirection) : connectionArrowDirection}
             >
-              {connectionArrowDirection === 'none' ? '无' :
-                connectionArrowDirection === 'start' ? '←' :
-                  connectionArrowDirection === 'end' ? '→' : '⇄'}
+              {connectionArrowDirection === 'none' ? (tm.arrowNone ?? 'None') :
+                connectionArrowDirection === 'start' ? (tm.arrowStart ?? '←') :
+                  connectionArrowDirection === 'end' ? (tm.arrowEnd ?? '→') : (tm.arrowBoth ?? '⇄')}
             </button>
           </div>
         </div>
@@ -192,7 +196,7 @@ export function FretboardMenu({
                   checked={includeMarkers}
                   onChange={(e) => setIncludeMarkers(e.target.checked)}
                 />
-                <span>包含品数</span>
+                <span>{tm.includeMarkers ?? 'Fret markers'}</span>
               </label>
               <label className="menu-checkbox">
                 <input
@@ -200,7 +204,7 @@ export function FretboardMenu({
                   checked={showNotes}
                   onChange={(e) => setShowNotes(e.target.checked)}
                 />
-                <span>显示音符</span>
+                <span>{tm.showNotes ?? 'Show notes'}</span>
               </label>
             </div>
             <div className="menu-download-row">
@@ -210,7 +214,7 @@ export function FretboardMenu({
                   checked={horizontalCrop}
                   onChange={(e) => setHorizontalCrop(e.target.checked)}
                 />
-                <span>水平截断</span>
+                <span>{tm.horizontalCrop ?? 'H-crop'}</span>
               </label>
               <label className="menu-checkbox">
                 <input
@@ -218,7 +222,7 @@ export function FretboardMenu({
                   checked={verticalCrop}
                   onChange={(e) => setVerticalCrop(e.target.checked)}
                 />
-                <span>垂直截断</span>
+                <span>{tm.verticalCrop ?? 'V-crop'}</span>
               </label>
               <label className="menu-checkbox">
                 <input
@@ -226,7 +230,7 @@ export function FretboardMenu({
                   checked={copyOnly}
                   onChange={(e) => setCopyOnly(e.target.checked)}
                 />
-                <span>仅复制</span>
+                <span>{tm.copyOnly ?? 'Copy only'}</span>
               </label>
               <label className="menu-checkbox">
                 <input
@@ -234,7 +238,7 @@ export function FretboardMenu({
                   checked={isMinor}
                   onChange={(e) => setIsMinor(e.target.checked)}
                 />
-                <span>小调</span>
+                <span>{tm.minor ?? 'Minor'}</span>
               </label>
             </div>
           </div>

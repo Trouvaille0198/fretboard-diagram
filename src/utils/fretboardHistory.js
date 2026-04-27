@@ -264,6 +264,7 @@ export function saveFretboardStateSilently({
 	visibility,
 	svgElementRef,
 	currentDirectoryId = "default",
+	autoSaveLabel,
 }) {
 	try {
 		// 从 localStorage 读取现有历史
@@ -309,7 +310,7 @@ export function saveFretboardStateSilently({
 					day: "2-digit",
 					hour: "2-digit",
 					minute: "2-digit",
-				}) + " (自动保存)",
+				}) + " (" + (autoSaveLabel ?? 'autosave') + ")",
 			thumbnail: null,
 			state: {
 				data: JSON.parse(JSON.stringify(data)), // 深拷贝，包括 connections
@@ -366,6 +367,7 @@ export function restoreFretboardState(
 		setToastMessage,
 		setToastType,
 		setSelectedHistoryState,
+		t,
 		// 配置项恢复函数（可选）
 		setIncludeMarkers,
 		setCopyOnly,
@@ -433,11 +435,11 @@ export function restoreFretboardState(
 		}
 
 		// 显示提示
-		setToastMessage("状态已恢复！");
+		setToastMessage(t?.history?.restored ?? 'State restored!');
 		setToastType("success");
 	} catch (error) {
-		console.error("恢复状态失败:", error);
-		setToastMessage("恢复失败：" + error.message);
+		console.error("Restore state failed:", error);
+		setToastMessage(t?.history?.restoreFail ? t.history.restoreFail(error.message) : 'Restore failed: ' + error.message);
 		setToastType("error");
 	}
 }
@@ -524,14 +526,13 @@ export function generateUniqueDirName(directories, baseName = "new") {
 }
 
 // 验证目录名称合法性
-export function validateDirectoryName(name, directories, currentDirId = null) {
+export function validateDirectoryName(name, directories, currentDirId = null, t = null) {
 	const trimmedName = name.trim();
 
 	if (!trimmedName) {
-		return { valid: false, message: "目录名称不能为空" };
+		return { valid: false, message: t?.history?.dirNameEmpty ?? 'Directory name cannot be empty' };
 	}
 
-	// 检查是否与其他目录同名
 	const isDuplicate = directories.some(
 		(dir) =>
 			dir.id !== currentDirId &&
@@ -539,7 +540,7 @@ export function validateDirectoryName(name, directories, currentDirId = null) {
 	);
 
 	if (isDuplicate) {
-		return { valid: false, message: "目录名称已存在" };
+		return { valid: false, message: t?.history?.dirNameExists ?? 'Directory name already exists' };
 	}
 
 	return { valid: true, name: trimmedName };
@@ -548,7 +549,7 @@ export function validateDirectoryName(name, directories, currentDirId = null) {
 // ===== 导出导入工具函数 =====
 
 // 导出所有数据为 JSON
-export function exportAllData() {
+export function exportAllData(t = null) {
 	try {
 		const directories = JSON.parse(
 			localStorage.getItem("fretboard-directories") || "[]"
@@ -586,33 +587,32 @@ export function exportAllData() {
 		document.body.removeChild(link);
 		URL.revokeObjectURL(url);
 
-		return { success: true, message: "导出成功！" };
+		return { success: true, message: t?.history?.exportSuccess ?? 'Export successful!' };
 	} catch (error) {
-		console.error("导出失败:", error);
-		return { success: false, message: "导出失败：" + error.message };
+		console.error("Export failed:", error);
+		return { success: false, message: t?.history?.exportFail ? t.history.exportFail(error.message) : 'Export failed: ' + error.message };
 	}
 }
 
 // 验证导入数据格式
-export function validateImportData(data) {
+export function validateImportData(data, t = null) {
 	try {
 		if (!data || typeof data !== "object") {
-			return { valid: false, message: "无效的数据格式" };
+			return { valid: false, message: t?.history?.invalidFormat ?? 'Invalid data format' };
 		}
 
 		if (!data.version || typeof data.version !== "string") {
-			return { valid: false, message: "缺少版本信息" };
+			return { valid: false, message: t?.history?.missingVersion ?? 'Missing version information' };
 		}
 
 		if (!Array.isArray(data.directories)) {
-			return { valid: false, message: "目录数据格式错误" };
+			return { valid: false, message: t?.history?.invalidDirFormat ?? 'Invalid directory data format' };
 		}
 
 		if (!Array.isArray(data.historyStates)) {
-			return { valid: false, message: "状态数据格式错误" };
+			return { valid: false, message: t?.history?.invalidStateFormat ?? 'Invalid state data format' };
 		}
 
-		// 验证目录结构
 		for (const dir of data.directories) {
 			if (
 				!dir.id ||
@@ -620,11 +620,10 @@ export function validateImportData(data) {
 				typeof dir.createdAt !== "number" ||
 				typeof dir.isDefault !== "boolean"
 			) {
-				return { valid: false, message: "目录数据结构不完整" };
+				return { valid: false, message: t?.history?.invalidDirStructure ?? 'Incomplete directory data structure' };
 			}
 		}
 
-		// 验证状态结构
 		for (const state of data.historyStates) {
 			if (
 				!state.id ||
@@ -633,13 +632,13 @@ export function validateImportData(data) {
 				!state.name ||
 				!state.state
 			) {
-				return { valid: false, message: "状态数据结构不完整" };
+				return { valid: false, message: t?.history?.invalidStateStructure ?? 'Incomplete state data structure' };
 			}
 		}
 
 		return { valid: true };
 	} catch (error) {
-		return { valid: false, message: "数据验证失败：" + error.message };
+		return { valid: false, message: t?.history?.validationFail ? t.history.validationFail(error.message) : 'Data validation failed: ' + error.message };
 	}
 }
 
@@ -699,10 +698,9 @@ export function resolveStateConflicts(localStates, importStates, dirMapping) {
 }
 
 // 批量导入 JSON 数据
-export function importBatchData(jsonData) {
+export function importBatchData(jsonData, t = null) {
 	try {
-		// 验证数据
-		const validation = validateImportData(jsonData);
+		const validation = validateImportData(jsonData, t);
 		if (!validation.valid) {
 			return { success: false, message: validation.message };
 		}
@@ -740,9 +738,9 @@ export function importBatchData(jsonData) {
 
 		const newDirCount = newDirs.length;
 		const stateCount = resolvedStates.length;
-		const message = `成功导入 ${
-			newDirCount + mergeCount
-		} 个目录（其中 ${mergeCount} 个合并）和 ${stateCount} 个状态`;
+		const message = t?.history?.importBatchSuccess
+			? t.history.importBatchSuccess(newDirCount, mergeCount, stateCount)
+			: `Imported ${newDirCount + mergeCount} directories (${mergeCount} merged) and ${stateCount} states`;
 
 		return {
 			success: true,
@@ -751,7 +749,7 @@ export function importBatchData(jsonData) {
 			historyStates: updatedStates,
 		};
 	} catch (error) {
-		console.error("批量导入失败:", error);
-		return { success: false, message: "导入失败：" + error.message };
+		console.error("Batch import failed:", error);
+		return { success: false, message: t?.history?.importFail ? t.history.importFail(error.message) : 'Import failed: ' + error.message };
 	}
 }

@@ -12,7 +12,8 @@ const LEVEL1_SHORTCUTS = {
   black: 'D'
 };
 
-export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPalette, onReplaceAllTintNotes, onCycleTintColor }) {
+export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPalette, onReplaceAllTintNotes, onCycleTintColor, t }) {
+  const tp = t?.palette ?? {};
   const paletteRef = useRef(null);
 
   // 获取实际的颜色名称（处理自定义颜色对象）
@@ -50,7 +51,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPale
     if (colorName === 'trans') return;
 
     // 显示确认对话框
-    const confirmed = window.confirm(`是否替换成该颜色？\n\n这将把所有异色note替换为 ${colorName} 对应浓度的异色颜色。`);
+    const confirmed = window.confirm(tp.replaceConfirm ? tp.replaceConfirm(colorName) : `Replace with this color?\n\nThis will replace all tint notes with ${colorName} tint.`);
     if (confirmed && onReplaceAllTintNotes) {
       onReplaceAllTintNotes(colorName);
     }
@@ -62,7 +63,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPale
         {LEVEL1_COLOR_ORDER.map(colorName => (
           <button
             key={colorName}
-            title={LEVEL1_SHORTCUTS[colorName] ? `${colorName} (${LEVEL1_SHORTCUTS[colorName]}) · 滚轮循环异色` : `${colorName} · 滚轮循环异色`}
+            title={tp.tintTitle ? tp.tintTitle(colorName, LEVEL1_SHORTCUTS[colorName]) : (LEVEL1_SHORTCUTS[colorName] ? `${colorName} (${LEVEL1_SHORTCUTS[colorName]})` : colorName)}
             className={`color ${colorName} ${selectedColorLevel === 1 && actualColorName === colorName ? 'selected' : ''}`}
             onClick={() => onOpenTintPalette && onOpenTintPalette(1, colorName)}
             onContextMenu={(e) => handleContextMenu(e, colorName)}

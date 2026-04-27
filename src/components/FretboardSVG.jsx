@@ -2,6 +2,7 @@ import React from 'react';
 import { CONSTS } from '../constants';
 import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, calculateArcPath, getPointOnNoteEdge, getPointOnPathAtDistance, getColorName, getNoteSplitMode, resolveNoteColorValue } from '../utils';
 import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from '../colorConfig';
+import { useLanguage } from '../i18n';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
 const LEVEL2_COLOR_ORDER = Object.keys(LEVEL2_COLORS);
@@ -69,6 +70,8 @@ export function FretboardSVG({
   setSelectedConnection,
   showNotes
 }) {
+  const { t } = useLanguage();
+  const ts = t?.svg ?? {};
   return (
     <svg
       ref={svgElementRef}
@@ -860,9 +863,9 @@ export function FretboardSVG({
                       return newData;
                     });
                   }}
-                  title="类型"
+                  title={ts.connType ?? 'Type'}
                 >
-                  {connections[selectedConnection]?.type === 'line' ? '线' : '弧'}
+                  {connections[selectedConnection]?.type === 'line' ? (ts.connTypeLine ?? 'Line') : (ts.connTypeArc ?? 'Arc')}
                 </button>
               </div>
 
@@ -925,15 +928,15 @@ export function FretboardSVG({
                       return newData;
                     });
                   }}
-                  title="箭头"
+                  title={ts.connArrow ?? 'Arrow'}
                 >
                   {(() => {
                     const arrowDir = connections[selectedConnection]?.arrowDirection || 'none';
-                    if (arrowDir === 'none') return '无';
+                    if (arrowDir === 'none') return ts.connArrowNone ?? '–';
                     if (arrowDir === 'start') return '←';
                     if (arrowDir === 'end') return '→';
                     if (arrowDir === 'both') return '⇄';
-                    return '无';
+                    return ts.connArrowNone ?? '–';
                   })()}
                 </button>
               </div>
@@ -953,9 +956,9 @@ export function FretboardSVG({
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  title="粗细"
+                  title={ts.connWidth ?? 'Width'}
                 >
-                  粗
+                  {ts.connWidthBtn ?? '≡'}
                 </button>
                 {toolbarDropdown === 'width' && (
                   <div
@@ -1009,9 +1012,9 @@ export function FretboardSVG({
                       e.preventDefault();
                       e.stopPropagation();
                     }}
-                    title="弧度"
+                    title={ts.connCurvature ?? 'Curve'}
                   >
-                    弯
+                    {ts.connCurvatureBtn ?? '⌒'}
                   </button>
                   {toolbarDropdown === 'curvature' && (
                     <div
@@ -1142,9 +1145,9 @@ export function FretboardSVG({
                       return newData;
                     });
                   }}
-                  title="灰色毛玻璃效果"
+                  title={ts.connGray ?? 'Frosted glass'}
                 >
-                  灰
+                  {ts.connGrayBtn ?? '◑'}
                 </button>
               </div>
 
@@ -1162,7 +1165,7 @@ export function FretboardSVG({
                   setConnectionToolbarVisible(false);
                   setSelectedConnection(null);
                 }}
-                title="删除连线"
+                title={ts.connDelete ?? 'Delete connection'}
               >
                 ×
               </button>

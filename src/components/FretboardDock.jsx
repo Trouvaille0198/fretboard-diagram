@@ -8,7 +8,10 @@ export function FretboardDock({
   onRestore,
   onDelete,
   onClear,
+  t,
 }) {
+  const td = t?.dock ?? {};
+
   const [isExpanded, setIsExpanded] = React.useState(false);
   const collapseTimerRef = React.useRef(null);
 
@@ -52,7 +55,7 @@ export function FretboardDock({
         className={`dock-stack ${isExpanded ? 'visible' : ''}`}
       >
         {dockStates.length === 0 ? (
-          <div className="dock-empty">按 Ctrl+S 把当前指板加入指板堆</div>
+          <div className="dock-empty">{td.emptyHint ?? 'Press Ctrl+S to save'}</div>
         ) : (
           dockStates.map((stateSnapshot, index) => {
             const depth = dockStates.length - index - 1;
@@ -64,7 +67,7 @@ export function FretboardDock({
               <div
                 key={stateSnapshot.id}
                 className={`dock-item ${selectedHistoryState?.id === stateSnapshot.id ? 'selected' : ''}`}
-                title={`${stateSnapshot.name} · 点击应用，右键删除`}
+                title={td.itemTitle ? td.itemTitle(stateSnapshot.name) : `${stateSnapshot.name} · click to apply`}
                 style={{
                   '--dock-depth': depth,
                   '--dock-curve-offset': `${curveOffset}px`,
@@ -79,7 +82,7 @@ export function FretboardDock({
                     event.preventDefault();
                     onDelete?.(stateSnapshot);
                   }}
-                  title={`应用：${stateSnapshot.name}`}
+                  title={td.applyTitle ? td.applyTitle(stateSnapshot.name) : stateSnapshot.name}
                 >
                   {stateSnapshot.thumbnail ? (
                     <img
@@ -88,7 +91,7 @@ export function FretboardDock({
                       className="dock-item-thumbnail"
                     />
                   ) : (
-                    <div className="dock-item-placeholder">无缩略图</div>
+                    <div className="dock-item-placeholder">{t?.gallery?.noThumbnail ?? 'No thumbnail'}</div>
                   )}
                 </button>
               </div>
@@ -102,7 +105,7 @@ export function FretboardDock({
           <button
             className="dock-primary"
             onClick={() => latestState && onRestore?.(latestState)}
-            title={latestState ? `应用最近快照：${latestState.name}` : '指板堆'}
+            title={latestState ? (td.applyLatestTitle ? td.applyLatestTitle(latestState.name) : latestState.name) : (td.fallbackTitle ?? 'Stack')}
           >
             <span className="dock-stack-shadow dock-stack-shadow-back" />
             <span className="dock-stack-shadow dock-stack-shadow-mid" />
@@ -114,7 +117,7 @@ export function FretboardDock({
                   className="dock-preview"
                 />
               ) : (
-                <span className="dock-label">指板堆</span>
+                <span className="dock-label">{td.label ?? 'Stack'}</span>
               )}
             </span>
             {dockStates.length > 0 && (
@@ -125,9 +128,9 @@ export function FretboardDock({
           <button
             className="dock-clear-btn"
             onClick={onClear}
-            title="清空当前指板堆"
+            title={td.clearTitle ?? 'Clear current stack'}
           >
-            Clear
+            {td.clear ?? 'Clear'}
           </button>
         </div>
       </div>

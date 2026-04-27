@@ -1,6 +1,5 @@
 # 🥝 Fretboard Diagram Creator
 
-
 <div align="center">
 
 [![React](https://img.shields.io/badge/React-18.2-blue.svg)](https://reactjs.org/)
@@ -15,7 +14,6 @@ An elegant and powerful online guitar fretboard diagram creator that makes music
 
 ![desc](https://markdown-1303167219.cos.ap-shanghai.myqcloud.com/20260116151259987.png)
 
-
 ---
 
 ## ✨ Introduction
@@ -29,25 +27,40 @@ Fretboard Diagram Creator is an interactive fretboard diagram generator designed
 Fretboard Diagram Creator provides a complete set of fretboard diagram creation and management tools to meet the needs of everyone from beginners to professional musicians:
 
 ### 🎯 Interactive Note Editing
+
 - **Click to Select**: Click a note to select it, displaying a dashed border for easy identification
-- **Right-click to Edit**: Right-click a note to edit custom labels, supporting fingering, intervals, chord names, and any text
+- **Double-click / Ctrl+Click to Edit**: Enter inline editing mode to customize note labels (fingering, intervals, chord names, any text)
 - **Multi-select Operations**: Select multiple notes simultaneously for batch color marking or deletion
 - **Real-time Feedback**: Display note names and position information when notes are selected
 
 ### 🎨 Rich Color Marking System
+
 - **5 Colors**: Blue (root), Green (third), Red (fifth), White (default), Black (hidden)
 - **Quick Marking**: Select color first then click note, or use keyboard shortcuts for quick switching
 - **Keyboard Shortcuts**: `B`(Blue) / `G`(Green) / `R`(Red) / `W`(White) / `D`(Black)
 - **Color Coding**: Distinguish different note types through colors, making scale and chord structures clear at a glance
 
+### 🔗 Note Connections
+
+- **Draw Connections**: Connect any two notes with a line to illustrate melodic movements, slides, or intervals
+- **Connection Colors**: Apply multiple color levels to connections to convey additional musical meaning
+- **Context Menu**: Right-click a connection to change its color or delete it via a toolbar dropdown
+
 ### ⚙️ Flexible Display Control
+
 - **Fret Range**: Customize start and end frets (1-22 frets), maximum 16 frets displayed
 - **Visibility Toggle**: One-click toggle to show/hide unselected notes
 - **Accidental Toggle**: Switch freely between ♯ (sharp) and ♭ (flat)
 - **Display Modes**: Support both note names (C, D, E...) and Solfege (Do, Re, Mi...) modes
-- **Root Note Marking**: Set root note with automatic highlighting of related notes
+- **Root Note Marking**: Set root note via the piano keyboard widget, with automatic scale highlighting
+
+### 🎹 Piano Keyboard & Scale Display
+
+- **Piano Keyboard**: Interactive mini piano keyboard for selecting the root note at a glance
+- **Scale Display**: Automatically shows the diatonic scale (major or minor) for the selected root — including note names, chord symbols, and solfège degrees
 
 ### 💾 Smart SVG/PNG Export
+
 - **Multi-format Support**: SVG vector graphics (lossless scaling) and PNG bitmap formats
 - **Intelligent Cropping**:
   - Horizontal cropping: Automatically crop to valid note range
@@ -55,19 +68,28 @@ Fretboard Diagram Creator provides a complete set of fretboard diagram creation 
 - **One-click Copy**: Direct copy to clipboard for quick sharing to social media or documents
 - **Include Options**: Option to include/exclude fret markers, flexible control of export content
 
-### 📚 History State Management
-- **Auto-save**: Automatically create history snapshots for each important operation (color changes, label edits, etc.)
+### 📚 State Gallery & Dock
+
+- **Gallery Sidebar**: Browse, rename, restore, delete, and organize all saved fretboard states in a sidebar panel
+- **Directory Management**: Group states into named directories, switch between directories, rename or delete them
+- **Fretboard Dock**: A card stack dock at the bottom of the fretboard — hover to expand, click to apply, right-click to delete
 - **Thumbnail Preview**: Intuitive visual preview for quick identification of different states
-- **Quick Restore**: Click thumbnail to restore corresponding state with one click
-- **State Management**: Support clearing history and deleting individual states, keeping workspace tidy
+- **Batch Export / Import**: Export all states as a JSON bundle and re-import on any device
 
 ### 🔗 Share & Import
+
 - **Compressed Sharing**: Uses LZ-String compression algorithm with 50-70% compression rate, generating short strings
 - **One-click Share**: Click share button to automatically copy to clipboard, share through any channel
-- **One-click Import**: Paste share string to completely restore fretboard state
-- **Completely Offline**: No server required, all operations completed locally
+- **One-click Import**: Paste a share string, or import an SVG file or a JSON bundle to restore fretboard state
+
+### 👤 User Authentication & Cloud Sync
+
+- **Login System**: Register / log in with a username to persist your data across sessions and devices
+- **Backend Storage**: Logged-in users' state is synced to the server (FastAPI + MongoDB)
+- **Guest Mode**: Full local functionality is available without logging in; data is stored in the browser
 
 ### 🎵 Audio Playback Support (Optional)
+
 - **Note Playback**: Click note to play corresponding pitch, helping understand interval relationships
 - **Chord Audition**: Support simultaneous playback of multiple notes to audition chord effects
 - **Timbre Configuration**: Configurable timbre and volume to adapt to different usage scenarios
@@ -84,12 +106,14 @@ Fretboard Diagram Creator provides a complete set of fretboard diagram creation 
 ### Quick Start
 
 1. **Clone the repository**
+
 ```bash
 git clone <repository-url>
 cd fretboard_diagram
 ```
 
-2. **Install dependencies**
+1. **Install dependencies**
+
 ```bash
 # If pnpm is not installed, install it first
 npm install -g pnpm
@@ -98,21 +122,24 @@ npm install -g pnpm
 pnpm install
 ```
 
-3. **Start development server**
+1. **Start development server**
+
 ```bash
 pnpm dev
 ```
 
 After the dev server starts, visit `http://localhost:5173` in your browser.
 
-4. **Build for production**
+1. **Build for production**
+
 ```bash
 pnpm build
 ```
 
 Build output will be in the `dist` directory.
 
-5. **Preview production build**
+1. **Preview production build**
+
 ```bash
 pnpm preview
 ```
@@ -121,12 +148,14 @@ pnpm preview
 
 ### 🐳 Docker Deployment
 
+The production stack consists of three services: the frontend (Nginx), the backend (FastAPI), and MongoDB.
+
 #### Production Environment
 
 Quick deployment using Docker Compose:
 
 ```bash
-# Build and start services
+# Build and start all services (frontend + backend + MongoDB)
 docker-compose up -d
 
 # View logs
@@ -136,14 +165,14 @@ docker-compose logs -f
 docker-compose down
 ```
 
-After starting, the frontend application is available at `http://localhost:1645`.
+After starting, the frontend is available at `http://localhost:1645`. The backend API runs internally on port `8000`.
 
 #### Development Environment
 
-Start development environment with hot reload:
+Start the frontend development server with hot reload:
 
 ```bash
-# Start development server
+# Start development server (frontend only)
 docker-compose --profile dev up
 
 # Or run in background
@@ -161,13 +190,16 @@ docker-compose build
 # Rebuild and start
 docker-compose up -d --build
 
-# Enter container
+# Enter the frontend container
 docker-compose exec fretboard-diagram sh
+
+# Enter the backend container
+docker-compose exec backend sh
 ```
 
 #### Using Dockerfile Directly
 
-If you only need to deploy the frontend application, you can use Dockerfile directly:
+If you only need the frontend application without the backend:
 
 ```bash
 # Build image
@@ -183,36 +215,63 @@ docker run -d -p 1645:80 --name fretboard-diagram fretboard-diagram
 
 ```
 fretboard_diagram/
+├── backend/                 # Backend (FastAPI + MongoDB)
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app/
+│       ├── main.py          # FastAPI application entry
+│       ├── auth.py          # Authentication logic
+│       ├── config.py        # Configuration
+│       ├── database.py      # MongoDB connection
+│       ├── models.py        # Data models
+│       └── routers/
+│           ├── auth.py      # Auth routes (/login, /verify)
+│           └── data.py      # Data sync routes
 ├── src/
 │   ├── components/          # React Components
-│   │   ├── FretboardSVG.jsx    # Fretboard SVG rendering component
-│   │   ├── ColorPalette.jsx    # Color palette component
-│   │   ├── FretboardMenu.jsx   # Menu component
-│   │   └── HistoryGallery.jsx # History state gallery
+│   │   ├── FretboardSVG.jsx    # Fretboard SVG rendering
+│   │   ├── ColorPalette.jsx    # Color palette
+│   │   ├── FretboardMenu.jsx   # Top menu bar
+│   │   ├── FretboardGallery.jsx # State gallery sidebar
+│   │   ├── FretboardDock.jsx   # Fretboard card-stack dock
+│   │   ├── FretRangeSlider.jsx # Fret range slider
+│   │   ├── ScaleDisplay.jsx    # Diatonic scale display
+│   │   ├── Toast.jsx           # Toast notifications
+│   │   └── LoginModal.jsx      # Login / register modal
 │   ├── handlers/           # Event Handlers
-│   │   ├── noteHandlers.js    # Note interaction handling
-│   │   ├── keyboardHandlers.js # Keyboard event handling
-│   │   └── svgHandlers.js     # SVG event handling
+│   │   ├── noteHandlers.js    # Note click / edit handling
+│   │   ├── keyboardHandlers.js # Keyboard shortcuts
+│   │   └── svgHandlers.js     # SVG mouse / touch events
 │   ├── hooks/              # Custom Hooks
-│   │   └── useFretboardState.js # Fretboard state management
+│   │   ├── useFretboardState.js # Core fretboard state
+│   │   ├── useConnectionState.js # Note connection state
+│   │   ├── useHistory.js        # Undo / history management
+│   │   ├── useNoteEditing.js    # Inline note label editing
+│   │   ├── useAuth.js           # Authentication state
+│   │   └── useAltKey.js         # Alt-key modifier tracking
 │   ├── utils/              # Utility Functions
-│   │   ├── fretboardActions.js  # Fretboard operations (save, export, etc.)
-│   │   ├── fretboardCalculations.js # Calculation utilities
-│   │   ├── fretboardHistory.js  # History state management
-│   │   ├── fretboardShare.js    # Share/import functionality
-│   │   └── svgImport.js         # SVG import
-│   ├── App.jsx             # Main application component
+│   │   ├── fretboardActions.js      # Save, export, reset, etc.
+│   │   ├── fretboardCalculations.js # SVG geometry helpers
+│   │   ├── fretboardHistory.js      # Snapshot management
+│   │   ├── fretboardShare.js        # Share string encode/decode
+│   │   ├── connectionUtils.js       # Note connection helpers
+│   │   ├── exportSvgBuilder.js      # SVG/PNG export builder
+│   │   ├── scaleCalculator.js       # Diatonic scale calculator
+│   │   ├── svgImport.js             # SVG import parser
+│   │   └── api.js                   # Backend API client
+│   ├── App.jsx             # Root application component
 │   ├── Fretboard.jsx       # Core fretboard component
+│   ├── PianoKeyboard.jsx   # Mini piano keyboard widget
 │   ├── main.jsx            # Application entry point
 │   ├── constants.js        # Constant definitions
-│   └── colorConfig.js      # Color configuration
+│   └── colorConfig.js      # Color theme configuration
 ├── public/                 # Static assets
 ├── index.html              # HTML template
 ├── vite.config.js          # Vite configuration
-├── package.json            # Project configuration
+├── docker-compose.yml      # Docker Compose (frontend + backend + MongoDB)
+├── package.json            # Frontend project config
 └── README.md               # Project documentation
 ```
-
 
 ## 📄 License
 

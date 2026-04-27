@@ -19,8 +19,11 @@ import { FretboardDock } from './components/FretboardDock';
 import { Toast } from './components/Toast';
 import { FretboardSVG } from './components/FretboardSVG';
 import { restoreFretboardState, generateThumbnail, createStateSnapshot } from './utils/fretboardHistory';
+import { useLanguage } from './i18n';
 
 function Fretboard() {
+  const { lang, toggleLang, t } = useLanguage();
+
   // 使用自定义hooks
   const fretboardState = useFretboardState();
   const connectionState = useConnectionState();
@@ -574,8 +577,8 @@ function Fretboard() {
   }, [visibility, setData, setSelected, data, setStartFret, setEndFret, setDisplayMode, setRootNote, setEnharmonic]);
 
   const saveSVGMemo = useCallback(() => {
-    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility, horizontalCrop, verticalCrop);
-  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility, horizontalCrop, verticalCrop]);
+    saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility, horizontalCrop, verticalCrop, t);
+  }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility, horizontalCrop, verticalCrop, t]);
 
   const setFretWindowMemo = useCallback((fretWindow) => {
     setFretWindow(fretWindow, startFret, endFret, selected, setSelected, data, setData, updateNote, setToastMessage, setStartFret, setEndFret);
@@ -651,11 +654,11 @@ function Fretboard() {
 
       setHistoryStates(updatedStates);
       setSelectedHistoryState(stateSnapshot);
-      setToastMessage(canOverwriteSelected ? '已覆盖当前指板快照！' : '已加入指板堆！');
+      setToastMessage(canOverwriteSelected ? (t?.history?.overwritten ?? 'Snapshot overwritten!') : (t?.history?.saved ?? 'Added to stack!'));
       setToastType('success');
     } catch (error) {
-      console.error('保存失败:', error);
-      setToastMessage('保存失败: ' + error.message);
+      console.error('Save failed:', error);
+      setToastMessage(t?.history?.saveFail ? t.history.saveFail(error.message) : 'Save failed: ' + error.message);
       setToastType('error');
     }
   }, [data, startFret, endFret, enharmonic, displayMode, rootNote, visibility, includeMarkers, copyOnly, showNotes, horizontalCrop, verticalCrop, setHistoryStates, setToastMessage, setToastType, setSelectedHistoryState, currentDirectoryId, historyStates, selectedHistoryState, svgElementRef, selected]);
@@ -682,6 +685,7 @@ function Fretboard() {
       setToastMessage,
       setToastType,
       setSelectedHistoryState,
+      t,
       // 恢复配置项
       setIncludeMarkers,
       setCopyOnly,
@@ -693,7 +697,7 @@ function Fretboard() {
     setSelected, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level, setSelectedConnection,
     setConnectionToolbarVisible, setToastMessage, setToastType, setSelectedHistoryState,
-    setIncludeMarkers, setCopyOnly, setShowNotes, setHorizontalCrop, setVerticalCrop]);
+    setIncludeMarkers, setCopyOnly, setShowNotes, setHorizontalCrop, setVerticalCrop, t]);
 
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
   const handlerParamsRef = useRef();
@@ -732,7 +736,7 @@ function Fretboard() {
       <button
         className={`theme-switch${theme === 'light' ? ' theme-switch--light' : ''}`}
         onClick={toggleTheme}
-        title={theme === 'dark' ? '切换亮色模式' : '切换暗色模式'}
+        title={theme === 'dark' ? t.fretboard.themeLight : t.fretboard.themeDark}
         aria-label="Toggle theme"
       >
         <span className="theme-switch__track">
@@ -740,6 +744,14 @@ function Fretboard() {
             <span className="theme-switch__icon">{theme === 'dark' ? '☾' : '☀'}</span>
           </span>
         </span>
+      </button>
+      <button
+        className="lang-switch"
+        onClick={toggleLang}
+        title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
+        aria-label="Toggle language"
+      >
+        {t.fretboard.langSwitch}
       </button>
       <div className="title-header">
         <div className="title-header-inner">
@@ -749,7 +761,7 @@ function Fretboard() {
           <div className="datetime">{currentDateTime}</div>
           {selectedHistoryState && (
             <>
-              <div className="selected-state-name" title="当前应用中的指板堆快照">
+              <div className="selected-state-name" title={t.fretboard.snapshotTitle}>
                 <span
                   contentEditable
                   suppressContentEditableWarning
@@ -787,7 +799,7 @@ function Fretboard() {
                     cursor: 'text',
                     outline: 'none'
                   }}
-                  title="双击编辑"
+                  title={t.fretboard.snapshotEditHint}
                 >
                   {selectedHistoryState.name}
                 </span>
@@ -907,6 +919,7 @@ function Fretboard() {
         startFret={startFret}
         endFret={endFret}
         onFretWindowChange={setFretWindowMemo}
+        t={t}
       />
 
       <FretboardDock
@@ -921,7 +934,7 @@ function Fretboard() {
             : selectedHistoryState;
           setHistoryStates(updatedStates);
           setSelectedHistoryState(nextSelectedState);
-          setToastMessage('已从指板堆删除');
+          setToastMessage(t.fretboard.toastDeleted);
           setToastType('success');
         }}
         onClear={() => {
@@ -933,7 +946,7 @@ function Fretboard() {
             return;
           }
 
-          const confirmed = window.confirm('确定要清空当前指板堆吗？此操作不可恢复。');
+          const confirmed = window.confirm(t.fretboard.confirmClearDock);
           if (!confirmed) {
             return;
           }
@@ -946,9 +959,10 @@ function Fretboard() {
             : selectedHistoryState;
           setHistoryStates(filteredStates);
           setSelectedHistoryState(nextSelectedState);
-          setToastMessage('当前指板堆已清空');
+          setToastMessage(t.fretboard.toastCleared);
           setToastType('success');
         }}
+        t={t}
       />
 
       <Toast
