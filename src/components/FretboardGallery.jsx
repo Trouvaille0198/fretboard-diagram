@@ -4,6 +4,7 @@ import './FretboardGallery.css';
 import { exportFretboardState, importFretboardState, copyToClipboard, readFromClipboard } from '../utils/fretboardShare';
 import { parseSVGToFretboardState } from '../utils/svgImport';
 import { exportAllData, importBatchData } from '../utils/fretboardHistory';
+import { useLanguage } from '../i18n';
 
 export function FretboardGallery({
   historyStates,
@@ -27,6 +28,9 @@ export function FretboardGallery({
   onOpenChange,
   hideToggleButton = false
 }) {
+  const { t } = useLanguage();
+  const tg = t?.gallery ?? {};
+
   const [showImportDialog, setShowImportDialog] = React.useState(false);
   const [importText, setImportText] = React.useState('');
   const [editingId, setEditingId] = React.useState(null);
@@ -63,7 +67,7 @@ export function FretboardGallery({
               success: true, 
               historyStates: updatedStates,
               directories: directories,
-              message: '已撤销删除' 
+              message: tg.undoDelete ?? 'Delete undone'
             });
           }
           
@@ -154,7 +158,7 @@ export function FretboardGallery({
     }
     
     if (!onImport) {
-      alert('导入功能未正确初始化，请刷新页面重试');
+      alert(tg.importNotInit ?? 'Import not initialized, please refresh the page');
       return;
     }
 
@@ -184,15 +188,15 @@ export function FretboardGallery({
       }
       
       if (importData) {
-        onImport({ success: true, data: importData, message: '导入成功！' });
+        onImport({ success: true, data: importData, message: tg.importSuccess ?? 'Import successful!' });
         setShowImportDialog(false);
         setImportText('');
       } else {
-        onImport({ success: false, message: '导入处理失败：数据解析异常' });
+        onImport({ success: false, message: tg.importParseFail ?? 'Import failed: data parse error' });
       }
     } catch (error) {
       // 确保错误通过 onImport 回调显示 Toast
-      onImport({ success: false, message: error.message || '导入失败：未知错误' });
+      onImport({ success: false, message: error.message || (tg.importFail?.() ?? 'Import failed: unknown error') });
     }
   };
 
@@ -200,7 +204,7 @@ export function FretboardGallery({
     if (importMode === 'string') {
       const text = importText.trim();
       if (!text) {
-        onImport({ success: false, message: '请输入分享字符串' });
+        onImport({ success: false, message: tg.importEnterString ?? 'Please enter a share string' });
         return;
       }
       await processImport(text);
@@ -212,11 +216,11 @@ export function FretboardGallery({
           await processImport(e.target.result, true);
         };
         reader.onerror = () => {
-          onImport({ success: false, message: '读取SVG文件失败' });
+          onImport({ success: false, message: tg.importReadSvgFail ?? 'Failed to read SVG file' });
         };
         reader.readAsText(file);
       } else {
-        onImport({ success: false, message: '请选择一个SVG文件' });
+        onImport({ success: false, message: tg.importSelectSvg ?? 'Please select an SVG file' });
       }
     } else if (importMode === 'json') {
       if (jsonFileInputRef.current && jsonFileInputRef.current.files.length > 0) {
@@ -225,7 +229,7 @@ export function FretboardGallery({
         reader.onload = async (e) => {
           try {
             const jsonData = JSON.parse(e.target.result);
-            const result = importBatchData(jsonData);
+            const result = importBatchData(jsonData, t);
             if (result.success && onBatchImport) {
               onBatchImport(result);
             } else {
@@ -237,15 +241,15 @@ export function FretboardGallery({
               setImportMode('string');
             }
           } catch (error) {
-            onImport({ success: false, message: 'JSON解析失败：' + error.message });
+            onImport({ success: false, message: tg.importJsonFail ? tg.importJsonFail(error.message) : 'JSON parse error: ' + error.message });
           }
         };
         reader.onerror = () => {
-          onImport({ success: false, message: '读取JSON文件失败' });
+          onImport({ success: false, message: tg.importReadJsonFail ?? 'Failed to read JSON file' });
         };
         reader.readAsText(file);
       } else {
-        onImport({ success: false, message: '请选择一个JSON文件' });
+        onImport({ success: false, message: tg.importSelectJson ?? 'Please select a JSON file' });
       }
     }
   };
@@ -264,7 +268,7 @@ export function FretboardGallery({
     if (!file) return;
 
     if (!file.name.endsWith('.svg')) {
-      onImport({ success: false, message: '请选择 SVG 文件' });
+      onImport({ success: false, message: tg.importSelectSvgFile ?? 'Please select an SVG file' });
       return;
     }
 
@@ -274,7 +278,7 @@ export function FretboardGallery({
       await processImport(e.target.result, true);
     };
     reader.onerror = () => {
-      onImport({ success: false, message: '读取SVG文件失败' });
+      onImport({ success: false, message: tg.importReadSvgFail ?? 'Failed to read SVG file' });
     };
     reader.readAsText(file);
   };
@@ -320,7 +324,7 @@ export function FretboardGallery({
   };
 
   const handleClearAll = () => {
-    if (window.confirm('确定要清空整个指板堆吗？此操作不可恢复。')) {
+    if (window.confirm(tg.confirmClearAll ?? 'Clear all states? This cannot be undone.')) {
       if (onClearAll) {
         onClearAll();
       }
@@ -334,12 +338,12 @@ export function FretboardGallery({
       const shareString = exportFretboardState(stateSnapshot);
       await copyToClipboard(shareString);
       if (onImport) {
-        onImport({ success: true, message: '分享字符串已复制到剪贴板！' });
+        onImport({ success: true, message: tg.shareSuccess ?? 'Copied!' });
       }
     } catch (error) {
-      console.error('分享失败:', error);
+      console.error('Share failed:', error);
       if (onImport) {
-        onImport({ success: false, message: '分享失败：' + error.message });
+        onImport({ success: false, message: tg.shareFail ? tg.shareFail(error.message) : error.message });
       }
     }
   };
@@ -408,7 +412,7 @@ export function FretboardGallery({
       
       if (dirStates.length === 0) {
         if (onImport) {
-          onImport({ success: false, message: '该目录下没有状态' });
+          onImport({ success: false, message: tg.dirExportEmpty ?? 'No states in this directory' });
         }
         return;
       }
@@ -432,12 +436,12 @@ export function FretboardGallery({
       URL.revokeObjectURL(url);
       
       if (onImport) {
-        onImport({ success: true, message: `已导出 ${dirStates.length} 个状态` });
+        onImport({ success: true, message: tg.dirExportSuccess ? tg.dirExportSuccess(dirStates.length) : `Exported ${dirStates.length} states` });
       }
     } catch (error) {
-      console.error('导出失败:', error);
+      console.error('Export failed:', error);
       if (onImport) {
-        onImport({ success: false, message: '导出失败：' + error.message });
+        onImport({ success: false, message: tg.dirExportFail ? tg.dirExportFail(error.message) : 'Export failed: ' + error.message });
       }
     }
     setContextMenu(null);
@@ -493,9 +497,11 @@ export function FretboardGallery({
     if (dir.isDefault) return;
     
     const stateCount = historyStates.filter(s => s.directoryId === dir.id).length;
-    const confirmMsg = stateCount > 0 
-      ? `确认删除目录 "${dir.name}"？\n该目录下的 ${stateCount} 个状态将移至 default 目录。`
-      : `确认删除目录 "${dir.name}"？`;
+    const confirmMsg = tg.confirmDeleteDir
+      ? tg.confirmDeleteDir(dir.name, stateCount)
+      : stateCount > 0
+        ? `Delete "${dir.name}"? ${stateCount} state(s) will be moved to default.`
+        : `Delete "${dir.name}"?`;
     
     if (window.confirm(confirmMsg)) {
       if (onDirectoryDelete) {
@@ -511,7 +517,7 @@ export function FretboardGallery({
   };
   
   const handleExportAll = () => {
-    const result = exportAllData();
+    const result = exportAllData(t);
     if (onImport) {
       onImport(result);
     }
@@ -525,7 +531,7 @@ export function FretboardGallery({
           onClick={() => {
             setIsOpen(!isOpen);
           }}
-          title={isOpen ? '隐藏指板堆管理' : '显示指板堆管理'}
+          title={isOpen ? (tg.toggleCloseTitle ?? 'Hide gallery') : (tg.toggleOpenTitle ?? 'Show gallery')}
         >
           {isOpen ? '«' : '»'}
         </button>
@@ -533,21 +539,21 @@ export function FretboardGallery({
 
       <div className={`fretboard-gallery ${isOpen ? 'open' : ''}`}>
         <div className="gallery-header">
-          <h3 className="gallery-title">指板堆管理</h3>
+          <h3 className="gallery-title">{tg.title ?? 'State Gallery'}</h3>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <button 
               className="gallery-export-btn"
               onClick={handleExportAll}
-              title="导出所有目录和状态"
+              title={tg.exportTitle ?? 'Export all'}
             >
-              导出
+              {tg.export ?? 'Export'}
             </button>
             <button 
               className="gallery-import-btn"
               onClick={handleImport}
-              title="从剪贴板导入指板状态"
+              title={tg.importTitle ?? 'Import'}
             >
-              导入
+              {tg.import ?? 'Import'}
             </button>
           </div>
         </div>
@@ -584,7 +590,7 @@ export function FretboardGallery({
                 <button
                   className="directory-tab-close"
                   onClick={(e) => handleDirectoryDelete(e, dir)}
-                  title="删除目录"
+                  title={tg.deleteDirectoryTitle ?? 'Delete directory'}
                 >
                   ×
                 </button>
@@ -594,15 +600,15 @@ export function FretboardGallery({
           <button
             className="directory-tab-add"
             onClick={handleDirectoryCreate}
-            title="新建目录"
+            title={tg.newDirectoryTitle ?? 'New directory'}
           >
-            +
+            {tg.newDirectory ?? '+'}
           </button>
         </div>
       </div>
       
       {filteredStates.length === 0 ? (
-        <div className="gallery-empty">暂无保存的状态</div>
+        <div className="gallery-empty">{tg.empty ?? 'No saved states'}</div>
       ) : (
         <div className="gallery-grid">
         {filteredStates.map((stateSnapshot) => (
@@ -610,7 +616,7 @@ export function FretboardGallery({
             key={stateSnapshot.id}
             className={`gallery-item ${selectedHistoryState && selectedHistoryState.id === stateSnapshot.id ? 'selected' : ''}`}
             onClick={(e) => handleThumbnailClick(stateSnapshot, e)}
-            title={`点击应用到当前指板 - ${stateSnapshot.name}`}
+            title={tg.applyHint ? tg.applyHint(stateSnapshot.name) : stateSnapshot.name}
           >
             <div className="gallery-thumbnail-wrapper">
               {stateSnapshot.thumbnail ? (
@@ -621,20 +627,20 @@ export function FretboardGallery({
                 />
               ) : (
                 <div className="gallery-thumbnail-placeholder">
-                  无缩略图
+                  {tg.noThumbnail ?? 'No thumbnail'}
                 </div>
               )}
               <button
                 className="gallery-delete-btn"
                 onClick={(e) => handleDelete(e, stateSnapshot)}
-                title="删除此状态"
+                title={tg.deleteStateTitle ?? 'Delete'}
               >
                 ×
               </button>
               <button
                 className="gallery-share-btn"
                 onClick={(e) => handleShare(e, stateSnapshot)}
-                title="分享此状态"
+                title={tg.shareStateTitle ?? 'Share'}
               >
                 📤
               </button>
@@ -655,7 +661,7 @@ export function FretboardGallery({
                 <div 
                   className="gallery-item-name"
                   onDoubleClick={(e) => handleNameDoubleClick(e, stateSnapshot)}
-                  title="双击重命名"
+                  title={tg.renameHint ?? 'Double-click to rename'}
                 >
                   {stateSnapshot.name}
                 </div>
@@ -668,39 +674,39 @@ export function FretboardGallery({
       {showImportDialog && ReactDOM.createPortal(
         <div className="import-dialog-overlay" onClick={handleDialogCancel}>
           <div className="import-dialog" onClick={(e) => e.stopPropagation()}>
-            <h3>导入指板状态</h3>
+            <h3>{tg.importDialogTitle ?? 'Import Fretboard State'}</h3>
             <div style={{ marginBottom: '15px' }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <button
                   className={`mode-tab${importMode === 'string' ? ' active' : ''}`}
                   onClick={() => setImportMode('string')}
                 >
-                  分享字符串
+                  {tg.tabString ?? 'Share string'}
                 </button>
                 <button
                   className={`mode-tab${importMode === 'svg' ? ' active' : ''}`}
                   onClick={() => setImportMode('svg')}
                 >
-                  SVG 文件
+                  {tg.tabSvg ?? 'SVG file'}
                 </button>
                 <button
                   className={`mode-tab${importMode === 'json' ? ' active' : ''}`}
                   onClick={() => setImportMode('json')}
                 >
-                  JSON 批量导入
+                  {tg.tabJson ?? 'JSON batch import'}
                 </button>
               </div>
             </div>
             {importMode === 'string' ? (
               <>
                 <p style={{ fontSize: '12px', color: 'var(--text-color)', opacity: 0.7, marginBottom: '10px' }}>
-                  请粘贴分享字符串（格式：fretboard://...）
+                  {tg.stringHint ?? 'Paste a share string (fretboard://...)'}
                 </p>
                 <textarea
                   className="import-textarea"
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
-                  placeholder="粘贴分享字符串..."
+                  placeholder={tg.stringPlaceholder ?? 'Paste share string...'}
                   rows={4}
                   autoFocus
                 />
@@ -708,7 +714,7 @@ export function FretboardGallery({
             ) : importMode === 'json' ? (
               <>
                 <p style={{ fontSize: '12px', color: 'var(--text-color)', opacity: 0.7, marginBottom: '10px' }}>
-                  选择之前导出的 JSON 备份文件进行批量导入
+                  {tg.jsonHint ?? 'Select a previously exported JSON backup file'}
                 </p>
                 <input
                   ref={jsonFileInputRef}
@@ -727,7 +733,7 @@ export function FretboardGallery({
             ) : (
               <>
                 <p style={{ fontSize: '12px', color: 'var(--text-color)', opacity: 0.7, marginBottom: '10px' }}>
-                  选择之前导出的 SVG 文件进行导入
+                  {tg.svgHint ?? 'Select a previously exported SVG file'}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -746,10 +752,10 @@ export function FretboardGallery({
             )}
             <div className="import-dialog-buttons">
               <button className="gallery-import-btn" onClick={handleDialogImport}>
-                确认导入
+                {tg.confirmImport ?? 'Import'}
               </button>
               <button className="gallery-clear-btn" onClick={handleDialogCancel}>
-                取消
+                {tg.cancel ?? 'Cancel'}
               </button>
             </div>
           </div>
@@ -770,7 +776,7 @@ export function FretboardGallery({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="context-menu-item" onClick={handleExportDirectory}>
-            导出该目录状态
+            {tg.contextExportDir ?? 'Export directory'}
           </div>
         </div>,
         document.body

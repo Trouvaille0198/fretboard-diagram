@@ -1,0 +1,206 @@
+export const zh = {
+    // FretboardMenu
+    menu: {
+        toggleAccidental: "切换升降号",
+        toggle: "Toggle",
+        toggleTitle: "Toggle (Z)",
+        save: "保存",
+        saveTitle: "保存当前指板状态 (Ctrl+S)",
+        reset: "重置",
+        resetTitle: "重置 (Ctrl+D)",
+        copySvg: "复制 SVG",
+        downloadSvg: "下载 SVG",
+        copySvgTitle: "复制到剪贴板",
+        downloadSvgTitle: "下载 SVG",
+        connect: "连线",
+        connectTitle: "连线工具 (S)",
+        line: "直线",
+        arc: "弧线",
+        lineTitle: "直线",
+        arcTitle: "弧线",
+        arrowNone: "无",
+        arrowStart: "←",
+        arrowEnd: "→",
+        arrowBoth: "⇄",
+        arrowTitle: (dir) =>
+            `箭头：${dir === "none" ? "无" : dir === "start" ? "起点" : dir === "end" ? "终点" : "双向"}`,
+        includeMarkers: "包含品数",
+        showNotes: "显示音符",
+        horizontalCrop: "水平截断",
+        verticalCrop: "垂直截断",
+        copyOnly: "仅复制",
+        minor: "小调",
+        tintVariantTitle: (n) => `异色版本 ${n}`,
+    },
+
+    // FretboardGallery
+    gallery: {
+        toggleOpenTitle: "显示指板堆管理",
+        toggleCloseTitle: "隐藏指板堆管理",
+        title: "指板堆管理",
+        export: "导出",
+        exportTitle: "导出所有目录和状态",
+        import: "导入",
+        importTitle: "从剪贴板导入指板状态",
+        newDirectory: "+",
+        newDirectoryTitle: "新建目录",
+        deleteDirectoryTitle: "删除目录",
+        empty: "暂无保存的状态",
+        noThumbnail: "无缩略图",
+        deleteStateTitle: "删除此状态",
+        shareStateTitle: "分享此状态",
+        renameHint: "双击重命名",
+        importDialogTitle: "导入指板状态",
+        tabString: "分享字符串",
+        tabSvg: "SVG 文件",
+        tabJson: "JSON 批量导入",
+        stringHint: "请粘贴分享字符串（格式：fretboard://...）",
+        jsonHint: "选择之前导出的 JSON 备份文件进行批量导入",
+        svgHint: "选择之前导出的 SVG 文件进行导入",
+        stringPlaceholder: "粘贴分享字符串...",
+        confirmImport: "确认导入",
+        cancel: "取消",
+        contextExportDir: "导出该目录状态",
+        applyHint: (name) => `点击应用到当前指板 - ${name}`,
+        confirmClearAll: "确定要清空整个指板堆吗？此操作不可恢复。",
+        confirmDeleteDir: (name, count) =>
+            count > 0
+                ? `确认删除目录 "${name}"？\n该目录下的 ${count} 个状态将移至 default 目录。`
+                : `确认删除目录 "${name}"？`,
+        shareSuccess: "分享字符串已复制到剪贴板！",
+        shareFail: (msg) => "分享失败：" + msg,
+        dirExportEmpty: "该目录下没有状态",
+        undoDelete: "已撤销删除",
+        importNotInit: "导入功能未正确初始化，请刷新页面重试",
+        importSuccess: "导入成功！",
+        importParseFail: "导入处理失败：数据解析异常",
+        importFail: (msg) => msg || "导入失败：未知错误",
+        importEnterString: "请输入分享字符串",
+        importReadSvgFail: "读取SVG文件失败",
+        importSelectSvg: "请选择一个SVG文件",
+        importSelectSvgFile: "请选择 SVG 文件",
+        importJsonFail: (msg) => "JSON解析失败：" + msg,
+        importReadJsonFail: "读取JSON文件失败",
+        importSelectJson: "请选择一个JSON文件",
+        dirExportSuccess: (count) => `已导出 ${count} 个状态`,
+        dirExportFail: (msg) => "导出失败：" + msg,
+    },
+
+    // FretboardDock
+    dock: {
+        emptyHint: "按 Ctrl+S 把当前指板加入指板堆",
+        label: "指板堆",
+        clearTitle: "清空当前指板堆",
+        clear: "Clear",
+        applyLatestTitle: (name) => `应用最近快照：${name}`,
+        fallbackTitle: "指板堆",
+        itemTitle: (name) => `${name} · 点击应用，右键删除`,
+    },
+
+    // LoginModal
+    login: {
+        close: "关闭",
+        closeTitle: "关闭",
+        title: "登录到 Fretboard Diagram",
+        description: "输入用户名即可登录，首次使用会自动创建账号",
+        usernameLabel: "用户名",
+        usernamePlaceholder: "3-20个字符，字母数字下划线",
+        submitting: "登录中...",
+        submit: "登录",
+        note: "请记住您的用户名，丢失后无法找回数据",
+        limitTitle: "用户数量超上限",
+        limitDesc: "用户数量超上限，请联系作者",
+        ok: "确定",
+        errorEmpty: "请输入用户名",
+        errorLength: "用户名必须为 3-20 个字符",
+        errorChars: "用户名只能包含字母、数字和下划线",
+        errorDefault: "登录失败",
+    },
+
+    // ColorPalette
+    palette: {
+        tintTitle: (name, shortcut) =>
+            shortcut
+                ? `${name} (${shortcut}) · 滚轮循环异色`
+                : `${name} · 滚轮循环异色`,
+        replaceConfirm: (name) =>
+            `是否替换成该颜色？\n\n这将把所有异色note替换为 ${name} 对应浓度的异色颜色。`,
+    },
+
+    // FretboardDock
+    dock: {
+        emptyHint: "按 Ctrl+S 把当前指板加入指板堆",
+        label: "指板堆",
+        clearTitle: "清空当前指板堆",
+        clear: "Clear",
+        applyLatestTitle: (name) => `应用最近快照：${name}`,
+        fallbackTitle: "指板堆",
+        itemTitle: (name) => `${name} · 点击应用，右键删除`,
+        applyTitle: (name) => `应用：${name}`,
+    },
+
+    // FretboardSVG connection toolbar
+    svg: {
+        connType: "类型",
+        connTypeLine: "线",
+        connTypeArc: "弧",
+        connArrow: "箭头",
+        connArrowNone: "无",
+        connWidth: "粗细",
+        connWidthBtn: "粗",
+        connCurvature: "弧度",
+        connCurvatureBtn: "弯",
+        connReverse: "反转弧度",
+        connGray: "灰色毛玻璃效果",
+        connGrayBtn: "灰",
+        connDelete: "删除连线",
+    },
+
+    // fretboardActions (toast messages)
+    actions: {
+        copyImageHint: '右键点击图片，选择"复制图片"，然后点击任意位置关闭',
+        copyImageToast: '请右键点击图片，选择"复制图片"',
+        toastConvertFail: "转换图片失败",
+        toastCopied: "已复制图片到剪贴板！",
+        toastCopyPermission: "复制失败：需要剪贴板权限。请允许浏览器访问剪贴板",
+        toastCopyFail: (msg) => "复制失败：" + msg,
+        toastNoClipboard: "浏览器不支持复制图片，请使用下载功能",
+    },
+
+    // fretboardHistory / useFretboardState
+    history: {
+        saved: "已加入指板堆！",
+        overwritten: "已覆盖当前指板快照！",
+        saveFail: (msg) => "保存失败: " + msg,
+        autoSaveLabel: "自动保存",
+        restored: "状态已恢复！",
+        restoreFail: (msg) => "恢复失败：" + msg,
+        dirNameEmpty: "目录名称不能为空",
+        dirNameExists: "目录名称已存在",
+        exportSuccess: "导出成功！",
+        exportFail: (msg) => "导出失败：" + msg,
+        invalidFormat: "无效的数据格式",
+        missingVersion: "缺少版本信息",
+        invalidDirFormat: "目录数据格式错误",
+        invalidStateFormat: "状态数据格式错误",
+        invalidDirStructure: "目录数据结构不完整",
+        invalidStateStructure: "状态数据结构不完整",
+        validationFail: (msg) => "数据验证失败：" + msg,
+        importBatchSuccess: (dirs, merged, states) =>
+            `成功导入 ${dirs + merged} 个目录（其中 ${merged} 个合并）和 ${states} 个状态`,
+        importFail: (msg) => "导入失败：" + msg,
+        cannotDeleteDefault: "无法删除默认目录",
+    },
+
+    // Fretboard (page-level)
+    fretboard: {
+        themeLight: "切换亮色模式",
+        themeDark: "切换暗色模式",
+        snapshotTitle: "当前应用中的指板堆快照",
+        snapshotEditHint: "双击编辑",
+        confirmClearDock: "确定要清空当前指板堆吗？此操作不可恢复。",
+        toastDeleted: "已从指板堆删除",
+        toastCleared: "当前指板堆已清空",
+        langSwitch: "EN",
+    },
+};

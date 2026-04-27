@@ -43,11 +43,11 @@ export const LEVEL1_COLORS = {
 // 第二层级颜色配置（用于描边）
 export const LEVEL2_COLORS = {
     orange: '#d95f02',        // Dark2 橙
-    cyan:   '#7570b3',        // Dark2 紫蓝
-    pink:   '#e7298a',        // Dark2 洋红
+    cyan: '#7570b3',        // Dark2 紫蓝
+    pink: '#e7298a',        // Dark2 洋红
     'grass-green': '#1b9e77', // Dark2 青绿
     yellow: '#e6ab02',        // Dark2 #6 琥珀黄（与 orange 形成暖色对）
-    white:  '#666666'         // Dark2 中性灰
+    white: '#666666'         // Dark2 中性灰
 };
 
 const PRESET_TINT_VARIANTS = {
@@ -57,7 +57,7 @@ const PRESET_TINT_VARIANTS = {
     '#1b9e77': ['rgb(174, 236, 216)', 'rgb(59, 206, 162)', 'rgb(13, 146, 108)', 'rgb(8, 86, 64)'],
     '#d95f02': ['rgb(246, 198, 154)', 'rgb(255, 141, 36)', 'rgb(203, 84, 0)', 'rgb(108, 42, 0)'],
     '#e6ab02': ['rgb(250, 227, 157)', 'rgb(255, 204, 27)', 'rgb(196, 142, 0)', 'rgb(96, 70, 0)'],
-    '#2c6cca': ['rgb(181, 210, 246)', 'rgb(63, 137, 242)', 'rgb(18, 88, 194)', 'rgb(9, 46, 103)'],
+    '#2c6cca': ['rgb(181, 210, 246)', 'rgb(78, 149, 247)', 'rgb(8, 70, 165)', 'rgb(9, 46, 103)'],
     '#cd5c5c': ['rgb(241, 190, 190)', 'rgb(228, 109, 109)', 'rgb(187, 46, 46)', 'rgb(101, 20, 20)'],
     '#666666': ['rgb(200, 203, 208)', 'rgb(124, 131, 140)', 'rgb(78, 84, 92)', 'rgb(36, 40, 46)']
 };
