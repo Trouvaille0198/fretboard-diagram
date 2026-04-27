@@ -1,6 +1,5 @@
 # 🥝 Fretboard Diagram Creator
 
-
 <div align="center">
 
 [![React](https://img.shields.io/badge/React-18.2-blue.svg)](https://reactjs.org/)
@@ -28,25 +27,40 @@ Fretboard Diagram Creator 是一个专为吉他手、音乐教师和学习者设
 Fretboard Diagram Creator 提供了一套完整的指板图创建和管理工具，满足从初学者到专业音乐人的各种需求：
 
 ### 🎯 交互式音符编辑
+
 - **点击选择**：单击音符即可选中，显示虚线边框便于识别
-- **右键编辑**：右键点击音符可编辑自定义标签，支持指法、音程、和弦名称等任意文本
+- **双击 / Ctrl+单击编辑**：进入内联编辑模式，可自定义音符标签（指法、音程、和弦名称等任意文本）
 - **多选操作**：支持同时选择多个音符进行批量颜色标记或删除
 - **实时反馈**：选中音符时实时显示音符名称和位置信息
 
 ### 🎨 丰富的颜色标记系统
+
 - **5 种颜色**：蓝色（根音）、绿色（三度音）、红色（五度音）、白色（默认）、黑色（隐藏）
 - **快速标记**：先选颜色再点音符，或使用键盘快捷键快速切换
 - **键盘快捷键**：`B`(蓝) / `G`(绿) / `R`(红) / `W`(白) / `D`(黑)
 - **颜色编码**：通过颜色区分不同音符类型，让音阶和和弦结构一目了然
 
+### 🔗 音符连线
+
+- **绘制连线**：在任意两个音符之间绘制连线，用于标注滑音、音程或旋律走向
+- **连线颜色**：为连线设置多个颜色层级，传达更丰富的音乐含义
+- **右键菜单**：右键单击连线，通过工具栏下拉菜单修改颜色或删除
+
 ### ⚙️ 灵活的显示控制
+
 - **品格范围**：自定义起始品和结束品（1-22品），最多显示 16 品
 - **可见性切换**：一键切换未选中音符的显示/隐藏状态
 - **升降号切换**：在 ♯ (升号) 和 ♭ (降号) 之间自由切换
 - **显示模式**：支持音符名称（C, D, E...）和唱名（Do, Re, Mi...）两种模式
-- **根音标记**：可设置根音，自动高亮显示相关音符
+- **根音标记**：通过钢琴键盘选择根音，自动高亮对应音阶
+
+### 🎹 钢琴键盘与音阶显示
+
+- **钢琴键盘**：交互式迷你钢琴键盘，一眼选定根音
+- **音阶显示**：自动展示所选根音的自然大/小调音阶，包含音名、和弦符号及唱名级数
 
 ### 💾 智能 SVG/PNG 导出
+
 - **多格式支持**：SVG 矢量图（无损缩放）和 PNG 位图两种格式
 - **智能裁剪**：
   - 水平裁剪：自动裁剪到有效音符范围
@@ -54,19 +68,28 @@ Fretboard Diagram Creator 提供了一套完整的指板图创建和管理工具
 - **一键复制**：直接复制到剪贴板，方便快速分享到社交媒体或文档
 - **包含选项**：可选择是否包含品数标记，灵活控制导出内容
 
-### 📚 历史状态管理
-- **自动保存**：每次重要操作（颜色变更、标签编辑等）自动创建历史快照
+### 📚 状态画廊与指板堆
+
+- **画廊侧栏**：在侧边栏中浏览、重命名、恢复、删除和整理所有已保存的指板状态
+- **目录管理**：将状态分组到命名目录中，支持切换、重命名和删除目录
+- **指板堆（Dock）**：指板底部的卡片堆叠 Dock，悬停展开，点击应用，右键删除
 - **缩略图预览**：直观的视觉预览，快速识别不同状态
-- **快速恢复**：点击缩略图即可一键恢复对应状态
-- **状态管理**：支持清空历史、删除单个状态，保持工作区整洁
+- **批量导出 / 导入**：将所有状态导出为 JSON 包，可在任意设备重新导入
 
 ### 🔗 分享与导入
+
 - **压缩分享**：使用 LZ-String 压缩算法，压缩率高达 50-70%，生成短字符串
 - **一键分享**：点击分享按钮自动复制到剪贴板，通过任何渠道分享
-- **一键导入**：粘贴分享字符串即可完全恢复指板状态
-- **完全离线**：无需服务器支持，所有操作在本地完成
+- **一键导入**：粘贴分享字符串，或导入 SVG 文件、JSON 包以恢复指板状态
+
+### 👤 用户登录与云端同步
+
+- **登录系统**：通过用户名注册/登录，跨会话和设备持久化数据
+- **后端存储**：登录用户的状态同步到服务器（FastAPI + MongoDB）
+- **访客模式**：无需登录即可使用全部本地功能，数据存储于浏览器本地
 
 ### 🎵 音频播放支持（可选）
+
 - **音符播放**：点击音符可播放对应音高，帮助理解音程关系
 - **和弦试听**：支持同时播放多个音符，试听和弦效果
 - **音色配置**：可配置音色和音量，适应不同使用场景
@@ -83,12 +106,14 @@ Fretboard Diagram Creator 提供了一套完整的指板图创建和管理工具
 ### 快速开始
 
 1. **克隆项目**
+
 ```bash
 git clone <repository-url>
 cd fretboard_diagram
 ```
 
-2. **安装依赖**
+1. **安装依赖**
+
 ```bash
 # 如果未安装 pnpm，先安装它
 npm install -g pnpm
@@ -97,21 +122,24 @@ npm install -g pnpm
 pnpm install
 ```
 
-3. **启动开发服务器**
+1. **启动开发服务器**
+
 ```bash
 pnpm dev
 ```
 
 开发服务器启动后，在浏览器中访问 `http://localhost:5173`。
 
-4. **构建生产版本**
+1. **构建生产版本**
+
 ```bash
 pnpm build
 ```
 
 构建产物将输出到 `dist` 目录。
 
-5. **预览生产构建**
+1. **预览生产构建**
+
 ```bash
 pnpm preview
 ```
@@ -120,12 +148,14 @@ pnpm preview
 
 ### 🐳 Docker 部署
 
+生产环境由三个服务组成：前端（Nginx）、后端（FastAPI）和 MongoDB。
+
 #### 生产环境
 
-使用 Docker Compose 快速部署生产环境：
+使用 Docker Compose 快速部署：
 
 ```bash
-# 构建并启动服务
+# 构建并启动所有服务（前端 + 后端 + MongoDB）
 docker-compose up -d
 
 # 查看日志
@@ -135,14 +165,14 @@ docker-compose logs -f
 docker-compose down
 ```
 
-启动后，前端应用可通过 `http://localhost:1645` 访问。
+启动后，前端可通过 `http://localhost:1645` 访问；后端 API 在容器内部监听 `8000` 端口。
 
 #### 开发环境
 
-启动开发环境（支持热重载）：
+启动前端开发服务器（支持热重载）：
 
 ```bash
-# 启动开发服务器
+# 启动开发服务器（仅前端）
 docker-compose --profile dev up
 
 # 或后台运行
@@ -160,13 +190,16 @@ docker-compose build
 # 重新构建并启动
 docker-compose up -d --build
 
-# 进入容器
+# 进入前端容器
 docker-compose exec fretboard-diagram sh
+
+# 进入后端容器
+docker-compose exec backend sh
 ```
 
 #### 单独使用 Dockerfile
 
-如果只需要部署前端应用，也可以直接使用 Dockerfile：
+如果只需要部署前端（不需要后端）：
 
 ```bash
 # 构建镜像
@@ -182,36 +215,63 @@ docker run -d -p 1645:80 --name fretboard-diagram fretboard-diagram
 
 ```
 fretboard_diagram/
+├── backend/                 # 后端（FastAPI + MongoDB）
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app/
+│       ├── main.py          # FastAPI 应用入口
+│       ├── auth.py          # 认证逻辑
+│       ├── config.py        # 配置
+│       ├── database.py      # MongoDB 连接
+│       ├── models.py        # 数据模型
+│       └── routers/
+│           ├── auth.py      # 认证路由（/login、/verify）
+│           └── data.py      # 数据同步路由
 ├── src/
 │   ├── components/          # React 组件
-│   │   ├── FretboardSVG.jsx    # 指板 SVG 渲染组件
-│   │   ├── ColorPalette.jsx    # 调色板组件
-│   │   ├── FretboardMenu.jsx   # 菜单组件
-│   │   └── HistoryGallery.jsx # 历史状态画廊
+│   │   ├── FretboardSVG.jsx    # 指板 SVG 渲染
+│   │   ├── ColorPalette.jsx    # 调色板
+│   │   ├── FretboardMenu.jsx   # 顶部菜单栏
+│   │   ├── FretboardGallery.jsx # 状态画廊侧栏
+│   │   ├── FretboardDock.jsx   # 指板卡片堆 Dock
+│   │   ├── FretRangeSlider.jsx # 品格范围滑块
+│   │   ├── ScaleDisplay.jsx    # 音阶显示面板
+│   │   ├── Toast.jsx           # 消息提示
+│   │   └── LoginModal.jsx      # 登录/注册弹窗
 │   ├── handlers/           # 事件处理器
-│   │   ├── noteHandlers.js    # 音符交互处理
-│   │   ├── keyboardHandlers.js # 键盘事件处理
-│   │   └── svgHandlers.js     # SVG 事件处理
+│   │   ├── noteHandlers.js    # 音符点击/编辑处理
+│   │   ├── keyboardHandlers.js # 键盘快捷键
+│   │   └── svgHandlers.js     # SVG 鼠标/触摸事件
 │   ├── hooks/              # 自定义 Hooks
-│   │   └── useFretboardState.js # 指板状态管理
+│   │   ├── useFretboardState.js # 指板核心状态
+│   │   ├── useConnectionState.js # 音符连线状态
+│   │   ├── useHistory.js        # 撤销/历史管理
+│   │   ├── useNoteEditing.js    # 内联标签编辑
+│   │   ├── useAuth.js           # 登录认证状态
+│   │   └── useAltKey.js         # Alt 键修饰符追踪
 │   ├── utils/              # 工具函数
-│   │   ├── fretboardActions.js  # 指板操作（保存、导出等）
-│   │   ├── fretboardCalculations.js # 计算工具
-│   │   ├── fretboardHistory.js  # 历史状态管理
-│   │   ├── fretboardShare.js    # 分享/导入功能
-│   │   └── svgImport.js         # SVG 导入
-│   ├── App.jsx             # 主应用组件
+│   │   ├── fretboardActions.js      # 保存、导出、重置等
+│   │   ├── fretboardCalculations.js # SVG 几何计算
+│   │   ├── fretboardHistory.js      # 快照管理
+│   │   ├── fretboardShare.js        # 分享字符串编解码
+│   │   ├── connectionUtils.js       # 音符连线工具
+│   │   ├── exportSvgBuilder.js      # SVG/PNG 导出构建器
+│   │   ├── scaleCalculator.js       # 自然调式计算器
+│   │   ├── svgImport.js             # SVG 导入解析
+│   │   └── api.js                   # 后端 API 客户端
+│   ├── App.jsx             # 根应用组件
 │   ├── Fretboard.jsx       # 指板核心组件
+│   ├── PianoKeyboard.jsx   # 迷你钢琴键盘组件
 │   ├── main.jsx            # 应用入口
 │   ├── constants.js        # 常量定义
-│   └── colorConfig.js      # 颜色配置
+│   └── colorConfig.js      # 颜色主题配置
 ├── public/                 # 静态资源
 ├── index.html              # HTML 模板
 ├── vite.config.js          # Vite 配置
-├── package.json            # 项目配置
-└── README.md               # 项目文档
+├── docker-compose.yml      # Docker Compose（前端 + 后端 + MongoDB）
+├── package.json            # 前端项目配置
+└── README.zh.md            # 项目文档（中文）
 ```
-
 
 ## 📄 许可证
 

@@ -1,11 +1,14 @@
 import React from 'react';
 import Fretboard from './Fretboard';
+import { LanguageProvider } from './i18n';
 
 function App() {
   return (
-    <main>
-      <Fretboard />
-    </main>
+    <LanguageProvider>
+      <main>
+        <Fretboard />
+      </main>
+    </LanguageProvider>
   );
 }
 

@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import './LoginModal.css';
+import { useLanguage } from '../i18n';
 
 export function LoginModal({ onLogin, onClose }) {
+    const { t } = useLanguage();
+    const tl = t?.login ?? {};
     const [username, setUsername] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -11,19 +14,18 @@ export function LoginModal({ onLogin, onClose }) {
         e.preventDefault();
         setError('');
 
-        // 前端验证
         if (!username.trim()) {
-            setError('请输入用户名');
+            setError(tl.errorEmpty ?? 'Please enter a username');
             return;
         }
 
         if (username.length < 3 || username.length > 20) {
-            setError('用户名必须为 3-20 个字符');
+            setError(tl.errorLength ?? 'Username must be 3-20 characters');
             return;
         }
 
         if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-            setError('用户名只能包含字母、数字和下划线');
+            setError(tl.errorChars ?? 'Only letters, digits and underscores are allowed');
             return;
         }
 
@@ -32,13 +34,12 @@ export function LoginModal({ onLogin, onClose }) {
         setIsLoading(false);
 
         if (result.success) {
-            // 登录成功，模态框会自动关闭
+            // login successful, modal closes automatically
         } else {
-            // 检查是否是用户数量超限的错误
-            if (result.message && result.message.includes('用户数量超上限')) {
+            if (result.message && (result.message.includes('用户数量超上限') || result.message.includes('user limit'))) {
                 setShowLimitAlert(true);
             } else {
-                setError(result.message || '登录失败');
+                setError(result.message || (tl.errorDefault ?? 'Login failed'));
             }
         }
     };
@@ -51,25 +52,25 @@ export function LoginModal({ onLogin, onClose }) {
                         <button
                             onClick={onClose}
                             className="close-button"
-                            title="关闭"
+                            title={tl.close ?? 'Close'}
                         >
                             ×
                         </button>
                     )}
-                    <h2>登录到 Fretboard Diagram</h2>
+                    <h2>{tl.title ?? 'Login to Fretboard Diagram'}</h2>
                     <p className="login-description">
-                        输入用户名即可登录，首次使用会自动创建账号
+                        {tl.description ?? 'Enter a username to log in; an account will be created automatically on first use.'}
                     </p>
                     
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
-                            <label htmlFor="username">用户名</label>
+                            <label htmlFor="username">{tl.usernameLabel ?? 'Username'}</label>
                             <input
                                 id="username"
                                 type="text"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                placeholder="3-20个字符，字母数字下划线"
+                                placeholder={tl.usernamePlaceholder ?? '3-20 chars, letters/digits/underscore'}
                                 disabled={isLoading}
                                 autoFocus
                             />
@@ -83,38 +84,37 @@ export function LoginModal({ onLogin, onClose }) {
                                 className="btn-primary"
                                 disabled={isLoading}
                             >
-                                {isLoading ? '登录中...' : '登录'}
+                                {isLoading ? (tl.submitting ?? 'Logging in...') : (tl.submit ?? 'Login')}
                             </button>
                         </div>
                     </form>
 
                     <div className="login-note">
-                        <p>请记住您的用户名，丢失后无法找回数据</p>
+                        <p>{tl.note ?? 'Remember your username — lost credentials cannot be recovered.'}</p>
                     </div>
                 </div>
             </div>
             
-            {/* 用户数量超限弹窗 */}
             {showLimitAlert && (
                 <div className="login-modal-overlay" onClick={() => setShowLimitAlert(false)}>
                     <div className="login-modal" onClick={(e) => e.stopPropagation()}>
                         <button
                             onClick={() => setShowLimitAlert(false)}
                             className="close-button"
-                            title="关闭"
+                            title={tl.close ?? 'Close'}
                         >
                             ×
                         </button>
-                        <h2>用户数量超上限</h2>
+                        <h2>{tl.limitTitle ?? 'User Limit Reached'}</h2>
                         <p className="login-description" style={{ marginBottom: '20px' }}>
-                            用户数量超上限，请联系作者
+                            {tl.limitDesc ?? 'User limit reached. Please contact the author.'}
                         </p>
                         <div className="button-group">
                             <button 
                                 onClick={() => setShowLimitAlert(false)}
                                 className="btn-primary"
                             >
-                                确定
+                                {tl.ok ?? 'OK'}
                             </button>
                         </div>
                     </div>

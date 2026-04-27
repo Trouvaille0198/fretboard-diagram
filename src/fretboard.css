@@ -283,6 +283,35 @@ main {
     -webkit-tap-highlight-color: transparent;
 }
 
+.lang-switch {
+    position: fixed;
+    top: 18px;
+    right: 90px;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 28px;
+    border-radius: 999px;
+    background: var(--app-panel-strong);
+    border: 1px solid var(--app-border);
+    box-shadow: var(--app-shadow-md), inset 0 1px 3px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(16px);
+    padding: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary, #aaa);
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.2s, background 0.2s;
+}
+
+.lang-switch:hover {
+    color: var(--accent, #f3ba62);
+}
+
 .theme-switch:focus-visible .theme-switch__track {
     outline: 2px solid rgba(243, 186, 98, 0.55);
     outline-offset: 2px;
