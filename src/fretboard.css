@@ -349,8 +349,8 @@ main {
     align-items: center;
     justify-content: center;
     transition: left 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
-                background 0.28s ease,
-                box-shadow 0.28s ease;
+        background 0.28s ease,
+        box-shadow 0.28s ease;
 }
 
 .theme-switch--light .theme-switch__thumb {
@@ -547,7 +547,7 @@ g.note>text {
     fill: var(--text-color);
     text-anchor: middle;
     dominant-baseline: middle;
-    font-size: 18px;
+    font-size: 20px;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -556,7 +556,7 @@ g.note>text {
 
 #editable-div {
     text-align: center;
-    font-size: 18px;
+    font-size: 20px;
 }
 
 .fretboard-stage {
@@ -1672,7 +1672,7 @@ g.note.preview-hover>circle {
         background: transparent;
     }
 
-    .menu-connection-panel > div {
+    .menu-connection-panel>div {
         width: 100% !important;
         max-width: 100% !important;
         overflow-x: hidden !important;
@@ -1682,7 +1682,7 @@ g.note.preview-hover>circle {
         gap: 8px !important;
     }
 
-    .menu-connection-panel > div button {
+    .menu-connection-panel>div button {
         margin-right: 0 !important;
         margin-left: 0 !important;
     }

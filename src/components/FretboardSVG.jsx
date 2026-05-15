@@ -249,46 +249,46 @@ export function FretboardSVG({
           return (
             <g
               key={note.id}
-                id={note.id}
-                className={className}
-                transform={`translate(${note.x}, ${note.y})`}
-                data-x={note.x}
-                data-y={note.y}
-                data-open={note.isOpen}
-                data-color-name={currentColor && typeof currentColor === 'object' ? currentColor.name : currentColor}
-                data-color-custom={currentColor && typeof currentColor === 'object' ? currentColor.custom : undefined}
-                data-color2-name={currentColor2 && typeof currentColor2 === 'object' ? currentColor2.name : currentColor2}
-                data-color2-custom={currentColor2 && typeof currentColor2 === 'object' ? currentColor2.custom : undefined}
-                data-split-mode={hasColor2 ? splitMode : undefined}
-                onClick={(e) => handleNoteClick(e, note.id)}
-                onMouseDown={(e) => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!shouldSplitFill) {
-                      return;
-                    }
-                    setData(prevData => {
-                      const prevNoteData = prevData[note.id] || {};
-                      const splitModes = ['lr', 'rl', 'tb', 'bt'];
-                      const currentMode = getNoteSplitMode(prevNoteData);
-                      const currentIndex = splitModes.indexOf(currentMode);
-                      const nextMode = splitModes[(currentIndex + 1) % splitModes.length];
-                      return {
-                        ...prevData,
-                        [note.id]: {
-                          ...prevNoteData,
-                          type: prevNoteData.type || 'note',
-                          splitMode: nextMode
-                        }
-                      };
-                    });
+              id={note.id}
+              className={className}
+              transform={`translate(${note.x}, ${note.y})`}
+              data-x={note.x}
+              data-y={note.y}
+              data-open={note.isOpen}
+              data-color-name={currentColor && typeof currentColor === 'object' ? currentColor.name : currentColor}
+              data-color-custom={currentColor && typeof currentColor === 'object' ? currentColor.custom : undefined}
+              data-color2-name={currentColor2 && typeof currentColor2 === 'object' ? currentColor2.name : currentColor2}
+              data-color2-custom={currentColor2 && typeof currentColor2 === 'object' ? currentColor2.custom : undefined}
+              data-split-mode={hasColor2 ? splitMode : undefined}
+              onClick={(e) => handleNoteClick(e, note.id)}
+              onMouseDown={(e) => {
+                if (e.button === 1) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!shouldSplitFill) {
                     return;
                   }
-                }}
-                onMouseEnter={() => setHoveredNoteId(note.id)}
-                onMouseLeave={() => setHoveredNoteId(null)}
-                style={{ cursor: 'pointer' }}
+                  setData(prevData => {
+                    const prevNoteData = prevData[note.id] || {};
+                    const splitModes = ['lr', 'rl', 'tb', 'bt'];
+                    const currentMode = getNoteSplitMode(prevNoteData);
+                    const currentIndex = splitModes.indexOf(currentMode);
+                    const nextMode = splitModes[(currentIndex + 1) % splitModes.length];
+                    return {
+                      ...prevData,
+                      [note.id]: {
+                        ...prevNoteData,
+                        type: prevNoteData.type || 'note',
+                        splitMode: nextMode
+                      }
+                    };
+                  });
+                  return;
+                }
+              }}
+              onMouseEnter={() => setHoveredNoteId(note.id)}
+              onMouseLeave={() => setHoveredNoteId(null)}
+              style={{ cursor: 'pointer' }}
             >
               <circle
                 className="note-circle"
@@ -310,7 +310,7 @@ export function FretboardSVG({
                 style={{
                   opacity: editingNote === note.id ? 0 : 1,
                   fill: textColor,
-                  stroke: textColor
+                  filter: 'drop-shadow(0 0 1.6px rgb(0, 0, 1))'
                 }}
               >
                 {note.noteName}
