@@ -159,25 +159,6 @@ function Fretboard() {
   const connectionDragActiveRef = useRef(false);
   const suppressBrushClickRef = useRef(false);
 
-  // 计算值（播放时跟随帧的品窗，与上面 viewState 对应）
-  const numFrets = (playing && playheadEntry ? playheadEntry.frame.state.endFret - playheadEntry.frame.state.startFret : endFret - startFret);
-  const fretboardWidth = CONSTS.fretWidth * numFrets;
-  const leftOffset = CONSTS.offsetX + CONSTS.fretWidth / 2;
-  const svgWidth = fretboardWidth + leftOffset + CONSTS.offsetX;
-  const zeroFretX = CONSTS.offsetX - CONSTS.fretWidth / 2;
-  const zeroFretLeftEdge = zeroFretX - CONSTS.circleRadius;
-  const svgViewBoxX = zeroFretLeftEdge - 5;
-  const svgViewBoxWidth = svgWidth - svgViewBoxX;
-  const bottomMarkerY = CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7;
-  const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5;
-  const svgHeight = bottomMarkerY + 20;
-  const svgViewBoxY = topMarkerY - 20;
-  const svgViewBoxHeight = svgHeight - svgViewBoxY;
-
-  // 计算函数
-  const computeNoteIndexMemo = useCallback((fret, string) => computeNoteIndex(fret, string), []);
-  const computeNoteNameMemo = useCallback((fret, string) => computeNoteName(fret, string, enharmonic), [enharmonic]);
-
   // 时间轴数据：小节/帧（8pu 式，常驻主页面）
   const measures = useMemo(() => deriveMeasures(historyStates, currentDirectoryId), [historyStates, currentDirectoryId]);
   const flatFrames = useMemo(() => flattenFrames(measures), [measures]);
@@ -208,6 +189,25 @@ function Fretboard() {
     }, 900 / speed);
     return () => clearTimeout(timer);
   }, [playing, playheadEntry, playheadIndex, flatFrames, speed]);
+
+  // 计算值（播放时跟随帧的品窗）
+  const numFrets = (playing && playheadEntry ? playheadEntry.frame.state.endFret - playheadEntry.frame.state.startFret : endFret - startFret);
+  const fretboardWidth = CONSTS.fretWidth * numFrets;
+  const leftOffset = CONSTS.offsetX + CONSTS.fretWidth / 2;
+  const svgWidth = fretboardWidth + leftOffset + CONSTS.offsetX;
+  const zeroFretX = CONSTS.offsetX - CONSTS.fretWidth / 2;
+  const zeroFretLeftEdge = zeroFretX - CONSTS.circleRadius;
+  const svgViewBoxX = zeroFretLeftEdge - 5;
+  const svgViewBoxWidth = svgWidth - svgViewBoxX;
+  const bottomMarkerY = CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7;
+  const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5;
+  const svgHeight = bottomMarkerY + 20;
+  const svgViewBoxY = topMarkerY - 20;
+  const svgViewBoxHeight = svgHeight - svgViewBoxY;
+
+  // 计算函数
+  const computeNoteIndexMemo = useCallback((fret, string) => computeNoteIndex(fret, string), []);
+  const computeNoteNameMemo = useCallback((fret, string) => computeNoteName(fret, string, enharmonic), [enharmonic]);
 
   // 生成数据
   const notes = useMemo(() =>
