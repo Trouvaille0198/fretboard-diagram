@@ -1,4 +1,71 @@
-import { calculateConnectionColor } from '../utils.js';
+import { calculateConnectionColor, calculateArcPath, getPointOnPathAtDistance } from '../utils.js';
+
+function measurePathLength(pathString) {
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const tempPath = document.createElementNS(svgNS, 'path');
+    tempPath.setAttribute('d', pathString);
+    return tempPath.getTotalLength();
+}
+
+// 生成连线路径：直线/弧线共用一套逻辑，箭头和描边端点各自留出缩进
+// 正式渲染和拖拽预览都用它，保证预览所见即所得
+export function buildConnectionPath(startEdge, endEdge, options = {}) {
+    const {
+        type = 'line',
+        curvature = 0,
+        arrowDirection = 'none',
+        arrowLength = 0,
+        strokeWidth = 3,
+        startCenter = null,
+        endCenter = null
+    } = options;
+
+    const hasArrowStart = arrowDirection === 'start' || arrowDirection === 'both';
+    const hasArrowEnd = arrowDirection === 'end' || arrowDirection === 'both';
+
+    const buildPath = (fromX, fromY, toX, toY) => (type === 'arc'
+        ? calculateArcPath(fromX, fromY, toX, toY, curvature)
+        : `M ${fromX} ${fromY} L ${toX} ${toY}`);
+
+    // 没有箭头的一端向外偏移半个线宽，补偿 strokeLinecap 的圆头
+    const offsetOutward = (edge, center) => {
+        if (!center) return edge;
+        const dx = edge.x - center.x;
+        const dy = edge.y - center.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance === 0) return edge;
+        return {
+            x: edge.x + (dx / distance) * (strokeWidth / 2),
+            y: edge.y + (dy / distance) * (strokeWidth / 2)
+        };
+    };
+
+    if (!hasArrowStart && !hasArrowEnd) {
+        const start = offsetOutward(startEdge, startCenter);
+        const end = offsetOutward(endEdge, endCenter);
+        return buildPath(start.x, start.y, end.x, end.y);
+    }
+
+    const fullPath = buildPath(startEdge.x, startEdge.y, endEdge.x, endEdge.y);
+    let pathStartX = startEdge.x;
+    let pathStartY = startEdge.y;
+    let pathEndX = endEdge.x;
+    let pathEndY = endEdge.y;
+
+    if (hasArrowStart) {
+        const trimmed = getPointOnPathAtDistance(fullPath, arrowLength);
+        pathStartX = trimmed.x;
+        pathStartY = trimmed.y;
+    }
+
+    if (hasArrowEnd) {
+        const trimmed = getPointOnPathAtDistance(fullPath, measurePathLength(fullPath) - arrowLength);
+        pathEndX = trimmed.x;
+        pathEndY = trimmed.y;
+    }
+
+    return buildPath(pathStartX, pathStartY, pathEndX, pathEndY);
+}
 
 export function detectDropdownDirection(buttonElement, toolbarRef, svgElementRef) {
     if (!buttonElement || !toolbarRef.current || !svgElementRef.current) {
@@ -66,8 +133,8 @@ export function openConnectionToolbar(connectionId, connections, getNotePosition
     const midX = (startPos.x + endPos.x) / 2;
     const midY = (startPos.y + endPos.y) / 2;
 
-    // 将工具栏放在连线下方（y坐标加上偏移量，避免遮挡连线）
-    setConnectionToolbarPosition({ x: midX - 150, y: midY + 20 });
+    // 将工具栏放在连线下方（y坐标加上偏移量，避免遮挡连线）；水平方向交给 CSS 居中
+    setConnectionToolbarPosition({ x: midX, y: midY + 20 });
     setSelectedConnection(connectionId);
     setConnectionToolbarVisible(true);
     setToolbarDropdown(null);

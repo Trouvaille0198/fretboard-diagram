@@ -114,7 +114,7 @@ html[data-theme="light"] .enharmonic-button {
 
 html[data-theme="light"] .menu-global-actions .button,
 html[data-theme="light"] .menu-global-actions .enharmonic-button,
-html[data-theme="light"] .menu-connection-actions .button {
+html[data-theme="light"] .menu-connection-presets .button {
     background: linear-gradient(180deg, rgba(248, 251, 254, 0.99), rgba(231, 238, 246, 0.97));
     color: #33485a;
     border-color: rgba(52, 83, 114, 0.22);
@@ -136,7 +136,7 @@ html[data-theme="light"] .enharmonic-button:hover {
 
 html[data-theme="light"] .menu-global-actions .button:hover,
 html[data-theme="light"] .menu-global-actions .enharmonic-button:hover,
-html[data-theme="light"] .menu-connection-actions .button:hover {
+html[data-theme="light"] .menu-connection-presets .button:hover {
     background: linear-gradient(180deg, rgba(255, 252, 245, 0.99), rgba(248, 238, 216, 0.97));
     border-color: rgba(222, 157, 66, 0.40);
     color: #263847;
@@ -154,7 +154,7 @@ html[data-theme="light"] .button.selected {
 }
 
 html[data-theme="light"] .menu-global-actions .button.selected,
-html[data-theme="light"] .menu-connection-actions .button.selected {
+html[data-theme="light"] .menu-connection-presets .button.selected {
     color: #7d5111;
     border-color: rgba(222, 157, 66, 0.52);
     box-shadow:
@@ -665,22 +665,29 @@ g.note>text {
     box-shadow: none;
 }
 
-.menu-connection-actions {
+/* 连线预设：三个按钮并排，点一下直接选中想要的形状和方向 */
+.menu-connection-presets {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: center;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     width: 100%;
 }
 
-.menu-control-button-primary {
-    margin-right: 0;
+.menu-preset-button {
     min-width: 0;
+    padding: 4px 6px;
+    gap: 6px;
+    font-size: 13px;
 }
 
-.menu-control-button-compact {
-    min-width: 0;
-    padding-inline: 12px;
+.menu-preset-button svg {
+    flex: 0 0 auto;
+    opacity: 0.9;
+}
+
+.menu-preset-button.selected svg {
+    opacity: 1;
 }
 
 .menu-download-panel {
@@ -1131,13 +1138,18 @@ button.color.level2.selected {
     pointer-events: none;
 }
 
+/* 拖拽连线进行中：整个指板显示十字光标 */
+svg.drag-connecting,
+svg.drag-connecting * {
+    cursor: crosshair !important;
+}
+
 /* 连线工具栏 */
 .connection-toolbar-container {
-    pointer-events: all;
+    /* 容器只负责定位，不吞掉指板上的点击 */
+    pointer-events: none;
     z-index: 101;
     overflow: visible !important;
-    width: 100%;
-    height: 100%;
     clip-path: none !important;
     clip: auto !important;
     overflow-x: visible !important;
@@ -1146,6 +1158,7 @@ button.color.level2.selected {
 }
 
 .connection-toolbar {
+    pointer-events: auto;
     background: transparent;
     border: none;
     border-radius: 6px;
@@ -1166,6 +1179,28 @@ button.color.level2.selected {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+/* 连线工具栏里的预设按钮：图标直接画形状，点一下切换到该预设 */
+.toolbar-preset-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-right: 6px;
+    margin-right: 2px;
+    border-right: 1px solid rgba(230, 237, 242, 0.1);
+}
+
+.toolbar-icon-btn.toolbar-preset-btn {
+    gap: 5px;
+    padding: 6px 8px;
+    font-size: 12px;
+    color: var(--app-text-muted);
+}
+
+.toolbar-preset-label {
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .toolbar-icon-wrapper {

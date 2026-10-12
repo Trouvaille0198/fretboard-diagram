@@ -12,18 +12,6 @@ export const en = {
         downloadSvg: "Download SVG",
         copySvgTitle: "Copy to clipboard",
         downloadSvgTitle: "Download SVG",
-        connect: "Connect",
-        connectTitle: "Connection tool (S)",
-        line: "Line",
-        arc: "Arc",
-        lineTitle: "Line",
-        arcTitle: "Arc",
-        arrowNone: "None",
-        arrowStart: "←",
-        arrowEnd: "→",
-        arrowBoth: "⇄",
-        arrowTitle: (dir) =>
-            `Arrow: ${dir === "none" ? "none" : dir === "start" ? "start" : dir === "end" ? "end" : "both"}`,
         includeMarkers: "Fret markers",
         showNotes: "Show notes",
         horizontalCrop: "H-crop",
@@ -144,12 +132,21 @@ export const en = {
         applyTitle: (name) => `Apply: ${name}`,
     },
 
+    // Connection presets (shared by the menu and the connection toolbar)
+    connection: {
+        presetLabels: {
+            "line": "Line",
+            "line-arrow": "Arrow",
+            "arc-arrow": "Arc",
+        },
+        presetTitles: {
+            "line": "Line, no direction (click again to exit)",
+            "line-arrow": "Line, arrow from start to end (click again to exit)",
+            "arc-arrow": "Arc, arrow from start to end (click again to exit)",
+        },
+    },
+
     svg: {
-        connType: "Type",
-        connTypeLine: "Line",
-        connTypeArc: "Arc",
-        connArrow: "Arrow",
-        connArrowNone: "–",
         connWidth: "Width",
         connWidthBtn: "≡",
         connCurvature: "Curve",
