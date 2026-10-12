@@ -58,10 +58,12 @@ export function createStateSnapshot({
 	verticalCrop = false,
 	currentDirectoryId = "default",
 	nameSuffix = "",
+	measureId = null,
 }) {
 	return {
 		id: Date.now().toString(),
 		directoryId: currentDirectoryId,
+		measureId: measureId || undefined,
 		timestamp: Date.now(),
 		name: getSnapshotName(nameSuffix),
 		thumbnail: null,
@@ -232,9 +234,9 @@ export function saveFretboardState({
 			}
 		}
 
-		// 限制最大数量（50个）
-		if (historyArray.length > 50) {
-			historyArray = historyArray.slice(0, 50);
+		// 限制最大数量（按帧存储后一首歌会超过 50，放宽到 300）
+		if (historyArray.length > 300) {
+			historyArray = historyArray.slice(0, 300);
 		}
 
 		// 保存到 localStorage
