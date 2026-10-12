@@ -43,7 +43,7 @@ Fretboard Diagram Creator provides a complete set of fretboard diagram creation 
 ### 🔗 Note Connections
 
 - **Draw connections**: Click any preset (or press `S`) to enter connection mode, then drag from the start note to the end note and release (notes need to be visible first; releasing on empty space cancels)
-- **Three presets**: Line (no direction) / Line (arrow from start to end) / Arc (arrow from start to end) — one click selects a preset and enters connection mode, clicking the active preset again exits
+- **Three presets**: Line (no direction) / Line (arrow from start to end) / Arc (arrow from start to end) — click or press `1`/`2`/`3` to select and enter connection mode, clicking the active preset again exits; the choice persists and touch drag works too
 - **Direction = click order**: The arrow points at the note you click second; click in reverse order to flip it
 - **Live preview**: While drawing, the preview already matches the selected preset, arcs included
 - **Restyle**: Click a connection to open its toolbar — switch preset, adjust width/curvature, flip the curve, apply frosted glass, or delete

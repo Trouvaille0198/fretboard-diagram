@@ -16,6 +16,7 @@ export const en = {
         showNotes: "Show notes",
         horizontalCrop: "H-crop",
         verticalCrop: "V-crop",
+        hideDock: "Hide stack",
         copyOnly: "Copy only",
         minor: "Minor",
         tintVariantTitle: (n) => `Tint variant ${n}`,
@@ -194,3 +195,4 @@ export const en = {
         cannotDeleteDefault: "Cannot delete the default directory",
     },
 };
+

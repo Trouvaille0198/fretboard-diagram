@@ -70,6 +70,9 @@ export function useFretboardState() {
     const [verticalCrop, setVerticalCrop] = useState(
         initialState?.verticalCrop ?? false,
     );
+    const [hideDock, setHideDock] = useState(
+        initialState?.hideDock ?? false,
+    );
     const [errorMessage, setErrorMessage] = useState("");
     const [toastMessage, setToastMessage] = useState("");
     const [toastType, setToastType] = useState("info");
@@ -145,6 +148,7 @@ export function useFretboardState() {
                 showNotes,
                 horizontalCrop,
                 verticalCrop,
+                hideDock,
             };
             localStorage.setItem(
                 "fretboard-current-state",
@@ -166,6 +170,7 @@ export function useFretboardState() {
         showNotes,
         horizontalCrop,
         verticalCrop,
+        hideDock,
     ]);
 
     useEffect(() => {
@@ -265,6 +270,8 @@ export function useFretboardState() {
         setHorizontalCrop,
         verticalCrop,
         setVerticalCrop,
+        hideDock,
+        setHideDock,
         // 目录管理
         directories,
         setDirectories,

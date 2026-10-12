@@ -114,7 +114,8 @@ export function createNoteMouseDownHandler(params) {
         visibility,
         notes,
         setConnectionStartNote,
-        setConnectionStartPosition
+        setConnectionStartPosition,
+        connectionDragActiveRef
     } = params;
 
     return (event, noteId) => {
@@ -134,6 +135,10 @@ export function createNoteMouseDownHandler(params) {
 
         event.preventDefault();
         event.stopPropagation();
+        // 同步标记拖拽进行中：touchmove 守卫需要在下一次事件里读到（React 状态更新来不及）
+        if (connectionDragActiveRef) {
+            connectionDragActiveRef.current = true;
+        }
         setConnectionStartNote(noteId);
         setConnectionStartPosition({ x: note.x, y: note.y });
     };
@@ -156,19 +161,35 @@ export function createConnectionDragEndHandler(params) {
         setConnectionStartPosition,
         setMousePosition,
         setPreviewHoverNote,
-        setUseColor2Level
+        setUseColor2Level,
+        connectionDragActiveRef
     } = params;
 
     return (event) => {
         if (!connectionMode || !connectionStartNote) {
             return;
         }
-        // 只响应左键松开，右键（退出连线模式）不触发
+        // 系统打断手势（如滚动手势接管）时直接取消
+        if (event.type === 'pointercancel') {
+            if (connectionDragActiveRef) {
+                connectionDragActiveRef.current = false;
+            }
+            setConnectionStartNote(null);
+            setConnectionStartPosition(null);
+            setMousePosition(null);
+            setPreviewHoverNote(null);
+            setUseColor2Level(false);
+            return;
+        }
+        // 只响应左键/主指针松开，右键（退出连线模式）不触发
         if (event.button !== undefined && event.button !== 0) {
             return;
         }
 
         const clearPending = () => {
+            if (connectionDragActiveRef) {
+                connectionDragActiveRef.current = false;
+            }
             setConnectionStartNote(null);
             setConnectionStartPosition(null);
             setMousePosition(null);

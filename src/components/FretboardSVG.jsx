@@ -177,8 +177,8 @@ export function FretboardSVG({
       height={svgHeight}
       viewBox={`${svgViewBoxX} ${svgViewBoxY} ${svgViewBoxWidth} ${svgViewBoxHeight}`}
       onClick={handleSvgClick}
-      onMouseMove={handleSvgMouseMove}
-      onMouseDown={handleSvgMouseDown}
+      onPointerMove={handleSvgMouseMove}
+      onPointerDown={handleSvgMouseDown}
       onContextMenu={handleSvgContextMenu}
       onWheel={handleSvgWheel}
     >
@@ -357,7 +357,7 @@ export function FretboardSVG({
               data-color2-custom={currentColor2 && typeof currentColor2 === 'object' ? currentColor2.custom : undefined}
               data-split-mode={hasColor2 ? splitMode : undefined}
               onClick={(e) => handleNoteClick(e, note.id)}
-              onMouseDown={(e) => {
+              onPointerDown={(e) => {
                 if (e.button === 0) {
                   // 连线模式下按下可见音符 = 开始拖拽连线
                   handleNoteMouseDown(e, note.id);

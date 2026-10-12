@@ -16,6 +16,7 @@ export const zh = {
         showNotes: "显示音符",
         horizontalCrop: "水平截断",
         verticalCrop: "垂直截断",
+        hideDock: "隐藏指板堆",
         copyOnly: "仅复制",
         minor: "小调",
         tintVariantTitle: (n) => `异色版本 ${n}`,
@@ -201,3 +202,4 @@ export const zh = {
         langSwitch: "EN",
     },
 };
+
