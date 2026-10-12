@@ -12,18 +12,6 @@ export const zh = {
         downloadSvg: "下载 SVG",
         copySvgTitle: "复制到剪贴板",
         downloadSvgTitle: "下载 SVG",
-        connect: "连线",
-        connectTitle: "连线工具 (S)",
-        line: "直线",
-        arc: "弧线",
-        lineTitle: "直线",
-        arcTitle: "弧线",
-        arrowNone: "无",
-        arrowStart: "←",
-        arrowEnd: "→",
-        arrowBoth: "⇄",
-        arrowTitle: (dir) =>
-            `箭头：${dir === "none" ? "无" : dir === "start" ? "起点" : dir === "end" ? "终点" : "双向"}`,
         includeMarkers: "包含品数",
         showNotes: "显示音符",
         horizontalCrop: "水平截断",
@@ -139,13 +127,22 @@ export const zh = {
         applyTitle: (name) => `应用：${name}`,
     },
 
+    // 连线预设（菜单与连线工具栏共用）
+    connection: {
+        presetLabels: {
+            "line": "直线",
+            "line-arrow": "箭头",
+            "arc-arrow": "弧线",
+        },
+        presetTitles: {
+            "line": "直线，无方向（再点一次退出连线）",
+            "line-arrow": "直线，箭头由起点指向终点（再点一次退出连线）",
+            "arc-arrow": "弧线，箭头由起点指向终点（再点一次退出连线）",
+        },
+    },
+
     // FretboardSVG connection toolbar
     svg: {
-        connType: "类型",
-        connTypeLine: "线",
-        connTypeArc: "弧",
-        connArrow: "箭头",
-        connArrowNone: "无",
         connWidth: "粗细",
         connWidthBtn: "粗",
         connCurvature: "弧度",

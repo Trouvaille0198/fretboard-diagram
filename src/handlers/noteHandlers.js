@@ -1,8 +1,217 @@
-import { updateNote, getNoteSplitMode, getSplitTargetFromPoint, getColorName } from '../utils';
-import { calculateConnectionColor } from '../utils';
+import { updateNote, getNoteSplitMode, getSplitTargetFromPoint, getColorName, detectNoteAtPosition, calculateConnectionColor } from '../utils';
+import { CONSTS } from '../constants';
 import { LEVEL1_COLORS } from '../colorConfig';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
+
+// 在两个音符之间创建/覆盖一条连线（拖拽松开时调用）
+// 预设决定形状、方向和粗细；重新连线同一对音符时也按当前预设覆盖样式
+export function createConnectionBetweenNotes({
+    startNoteId,
+    endNoteId,
+    data,
+    visibility,
+    connections,
+    connectionPreset,
+    useColor2Level,
+    setData
+}) {
+    const startNoteElement = document.getElementById(startNoteId);
+    let startNoteData = data[startNoteId] || { type: 'note', color: 'white', visibility: visibility };
+
+    // 如果起点note有color2，考虑用户通过中键切换的逻辑
+    if (startNoteData.color2 && startNoteData.color2 !== null) {
+        const color1IsWhite = !startNoteData.color || startNoteData.color === 'white';
+
+        if (color1IsWhite || useColor2Level) {
+            startNoteData = { ...startNoteData, color: startNoteData.color2 };
+        }
+    } else {
+        // 从DOM元素的class中提取实际颜色
+        let actualStartColorFromData = startNoteData.color;
+        if (!actualStartColorFromData || actualStartColorFromData === 'white') {
+            if (startNoteElement) {
+                const classList = startNoteElement.className?.baseVal?.split(' ') || startNoteElement.className?.split(' ') || [];
+                const colorClass = classList.find(cls => LEVEL1_COLOR_ORDER.includes(cls));
+                if (colorClass) {
+                    actualStartColorFromData = colorClass;
+                }
+            }
+        }
+        startNoteData = { ...startNoteData, color: actualStartColorFromData || 'white' };
+    }
+
+    if ((startNoteData.visibility || visibility) !== 'visible') {
+        return false;
+    }
+
+    // 如果终点note有color2，优先使用color2
+    let endNoteData = data[endNoteId] || { type: 'note', color: 'white', visibility: visibility };
+    if (endNoteData.color2 && endNoteData.color2 !== null) {
+        const color1IsWhite = !endNoteData.color || endNoteData.color === 'white';
+
+        if (color1IsWhite || useColor2Level) {
+            endNoteData = { ...endNoteData, color: endNoteData.color2 };
+        }
+    }
+
+    // 检查是否已存在相同起点和终点的连线
+    const existingConnectionId = Object.keys(connections || {}).find(connId => {
+        const conn = connections[connId];
+        return (conn.startNoteId === startNoteId && conn.endNoteId === endNoteId) ||
+            (conn.startNoteId === endNoteId && conn.endNoteId === startNoteId);
+    });
+
+    const connectionId = existingConnectionId || `conn-${Date.now()}`;
+    const connectionColor = calculateConnectionColor(startNoteData, endNoteData, connectionId);
+
+    // 处理自定义颜色对象，保存完整的颜色信息
+    const gradientColors = { start: startNoteData.color || 'white', end: endNoteData.color || 'white' };
+
+    // 检查两个note是否都只有第一层颜色且是透明色（需要检查原始note数据，而不是处理后的数据）
+    const originalStartNoteData = data[startNoteId] || { type: 'note', color: 'white', visibility: visibility };
+    const originalEndNoteData = data[endNoteId] || { type: 'note', color: 'white', visibility: visibility };
+    const startColorName = typeof originalStartNoteData.color === 'object' ? originalStartNoteData.color.name : (originalStartNoteData.color || 'white');
+    const endColorName = typeof originalEndNoteData.color === 'object' ? originalEndNoteData.color.name : (originalEndNoteData.color || 'white');
+    const startHasColor2 = originalStartNoteData.color2 && originalStartNoteData.color2 !== null;
+    const endHasColor2 = originalEndNoteData.color2 && originalEndNoteData.color2 !== null;
+    const isBothTrans = startColorName === 'trans' && endColorName === 'trans' && !startHasColor2 && !endHasColor2;
+
+    // 两端都是单色（透明色）时沿用细虚线，方便画音阶走向
+    const presetHasArrow = connectionPreset.arrowDirection !== 'none';
+    const useDashedStyle = isBothTrans && presetHasArrow;
+    const newConnection = {
+        id: connectionId,
+        startNoteId: startNoteId,
+        endNoteId: endNoteId,
+        type: connectionPreset.type,
+        hasArrow: presetHasArrow,
+        arrowDirection: connectionPreset.arrowDirection,
+        strokeWidth: useDashedStyle ? 2 : connectionPreset.strokeWidth,
+        strokeDasharray: useDashedStyle ? '8,4' : undefined,
+        arcCurvature: connectionPreset.arcCurvature,
+        color: connectionColor,
+        gradientColors: gradientColors
+    };
+
+    setData(prevData => {
+        const newData = { ...prevData };
+        if (!newData.connections) {
+            newData.connections = {};
+        }
+        newData.connections[connectionId] = newConnection;
+        return newData;
+    });
+
+    return true;
+}
+
+// 连线模式：在可见音符上按下即开始拖拽连线
+export function createNoteMouseDownHandler(params) {
+    const {
+        connectionMode,
+        data,
+        visibility,
+        notes,
+        setConnectionStartNote,
+        setConnectionStartPosition
+    } = params;
+
+    return (event, noteId) => {
+        if (!connectionMode || event.button !== 0) {
+            return;
+        }
+
+        const noteData = data[noteId] || { type: 'note', color: 'white', visibility: visibility };
+        if ((noteData.visibility || visibility) !== 'visible') {
+            return;
+        }
+
+        const note = notes.find(n => n.id === noteId);
+        if (!note) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        setConnectionStartNote(noteId);
+        setConnectionStartPosition({ x: note.x, y: note.y });
+    };
+}
+
+// 拖拽连线松开：落在可见的目标音符上则生成连线，否则取消（挂在 window 上，拖出指板也能正确收尾）
+export function createConnectionDragEndHandler(params) {
+    const {
+        connectionMode,
+        connectionStartNote,
+        notes,
+        data,
+        visibility,
+        svgElementRef,
+        connections,
+        connectionPreset,
+        useColor2Level,
+        setData,
+        setConnectionStartNote,
+        setConnectionStartPosition,
+        setMousePosition,
+        setPreviewHoverNote,
+        setUseColor2Level
+    } = params;
+
+    return (event) => {
+        if (!connectionMode || !connectionStartNote) {
+            return;
+        }
+        // 只响应左键松开，右键（退出连线模式）不触发
+        if (event.button !== undefined && event.button !== 0) {
+            return;
+        }
+
+        const clearPending = () => {
+            setConnectionStartNote(null);
+            setConnectionStartPosition(null);
+            setMousePosition(null);
+            setPreviewHoverNote(null);
+            setUseColor2Level(false);
+        };
+
+        const svg = svgElementRef.current;
+        if (!svg || !svg.getScreenCTM()) {
+            clearPending();
+            return;
+        }
+
+        const point = svg.createSVGPoint();
+        point.x = event.clientX;
+        point.y = event.clientY;
+        const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
+
+        const dropNote = detectNoteAtPosition(svgPoint.x, svgPoint.y, notes, CONSTS.circleRadius);
+        if (!dropNote || dropNote.id === connectionStartNote) {
+            clearPending();
+            return;
+        }
+
+        const dropNoteData = data[dropNote.id] || { type: 'note', color: 'white', visibility: visibility };
+        if ((dropNoteData.visibility || visibility) !== 'visible') {
+            clearPending();
+            return;
+        }
+
+        createConnectionBetweenNotes({
+            startNoteId: connectionStartNote,
+            endNoteId: dropNote.id,
+            data,
+            visibility,
+            connections,
+            connectionPreset,
+            useColor2Level,
+            setData
+        });
+        clearPending();
+    };
+}
 
 export function createNoteClickHandler(params) {
     const {
@@ -16,17 +225,6 @@ export function createNoteClickHandler(params) {
         setSelectedColorLevel,
         setSelectedColor,
         connectionMode,
-        connectionStartNote,
-        setConnectionStartNote,
-        setConnectionStartPosition,
-        setMousePosition,
-        setPreviewHoverNote,
-        useColor2Level,
-        setUseColor2Level,
-        previewHoverNote,
-        connections,
-        connectionType,
-        connectionArrowDirection,
         consumePendingBrushClick,
         updateNote: updateNoteFn
     } = params;
@@ -63,154 +261,14 @@ export function createNoteClickHandler(params) {
         const localX = circleRect ? pointerX - (circleRect.left + circleRect.width / 2) : 0;
         const localY = circleRect ? pointerY - (circleRect.top + circleRect.height / 2) : 0;
 
-        // 连线模式处理
+        // 连线模式下：可见音符只作为拖拽连线的端点（按下→拖动→松开），单击不再画线；
+        // 不可见音符仍可先着色，方便准备端点
         if (connectionMode) {
-            // 如果note是visible的，优先执行连线逻辑
             if (currentVisibility === 'visible') {
-                if (!connectionStartNote) {
-                    // 第一次点击：记录起点
-                    const x = parseFloat(noteElement.getAttribute('data-x') || '0');
-                    const y = parseFloat(noteElement.getAttribute('data-y') || '0');
-                    setConnectionStartNote(noteId);
-                    setConnectionStartPosition({ x, y });
-                    return;
-                } else {
-                    // 第二次点击：创建连线
-                    if (connectionStartNote === noteId) {
-                        // 点击同一个note，取消连线
-                        setConnectionStartNote(null);
-                        setConnectionStartPosition(null);
-                        setMousePosition(null);
-                        setPreviewHoverNote(null);
-                        setUseColor2Level(false);
-                        return;
-                    }
-
-                    // 检查终点note是否visible
-                    if (currentVisibility !== 'visible') {
-                        return; // 不visible的note不能作为终点
-                    }
-
-                    // 检查起点note是否仍然visible
-                    const startNoteElement = document.getElementById(connectionStartNote);
-                    let startNoteData = data[connectionStartNote] || { type: 'note', color: 'white', visibility: visibility };
-
-                    // 如果起点note有color2，考虑用户通过中键切换的逻辑
-                    if (startNoteData.color2 && startNoteData.color2 !== null) {
-                        const color1IsWhite = !startNoteData.color || startNoteData.color === 'white';
-
-                        if (color1IsWhite) {
-                            startNoteData = { ...startNoteData, color: startNoteData.color2 };
-                        } else if (useColor2Level) {
-                            startNoteData = { ...startNoteData, color: startNoteData.color2 };
-                        }
-                    } else {
-                        // 从DOM元素的class中提取实际颜色
-                        let actualStartColorFromData = startNoteData.color;
-                        if (!actualStartColorFromData || actualStartColorFromData === 'white') {
-                            if (startNoteElement) {
-                                const classList = startNoteElement.className?.baseVal?.split(' ') || startNoteElement.className?.split(' ') || [];
-                                const colorClass = classList.find(cls => LEVEL1_COLOR_ORDER.includes(cls));
-                                if (colorClass) {
-                                    actualStartColorFromData = colorClass;
-                                }
-                            }
-                        }
-                        startNoteData = { ...startNoteData, color: actualStartColorFromData || 'white' };
-                    }
-
-                    const startNoteDataWithColor = startNoteData;
-                    const startVisibility = startNoteDataWithColor.visibility || visibility;
-                    if (startVisibility !== 'visible') {
-                        setConnectionStartNote(null);
-                        setConnectionStartPosition(null);
-                        setMousePosition(null);
-                        setPreviewHoverNote(null);
-                        setUseColor2Level(false);
-                        return;
-                    }
-
-                    // 创建连线
-                    let endNoteData = noteData;
-
-                    // 如果终点note有color2，优先使用color2
-                    if (endNoteData.color2 && endNoteData.color2 !== null) {
-                        const color1IsWhite = !endNoteData.color || endNoteData.color === 'white';
-
-                        if (color1IsWhite) {
-                            endNoteData = { ...endNoteData, color: endNoteData.color2 };
-                        } else if (useColor2Level) {
-                            endNoteData = { ...endNoteData, color: endNoteData.color2 };
-                        }
-                    }
-
-                    // 检查是否已存在相同起点和终点的连线
-                    const existingConnectionId = Object.keys(connections).find(connId => {
-                        const conn = connections[connId];
-                        return (conn.startNoteId === connectionStartNote && conn.endNoteId === noteId) ||
-                            (conn.startNoteId === noteId && conn.endNoteId === connectionStartNote);
-                    });
-
-                    const connectionId = existingConnectionId || `conn-${Date.now()}`;
-                    const connectionColor = calculateConnectionColor(startNoteDataWithColor, endNoteData, connectionId);
-
-                    // 处理自定义颜色对象，保存完整的颜色信息
-                    const actualStartColor = startNoteDataWithColor.color || 'white';
-                    const actualEndColor = endNoteData.color || 'white';
-                    const gradientColors = { start: actualStartColor, end: actualEndColor };
-
-                    // 检查两个note是否都只有第一层颜色且是透明色
-                    // 需要检查原始note数据，而不是处理后的数据
-                    const originalStartNoteData = data[connectionStartNote] || { type: 'note', color: 'white', visibility: visibility };
-                    const originalEndNoteData = data[noteId] || { type: 'note', color: 'white', visibility: visibility };
-                    const originalStartColor = originalStartNoteData.color || 'white';
-                    const originalEndColor = originalEndNoteData.color || 'white';
-                    const startColorName = typeof originalStartColor === 'object' ? originalStartColor.name : originalStartColor;
-                    const endColorName = typeof originalEndColor === 'object' ? originalEndColor.name : originalEndColor;
-                    const startHasColor2 = originalStartNoteData.color2 && originalStartNoteData.color2 !== null;
-                    const endHasColor2 = originalEndNoteData.color2 && originalEndNoteData.color2 !== null;
-                    const isBothTrans = startColorName === 'trans' && endColorName === 'trans' && !startHasColor2 && !endHasColor2;
-
-                    const existingConnection = existingConnectionId ? connections[existingConnectionId] : null;
-                    // 使用当前选择的类型和箭头方向（如果连线已存在，则保留原有样式）
-                    // 对于两个透明色note的连线，默认有箭头，方向为始->终（end）
-                    const defaultArrowDirection = isBothTrans ? 'end' : connectionArrowDirection;
-                    const newConnection = {
-                        id: connectionId,
-                        startNoteId: connectionStartNote,
-                        endNoteId: noteId,
-                        type: existingConnection?.type || connectionType,
-                        hasArrow: existingConnection?.hasArrow || (defaultArrowDirection !== 'none'),
-                        arrowDirection: existingConnection?.arrowDirection || defaultArrowDirection,
-                        strokeWidth: existingConnection?.strokeWidth || (isBothTrans ? 2 : 3),
-                        strokeDasharray: existingConnection?.strokeDasharray || (isBothTrans ? '8,4' : undefined),
-                        arcCurvature: existingConnection?.arcCurvature || (connectionType === 'arc' ? 0.7 : 0),
-                        color: connectionColor,
-                        gradientColors: gradientColors
-                    };
-
-                    setData(prevData => {
-                        const newData = { ...prevData };
-                        if (!newData.connections) {
-                            newData.connections = {};
-                        }
-                        newData.connections[connectionId] = newConnection;
-                        return newData;
-                    });
-
-                    // 清除连线模式状态
-                    setConnectionStartNote(null);
-                    setConnectionStartPosition(null);
-                    setMousePosition(null);
-                    setPreviewHoverNote(null);
-                    setUseColor2Level(false);
-                    return;
-                }
-            } else {
-                // 如果note不是visible的，且没有选中调色盘，则return
-                if (!selectedColorLevel) {
-                    return;
-                }
+                return;
+            }
+            if (!selectedColorLevel) {
+                return;
             }
         }
 
