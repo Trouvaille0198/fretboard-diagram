@@ -1,11 +1,51 @@
 import React from 'react';
 import { CONSTS } from '../constants';
-import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, calculateArcPath, getPointOnNoteEdge, getPointOnPathAtDistance, getColorName, getNoteSplitMode, resolveNoteColorValue } from '../utils';
+import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, getPointOnNoteEdge, getColorName, getNoteSplitMode, resolveNoteColorValue } from '../utils';
+import { buildConnectionPath } from '../utils/connectionUtils';
 import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from '../colorConfig';
+import { CONNECTION_PRESETS, matchConnectionPreset } from '../hooks/useConnectionState';
+import { ConnectionPresetIcon } from './ConnectionPresetIcon';
 import { useLanguage } from '../i18n';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
 const LEVEL2_COLOR_ORDER = Object.keys(LEVEL2_COLORS);
+
+// 箭头 marker：起点箭头朝外（指向起点音符），终点箭头朝前，与路径缩进配合
+function ArrowMarkers({ idPrefix, arrowLength, startColor, endColor, showStart, showEnd }) {
+  const markerSize = arrowLength * 1.25;
+  const baseY = arrowLength * 0.375;
+
+  return (
+    <React.Fragment>
+      {showStart && (
+        <marker
+          id={`arrowhead-start-${idPrefix}`}
+          markerWidth={markerSize}
+          markerHeight={markerSize}
+          refX={String(arrowLength)}
+          refY={String(baseY)}
+          orient="auto"
+          markerUnits="userSpaceOnUse"
+        >
+          <path d={`M0,${baseY} L${arrowLength},0 L${arrowLength},${arrowLength * 0.75} z`} fill={startColor} />
+        </marker>
+      )}
+      {showEnd && (
+        <marker
+          id={`arrowhead-end-${idPrefix}`}
+          markerWidth={markerSize}
+          markerHeight={markerSize}
+          refX="0"
+          refY={String(baseY)}
+          orient="auto"
+          markerUnits="userSpaceOnUse"
+        >
+          <path d={`M${arrowLength},${baseY} L0,0 L0,${arrowLength * 0.75} z`} fill={endColor} />
+        </marker>
+      )}
+    </React.Fragment>
+  );
+}
 
 export function FretboardSVG({
   svgElementRef,
@@ -30,9 +70,11 @@ export function FretboardSVG({
   selected,
   connectionMode,
   connectionStartNote,
+  connectionPreset,
   previewHoverNote,
   editingNote,
   handleNoteClick,
+  handleNoteMouseDown,
   setPreviewHoverNote,
   setUseColor2Level,
   setHoveredNoteId,
@@ -72,10 +114,64 @@ export function FretboardSVG({
 }) {
   const { t } = useLanguage();
   const ts = t?.svg ?? {};
+  const tc = t?.connection ?? {};
+
+  const selectedConnectionData = selectedConnection ? connections[selectedConnection] : null;
+  const activePreset = matchConnectionPreset(selectedConnectionData);
+
+  // 工具栏里切换预设：只改这条连线，点一下到位（原来的"类型/箭头"要循环点好几下）
+  const applyPresetToSelectedConnection = (preset) => {
+    const connId = selectedConnection;
+    if (!connId) return;
+    if (buttonClickRef.current.preset) {
+      return;
+    }
+    buttonClickRef.current.preset = true;
+    setTimeout(() => {
+      buttonClickRef.current.preset = false;
+    }, 100);
+
+    if (!dataRef.current?.connections?.[connId]) {
+      return;
+    }
+
+    setData(prevData => {
+      const conn = prevData.connections?.[connId];
+      if (!conn) return prevData;
+
+      const nextConnection = {
+        ...conn,
+        type: preset.type,
+        arrowDirection: preset.arrowDirection,
+        hasArrow: preset.arrowDirection !== 'none'
+      };
+
+      // 保留用户调过的弧度（含反向弧线），直线预设不动它，切回来还在
+      if (preset.type === 'arc' && !(conn.type === 'arc' && conn.arcCurvature)) {
+        nextConnection.arcCurvature = preset.arcCurvature;
+      }
+
+      // "无方向"预设同时去掉虚线，保证点一下就是实线
+      if (preset.arrowDirection === 'none') {
+        nextConnection.strokeDasharray = undefined;
+      }
+
+      return {
+        ...prevData,
+        connections: {
+          ...prevData.connections,
+          [connId]: nextConnection
+        }
+      };
+    });
+
+    setToolbarDropdown(null);
+  };
   return (
     <svg
       ref={svgElementRef}
       id="fretboard-svg"
+      className={connectionMode && connectionStartNote ? 'drag-connecting' : undefined}
       xmlns="http://www.w3.org/2000/svg"
       width={svgWidth}
       height={svgHeight}
@@ -262,6 +358,11 @@ export function FretboardSVG({
               data-split-mode={hasColor2 ? splitMode : undefined}
               onClick={(e) => handleNoteClick(e, note.id)}
               onMouseDown={(e) => {
+                if (e.button === 0) {
+                  // 连线模式下按下可见音符 = 开始拖拽连线
+                  handleNoteMouseDown(e, note.id);
+                  return;
+                }
                 if (e.button === 1) {
                   e.preventDefault();
                   e.stopPropagation();
@@ -406,203 +507,61 @@ export function FretboardSVG({
             endArrowColor = 'rgba(200, 200, 200, 0.7)';
           }
 
-          // 计算边缘上的点
+          // 计算边缘上的点，再由 buildConnectionPath 统一生成路径（直线/弧线、有无箭头）
           const hasArrowStart = conn.arrowDirection === 'start' || conn.arrowDirection === 'both';
           const hasArrowEnd = conn.arrowDirection === 'end' || conn.arrowDirection === 'both';
           const arrowLength = CONSTS.circleRadius * (2 / 3);
 
-          // 先计算圆边线上的点
           const startEdge = getPointOnNoteEdge(startCenter.x, startCenter.y, endCenter.x, endCenter.y, CONSTS.circleRadius);
           const endEdge = getPointOnNoteEdge(endCenter.x, endCenter.y, startCenter.x, startCenter.y, CONSTS.circleRadius);
 
           const strokeWidth = conn.strokeWidth || 3;
+          const path = buildConnectionPath(startEdge, endEdge, {
+            type: conn.type,
+            curvature: conn.arcCurvature,
+            arrowDirection: conn.arrowDirection,
+            arrowLength,
+            strokeWidth,
+            startCenter,
+            endCenter
+          });
 
-          // 计算实际的路径端点
-          let pathStartX = startEdge.x;
-          let pathStartY = startEdge.y;
-          let pathEndX = endEdge.x;
-          let pathEndY = endEdge.y;
-
-          // 对于无箭头的情况，端点需要稍微向外偏移，以补偿strokeLinecap的影响
-          if (!hasArrowStart) {
-            const dx = startEdge.x - startCenter.x;
-            const dy = startEdge.y - startCenter.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance > 0) {
-              const unitX = dx / distance;
-              const unitY = dy / distance;
-              pathStartX = startEdge.x + unitX * (strokeWidth / 2);
-              pathStartY = startEdge.y + unitY * (strokeWidth / 2);
-            }
-          }
-
-          if (!hasArrowEnd) {
-            const dx = endEdge.x - endCenter.x;
-            const dy = endEdge.y - endCenter.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance > 0) {
-              const unitX = dx / distance;
-              const unitY = dy / distance;
-              pathEndX = endEdge.x + unitX * (strokeWidth / 2);
-              pathEndY = endEdge.y + unitY * (strokeWidth / 2);
-            }
-          }
-
-          const markerStart = (conn.arrowDirection === 'start' || conn.arrowDirection === 'both') ? `url(#arrowhead-start-${conn.id})` : undefined;
-          const markerEnd = (conn.arrowDirection === 'end' || conn.arrowDirection === 'both') ? `url(#arrowhead-end-${conn.id})` : undefined;
-
-          if (conn.type === 'arc') {
-            // 对于弧线，需要沿着路径计算缩进点
-            if (hasArrowStart || hasArrowEnd) {
-              const fullPathString = calculateArcPath(startEdge.x, startEdge.y, endEdge.x, endEdge.y, conn.arcCurvature);
-
-              if (hasArrowStart) {
-                const startOffsetPoint = getPointOnPathAtDistance(fullPathString, arrowLength);
-                pathStartX = startOffsetPoint.x;
-                pathStartY = startOffsetPoint.y;
-              }
-
-              if (hasArrowEnd) {
-                const svgNS = 'http://www.w3.org/2000/svg';
-                const tempPath = document.createElementNS(svgNS, 'path');
-                tempPath.setAttribute('d', fullPathString);
-                const totalLength = tempPath.getTotalLength();
-                const endOffsetPoint = getPointOnPathAtDistance(fullPathString, totalLength - arrowLength);
-                pathEndX = endOffsetPoint.x;
-                pathEndY = endOffsetPoint.y;
-              }
-            }
-
-            const path = calculateArcPath(pathStartX, pathStartY, pathEndX, pathEndY, conn.arcCurvature);
-            return (
-              <g key={conn.id}>
-                {(conn.arrowDirection === 'start' || conn.arrowDirection === 'both') && (
-                  <marker
-                    id={`arrowhead-start-${conn.id}`}
-                    markerWidth={arrowLength * 1.25}
-                    markerHeight={arrowLength * 1.25}
-                    refX={String(arrowLength)}
-                    refY={String(arrowLength * 0.375)}
-                    orient="auto"
-                    markerUnits="userSpaceOnUse"
-                  >
-                    <path d={`M0,${arrowLength * 0.375} L${arrowLength},0 L${arrowLength},${arrowLength * 0.75} z`} fill={startArrowColor} />
-                  </marker>
-                )}
-                {(conn.arrowDirection === 'end' || conn.arrowDirection === 'both') && (
-                  <marker
-                    id={`arrowhead-end-${conn.id}`}
-                    markerWidth={arrowLength * 1.25}
-                    markerHeight={arrowLength * 1.25}
-                    refX="0"
-                    refY={String(arrowLength * 0.375)}
-                    orient="auto"
-                    markerUnits="userSpaceOnUse"
-                  >
-                    <path d={`M${arrowLength},${arrowLength * 0.375} L0,0 L0,${arrowLength * 0.75} z`} fill={endArrowColor} />
-                  </marker>
-                )}
-                <path
-                  d={path}
-                  className="connection"
-                  stroke={strokeColor}
-                  strokeWidth={conn.strokeWidth || 3}
-                  strokeDasharray={conn.strokeDasharray}
-                  fill="none"
-                  markerStart={markerStart}
-                  markerEnd={markerEnd}
-                  onClick={(e) => handleConnectionClickMemo(e, conn.id)}
-                  onContextMenu={(e) => handleConnectionContextMenuMemo(e, conn.id)}
-                  onMouseEnter={() => setHoveredConnectionId(conn.id)}
-                  onMouseLeave={() => setHoveredConnectionId(null)}
-                  style={{
-                    cursor: 'pointer',
-                    strokeWidth: `${conn.strokeWidth || 3}px`,
-                    strokeDasharray: conn.strokeDasharray || undefined,
-                    opacity: connectionOpacity
-                  }}
-                />
-              </g>
-            );
-          } else {
-            // 对于直线
-            if (hasArrowStart || hasArrowEnd) {
-              const linePathString = `M ${startEdge.x} ${startEdge.y} L ${endEdge.x} ${endEdge.y}`;
-
-              if (hasArrowStart) {
-                const startOffsetPoint = getPointOnPathAtDistance(linePathString, arrowLength);
-                pathStartX = startOffsetPoint.x;
-                pathStartY = startOffsetPoint.y;
-              }
-
-              if (hasArrowEnd) {
-                const svgNS = 'http://www.w3.org/2000/svg';
-                const tempPath = document.createElementNS(svgNS, 'path');
-                tempPath.setAttribute('d', linePathString);
-                const totalLength = tempPath.getTotalLength();
-                const endOffsetPoint = getPointOnPathAtDistance(linePathString, totalLength - arrowLength);
-                pathEndX = endOffsetPoint.x;
-                pathEndY = endOffsetPoint.y;
-              }
-            }
-
-            return (
-              <g key={conn.id}>
-                {(conn.arrowDirection === 'start' || conn.arrowDirection === 'both') && (
-                  <marker
-                    id={`arrowhead-start-${conn.id}`}
-                    markerWidth={arrowLength * 1.25}
-                    markerHeight={arrowLength * 1.25}
-                    refX={String(arrowLength)}
-                    refY={String(arrowLength * 0.375)}
-                    orient="auto"
-                    markerUnits="userSpaceOnUse"
-                  >
-                    <path d={`M0,${arrowLength * 0.375} L${arrowLength},0 L${arrowLength},${arrowLength * 0.75} z`} fill={startArrowColor} />
-                  </marker>
-                )}
-                {(conn.arrowDirection === 'end' || conn.arrowDirection === 'both') && (
-                  <marker
-                    id={`arrowhead-end-${conn.id}`}
-                    markerWidth={arrowLength * 1.25}
-                    markerHeight={arrowLength * 1.25}
-                    refX="0"
-                    refY={String(arrowLength * 0.375)}
-                    orient="auto"
-                    markerUnits="userSpaceOnUse"
-                  >
-                    <path d={`M${arrowLength},${arrowLength * 0.375} L0,0 L0,${arrowLength * 0.75} z`} fill={endArrowColor} />
-                  </marker>
-                )}
-                <line
-                  x1={pathStartX}
-                  y1={pathStartY}
-                  x2={pathEndX}
-                  y2={pathEndY}
-                  className="connection"
-                  stroke={strokeColor}
-                  strokeWidth={conn.strokeWidth || 3}
-                  strokeDasharray={conn.strokeDasharray}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  markerStart={markerStart}
-                  markerEnd={markerEnd}
-                  onClick={(e) => handleConnectionClickMemo(e, conn.id)}
-                  onContextMenu={(e) => handleConnectionContextMenuMemo(e, conn.id)}
-                  onMouseEnter={() => setHoveredConnectionId(conn.id)}
-                  onMouseLeave={() => setHoveredConnectionId(null)}
-                  style={{
-                    cursor: 'pointer',
-                    strokeWidth: `${conn.strokeWidth || 3}px`,
-                    strokeDasharray: conn.strokeDasharray || undefined,
-                    strokeLinecap: 'round',
-                    strokeLinejoin: 'round',
-                    opacity: connectionOpacity
-                  }}
-                />
-              </g>
-            );
-          }
+          return (
+            <g key={conn.id}>
+              <ArrowMarkers
+                idPrefix={conn.id}
+                arrowLength={arrowLength}
+                startColor={startArrowColor}
+                endColor={endArrowColor}
+                showStart={hasArrowStart}
+                showEnd={hasArrowEnd}
+              />
+              <path
+                d={path}
+                className="connection"
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                strokeDasharray={conn.strokeDasharray}
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                markerStart={hasArrowStart ? `url(#arrowhead-start-${conn.id})` : undefined}
+                markerEnd={hasArrowEnd ? `url(#arrowhead-end-${conn.id})` : undefined}
+                onClick={(e) => handleConnectionClickMemo(e, conn.id)}
+                onContextMenu={(e) => handleConnectionContextMenuMemo(e, conn.id)}
+                onMouseEnter={() => setHoveredConnectionId(conn.id)}
+                onMouseLeave={() => setHoveredConnectionId(null)}
+                style={{
+                  cursor: 'pointer',
+                  strokeWidth: `${strokeWidth}px`,
+                  strokeDasharray: conn.strokeDasharray || undefined,
+                  strokeLinecap: 'round',
+                  strokeLinejoin: 'round',
+                  opacity: connectionOpacity
+                }}
+              />
+            </g>
+          );
         })}
       </g>
 
@@ -735,19 +694,50 @@ export function FretboardSVG({
               endY = mousePosition.y;
             }
 
+            // 预览按当前预设绘制（形状 + 箭头），所见即所得
+            const previewType = connectionPreset?.type || 'line';
+            const previewArrowDirection = connectionPreset?.arrowDirection || 'none';
+            const previewArrowLength = CONSTS.circleRadius * (2 / 3);
+            const previewHasArrowStart = previewArrowDirection === 'start' || previewArrowDirection === 'both';
+            const previewHasArrowEnd = previewArrowDirection === 'end' || previewArrowDirection === 'both';
+            const previewPath = buildConnectionPath(
+              { x: startEdgeX, y: startEdgeY },
+              { x: endX, y: endY },
+              {
+                type: previewType,
+                curvature: connectionPreset?.arcCurvature ?? 0.7,
+                arrowDirection: previewArrowDirection,
+                arrowLength: previewArrowLength,
+                strokeWidth: 3,
+                startCenter: connectionStartPosition,
+                endCenter: previewHoverNote ? notes.find(n => n.id === previewHoverNote) : null
+              }
+            );
+
             return (
-              <line
-                className="connection-preview connection-preview-line"
-                x1={startEdgeX}
-                y1={startEdgeY}
-                x2={endX}
-                y2={endY}
-                stroke={previewColor}
-                strokeWidth={3}
-                strokeDasharray="5,5"
-                opacity={0.6}
-                pointerEvents="none"
-              />
+              <g>
+                <ArrowMarkers
+                  idPrefix="preview"
+                  arrowLength={previewArrowLength}
+                  startColor={previewColor}
+                  endColor={previewColor}
+                  showStart={previewHasArrowStart}
+                  showEnd={previewHasArrowEnd}
+                />
+                <path
+                  className="connection-preview connection-preview-line"
+                  d={previewPath}
+                  stroke={previewColor}
+                  strokeWidth={3}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray="5,5"
+                  opacity={0.6}
+                  pointerEvents="none"
+                  markerStart={previewHasArrowStart ? 'url(#arrowhead-start-preview)' : undefined}
+                  markerEnd={previewHasArrowEnd ? 'url(#arrowhead-end-preview)' : undefined}
+                />
+              </g>
             );
           })()}
         </g>
@@ -788,12 +778,12 @@ export function FretboardSVG({
       {/* 连线工具栏 */}
       {connectionToolbarVisible && selectedConnection && connections[selectedConnection] && (
         <foreignObject
-          x={connectionToolbarPosition.x - 300}
+          x={connectionToolbarPosition.x - 600}
           y={connectionToolbarPosition.y - 300}
           width="1200"
           height="800"
           className="connection-toolbar-container"
-          style={{ overflow: 'visible', pointerEvents: 'all' }}
+          style={{ overflow: 'visible', pointerEvents: 'none' }}
         >
           <div
             ref={toolbarRef}
@@ -807,138 +797,32 @@ export function FretboardSVG({
               }
             }}
             onContextMenu={(e) => e.preventDefault()}
-            style={{ position: 'relative', left: '300px', top: '300px' }}
+            style={{ position: 'relative', left: '50%', top: '300px', transform: 'translateX(-50%)' }}
           >
             <div className="toolbar-icons">
-              {/* 类型按钮 */}
-              <div className="toolbar-icon-wrapper">
-                <button
-                  className={`toolbar-icon-btn ${connections[selectedConnection]?.type === 'arc' ? 'active' : ''}`}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                    const connId = selectedConnection;
-                    if (!connId) return;
-                    if (buttonClickRef.current.type) {
-                      return;
-                    }
-                    buttonClickRef.current.type = true;
-                    setTimeout(() => {
-                      buttonClickRef.current.type = false;
-                    }, 100);
-                    const currentData = dataRef.current;
-                    const currentConn = currentData?.connections?.[connId];
-                    if (!currentConn) {
-                      return;
-                    }
-                    const currentType = currentConn.type || 'line';
-                    setData(prevData => {
-                      const newData = { ...prevData };
-                      if (!newData.connections) {
-                        newData.connections = {};
-                      }
-                      if (newData.connections[connId]) {
-                        if (currentType === 'line') {
-                          const newArcCurvature = (currentConn.arcCurvature === 0 || currentConn.arcCurvature < 0)
-                            ? 0.7
-                            : (currentConn.arcCurvature || 0.7);
-                          newData.connections[connId] = {
-                            ...newData.connections[connId],
-                            type: 'arc',
-                            arcCurvature: newArcCurvature
-                          };
-                        } else {
-                          newData.connections[connId] = {
-                            ...newData.connections[connId],
-                            type: 'line'
-                          };
-                        }
-                      }
-                      return newData;
-                    });
-                  }}
-                  title={ts.connType ?? 'Type'}
-                >
-                  {connections[selectedConnection]?.type === 'line' ? (ts.connTypeLine ?? 'Line') : (ts.connTypeArc ?? 'Arc')}
-                </button>
-              </div>
-
-              {/* 箭头按钮 */}
-              <div className="toolbar-icon-wrapper">
-                <button
-                  className="toolbar-icon-btn"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                    const connId = selectedConnection;
-                    if (!connId) return;
-                    if (buttonClickRef.current.arrow) {
-                      return;
-                    }
-                    buttonClickRef.current.arrow = true;
-                    setTimeout(() => {
-                      buttonClickRef.current.arrow = false;
-                    }, 100);
-                    const currentData = dataRef.current;
-                    const currentConn = currentData?.connections?.[connId];
-                    if (!currentConn) {
-                      return;
-                    }
-                    const currentDirection = currentConn.arrowDirection || 'none';
-                    let nextDirection;
-                    switch (currentDirection) {
-                      case 'none':
-                        nextDirection = 'start';
-                        break;
-                      case 'start':
-                        nextDirection = 'end';
-                        break;
-                      case 'end':
-                        nextDirection = 'both';
-                        break;
-                      case 'both':
-                        nextDirection = 'none';
-                        break;
-                      default:
-                        nextDirection = 'none';
-                    }
-                    setData(prevData => {
-                      const newData = { ...prevData };
-                      if (!newData.connections) {
-                        newData.connections = {};
-                      }
-                      if (newData.connections[connId]) {
-                        newData.connections[connId] = {
-                          ...newData.connections[connId],
-                          arrowDirection: nextDirection
-                        };
-                      }
-                      return newData;
-                    });
-                  }}
-                  title={ts.connArrow ?? 'Arrow'}
-                >
-                  {(() => {
-                    const arrowDir = connections[selectedConnection]?.arrowDirection || 'none';
-                    if (arrowDir === 'none') return ts.connArrowNone ?? '–';
-                    if (arrowDir === 'start') return '←';
-                    if (arrowDir === 'end') return '→';
-                    if (arrowDir === 'both') return '⇄';
-                    return ts.connArrowNone ?? '–';
-                  })()}
-                </button>
+              {/* 预设按钮：形状和方向一次点到位，替代原来的"类型 + 箭头"两个循环按钮 */}
+              <div className="toolbar-preset-group">
+                {CONNECTION_PRESETS.map(preset => (
+                  <button
+                    key={preset.id}
+                    className={`toolbar-icon-btn toolbar-preset-btn ${activePreset && activePreset.id === preset.id ? 'active' : ''}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
+                      applyPresetToSelectedConnection(preset);
+                    }}
+                    title={tc.presetTitles?.[preset.id] ?? preset.id}
+                  >
+                    <ConnectionPresetIcon presetId={preset.id} width={26} height={14} />
+                    <span className="toolbar-preset-label">{tc.presetLabels?.[preset.id] ?? preset.id}</span>
+                  </button>
+                ))}
               </div>
 
               {/* 粗细按钮 */}
@@ -1096,7 +980,7 @@ export function FretboardSVG({
                         return newData;
                       });
                     }}
-                    title="反转弧度"
+                    title={ts.connReverse ?? 'Flip curve'}
                   >
                     ↻
                   </button>

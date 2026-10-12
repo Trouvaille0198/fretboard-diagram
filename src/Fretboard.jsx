@@ -11,7 +11,7 @@ import { computeNoteIndex, computeNoteName, generateNotes, generateMarkers, gene
 import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors } from './utils/connectionUtils';
 import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow, replaceAllTintNotes } from './utils/fretboardActions';
 import { generateTintVariants, getLevel1FillColor, getLevel2Color } from './colorConfig';
-import { createNoteClickHandler, createNoteContextMenuHandler, createDeleteNoteHandler, createFinishEditingHandler } from './handlers/noteHandlers';
+import { createNoteClickHandler, createNoteContextMenuHandler, createDeleteNoteHandler, createFinishEditingHandler, createNoteMouseDownHandler, createConnectionDragEndHandler } from './handlers/noteHandlers';
 import { createSvgClickHandler, createSvgContextMenuHandler, createSvgMouseMoveHandler, createSvgMouseDownHandler, createSvgWheelHandler, createEditableKeyDownHandler, createEditableClickHandler } from './handlers/svgHandlers';
 import { createKeyboardHandler } from './handlers/keyboardHandlers';
 import { FretboardMenu } from './components/FretboardMenu';
@@ -107,8 +107,7 @@ function Fretboard() {
     connectionToolbarPosition, setConnectionToolbarPosition,
     toolbarDropdown, setToolbarDropdown,
     toolbarDropdownDirection, setToolbarDropdownDirection,
-    connectionType, setConnectionType,
-    connectionArrowDirection, setConnectionArrowDirection
+    connectionPresetId, connectionPreset, selectConnectionPreset
   } = connectionState;
 
   const {
@@ -141,7 +140,7 @@ function Fretboard() {
   const svgElementRef = useRef(null);
   const notesElementRef = useRef(null);
   const toolbarRef = useRef(null);
-  const buttonClickRef = useRef({ type: false, arrow: false });
+  const buttonClickRef = useRef({ preset: false, reverseCurvature: false, grayed: false });
   const prevNoteColorsRef = useRef({});
   const brushPaintStateRef = useRef({ armed: false, dragged: false, lastPaintedNoteId: null });
   const suppressBrushClickRef = useRef(false);
@@ -437,14 +436,38 @@ function Fretboard() {
   const handleNoteClick = useCallback(createNoteClickHandler({
     data, setData, visibility, selected, setSelected,
     selectedColorLevel, selectedColor, setSelectedColorLevel, setSelectedColor,
-    connectionMode, connectionStartNote,
-    setConnectionStartNote, setConnectionStartPosition, setMousePosition,
-    setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote,
-    connections, connectionType, connectionArrowDirection, consumePendingBrushClick, updateNote: updateNote
+    connectionMode, consumePendingBrushClick, updateNote: updateNote
   }), [data, setData, visibility, selected, setSelected, selectedColorLevel, selectedColor,
     setSelectedColorLevel, setSelectedColor,
-    connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
-    setMousePosition, setPreviewHoverNote, useColor2Level, setUseColor2Level, previewHoverNote, connections, connectionType, connectionArrowDirection, consumePendingBrushClick]);
+    connectionMode, consumePendingBrushClick]);
+
+  // 连线模式：按下可见音符开始拖拽连线
+  const handleNoteMouseDown = useCallback(createNoteMouseDownHandler({
+    connectionMode, data, visibility, notes,
+    setConnectionStartNote, setConnectionStartPosition
+  }), [connectionMode, data, visibility, notes, setConnectionStartNote, setConnectionStartPosition]);
+
+  // 拖拽连线松开：落在可见音符上生成连线，否则取消
+  const handleConnectionDragEnd = useCallback(createConnectionDragEndHandler({
+    connectionMode, connectionStartNote, notes, data, visibility, svgElementRef,
+    connections, connectionPreset, useColor2Level, setData,
+    setConnectionStartNote, setConnectionStartPosition, setMousePosition,
+    setPreviewHoverNote, setUseColor2Level
+  }), [connectionMode, connectionStartNote, notes, data, visibility, svgElementRef,
+    connections, connectionPreset, useColor2Level, setData,
+    setConnectionStartNote, setConnectionStartPosition, setMousePosition,
+    setPreviewHoverNote, setUseColor2Level]);
+
+  // 拖拽期间监听 window 的 mouseup，拖出指板松开也能正确收尾
+  useEffect(() => {
+    if (!connectionMode || !connectionStartNote) {
+      return;
+    }
+    window.addEventListener('mouseup', handleConnectionDragEnd);
+    return () => {
+      window.removeEventListener('mouseup', handleConnectionDragEnd);
+    };
+  }, [connectionMode, connectionStartNote, handleConnectionDragEnd]);
 
   const handleNoteContextMenu = useCallback(createNoteContextMenuHandler({
     selected, setSelected, data, setData, updateNote: updateNote
@@ -835,6 +858,7 @@ function Fretboard() {
           previewHoverNote={previewHoverNote}
           editingNote={editingNote}
           handleNoteClick={handleNoteClick}
+          handleNoteMouseDown={handleNoteMouseDown}
           setPreviewHoverNote={setPreviewHoverNote}
           setUseColor2Level={setUseColor2Level}
           setHoveredNoteId={setHoveredNoteId}
@@ -846,6 +870,7 @@ function Fretboard() {
           handleConnectionContextMenuMemo={handleConnectionContextMenuMemo}
           connectionStartPosition={connectionStartPosition}
           mousePosition={mousePosition}
+          connectionPreset={connectionPreset}
           useColor2Level={useColor2Level}
           editableDivVisible={editableDivVisible}
           editableDivX={editableDivX}
@@ -885,20 +910,8 @@ function Fretboard() {
         onToggleEnharmonic={toggleEnharmonicMemo}
         onToggleVisibility={toggleVisibilityMemo}
         connectionMode={connectionMode}
-        connectionType={connectionType}
-        setConnectionType={setConnectionType}
-        connectionArrowDirection={connectionArrowDirection}
-        setConnectionArrowDirection={setConnectionArrowDirection}
-        onToggleConnectionMode={() => {
-          setConnectionMode(!connectionMode);
-          if (connectionMode) {
-            setConnectionStartNote(null);
-            setConnectionStartPosition(null);
-            setMousePosition(null);
-            setPreviewHoverNote(null);
-            setUseColor2Level(false);
-          }
-        }}
+        connectionPresetId={connectionPresetId}
+        onSelectConnectionPreset={selectConnectionPreset}
         onSaveSVG={saveSVGMemo}
         includeMarkers={includeMarkers}
         setIncludeMarkers={setIncludeMarkers}

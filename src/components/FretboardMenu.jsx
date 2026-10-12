@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { CONSTS } from '../constants';
 import PianoKeyboard from '../PianoKeyboard';
 import { ColorPalette } from './ColorPalette';
+import { ConnectionPresetIcon } from './ConnectionPresetIcon';
+import { CONNECTION_PRESETS } from '../hooks/useConnectionState';
 import { FretRangeSlider } from './FretRangeSlider';
 import { ScaleDisplay } from './ScaleDisplay';
 import { getLevel1FillColor, getLevel2Color, generateTintVariants } from '../colorConfig';
@@ -17,11 +19,8 @@ export function FretboardMenu({
   onToggleEnharmonic,
   onToggleVisibility,
   connectionMode,
-  connectionType,
-  setConnectionType,
-  connectionArrowDirection,
-  setConnectionArrowDirection,
-  onToggleConnectionMode,
+  connectionPresetId,
+  onSelectConnectionPreset,
   onSaveSVG,
   onSaveState,
   onReset,
@@ -58,6 +57,7 @@ export function FretboardMenu({
   const [isMinor, setIsMinor] = useState(false);
 
   const tm = t?.menu ?? {};
+  const tc = t?.connection ?? {};
 
   return (
     <div className="menu">
@@ -151,39 +151,20 @@ export function FretboardMenu({
             {copyOnly ? (tm.copySvg ?? 'Copy SVG') : (tm.downloadSvg ?? 'Download SVG')}
           </button>
         </div>
-        {/* 连线工具区域 */}
+        {/* 连线工具区域：点预设即进入连线模式，再点当前的预设退出 */}
         <div className="menu-section-panel menu-connection-panel">
-          <div className="menu-connection-actions">
-            <button
-              className={`button menu-control-button-primary ${connectionMode ? 'selected' : ''}`}
-              onClick={onToggleConnectionMode}
-              title={tm.connectTitle ?? 'Connection tool (S)'}
-            >
-              {tm.connect ?? 'Connect'}
-            </button>
-            <button
-              className="button menu-control-button-compact"
-              onClick={() => setConnectionType(connectionType === 'line' ? 'arc' : 'line')}
-              disabled={!connectionMode}
-              title={connectionType === 'line' ? (tm.lineTitle ?? 'Line') : (tm.arcTitle ?? 'Arc')}
-            >
-              {connectionType === 'line' ? (tm.line ?? 'Line') : (tm.arc ?? 'Arc')}
-            </button>
-            <button
-              className="button menu-control-button-compact"
-              onClick={() => {
-                const directions = ['none', 'start', 'end', 'both'];
-                const currentIndex = directions.indexOf(connectionArrowDirection);
-                const nextIndex = (currentIndex + 1) % directions.length;
-                setConnectionArrowDirection(directions[nextIndex]);
-              }}
-              disabled={!connectionMode}
-              title={tm.arrowTitle ? tm.arrowTitle(connectionArrowDirection) : connectionArrowDirection}
-            >
-              {connectionArrowDirection === 'none' ? (tm.arrowNone ?? 'None') :
-                connectionArrowDirection === 'start' ? (tm.arrowStart ?? '←') :
-                  connectionArrowDirection === 'end' ? (tm.arrowEnd ?? '→') : (tm.arrowBoth ?? '⇄')}
-            </button>
+          <div className="menu-connection-presets" role="group">
+            {CONNECTION_PRESETS.map(preset => (
+              <button
+                key={preset.id}
+                className={`button menu-preset-button ${connectionMode && connectionPresetId === preset.id ? 'selected' : ''}`}
+                onClick={() => onSelectConnectionPreset(preset.id)}
+                title={tc.presetTitles?.[preset.id] ?? preset.id}
+              >
+                <ConnectionPresetIcon presetId={preset.id} />
+                <span>{tc.presetLabels?.[preset.id] ?? preset.id}</span>
+              </button>
+            ))}
           </div>
         </div>
         {/* 下载区域 - 放在最底下，分两行显示 */}
