@@ -20,6 +20,7 @@ export function boardGeometry(startFret, endFret) {
   const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5;
   const svgHeight = bottomMarkerY + 20;
   const svgViewBoxY = topMarkerY - 20;
+  const svgViewBoxHeight = svgHeight - svgViewBoxY;
   return { fretboardWidth, svgWidth, svgHeight, svgViewBoxX, svgViewBoxY, svgViewBoxWidth, svgViewBoxHeight };
 }
 
