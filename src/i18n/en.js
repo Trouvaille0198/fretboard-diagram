@@ -18,6 +18,8 @@ export const en = {
         verticalCrop: "V-crop",
         hideDock: "Hide stack",
         scoreView: "Score",
+        scoreViewTitle: "Open the song score (separate page)",
+        scoreView: "Score",
         scoreViewTitle: "Open the song score view",
         copyOnly: "Copy only",
         minor: "Minor",
@@ -200,6 +202,9 @@ export const en = {
     // Song score view
     score: {
         back: "Back to editor",
+        tabText: "Text",
+        tabDynamic: "Dynamic",
+        jumpTo: "Jump to this frame",
         untitled: "Untitled song",
         minor: "Minor",
         speedTitle: "Playback speed",

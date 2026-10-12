@@ -16,9 +16,7 @@ import { createSvgClickHandler, createSvgContextMenuHandler, createSvgMouseMoveH
 import { createKeyboardHandler } from './handlers/keyboardHandlers';
 import { FretboardMenu } from './components/FretboardMenu';
 import { FretboardDock } from './components/FretboardDock';
-import { TimelineBar } from './components/TimelineBar';
-import { TransitionFx, exportSheetImage } from './components/ScorePieces';
-import { deriveMeasures, flattenFrames, readMeasureMeta, writeMeasureMeta } from './utils/songStructure';
+import { SongScoreView } from './components/SongScoreView';
 import { Toast } from './components/Toast';
 import { FretboardSVG } from './components/FretboardSVG';
 import { restoreFretboardState, generateThumbnail, createStateSnapshot } from './utils/fretboardHistory';
@@ -129,13 +127,8 @@ function Fretboard() {
   // 异色模式标记
   const [inTintMode, setInTintMode] = useState(false);
 
-  // 时间轴（序列谱）状态：播放时主指板按帧切换
-  const [playing, setPlaying] = useState(false);
-  const [playheadFrameId, setPlayheadFrameId] = useState(null);
-  const [speed, setSpeed] = useState(1);
-  const [scoreMeta, setScoreMeta] = useState(() => readMeasureMeta());
-  const [isMinorScore, setIsMinorScore] = useState(false);
-  const timelineRef = useRef(null);
+  // 序列谱：独立页面
+  const [scoreOpen, setScoreOpen] = useState(false);
 
   // 主题
   const [theme, setTheme] = useState(() => localStorage.getItem('fretboard-theme') || 'dark');
@@ -159,39 +152,8 @@ function Fretboard() {
   const connectionDragActiveRef = useRef(false);
   const suppressBrushClickRef = useRef(false);
 
-  // 时间轴数据：小节/帧（8pu 式，常驻主页面）
-  const measures = useMemo(() => deriveMeasures(historyStates, currentDirectoryId), [historyStates, currentDirectoryId]);
-  const flatFrames = useMemo(() => flattenFrames(measures), [measures]);
-  const playheadIndex = playheadFrameId ? flatFrames.findIndex(p => p.frame.id === playheadFrameId) : -1;
-  const playheadEntry = playheadIndex >= 0 ? flatFrames[playheadIndex] : null;
-  const prevEntry = playheadIndex > 0 ? flatFrames[playheadIndex - 1] : null;
-
-  // 播放中：主指板显示播放头所在的帧，而不是编辑器草稿
-  const viewState = playing && playheadEntry ? playheadEntry.frame.state : null;
-  const viewStartFret = viewState ? viewState.startFret : startFret;
-  const viewEndFret = viewState ? viewState.endFret : endFret;
-  const viewData = viewState ? viewState.data : data;
-  const viewDisplayMode = viewState ? viewState.displayMode : displayMode;
-  const viewRootNote = viewState ? viewState.rootNote : rootNote;
-  const viewEnharmonic = viewState ? viewState.enharmonic : enharmonic;
-  const viewVisibility = viewState ? viewState.visibility : visibility;
-
-  // 播放推进
-  useEffect(() => {
-    if (!playing || !playheadEntry) return;
-    const timer = setTimeout(() => {
-      const next = flatFrames[playheadIndex + 1];
-      if (next) {
-        setPlayheadFrameId(next.frame.id);
-      } else {
-        setPlaying(false);
-      }
-    }, 900 / speed);
-    return () => clearTimeout(timer);
-  }, [playing, playheadEntry, playheadIndex, flatFrames, speed]);
-
-  // 计算值（播放时跟随帧的品窗）
-  const numFrets = (playing && playheadEntry ? playheadEntry.frame.state.endFret - playheadEntry.frame.state.startFret : endFret - startFret);
+  // 计算值
+  const numFrets = endFret - startFret;
   const fretboardWidth = CONSTS.fretWidth * numFrets;
   const leftOffset = CONSTS.offsetX + CONSTS.fretWidth / 2;
   const svgWidth = fretboardWidth + leftOffset + CONSTS.offsetX;
@@ -211,12 +173,12 @@ function Fretboard() {
 
   // 生成数据
   const notes = useMemo(() =>
-    generateNotes(viewStartFret, viewEndFret, viewData, viewDisplayMode, viewRootNote, viewEnharmonic, viewVisibility, computeNoteNameMemo, computeNoteIndexMemo, noteToSolfege),
-    [viewStartFret, viewEndFret, viewData, viewDisplayMode, viewRootNote, viewEnharmonic, viewVisibility, computeNoteNameMemo, computeNoteIndexMemo]
+    generateNotes(startFret, endFret, data, displayMode, rootNote, enharmonic, visibility, computeNoteNameMemo, computeNoteIndexMemo, noteToSolfege),
+    [startFret, endFret, data, displayMode, rootNote, enharmonic, visibility, computeNoteNameMemo, computeNoteIndexMemo]
   );
-  const markers = useMemo(() => generateMarkers(viewStartFret, viewEndFret), [viewStartFret, viewEndFret]);
-  const fretPath = useMemo(() => generateFretPath(viewStartFret, viewEndFret), [viewStartFret, viewEndFret]);
-  const connections = useMemo(() => (viewData && viewData.connections) ? viewData.connections : {}, [viewData]);
+  const markers = useMemo(() => generateMarkers(startFret, endFret), [startFret, endFret]);
+  const fretPath = useMemo(() => generateFretPath(startFret, endFret), [startFret, endFret]);
+  const connections = useMemo(() => (data && data.connections) ? data.connections : {}, [data]);
 
   // 获取note位置
   const getNotePositionMemo = useCallback((noteId) => getNotePosition(noteId, notes), [notes]);
@@ -906,7 +868,23 @@ function Fretboard() {
           )}
         </div>
       </div>
-      <div className={`fretboard-stage-wrap ${playing ? 'playing' : ''}`}>
+      {scoreOpen ? (
+        <SongScoreView
+          historyStates={historyStates}
+          setHistoryStates={setHistoryStates}
+          currentDirectoryId={currentDirectoryId}
+          directoryName={directories?.find(d => d.id === currentDirectoryId)?.name}
+          selectedHistoryState={selectedHistoryState}
+          rootNote={rootNote}
+          enharmonic={enharmonic}
+          onApplyFrame={(snapshot) => { restoreFretboardStateMemo(snapshot); setScoreOpen(false); }}
+          onAddFrame={(measureId) => saveFretboardStateMemo(true, measureId)}
+          onExit={() => setScoreOpen(false)}
+          t={t}
+        />
+      ) : (
+      <>
+      <div className="fretboard-stage-wrap">
       <figure className="fretboard-stage">
         <FretboardSVG
           svgElementRef={svgElementRef}
@@ -926,8 +904,8 @@ function Fretboard() {
           generateStringPathMemo={generateStringPathMemo}
           notes={notes}
           notesElementRef={notesElementRef}
-          data={viewData}
-          visibility={viewVisibility}
+          data={data}
+          visibility={visibility}
           selected={selected}
           connectionMode={connectionMode}
           connectionStartNote={connectionStartNote}
@@ -972,73 +950,93 @@ function Fretboard() {
           setSelectedConnection={setSelectedConnection}
           showNotes={showNotes}
         />
-        {playing && playheadEntry && prevEntry && (
-          <TransitionFx
-            className="stage-fx"
-            prevState={prevEntry.frame.state}
-            nextState={playheadEntry.frame.state}
-            technique={playheadEntry.frame.enterTechnique}
-            durationMs={Math.round(450 / speed)}
-          />
-        )}
       </figure>
       </div>
-
-      <TimelineBar
-        measures={measures}
-        meta={scoreMeta}
-        updateMeta={(measureId, patch) => setScoreMeta(prev => {
-          const next = { ...prev, [measureId]: { ...(prev[measureId] || {}), ...patch } };
-          writeMeasureMeta(next);
-          return next;
-        })}
-        selectedFrameId={selectedHistoryState?.id ?? null}
-        onSelectFrame={(frame) => { setPlaying(false); restoreFretboardStateMemo(frame); }}
-        onAddFrame={(measureId) => saveFretboardStateMemo(true, measureId)}
-        onAddMeasure={() => { setSelectedHistoryState(null); saveFretboardStateMemo(true); }}
-        onMoveFrame={(frameId, dir) => setHistoryStates(prev => {
-          const chronological = prev.slice().reverse();
-          const i = chronological.findIndex(x => x.id === frameId);
-          const j = i + dir;
-          if (i === -1 || j < 0 || j >= chronological.length) return prev;
-          if (chronological[j].measureId !== chronological[i].measureId) return prev;
-          const a = prev.findIndex(x => x.id === frameId);
-          const b = prev.findIndex(x => x.id === chronological[j].id);
-          const arr = prev.slice();
-          [arr[a], arr[b]] = [arr[b], arr[a]];
-          return arr;
-        })}
-        onDeleteFrame={(frameId) => setHistoryStates(prev => prev.filter(x => x.id !== frameId))}
-        onCycleTechnique={(frame) => setHistoryStates(prev => prev.map(x => {
-          if (x.id !== frame.id) return x;
-          const cycle = [null, 'sl', 'h', 'p'];
-          return { ...x, enterTechnique: cycle[(cycle.indexOf(x.enterTechnique || null) + 1) % cycle.length] || undefined };
-        }))}
-        playing={playing}
-        onTogglePlay={() => {
-          if (playing) { setPlaying(false); return; }
-          const start = flatFrames.findIndex(p => p.frame.id === (playheadFrameId ?? selectedHistoryState?.id));
-          const entry = start >= 0 && start < flatFrames.length - 1 ? flatFrames[start] : flatFrames[0];
-          if (entry) { setPlayheadFrameId(entry.frame.id); setPlaying(true); }
-        }}
-        speed={speed}
-        onSpeedChange={setSpeed}
-        isMinor={isMinorScore}
-        rootNote={rootNote}
+      <FretboardMenu
+        selectedColorLevel={selectedColorLevel}
+        selectedColor={selectedColor}
+        inTintMode={inTintMode}
+        onSelectColor={selectColorMemo}
+        onOpenTintPalette={openTintPaletteMemo}
+        onCycleTintColor={cyclePaletteTintColorMemo}
+        onReplaceAllTintNotes={replaceAllTintNotesMemo}
         enharmonic={enharmonic}
-        timelineRef={timelineRef}
+        onToggleEnharmonic={toggleEnharmonicMemo}
+        onToggleVisibility={toggleVisibilityMemo}
+        onOpenScore={() => setScoreOpen(true)}
+        connectionMode={connectionMode}
+        connectionPresetId={connectionPresetId}
+        onSelectConnectionPreset={selectConnectionPreset}
+        onSaveSVG={saveSVGMemo}
+        includeMarkers={includeMarkers}
+        setIncludeMarkers={setIncludeMarkers}
+        copyOnly={copyOnly}
+        setCopyOnly={setCopyOnly}
+        showNotes={showNotes}
+        setShowNotes={setShowNotes}
+        horizontalCrop={horizontalCrop}
+        hideDock={hideDock}
+        setHideDock={setHideDock}
+        setHorizontalCrop={setHorizontalCrop}
+        verticalCrop={verticalCrop}
+        setVerticalCrop={setVerticalCrop}
+        onSaveState={saveFretboardStateMemo}
+        onReset={resetMemo}
+        rootNote={rootNote}
+        onRootNoteSelect={setRootNote}
+        displayMode={displayMode}
+        setDisplayMode={setDisplayMode}
+        startFret={startFret}
+        endFret={endFret}
+        onFretWindowChange={setFretWindowMemo}
         t={t}
       />
 
-      <div className="tl-export-row">
-        <label className="tl-mode"><input type="checkbox" checked={isMinorScore} onChange={e => setIsMinorScore(e.target.checked)} />{t?.score?.minor ?? 'Minor'}</label>
-        <button className="button" onClick={() => { window.__exportFormat = 'svg'; exportSheetImage({ timelineEl: timelineRef.current, measures, meta: scoreMeta, rootNote, isMinor: isMinorScore, enharmonic, directoryName: directories?.find(d => d.id === currentDirectoryId)?.name, t: t?.score }); }}>
-          {t?.score?.exportSvg ?? '导出整首 SVG'}
-        </button>
-        <button className="button" onClick={() => { window.__exportFormat = 'png'; exportSheetImage({ timelineEl: timelineRef.current, measures, meta: scoreMeta, rootNote, isMinor: isMinorScore, enharmonic, directoryName: directories?.find(d => d.id === currentDirectoryId)?.name, t: t?.score }); }}>
-          {t?.score?.exportPng ?? '导出整首 PNG'}
-        </button>
-      </div>
+      <FretboardDock
+        hidden={hideDock}
+        historyStates={historyStates}
+        currentDirectoryId={currentDirectoryId}
+        selectedHistoryState={selectedHistoryState}
+        onRestore={restoreFretboardStateMemo}
+        onDelete={(stateSnapshot) => {
+          const updatedStates = historyStates.filter(item => item.id !== stateSnapshot.id);
+          const nextSelectedState = selectedHistoryState?.id === stateSnapshot.id
+            ? null
+            : selectedHistoryState;
+          setHistoryStates(updatedStates);
+          setSelectedHistoryState(nextSelectedState);
+          setToastMessage(t.fretboard.toastDeleted);
+          setToastType('success');
+        }}
+        onClear={() => {
+          const currentDirectoryStates = historyStates.filter(
+            (state) => state.directoryId === currentDirectoryId
+          );
+
+          if (currentDirectoryStates.length === 0) {
+            return;
+          }
+
+          const confirmed = window.confirm(t.fretboard.confirmClearDock);
+          if (!confirmed) {
+            return;
+          }
+
+          const filteredStates = historyStates.filter(
+            (state) => state.directoryId !== currentDirectoryId
+          );
+          const nextSelectedState = selectedHistoryState?.directoryId === currentDirectoryId
+            ? null
+            : selectedHistoryState;
+          setHistoryStates(filteredStates);
+          setSelectedHistoryState(nextSelectedState);
+          setToastMessage(t.fretboard.toastCleared);
+          setToastType('success');
+        }}
+        t={t}
+      />
+      </>
+      )}
 
       <Toast
         message={toastMessage}

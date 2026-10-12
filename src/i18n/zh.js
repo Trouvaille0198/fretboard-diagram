@@ -18,6 +18,8 @@ export const zh = {
         verticalCrop: "垂直截断",
         hideDock: "隐藏指板堆",
         scoreView: "序列谱",
+        scoreViewTitle: "查看整首歌的谱子（独立页面）",
+        scoreView: "序列谱",
         scoreViewTitle: "查看整首歌的小节序列谱",
         copyOnly: "仅复制",
         minor: "小调",
@@ -207,6 +209,9 @@ export const zh = {
     // 序列谱视图（SongScoreView）
     score: {
         back: "返回编辑",
+        tabText: "文本谱",
+        tabDynamic: "动态谱",
+        jumpTo: "定位到此帧",
         untitled: "未命名歌曲",
         minor: "小调",
         speedTitle: "播放速度",
