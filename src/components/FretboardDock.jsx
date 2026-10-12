@@ -8,6 +8,7 @@ export function FretboardDock({
   onRestore,
   onDelete,
   onClear,
+  hidden = false,
   t,
 }) {
   const td = t?.dock ?? {};
@@ -38,6 +39,10 @@ export function FretboardDock({
       clearTimeout(collapseTimerRef.current);
     }
   }, []);
+
+  if (hidden) {
+    return null;
+  }
 
   const dockStates = historyStates.filter(
     (state) => state.directoryId === currentDirectoryId
