@@ -41,6 +41,8 @@ export function FretboardMenu({
   setHorizontalCrop,
   verticalCrop,
   setVerticalCrop,
+  hideDock,
+  setHideDock,
   onReplaceAllTintNotes,
   t,
 }) {
@@ -186,6 +188,14 @@ export function FretboardMenu({
                   onChange={(e) => setShowNotes(e.target.checked)}
                 />
                 <span>{tm.showNotes ?? 'Show notes'}</span>
+              </label>
+              <label className="menu-checkbox">
+                <input
+                  type="checkbox"
+                  checked={hideDock}
+                  onChange={(e) => setHideDock(e.target.checked)}
+                />
+                <span>{tm.hideDock ?? 'Hide stack'}</span>
               </label>
             </div>
             <div className="menu-download-row">

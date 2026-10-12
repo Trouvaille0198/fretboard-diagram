@@ -1,4 +1,5 @@
 import { updateNote } from '../utils';
+import { CONNECTION_PRESETS } from '../hooks/useConnectionState';
 
 export function createKeyboardHandler(params) {
     const {
@@ -27,7 +28,8 @@ export function createKeyboardHandler(params) {
         toggleVisibility,
         reset,
         saveSVG,
-        selectedColorLevel
+        selectedColorLevel,
+        selectConnectionPreset
     } = params;
 
     return (event) => {
@@ -153,6 +155,28 @@ export function createKeyboardHandler(params) {
             case 'Delete':
                 if (selected) {
                     deleteNote();
+                }
+                break;
+            case 'Digit1':
+            case 'Digit2':
+            case 'Digit3':
+                if (!event.shiftKey && !event.altKey) {
+                    event.preventDefault();
+                    const presetIndex = parseInt(event.code.replace('Digit', ''), 10) - 1;
+                    if (selectConnectionPreset && CONNECTION_PRESETS[presetIndex]) {
+                        selectConnectionPreset(CONNECTION_PRESETS[presetIndex].id);
+                    }
+                }
+                break;
+            case 'Numpad1':
+            case 'Numpad2':
+            case 'Numpad3':
+                if (!event.shiftKey && !event.altKey) {
+                    event.preventDefault();
+                    const presetIndex = parseInt(event.code.replace('Numpad', ''), 10) - 1;
+                    if (selectConnectionPreset && CONNECTION_PRESETS[presetIndex]) {
+                        selectConnectionPreset(CONNECTION_PRESETS[presetIndex].id);
+                    }
                 }
                 break;
             case 'KeyB':

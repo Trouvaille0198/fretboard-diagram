@@ -52,6 +52,7 @@ function Fretboard() {
     showNotes, setShowNotes,
     horizontalCrop, setHorizontalCrop,
     verticalCrop, setVerticalCrop,
+    hideDock, setHideDock,
     selectedHistoryState, setSelectedHistoryState,
     currentDateTime,
     dataRef,
@@ -143,6 +144,7 @@ function Fretboard() {
   const buttonClickRef = useRef({ preset: false, reverseCurvature: false, grayed: false });
   const prevNoteColorsRef = useRef({});
   const brushPaintStateRef = useRef({ armed: false, dragged: false, lastPaintedNoteId: null });
+  const connectionDragActiveRef = useRef(false);
   const suppressBrushClickRef = useRef(false);
 
   // 计算值
@@ -283,11 +285,13 @@ function Fretboard() {
       }
     };
 
-    window.addEventListener('mouseup', stopBrushPaint);
+    window.addEventListener('pointerup', stopBrushPaint);
+    window.addEventListener('pointercancel', stopBrushPaint);
     window.addEventListener('blur', stopBrushPaint);
 
     return () => {
-      window.removeEventListener('mouseup', stopBrushPaint);
+      window.removeEventListener('pointerup', stopBrushPaint);
+      window.removeEventListener('pointercancel', stopBrushPaint);
       window.removeEventListener('blur', stopBrushPaint);
     };
   }, [endBatch]);
@@ -301,7 +305,14 @@ function Fretboard() {
     return false;
   }, []);
 
-  const startBrushPaint = useCallback(() => {
+  const startBrushPaint = useCallback((pointerType) => {
+    // 触屏不启用拖染：避免和页面滚动手势抢事件（点按着色仍可用）
+    if (pointerType === 'touch') {
+      brushPaintStateRef.current.armed = false;
+      brushPaintStateRef.current.dragged = false;
+      brushPaintStateRef.current.lastPaintedNoteId = null;
+      return;
+    }
     if (connectionMode || selectedColorLevel === null || selectedColor === null) {
       brushPaintStateRef.current.armed = false;
       brushPaintStateRef.current.dragged = false;
@@ -444,28 +455,46 @@ function Fretboard() {
   // 连线模式：按下可见音符开始拖拽连线
   const handleNoteMouseDown = useCallback(createNoteMouseDownHandler({
     connectionMode, data, visibility, notes,
-    setConnectionStartNote, setConnectionStartPosition
+    setConnectionStartNote, setConnectionStartPosition, connectionDragActiveRef
   }), [connectionMode, data, visibility, notes, setConnectionStartNote, setConnectionStartPosition]);
+
+  // Chrome 不认 SVG 元素上的 touch-action，触屏拖拽连线会被滚动手势打断；
+  // 用非被动 touchmove 在拖拽进行时阻止默认滚动，其余情况照常滚屏
+  useEffect(() => {
+    const svg = svgElementRef.current;
+    if (!svg) {
+      return;
+    }
+    const guardTouchScroll = (event) => {
+      if (connectionDragActiveRef.current) {
+        event.preventDefault();
+      }
+    };
+    svg.addEventListener('touchmove', guardTouchScroll, { passive: false });
+    return () => svg.removeEventListener('touchmove', guardTouchScroll);
+  }, []);
 
   // 拖拽连线松开：落在可见音符上生成连线，否则取消
   const handleConnectionDragEnd = useCallback(createConnectionDragEndHandler({
     connectionMode, connectionStartNote, notes, data, visibility, svgElementRef,
     connections, connectionPreset, useColor2Level, setData,
     setConnectionStartNote, setConnectionStartPosition, setMousePosition,
-    setPreviewHoverNote, setUseColor2Level
+    setPreviewHoverNote, setUseColor2Level, connectionDragActiveRef
   }), [connectionMode, connectionStartNote, notes, data, visibility, svgElementRef,
     connections, connectionPreset, useColor2Level, setData,
     setConnectionStartNote, setConnectionStartPosition, setMousePosition,
     setPreviewHoverNote, setUseColor2Level]);
 
-  // 拖拽期间监听 window 的 mouseup，拖出指板松开也能正确收尾
+  // 拖拽期间监听 window 的 pointerup（触屏/鼠标统一），拖出指板松开也能正确收尾
   useEffect(() => {
     if (!connectionMode || !connectionStartNote) {
       return;
     }
-    window.addEventListener('mouseup', handleConnectionDragEnd);
+    window.addEventListener('pointerup', handleConnectionDragEnd);
+    window.addEventListener('pointercancel', handleConnectionDragEnd);
     return () => {
-      window.removeEventListener('mouseup', handleConnectionDragEnd);
+      window.removeEventListener('pointerup', handleConnectionDragEnd);
+      window.removeEventListener('pointercancel', handleConnectionDragEnd);
     };
   }, [connectionMode, connectionStartNote, handleConnectionDragEnd]);
 
@@ -731,7 +760,7 @@ function Fretboard() {
     connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level, saveFretboardState: saveFretboardStateMemo,
     toggleVisibility: toggleVisibilityMemo, reset: resetMemo, saveSVG: saveSVGMemo,
-    selectedColorLevel
+    selectedColorLevel, selectConnectionPreset
   };
 
   useEffect(() => {
@@ -920,6 +949,8 @@ function Fretboard() {
         showNotes={showNotes}
         setShowNotes={setShowNotes}
         horizontalCrop={horizontalCrop}
+        hideDock={hideDock}
+        setHideDock={setHideDock}
         setHorizontalCrop={setHorizontalCrop}
         verticalCrop={verticalCrop}
         setVerticalCrop={setVerticalCrop}
@@ -936,6 +967,7 @@ function Fretboard() {
       />
 
       <FretboardDock
+        hidden={hideDock}
         historyStates={historyStates}
         currentDirectoryId={currentDirectoryId}
         selectedHistoryState={selectedHistoryState}

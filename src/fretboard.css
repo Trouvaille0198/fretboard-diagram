@@ -1138,6 +1138,24 @@ button.color.level2.selected {
     pointer-events: none;
 }
 
+/* 触屏：从音符拖出连线/刷色时不滚动页面；其余区域滑动正常滚屏 */
+g.note {
+    touch-action: none;
+}
+
+/* 触屏：去掉按钮双击缩放延迟与点按高亮 */
+button,
+.button,
+.menu-checkbox {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#fretboard-svg {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 /* 拖拽连线进行中：整个指板显示十字光标 */
 svg.drag-connecting,
 svg.drag-connecting * {
@@ -1589,6 +1607,12 @@ g.note.preview-hover>circle {
 
 /* 手机端适配 */
 @media (max-width: 768px) {
+
+    /* 指板优先于菜单显示：首屏直接看到指板，工具菜单向下滑 */
+    .fretboard-stage {
+        order: -1;
+        margin-top: 4px;
+    }
 
     /* 禁止页面整体横向滚动 - 从根元素开始 */
     html {

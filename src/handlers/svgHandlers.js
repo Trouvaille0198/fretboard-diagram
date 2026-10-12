@@ -149,7 +149,7 @@ export function createSvgMouseDownHandler(params) {
         }
 
         if (e.button === 0) {
-            startBrushPaint?.();
+            startBrushPaint?.(e.pointerType);
         }
     };
 }

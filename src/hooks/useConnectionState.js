@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 // 连线预设：工具栏与连线浮动工具栏共用同一组预设
 export const CONNECTION_PRESETS = [
@@ -51,7 +51,23 @@ export function useConnectionState() {
     const [connectionToolbarPosition, setConnectionToolbarPosition] = useState({ x: 0, y: 0 });
     const [toolbarDropdown, setToolbarDropdown] = useState(null); // 'type' | 'arrow' | 'width' | 'curvature' | null
     const [toolbarDropdownDirection, setToolbarDropdownDirection] = useState('down'); // 'up' | 'down'
-    const [connectionPresetId, setConnectionPresetId] = useState(DEFAULT_CONNECTION_PRESET_ID);
+    const [connectionPresetId, setConnectionPresetId] = useState(() => {
+        try {
+            const saved = localStorage.getItem('fretboard-connection-preset');
+            return CONNECTION_PRESETS.some(preset => preset.id === saved) ? saved : DEFAULT_CONNECTION_PRESET_ID;
+        } catch (error) {
+            return DEFAULT_CONNECTION_PRESET_ID;
+        }
+    });
+
+    // 预设选择持久化，刷新后保持
+    useEffect(() => {
+        try {
+            localStorage.setItem('fretboard-connection-preset', connectionPresetId);
+        } catch (error) {
+            console.error('保存连线预设失败:', error);
+        }
+    }, [connectionPresetId]);
 
     const connectionPreset = useMemo(() => getConnectionPreset(connectionPresetId), [connectionPresetId]);
 
