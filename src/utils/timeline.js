@@ -4,7 +4,7 @@
 // 同帧多技法 = 并发（同一窗起点、各走各的节奏），与单技法完全同观感。
 import { frameTintFromData, tintAt } from "../colorConfig.js";
 
-const DOT = 450, RT_OUT = 350, RT_BACK = 330, SETTLE = 60, HPMOMENT = 60, HPB = 190;
+const DOT = 380, RT_OUT = 350, RT_BACK = 330, SETTLE = 60, HPMOMENT = 60, HPB = 190;
 
 function beatTint(frame, i, frames) {
 	const born = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.birth === i && n.color && typeof n.color === "object" && n.color.custom);
@@ -54,7 +54,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		});
 		slP.forEach(p => {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
-			edge(DOT, { id: p.to, c: ft }, { id: p.from }, 60);
+			edge(DOT - 120, { id: p.to, c: ft }, { id: p.from }, 60); // B 提前 120ms 亮（光点将到未到）
 		});
 		rtP.forEach(p => {
 			edge(RT_OUT, { id: p.to, c: ft }, { id: p.from }, 60);
