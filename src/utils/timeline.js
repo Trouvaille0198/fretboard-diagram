@@ -4,7 +4,7 @@
 // 同帧多技法 = 并发（同一窗起点、各走各的节奏），与单技法完全同观感。
 import { frameTintFromData, tintAt } from "../colorConfig.js";
 
-const DOT = 380, RT_OUT = 350, RT_BACK = 330, SETTLE = 60, HPMOMENT = 60, HPB = 190;
+const DOT = 380, RT_OUT = 280, RT_BACK = 260, SETTLE = 60, HPMOMENT = 60, HPB = 190;
 
 function beatTint(frame, i, frames) {
 	const born = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.birth === i && n.color && typeof n.color === "object" && n.color.custom);
