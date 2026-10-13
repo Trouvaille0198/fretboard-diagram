@@ -3,6 +3,7 @@ import { CONSTS } from '../constants';
 import { FretboardSVG } from './FretboardSVG';
 import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, generateMarkers, getNotePosition } from '../utils/fretboardCalculations';
 import { inlineCSS, noteToSolfege } from '../utils';
+import { resolveNoteVisualStyle } from '../colorConfig';
 import { chordDisplay } from '../utils/songStructure';
 import { describeTransition, sampleTransition, elsToSvgString } from '../utils/transitionAnimator';
 import { LanguageProvider } from '../i18n';
@@ -163,7 +164,7 @@ export function TransitionFx({ prevState, nextState, spec, durationMs = 300, wid
 
   const els = useMemo(() => sampleTransition(desc, t, durationMs), [desc, t, durationMs]);
   const body = useMemo(
-    () => elsToSvgString(els, `${geo.svgViewBoxX} ${geo.svgViewBoxY} ${geo.svgViewBoxWidth} ${geo.svgViewBoxHeight}`).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''),
+    () => elsToSvgString(els, `${geo.svgViewBoxX} ${geo.svgViewBoxY} ${geo.svgViewBoxWidth} ${geo.svgViewBoxHeight}`, { noteStyle: resolveNoteVisualStyle() }).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''),
     [els, geo]
   );
 
