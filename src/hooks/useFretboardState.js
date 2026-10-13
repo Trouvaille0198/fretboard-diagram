@@ -1,16 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { CONSTS } from "../constants";
 import { LEVEL1_COLORS } from "../colorConfig";
-import { useLanguage } from "../i18n";
-import {
-    initializeDirectories,
-    migrateHistoryData,
-    generateUniqueDirName,
-    validateDirectoryName,
-} from "../utils/fretboardHistory";
 
 export function useFretboardState() {
-    const { t } = useLanguage();
     const [selected, setSelected] = useState(null);
     // 默认选中第一层第一个颜色（trans）
     const firstLevel1Color = Object.keys(LEVEL1_COLORS)[0];
@@ -76,25 +68,7 @@ export function useFretboardState() {
     const [errorMessage, setErrorMessage] = useState("");
     const [toastMessage, setToastMessage] = useState("");
     const [toastType, setToastType] = useState("info");
-    const [historyStates, setHistoryStates] = useState(() =>
-        migrateHistoryData(),
-    );
-    const [selectedHistoryState, setSelectedHistoryState] = useState(null); // 当前选中的历史状态
     const [currentDateTime, setCurrentDateTime] = useState("");
-
-    // 目录管理状态
-    const [directories, setDirectories] = useState(() =>
-        initializeDirectories(),
-    );
-    const [currentDirectoryId, setCurrentDirectoryId] = useState(() => {
-        try {
-            return (
-                localStorage.getItem("fretboard-current-directory") || "default"
-            );
-        } catch (error) {
-            return "default";
-        }
-    });
 
     const dataRef = useRef(data); // 存储最新的 data 状态，避免闭包问题
     const selectedTimeoutRef = useRef(null);
@@ -173,54 +147,6 @@ export function useFretboardState() {
         hideDock,
     ]);
 
-    useEffect(() => {
-        if (historyStates.length > 50) {
-            setHistoryStates((prev) => prev.slice(0, 50));
-        }
-    }, [historyStates]);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem(
-                "fretboard-history",
-                JSON.stringify(historyStates),
-            );
-        } catch (error) {
-            console.error("保存指板堆失败:", error);
-        }
-    }, [historyStates]);
-
-    useEffect(() => {
-        if (
-            selectedHistoryState &&
-            !historyStates.some((state) => state.id === selectedHistoryState.id)
-        ) {
-            setSelectedHistoryState(null);
-        }
-    }, [historyStates, selectedHistoryState]);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem(
-                "fretboard-directories",
-                JSON.stringify(directories),
-            );
-        } catch (error) {
-            console.error("保存目录失败:", error);
-        }
-    }, [directories]);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem(
-                "fretboard-current-directory",
-                currentDirectoryId,
-            );
-        } catch (error) {
-            console.error("保存当前目录失败:", error);
-        }
-    }, [currentDirectoryId]);
-
     return {
         selected,
         setSelected,
@@ -252,10 +178,6 @@ export function useFretboardState() {
         setToastMessage,
         toastType,
         setToastType,
-        historyStates,
-        setHistoryStates,
-        selectedHistoryState,
-        setSelectedHistoryState,
         currentDateTime,
         dataRef,
         selectedTimeoutRef,
@@ -272,83 +194,5 @@ export function useFretboardState() {
         setVerticalCrop,
         hideDock,
         setHideDock,
-        // 目录管理
-        directories,
-        setDirectories,
-        currentDirectoryId,
-        setCurrentDirectoryId,
-        // 目录操作函数
-        createDirectory: (baseName = "new") => {
-            const uniqueName = generateUniqueDirName(directories, baseName);
-            const newDir = {
-                id: Date.now().toString(),
-                name: uniqueName,
-                createdAt: Date.now(),
-                isDefault: false,
-            };
-            const updatedDirs = [...directories, newDir];
-            setDirectories(updatedDirs);
-            localStorage.setItem(
-                "fretboard-directories",
-                JSON.stringify(updatedDirs),
-            );
-            setCurrentDirectoryId(newDir.id);
-            return newDir;
-        },
-        renameDirectory: (dirId, newName) => {
-            const validation = validateDirectoryName(
-                newName,
-                directories,
-                dirId,
-                t,
-            );
-            if (!validation.valid) {
-                return { success: false, message: validation.message };
-            }
-            const updatedDirs = directories.map((dir) =>
-                dir.id === dirId ? { ...dir, name: validation.name } : dir,
-            );
-            setDirectories(updatedDirs);
-            localStorage.setItem(
-                "fretboard-directories",
-                JSON.stringify(updatedDirs),
-            );
-            return { success: true, directories: updatedDirs };
-        },
-        deleteDirectory: (dirId) => {
-            const dirToDelete = directories.find((d) => d.id === dirId);
-            if (!dirToDelete || dirToDelete.isDefault) {
-                return {
-                    success: false,
-                    message:
-                        t?.history?.cannotDeleteDefault ??
-                        "Cannot delete the default directory",
-                };
-            }
-
-            // 将该目录下的状态迁移到 default
-            const updatedStates = historyStates.map((state) =>
-                state.directoryId === dirId
-                    ? { ...state, directoryId: "default" }
-                    : state,
-            );
-            setHistoryStates(updatedStates);
-            localStorage.setItem(
-                "fretboard-history",
-                JSON.stringify(updatedStates),
-            );
-
-            // 删除目录
-            const updatedDirs = directories.filter((d) => d.id !== dirId);
-            setDirectories(updatedDirs);
-            localStorage.setItem(
-                "fretboard-directories",
-                JSON.stringify(updatedDirs),
-            );
-
-            // 切换到 default
-            setCurrentDirectoryId("default");
-            return { success: true };
-        },
     };
 }

@@ -24,70 +24,108 @@ export function createKeyboardHandler(params) {
         setMousePosition,
         setPreviewHoverNote,
         setUseColor2Level,
-        saveFretboardState,
+        dynamic,
         toggleVisibility,
         reset,
         saveSVG,
+        copyGif,
         selectedColorLevel,
         selectConnectionPreset
     } = params;
 
     return (event) => {
-        // Ctrl+C 复制 SVG
+        // Ctrl+C 复制：动态模式(≥2帧)=GIF 到剪贴板；其余=SVG
         if (event.ctrlKey && event.code === 'KeyC' && !event.shiftKey) {
             event.preventDefault();
-            if (saveSVG) {
+            if (copyGif && dynamic?.isDynamic && (dynamic.frameCount ?? 0) >= 2) {
+                copyGif();
+            } else if (saveSVG) {
                 saveSVG();
             }
             return;
         }
 
-        // Ctrl+Shift+S 强制新建保存到指板堆
-        if (event.ctrlKey && event.shiftKey && event.code === 'KeyS') {
+        // 动态模式 ←/→ 逐帧跳转
+        if (dynamic?.isDynamic && !event.ctrlKey && !event.altKey && !event.shiftKey
+            && (event.code === 'ArrowLeft' || event.code === 'ArrowRight')) {
             event.preventDefault();
-            if (saveFretboardState) {
-                saveFretboardState(true);
+            if (dynamic.gotoFrame) {
+                dynamic.gotoFrame(dynamic.editIdx + (event.code === 'ArrowRight' ? 1 : -1));
             }
             return;
         }
 
-        // Ctrl+S 保存到当前选中项；若无选中项则新建
-        if (event.ctrlKey && event.code === 'KeyS' && !event.shiftKey) {
+        // 动态编辑模式屏蔽连线快捷键（画线功能在动图编辑中让位给拖拽滑弦）
+        if (dynamic?.isDynamic && !event.ctrlKey && !event.altKey && ['Digit1', 'Digit2', 'Digit3', 'KeyS'].includes(event.code)) {
+            return;
+        }
+
+        // Q 进入/退出动态编辑模式（普通画图=帧1）
+        if (!event.ctrlKey && !event.altKey && !event.shiftKey && event.code === 'KeyQ') {
             event.preventDefault();
-            if (saveFretboardState) {
-                saveFretboardState(false);
+            if (dynamic?.toggleQ) {
+                dynamic.toggleQ();
             }
             return;
         }
 
-        // Ctrl+Shift+Z 重做
+        // Ctrl+S 只在动态编辑模式生效：整图保存/更新到动图堆
+        if (event.ctrlKey && event.code === 'KeyS') {
+            event.preventDefault();
+            if (dynamic?.isDynamic && dynamic.viewMode === 'edit' && dynamic.persistClip) {
+                dynamic.persistClip();
+            }
+            return;
+        }
+
+
+        // Ctrl+Shift+Z 重做（预览模式屏蔽）
         if (event.ctrlKey && event.shiftKey && event.code === 'KeyZ') {
             event.preventDefault();
+            if (dynamic?.isDynamic && dynamic.viewMode !== 'edit') return;
             if (redo) {
                 redo();
             }
             return;
         }
 
-        // Ctrl+Z 撤销
+        // Ctrl+Z 撤销：动图编辑态=帧内撤销；预览态屏蔽；普通模式=编辑器撤销
         if (event.ctrlKey && event.code === 'KeyZ' && !event.shiftKey) {
             event.preventDefault();
+            if (dynamic?.isDynamic) {
+                if (dynamic.viewMode === 'edit' && dynamic.undoStep && dynamic.undoStep()) return;
+                return;
+            }
             undo();
             return;
         }
 
-        // Z 切换可见性
+        // Esc 取消进行中的技法标注
+        if (event.code === 'Escape' && dynamic?.isDynamic && (dynamic.pendingFrom || dynamic.hasPairs)) {
+            event.preventDefault();
+            if (dynamic.cancelMarking) {
+                dynamic.cancelMarking();
+            }
+            return;
+        }
+
+        // Z 切换可见性（动图页屏蔽）
         if (!event.ctrlKey && !event.altKey && !event.shiftKey && event.code === 'KeyZ') {
             event.preventDefault();
+            if (dynamic?.isDynamic) return;
             if (toggleVisibility) {
                 toggleVisibility();
             }
             return;
         }
 
-        // Ctrl+D 重置
+        // Ctrl+D：动图编辑态=当前帧还原为上一帧状态（第1帧无动作）；预览态屏蔽；普通模式=重置
         if (event.ctrlKey && event.code === 'KeyD' && !event.shiftKey) {
             event.preventDefault();
+            if (dynamic?.isDynamic) {
+                if (dynamic.viewMode === 'edit' && dynamic.revertToPrevFrame) dynamic.revertToPrevFrame();
+                return;
+            }
             if (reset) {
                 reset();
             }

@@ -199,6 +199,40 @@ export const en = {
         cannotDeleteDefault: "Cannot delete the default directory",
     },
 
+    // Dynamic editing mode (DynamicToolbar / clips)
+    dynamic: {
+        enterMode: "🎬 Animate",
+        exitMode: "← Back",
+        enterHint: "Enter dynamic editing (Q): current board is frame 1",
+        exitHint: "Back to editor (changes auto-saved) (Q)",
+        techNone: "Click a note = add/extinguish (auto colored)",
+        hintNormal: "Click notes to add/extinguish (auto color); arm a slide tool to mark two points; Ctrl+S to freeze",
+        hintSource: "Slide: click the lit source note first",
+        hintTarget: "Click target (same string), Esc to cancel",
+        commitHint: "Freeze as next frame (Ctrl+S)",
+        playHint: "Play current clip",
+        loopHint: "Loop playback",
+        settingsHint: "Animation timing settings",
+        exportGif: "Export GIF",
+        exportWebm: "Export WebM",
+        hold: "Frame hold",
+        trans: "Transition",
+        fps: "Export fps",
+        width: "Export width",
+    },
+
+    // Clip dock
+    dock: {
+        clipsTitle: "Clips",
+        emptyHint: "No clips yet: draw frame 1, press Q, then Ctrl+S each step",
+        loadHint: "Load to continue editing (append frames)",
+        renameHint: "Double-click to rename",
+        deleteHint: "Delete",
+        clear: "Clear",
+        examples: "Examples",
+        examplesHint: "Load six example clips (one per technique/style); re-click refreshes them without touching your own",
+    },
+
     // Song score view
     score: {
         back: "Back to editor",

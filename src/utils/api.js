@@ -112,6 +112,23 @@ export async function saveData(directories, states) {
 }
 
 /**
+ * 保存动图到服务器（全量替换）
+ */
+export async function saveClips(clips) {
+    return await request('/data/clips/save', {
+        method: 'POST',
+        body: JSON.stringify({ clips }),
+    });
+}
+
+/**
+ * 从服务器加载动图
+ */
+export async function loadClips() {
+    return await request('/data/clips');
+}
+
+/**
  * 从服务器加载数据
  */
 export async function loadData() {

@@ -417,6 +417,7 @@ g.note {
     fill: var(--background-color);
     stroke-width: 1.5px;
     stroke: var(--text-color);
+    transition: opacity 0.6s ease;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -1011,6 +1012,18 @@ button.color.level2.selected {
     max-width: 100%;
     height: auto;
     border-radius: 0;
+}
+
+/* 主板 SVG：flex 内不收缩（宽度由 React 内联样式钉死，见 Fretboard.jsx）；
+   此前空板帧的内在宽度计算会塌成 ~0 或 max-content 撑爆，导致整板消失/缩放跳动 */
+.fretboard-stage > svg:not(.stage-fx) {
+    flex: 0 0 auto;
+}
+
+/* fx 覆盖层不参与主板的 flex/内在尺寸计算，定位见下方 .stage-fx 规则 */
+.fretboard-stage svg.stage-fx {
+    position: absolute;
+    max-width: none;
 }
 
 .error {
@@ -2191,11 +2204,14 @@ html[data-theme="light"] .fx-letter {
     background: transparent;
 }
 
+/* fx 覆盖层与主板像素级对齐：
+   宽高由 React 传 attr（与主板相同的 svgWidth/svgHeight），
+   水平居中跟随主板的 flex 居中，顶部对齐主板（figure padding-top 10px） */
 .stage-fx {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
     pointer-events: none;
     overflow: visible;
 }
@@ -2731,4 +2747,445 @@ html[data-theme="light"] .sc-measure,
 html[data-theme="light"] .sc-stage,
 html[data-theme="light"] .sc-timeline {
     background: rgba(248, 251, 254, 0.92);
+}
+
+/* ============ 动态编辑工具条 ============ */
+
+.dyn-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    margin: 0 auto;
+    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border-radius: var(--app-radius-xl, 18px);
+    background: var(--app-panel, rgba(15, 22, 28, 0.6));
+    position: relative;
+    max-width: 1080px;
+}
+
+.dyn-toolbar.on {
+    border-color: rgba(243, 186, 98, 0.55);
+    box-shadow: 0 0 0 1px rgba(243, 186, 98, 0.25);
+}
+
+.dyn-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    color: var(--app-text-muted, #9fb2c0);
+    border-radius: 10px;
+    padding: 5px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dyn-btn:hover:not(:disabled) {
+    color: var(--app-text, #e8eef4);
+}
+
+.dyn-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.dyn-btn.on {
+    color: #10161c;
+    background: var(--app-accent, #f3ba62);
+    border-color: transparent;
+}
+
+.dyn-mode.on {
+    animation: dynPulse 2s ease-in-out infinite;
+}
+
+@keyframes dynPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(243, 186, 98, 0.4); }
+    50% { box-shadow: 0 0 0 5px rgba(243, 186, 98, 0); }
+}
+
+.dyn-scheme {
+    padding: 4px 6px;
+}
+
+.dyn-scheme-dot {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.dyn-scheme-dot.scheme-blue { background: #7c7ad6; }
+.dyn-scheme-dot.scheme-green { background: #4ecf9f; }
+.dyn-scheme-dot.scheme-red { background: #e06c6c; }
+.dyn-scheme-dot.scheme-purple { background: #a86ce0; }
+
+.goto-dynamic {
+    display: block;
+    margin: 0 auto 8px;
+}
+
+.dyn-framepos {
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--app-text, #e8eef4);
+    min-width: 34px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.dyn-frames-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 8px 10px;
+    margin: 0 auto 6px;
+    max-width: 1080px;
+    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border-radius: var(--app-radius-xl, 18px);
+    background: var(--app-panel, rgba(15, 22, 28, 0.6));
+}
+
+/* 播放态：音符亮灭切换提速（hp 子拍锤击/勾回需要瞬时切换，0.6s 淡出会拖影） */
+.fretboard-stage-wrap.playing .note {
+  transition: opacity 0.1s ease;
+}
+
+/* hp 待命环脉冲：虚线环亮起并呼吸——看到它松手才是击勾 */
+g.drag-fx-layer circle[stroke-dasharray] {
+  animation: dyn-arm-pulse 0.9s ease-in-out infinite;
+}
+@keyframes dyn-arm-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+.dyn-frame-thumb {
+    position: relative;
+    flex: 0 0 auto;
+    width: 168px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.15s, border-color 0.15s;
+}
+
+.dyn-frame-thumb:hover {
+    opacity: 1;
+}
+
+/* 帧条尾的大＋（追加帧）与卡片左上角 ×（删除该帧，悬停显现） */
+.dyn-frame-thumb { position: relative; }
+.dyn-thumb-add {
+  flex: 0 0 auto;
+  width: 64px;
+  border: 2px dashed rgba(230, 237, 242, 0.45);
+  border-radius: 10px;
+  background: rgba(46, 108, 202, 0.18);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.dyn-thumb-add:hover { background: rgba(46, 108, 202, 0.85); border-color: rgba(46, 108, 202, 1); color: #fff; }
+.dyn-thumb-add:disabled { opacity: 0.35; cursor: default; }
+.dyn-thumb-del {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 18px; height: 18px;
+  line-height: 16px; padding: 0;
+  font-size: 13px;
+  border: none; border-radius: 5px;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 4;
+}
+.dyn-frame-thumb:hover .dyn-thumb-del { opacity: 1; }
+.dyn-thumb-del:hover { background: rgba(205, 92, 92, 0.9); }
+.dyn-thumb-del:disabled { opacity: 0.35; cursor: default; }
+
+.dyn-frame-thumb.active {
+    opacity: 1;
+    border-color: var(--app-accent, #f3ba62);
+}
+
+.dyn-frame-thumb svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: brightness(1.12);
+}
+
+.dyn-frame-thumb path.frets,
+.dyn-frame-thumb path.string {
+    stroke-width: 2.5px !important;
+}
+
+.dyn-frame-thumb g.note>text {
+    font-size: 30px;
+}
+
+.dyn-frame-thumb .marker {
+    font-size: 26px;
+}
+
+.dyn-frame-no {
+    position: absolute;
+    left: 5px;
+    top: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--app-accent-text, #f3ba62);
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 7px;
+    padding: 1px 6px;
+}
+
+.dyn-frames-strip[data-mode="preview"] .dyn-frame-thumb {
+    cursor: pointer;
+}
+
+.dynamic-right-panel .menu-left,
+.dynamic-right-panel .menu-section-panel,
+.dynamic-right-panel .menu-download-button,
+.dynamic-right-panel .menu-global-actions,
+.dynamic-right-panel .menu-preset-button {
+    display: none !important;
+}
+
+.dynamic-right-panel .menu {
+    justify-content: center;
+}
+
+.dyn-right {
+    margin-left: auto;
+}
+
+.dyn-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--app-border, rgba(230, 237, 242, 0.12));
+}
+
+.dyn-settings-sep {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  opacity: 0.6;
+  border-top: 1px solid rgba(230, 237, 242, 0.12);
+  padding-top: 8px;
+}
+.dyn-settings-checks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+}
+.dyn-settings-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.dyn-settings-check input {
+  accent-color: #e69d42;
+}
+
+.dyn-settings {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    gap: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border-radius: 12px;
+    background: var(--app-panel, rgba(15, 22, 28, 0.95));
+    z-index: 60;
+}
+
+.dyn-settings label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--app-text-muted, #9fb2c0);
+}
+
+.dyn-settings input {
+    width: 84px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border-radius: 8px;
+    color: var(--app-text, #e8eef4);
+    padding: 4px 6px;
+    font-size: 13px;
+}
+
+.dyn-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    color: var(--app-accent-text, #f3ba62);
+    background: rgba(243, 186, 98, 0.14);
+    border: 1px solid rgba(243, 186, 98, 0.4);
+}
+
+.dyn-badge-sep {
+    opacity: 0.35;
+    margin: 0 2px;
+}
+
+.dyn-badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--app-accent, #f3ba62);
+    animation: dynPulse 1.6s ease-in-out infinite;
+}
+
+/* 指板堆：动图卡片 */
+
+.clip-preview {
+    position: relative;
+    width: 100%;
+}
+
+.clip-preview svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: brightness(1.12);
+}
+
+/* 卡片缩略图对比度增强：240px 宽下 1px 线太淡，加粗线/放大字号（viewBox 单位，等比缩放） */
+.dock-clip-board path.frets,
+.dock-clip-board path.string {
+    stroke-width: 2.5px !important;
+}
+
+.dock-clip-board g.note {
+    stroke-width: 2px;
+}
+
+.dock-clip-board g.note>text {
+    font-size: 30px;
+}
+
+.dock-clip-board .marker {
+    font-size: 26px;
+}
+
+.clip-preview-fx {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    pointer-events: none;
+}
+
+.dock-clip {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 240px;
+    flex: 0 0 auto;
+}
+
+.dock-clip-board {
+    position: relative;
+    cursor: pointer;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+}
+
+.dock-clip-board:hover {
+    border-color: var(--app-accent, #f3ba62);
+}
+
+/* 信息行：名字（弹性省略）+ 帧数徽标 + 删除，全部固定在卡片底部，不浮在指板上 */
+.dock-clip-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 2px;
+    min-height: 22px;
+}
+
+.dock-clip-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--app-text-muted, #9fb2c0);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: text;
+    text-align: left;
+}
+
+.dock-clip-name-input {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--app-accent, #f3ba62);
+    border-radius: 7px;
+    color: var(--app-text, #e8eef4);
+    padding: 2px 6px;
+    outline: none;
+}
+
+.dock-clip-frames {
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--app-accent-text, #f3ba62);
+    background: rgba(243, 186, 98, 0.12);
+    border-radius: 6px;
+    padding: 1px 6px;
+}
+
+.dock-clip-del {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--app-text-muted, #9fb2c0);
+    opacity: 0.45;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+    padding: 0;
+}
+
+.dock-clip:hover .dock-clip-del,
+.dock-clip-del:focus-visible {
+    opacity: 1;
+}
+
+.dock-clip-del:hover {
+    color: #ff7b72;
+    background: rgba(255, 123, 114, 0.12);
+}
+
+.dock-empty {
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: 12.5px;
+    padding: 6px 2px;
 }
