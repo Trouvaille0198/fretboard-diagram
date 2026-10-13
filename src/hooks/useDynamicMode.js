@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { stringOfNote, saveClip, loadClips } from "../utils/clipModel";
-import { generateTintVariants, getLevel1FillColor, tintPosition } from "../colorConfig";
+import { generateTintVariants, getLevel1FillColor, tintPosition, frameTintFromData } from "../colorConfig";
 
 // 音符是否"正在发声"（可见且有颜色）——标注源音的要求
 function isNoteActive(noteData, globalVisibility) {
@@ -406,8 +406,8 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		const { frames, transitions } = flushBoard();
 		// 每帧烙"帧档色"（加载/dock 预览直接取用，动画色与板面严格一致）
 		const stamped = frames.map((f, i) => {
-			const any = Object.values(f.data || {}).find(n => n && typeof n === "object" && n.color && typeof n.color === "object" && n.color.name);
-			return any ? { ...f, frameTint: { name: any.color.name } } : f;
+			const ft = frameTintFromData(f.data, i, frames.length);
+			return ft ? { ...f, frameTint: ft } : f;
 		});
 		saveClip({ ...sessionClip, frames: stamped, transitions });
 		setClipVersion(v => v + 1);

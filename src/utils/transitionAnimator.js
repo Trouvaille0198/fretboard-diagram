@@ -244,9 +244,10 @@ export function elsToSvgString(els, viewBox, opts = {}) {
 			return `<line x1="${el.x1}" y1="${el.y1}" x2="${el.x2}" y2="${el.y2}" stroke="${el.color || c.lineStroke}" stroke-width="3" stroke-linecap="round" opacity="${el.opacity}"/>`;
 		}
 		if (el.kind === "note") {
-			// 完整音符视觉：填充圆 + 数字/音名（样式与板面 g.note>text 一致），导出时 labelColor 由调用方传字面量
-			const label = el.label ? `<text x="${el.x}" y="${el.y}" text-anchor="middle" dominant-baseline="middle" font-size="20" fill="${opts.labelColor || "var(--text-color)"}" opacity="${el.opacity}">${esc(el.label)}</text>` : "";
-			return `<g><circle cx="${el.x}" cy="${el.y}" r="${el.r}" fill="${el.color || c.dotFill}" opacity="${el.opacity}"/>${label}</g>`;
+			// 完整音符视觉：填充圆 + 1.5px 外框（与板面 g.note 的 stroke 一致）+ 数字/音名；导出时 labelColor 由调用方传字面量
+			const ink = opts.labelColor || "var(--text-color)";
+			const label = el.label ? `<text x="${el.x}" y="${el.y}" text-anchor="middle" dominant-baseline="middle" font-size="20" fill="${ink}" opacity="${el.opacity}">${esc(el.label)}</text>` : "";
+			return `<g><circle cx="${el.x}" cy="${el.y}" r="${el.r}" fill="${el.color || c.dotFill}" stroke="${ink}" stroke-width="1.5" opacity="${el.opacity}"/>${label}</g>`;
 		}
 		if (el.kind === "dot") {
 			return `<circle cx="${el.x}" cy="${el.y}" r="${el.r}" fill="${el.color || c.dotFill}" opacity="${el.opacity}"/>`;

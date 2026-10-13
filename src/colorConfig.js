@@ -181,6 +181,27 @@ export function deepenTint(colorObj, step = 0.25) {
 	return tintAt(name, Math.min(1, t + step));
 }
 
+
+// 帧档色：直接取该帧板面上真实存在的音符颜色——优先本帧出生（birth===i）的音，
+// 否则取色阶最深的一颗；都没有才用位置公式兜底。保证动画色与板面逐字节一致（含旧配色示例档）。
+export function frameTintFromData(frameData, i, total) {
+	const entries = Object.entries(frameData || {}).filter(([id, n]) =>
+		n && typeof n === "object" && n.color && typeof n.color === "object" && n.color.custom
+		&& (n.visibility === "visible" || n.visibility === "selected"));
+	if (!entries.length) return null;
+	const born = entries.find(([, n]) => typeof n.birth === "number" && n.birth === i);
+	if (born) return { name: born[1].color.name, custom: born[1].color.custom };
+	const depth = (n) => {
+		const tints = generateTintVariants(getLevel1FillColor(n.color.name || "navy"));
+		const t = tintPosition(tints, n.color.custom);
+		return t === null ? -1 : t;
+	};
+	const deepest = entries.map(e => e[1]).sort((a, b) => depth(b) - depth(a))[0];
+	if (deepest && depth(deepest) >= 0) return { name: deepest.color.name, custom: deepest.color.custom };
+	const any = entries[0][1];
+	return { name: any.color.name, custom: tintAt(any.color.name, total > 1 ? i / (total - 1) : 0) };
+}
+
 // 初始化CSS变量（在组件挂载时调用）
 export function initColorCSSVariables() {
     const root = document.documentElement;
