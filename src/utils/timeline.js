@@ -1,115 +1,100 @@
-// 时间轴展开：带 hp（击勾）过渡的帧在播放/导出时拆成 3 个子拍
-// 子拍间用纯 diff（B 环亮+A 淡出＝锤击，反向＝勾回），复用现有动画引擎
+// 时间轴展开 v2 —— 事件模型
+// 每一步只有两个数：enter=变成这一步的动画时长（fx 时长），dur=这一步的停留时长。
+// 播放：mount 步 → 播 enter 动画 → 等 enter+dur → 下一步。
+// 传输格式（兼容导出引擎 buildPlan）：state.holdMs=dur_i；前一步的 state.transMs=enter_{i+1}。
 
-import { deepenTint, tintAt, frameTintFromData } from "../colorConfig.js";
+import { frameTintFromData, tintAt } from "../colorConfig.js";
 
-// 技法特效时长：滑弦轨迹/往返光点需要看清楚，比普通过渡窗（transMs）长
-export const TECH_FX_MS = { rt: 800, sl: 450 };
+// 技法进入动画时长（轨迹要看得清）
+const ENTER = { sl: 450, rt: 800, pre: 450, plain: 200, snap: 0 };
+// 击勾三拍（预备/锤/勾回）各自的 enter 与 dur
+const HP_BEATS = [
+	{ enter: 60, dur: 60 },    // A 预备响
+	{ enter: 100, dur: 90 },   // B 锤击闪现
+	{ enter: 100, dur: null }  // A 勾回驻留（补足本帧总时长）
+];
 
-function effTransMs(spec, base) {
-	const techs = (spec?.pairs || []).map(p => p.technique);
-	let ms = base;
-	if (techs.includes("rt")) ms = Math.max(ms, TECH_FX_MS.rt);
-	if (techs.includes("sl") || techs.includes("pre")) ms = Math.max(ms, TECH_FX_MS.sl);
-	return ms;
+function sameBoard(a, b) {
+	const actOf = d => new Set(Object.entries(d || {}).filter(([, n]) => n && (n.visibility === "visible" || n.visibility === "selected")).map(([id]) => id));
+	const sa = actOf(a.data), sb = actOf(b.data);
+	return sa.size === sb.size && [...sa].every(id => sb.has(id));
 }
 
-// frames/transitions → 播放步序列：普通帧 1 步；hp 帧 3 步
-export function expandTimeline(frames, transitions, holdMs, transMs) {
-	const baseTrans = transMs > 0 ? transMs : 200;
-	const states = [];
-	const specs = []; // specs[i] = states[i]→states[i+1]，长度 = states-1
-	const frameOf = []; // 每步对应的原始帧号（缩略图高亮用）
-	const sub = []; // 该步是否 hp 子拍（播放提速用）
-	const hpFirstBeatIdxs = []; // {k, fast} hp 帧 beat0 下标与"可加速进入"判定
+// 技法子拍的"当帧档色"：优先本帧出生（birth===i）音符的真实色（=当帧新增音），否则按帧位置公式
+function beatTint(frame, i, frames) {
+	const born = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.birth === i && n.color && typeof n.color === "object" && n.color.custom);
+	if (born) return { name: born.color.name, custom: born.color.custom };
+	const any = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.color && typeof n.color === "object" && n.color.name);
+	if (!any) return null;
+	return { name: any.color.name, custom: tintAt(any.color.name, frames.length > 1 ? i / (frames.length - 1) : 0) };
+}
 
+export function expandTimeline(frames, transitions, holdMs, transMs) {
+	const H = holdMs > 0 ? holdMs : 300;
+	const T = transMs > 0 ? transMs : 200;
+	const states = [];
+	const specs = []; // specs[i] = states[i-1]→states[i] 的过渡（pairs 进 fx）
+	const frameOf = [];
+	const sub = []; // 是否技法子拍（缩略图高亮跟随帧号即可，此数组仅保留兼容）
+
+	// ① 生成步骤序列 {data-state, enter, dur}
+	const steps = [];
 	frames.forEach((frame, i) => {
-		const inc = i > 0 ? (transitions[i - 1] || { technique: null, pairs: [] }) : null;
-		const hpPairs = (inc && inc.pairs || []).filter(p => p.technique === "hp");
+		const inc = i > 0 ? (transitions[i - 1] || { pairs: [] }) : null;
+		const pairs = (inc && inc.pairs) || [];
+		const hpPairs = pairs.filter(p => p.technique === "hp");
+		const otherPairs = pairs.filter(p => p.technique !== "hp");
+		const pres = frame.preSlides || [];
+
+		// 进入本帧第一步的动画时长
+		let enter = T;
+		if (i === 0) enter = ENTER.snap;
+		else if (otherPairs.some(p => p.technique === "rt")) enter = ENTER.rt;
+		else if (otherPairs.some(p => p.technique === "sl")) enter = ENTER.sl;
+		else if (pres.length) enter = ENTER.pre;
+		else if (hpPairs.length && sameBoard(frames[i - 1], frame)) enter = ENTER.snap; // 纯等待：击勾立即起手
 
 		if (hpPairs.length) {
-			// 击勾帧：3 子拍。hp pair 的动画被子拍取代；同一过渡里的其他 pair（sl/rt）保留在进入第一拍时播放
-			const otherPairs = (inc.pairs || []).filter(p => p.technique !== "hp");
-			let beatData = frame.data;
-			let firstBeat = true;
-			// 起手加速判定：前一帧与本帧点亮音完全一致（纯等待、无任何可看的进出场）且无其他技法
-			let fastEntry = otherPairs.length === 0;
-			if (fastEntry && i > 0) {
-				const actOf = d => new Set(Object.entries(d || {}).filter(([, n]) => n && (n.visibility === "visible" || n.visibility === "selected")).map(([id]) => id));
-				const sa = actOf(frames[i - 1].data), sb = actOf(frame.data);
-				fastEntry = sa.size === sb.size && [...sa].every(id => sb.has(id));
-			}
-			if (i > 0) hpFirstBeatIdxs.push({ k: -1, fast: fastEntry }); // k 占位，push beat0 时回填
-			for (let beat = 0; beat < 3; beat++) {
-				if (beat === 1) {
-					beatData = { ...frame.data };
-					// 本帧帧档色＝从该帧板面真实音符颜色取（与板面逐字节一致，兼容旧配色示例档）
-					const ft = frameTintFromData(frame.data, i, frames.length);
-					hpPairs.forEach(p => { beatData = hpBeatData(beatData, p, ft ? ft.custom : null, ft ? ft.name : "navy"); });
-				} else {
-					beatData = frame.data;
-				}
-				states.push({ ...frame, data: beatData });
-				frameOf.push(i);
-				sub.push(true);
-				if (firstBeat && i > 0) {
-					const rec = hpFirstBeatIdxs[hpFirstBeatIdxs.length - 1];
-					if (rec && rec.k === -1) rec.k = states.length - 1;
-				}
-				if (states.length > 1) specs.push(firstBeat ? { technique: null, pairs: otherPairs } : { technique: null, pairs: [] });
-				firstBeat = false;
-			}
+			// 击勾帧：A 预备 → B 锤击闪现 → A 勾回；B 色优先本帧出生音，否则帧位置档
+			const ft = beatTint(frame, i, frames);
+			let b1 = frame.data;
+			hpPairs.forEach(p => {
+				const fromData = frame.data[p.from] || {};
+				b1 = { ...b1 };
+				b1[p.from] = fromData; // A 不动
+				b1[p.to] = { type: "note", color: ft ? { name: ft.name, custom: ft.custom } : "white", color2: null, visibility: "visible" };
+			});
+			const hpTotal = HP_BEATS[0].enter + HP_BEATS[0].dur + HP_BEATS[1].enter + HP_BEATS[1].dur + HP_BEATS[2].enter;
+			steps.push({ state: { ...frame }, enter, dur: HP_BEATS[0].dur, spec: { technique: null, pairs: otherPairs }, fi: i, sub: true });
+			steps.push({ state: { ...frame, data: b1 }, enter: HP_BEATS[1].enter, dur: HP_BEATS[1].dur, spec: { technique: null, pairs: [] }, fi: i, sub: true });
+			steps.push({ state: { ...frame }, enter: HP_BEATS[2].enter, dur: Math.max(60, H - hpTotal), spec: { technique: null, pairs: [] }, fi: i, sub: true });
+		} else if (pres.length) {
+			// 前置划弦：B 以帧档色亮起并滑向 A 熄灭，随后本帧正常停留
+			const ft = beatTint(frame, i, frames);
+			let pre = frame.data;
+			pres.forEach(s => {
+				pre = { ...pre, [s.from]: { type: "note", color: { name: ft ? ft.name : "navy", custom: ft ? ft.custom : "#888888" }, color2: null, visibility: "visible" } };
+			});
+			steps.push({ state: { ...frame, data: pre }, enter, dur: 80, spec: { technique: null, pairs: pres.map(s => ({ from: s.from, to: s.to, technique: "pre" })) }, fi: i, sub: true });
+			steps.push({ state: { ...frame }, enter: 150, dur: H, spec: { technique: null, pairs: [] }, fi: i, sub: false });
 		} else {
-			// 前置划弦：本帧开头插入"前置拍"——B 以帧档色点亮，随后滑向 A 熄灭（B 的进/出与滑动全由 diff+pair 表达）
-			const pres = frame.preSlides || [];
-			if (pres.length) {
-				const ft = frameTintFromData(frame.data, i, frames.length);
-				let preData = frame.data;
-				pres.forEach(s => {
-					preData = { ...preData, [s.from]: { type: "note", color: { name: ft ? ft.name : "navy", custom: ft ? ft.custom : "#888888" }, color2: null, visibility: "visible" } };
-				});
-				states.push({ ...frame, data: preData });
-				frameOf.push(i);
-				sub.push(true);
-				specs.push({ technique: null, pairs: pres.map(s => ({ from: s.from, to: s.to, technique: "pre" })) });
-			}
-			states.push(frame);
-			frameOf.push(i);
-			sub.push(false);
-			if (states.length > 1) specs.push(inc || { technique: null, pairs: [] });
+			steps.push({ state: { ...frame }, enter, dur: H, spec: inc ? { technique: null, pairs: otherPairs } : null, fi: i, sub: false });
 		}
 	});
-	// 每步盖"帧档色"标记（rt/hp 瞬时 B 的闪现色＝当帧新增音符色；animator 优先取用）
-	const frameTintOf = (i) => frameTintFromData(frames[i]?.data, i, frames.length);
-	// 每步挂"出边特效时长"与停留：sl/rt 过渡拉长（轨迹看得清）；hp 起始拍几乎立即、随后两拍稍驻
-	const beatHold = [10, 70, 110, 30]; // 首拍=锤击几乎立即；第4位=前置拍
-	let beatIdx = -1;
-	states.forEach((s, i) => {
-		s.transMs = i < specs.length
-			? (sub[i] ? Math.min(150, baseTrans) : effTransMs(specs[i], baseTrans))
-			: baseTrans;
-		if (sub[i]) { beatIdx = (beatIdx + 1) % 4; s.holdMs = beatHold[beatIdx]; }
-		s.frameTint = frameTintOf(frameOf[i]);
-	});
-	// 击勾起手不等：进入击勾帧的过渡若不带其他技法（空 pair），压到 80ms——锤击立即开始
-	hpFirstBeatIdxs.forEach(e => { if (e.fast && e.k > 0 && states[e.k - 1]) states[e.k - 1].transMs = Math.min(80, states[e.k - 1].transMs || 200); });
-	return { states, specs, frameOf, sub };
-}
 
-function hpBeatData(frameData, pair, frameTint, schemeName) {
-	const next = { ...frameData };
-	const fromData = frameData[pair.from] || {};
-	// A 全程不变（保持原色原可见）；击勾的视觉全部由 B 的进出表达（锤击=进环+深色闪现，勾回=淡出）
-	// B 的锤击闪现 = 当前帧帧档色（与当帧新增音符完全一致；旧数据无帧色时回落 A 深一档）
-	const bColor = frameTint
-		? { name: schemeName, custom: frameTint }
-		: ((() => { const deeper = deepenTint(fromData.color, 1 / 3); return deeper && fromData.color && typeof fromData.color === "object" ? { name: fromData.color.name, custom: deeper } : ((fromData.color && typeof fromData.color === "object") ? fromData.color : (fromData.color || "white")); })());
-	next[pair.to] = {
-		type: "note",
-		color: bColor,
-		color2: null,
-		visibility: "visible",
-		...(fromData.noteText ? { noteText: fromData.noteText } : {})
-	};
-	return next;
+	// ② 展平为传输格式：holdMs=dur；前一步 transMs=本步 enter
+	steps.forEach((st, k) => {
+		const s = { ...st.state, holdMs: st.dur };
+		states.push(s);
+		frameOf.push(st.fi);
+		sub.push(st.sub);
+		if (k > 0) specs.push(st.spec || { technique: null, pairs: [] });
+	});
+	// transMs：states[i].transMs = 下一步的 enter（循环回到第一步）
+	states.forEach((s, k) => {
+		const nxt = steps[(k + 1) % steps.length];
+		s.transMs = nxt ? nxt.enter : T;
+	});
+
+	return { states, specs, frameOf, sub };
 }
