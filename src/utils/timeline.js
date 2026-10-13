@@ -2,7 +2,7 @@
 // 音符亮灭边：各技法自己的 enter（60-100ms 快速切换），按技法相对时刻排序依次应用；
 // 光点轨道：各技法独立的绝对时长（DOT/RT_OUT/RT_BACK），与边序列互不拉扯。
 // 同帧多技法 = 并发（同一窗起点、各走各的节奏），与单技法完全同观感。
-import { frameTintFromData, tintAt } from "../colorConfig.js";
+import { frameTintFromData, tintAt, deepenTint } from "../colorConfig.js";
 
 const DOT = 380, RT_OUT = 280, RT_BACK = 260, SETTLE = 60, HPMOMENT = 60, HPB = 190;
 
@@ -45,25 +45,35 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			return (i > 0 ? pick(frames[i - 1].data) : null) || pick(base);
 		};
 
+		// 瞬时 B 的颜色：A 原色深一档（pale→vivid，可见且与 sl 的 B 观感一致）；A 无色才回退帧档
+		const bTint = p => {
+			const a = origColor(p.from);
+			if (a) {
+				const d = deepenTint(a, 1 / 3);
+				if (d) return { name: a.name, custom: d };
+			}
+			return ft;
+		};
+
 		// 每技法独立边：{t=技法相对钟, on, off, enter=该边动画时长}
 		const edges = [];
 		const edge = (t, on, off, enter) => edges.push({ t, on, off, enter });
 		pres.forEach(s => {
-			edge(Math.round(DOT * 0.5), { id: s.from, c: ft }, null, 60); // B 行程一半才亮（与 sl 的 B 同逻辑，不一开局就出现）
+			edge(Math.round(DOT * 0.5), { id: s.from, c: bTint(s) }, null, 60); // B 行程一半才亮（与 sl 的 B 同逻辑，不一开局就出现）
 			edge(DOT, null, { id: s.from }, 60); // 光点到达 A 后 B 熄灭
 		});
 		slP.forEach(p => {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
-			edge(Math.round(DOT * 0.5), { id: p.to, c: ft }, { id: p.from }, 60); // B 在行程一半就亮（提前约半个行程，明显可感）
+			edge(Math.round(DOT * 0.5), { id: p.to, c: bTint(p) }, { id: p.from }, 60); // B 在行程一半就亮（提前约半个行程，明显可感）
 		});
 		rtP.forEach(p => {
-			edge(Math.round(RT_OUT * 0.5), { id: p.to, c: ft }, null, 60); // B 行程一半亮（与 sl/pre 同逻辑）
+			edge(Math.round(RT_OUT * 0.5), { id: p.to, c: bTint(p) }, null, 60); // B 行程一半亮（与 sl/pre 同逻辑）
 			edge(RT_OUT, null, { id: p.from }, 60); // 光点到达 B：A 灭、B 保持
 			edge(RT_OUT + 110 + Math.round(RT_BACK * 0.5), { id: p.from, c: origColor(p.from) || ft }, null, 60); // 回程一半：A 先亮
 			edge(RT_OUT + 110 + RT_BACK, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, 60); // 光点回抵 A：A 已亮，B 灭
 		});
 		hpP.forEach(p => {
-			edge(HPMOMENT, { id: p.to, c: ft }, null, 100);
+			edge(HPMOMENT, { id: p.to, c: bTint(p) }, null, 100);
 			edge(HPMOMENT + HPB, null, { id: p.to }, 100);
 		});
 		edges.sort((a, b) => a.t - b.t);
