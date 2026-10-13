@@ -3098,7 +3098,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    min-width: 0; /* 宽度交给 dock-content 的自适应网格 */
+    width: 240px;
 }
 
 /* 当前生效动图高亮 */
