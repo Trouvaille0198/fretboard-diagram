@@ -26,16 +26,21 @@ function buildPlan(states, opts) {
 	const dt = 1000 / fps;
 
 	const plan = [];
+	let tAbs = 0;
 	states.forEach((state, i) => {
 		const h = Number(state.holdMs) > 0 ? Number(state.holdMs) : holdMs;
-		plan.push({ board: i, descIndex: -1, t: 0, delayMs: Math.max(dt, Math.round(h / dt) * dt), transMs: 0 });
+		const hSteps = Math.max(1, Math.round(h / dt));
+		const hMs = Math.max(dt, Math.round(h / hSteps));
+		for (let s = 0; s < hSteps; s++) plan.push({ board: i, descIndex: -1, t: 0, delayMs: hMs, transMs: 0, tAbs: tAbs + hMs * s });
+		tAbs += hMs * hSteps;
 		if (i < states.length - 1) {
 			const tr = Number(state.transMs) > 0 ? Number(state.transMs) : transMs;
 			const steps = Math.max(2, Math.round(tr / dt));
 			const stepMs = tr / steps;
 			for (let s = 0; s < steps; s++) {
-				plan.push({ board: i + 1, descIndex: i, t: (s + 1) / steps, delayMs: stepMs, transMs: tr });
+				plan.push({ board: i + 1, descIndex: i, t: (s + 1) / steps, delayMs: stepMs, transMs: tr, tAbs: tAbs + stepMs * (s + 1) });
 			}
+			tAbs += tr;
 		}
 	});
 	return plan;
@@ -54,6 +59,9 @@ async function renderSubframes({ states, specs, boardImages, viewBox, opts, onPr
 
 	const bg = opts.background || '#10161c';
 	const descs = states.slice(0, -1).map((s, i) => describeTransition(states[i], states[i + 1], specs?.[i] || { technique: null, pairs: [] }));
+	// 并发轨道：desc 用同帧数据取音符位置/颜色（prevState=当帧基态）
+	const fxTrack = Array.isArray(opts.fx) ? opts.fx : [];
+	const fxDescs = fxTrack.map(fxi => describeTransition(states[0], states[states.length - 1], fxi.spec));
 
 	const subframes = [];
 	for (let p = 0; p < plan.length; p++) {
@@ -65,6 +73,19 @@ async function renderSubframes({ states, specs, boardImages, viewBox, opts, onPr
 			const fxSvg = elsToSvgString(sampleTransition(descs[item.descIndex], item.t, item.transMs), viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle });
 			const fxImg = await svgToImage(fxSvg);
 			ctx.drawImage(fxImg, 0, 0, width, height);
+		}
+		// 并发 fx 轨道：绝对时间在窗口内的轨迹叠加
+		if (fxTrack.length && item.tAbs !== undefined) {
+			let trackEls = [];
+			fxTrack.forEach((fxi, k) => {
+				if (item.tAbs < fxi.t0 || item.tAbs > fxi.t0 + fxi.dur) return;
+				const tt = (item.tAbs - fxi.t0) / fxi.dur;
+				trackEls = trackEls.concat(sampleTransition(fxDescs[k], tt, fxi.dur));
+			});
+			if (trackEls.length) {
+				const trackImg = await svgToImage(elsToSvgString(trackEls, viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle }));
+				ctx.drawImage(trackImg, 0, 0, width, height);
+			}
 		}
 		subframes.push({ canvas: ctx.getImageData(0, 0, width, height), delayMs: item.delayMs });
 		if (onProgress) onProgress(p + 1, plan.length);
@@ -100,6 +121,9 @@ export async function exportWebmAnimation({ states, specs, boardImages, viewBox,
 	// 预先把所有子帧画到独立位图（回放阶段只做 drawImage，保证不掉帧）
 	const subframes = [];
 	const descs = states.slice(0, -1).map((s, i) => describeTransition(states[i], states[i + 1], specs?.[i] || { technique: null, pairs: [] }));
+	// 并发轨道：desc 用同帧数据取音符位置/颜色（prevState=当帧基态）
+	const fxTrack = Array.isArray(opts.fx) ? opts.fx : [];
+	const fxDescs = fxTrack.map(fxi => describeTransition(states[0], states[states.length - 1], fxi.spec));
 	for (let p = 0; p < plan.length; p++) {
 		const item = plan[p];
 		const c = document.createElement('canvas');
