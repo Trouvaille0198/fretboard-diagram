@@ -787,6 +787,14 @@ function Fretboard({ mode = 'normal' }) {
       const p = pt.matrixTransform(svg.getScreenCTM().inverse());
       return { x: +p.x.toFixed(1), y: +p.y.toFixed(1) };
     };
+    if (dragInfo.mode === 'pre') {
+      // 前置划弦反馈：金色虚线 B→光标；确认目标 A 后 B→A 实线
+      const fromPos0 = getNotePositionMemo(dragInfo.from);
+      if (!fromPos0) return null;
+      const gold = 'var(--app-accent, #f3ba62)';
+      const targetPos0 = dragInfo.preTo ? getNotePositionMemo(dragInfo.preTo) : null;
+      return { fromPos: fromPos0, cur, vivid: gold, targetPos: targetPos0, armedPos: null, returnReadyPos: null };
+    }
     const anchorId = dragInfo.activatedTo || dragInfo.from; // 激活后锚点=B：再拖时线从 B 出发
     const fromPos = getNotePositionMemo(anchorId) || getNotePositionMemo(dragInfo.from);
     if (!fromPos) return null;
@@ -804,6 +812,29 @@ function Fretboard({ mode = 'normal' }) {
     }
     return { fromPos, cur, vivid, targetPos, armedPos, returnReadyPos };
   }, [dragInfo, dragPos, getNotePositionMemo, getHintColorValue]);
+
+  // 编辑态技法标记：当前帧的滑弦/原位/击勾/前置划弦在板面常驻可见、互相区分
+  const techMarksG = useMemo(() => {
+    if (mode !== 'dynamic' || dynamic.viewMode !== 'edit' || !svgElementRef.current) return null;
+    const idx = dynamic.editIdx;
+    const marks = [];
+    const posOf = id => getNotePositionMemo(id);
+    const hint = getHintColorValue().custom;
+    const gold = 'var(--app-accent, #f3ba62)';
+    const pairs = (idx > 0 && dynamic.transitions[idx - 1]?.pairs) || [];
+    pairs.forEach(p => {
+      const a = posOf(p.from), b = posOf(p.to);
+      if (!a || !b) return;
+      marks.push({ tech: p.technique, a, b });
+    });
+    ((dynamic.frames[idx]?.preSlides) || []).forEach(s => {
+      const a = posOf(s.from), b = posOf(s.to);
+      if (!a || !b) return;
+      marks.push({ tech: 'pre', a, b });
+    });
+    if (!marks.length) return null;
+    return { marks, hint, gold };
+  }, [mode, dynamic.viewMode, dynamic.editIdx, dynamic.transitions, dynamic.frames, getNotePositionMemo, getHintColorValue]);
 
   // Chrome 不认 SVG 元素上的 touch-action，触屏拖拽连线会被滚动手势打断；
   // 用非被动 touchmove 在拖拽进行时阻止默认滚动，其余情况照常滚屏
@@ -1377,6 +1408,29 @@ function Fretboard({ mode = 'normal' }) {
             durationMs={playSteps.states[playingIdx - 1]?.transMs || (Number(animSettings.transMs) > 0 ? Number(animSettings.transMs) : 200)}
             portalTo={svgElementRef.current}
           />
+        )}
+        {techMarksG && svgElementRef.current && createPortal(
+          <g className="drag-fx-layer tech-marks" pointerEvents="none">
+            {techMarksG.marks.map((m, i) => {
+              const dx = m.b.x - m.a.x, dy = m.b.y - m.a.y;
+              const len = Math.hypot(dx, dy) || 1;
+              const r = 24;
+              const x1 = m.a.x + dx / len * r, y1 = m.a.y + dy / len * r;
+              const x2 = m.b.x - dx / len * r, y2 = m.b.y - dy / len * r;
+              const stroke = m.tech === 'pre' ? techMarksG.gold : techMarksG.hint;
+              const dash = m.tech === 'hp' ? '2 4' : (m.tech === 'rt' ? '8 4' : undefined);
+              return (
+                <g key={i} opacity={0.85}>
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={stroke} strokeWidth={2.5} strokeLinecap="round" strokeDasharray={dash} />
+                  {m.tech !== 'pre' && <circle cx={x2} cy={y2} r={4} fill={stroke} />}
+                  {m.tech === 'rt' && <circle cx={x1} cy={y1} r={4} fill={stroke} />}
+                  {m.tech === 'hp' && <circle cx={x1} cy={y1} r={4} fill="none" stroke={stroke} strokeWidth={2} />}
+                  {m.tech === 'pre' && <circle cx={x1} cy={y1} r={5} fill="none" stroke={stroke} strokeWidth={2} />}
+                </g>
+              );
+            })}
+          </g>,
+          svgElementRef.current
         )}
         {dragFeedbackG && svgElementRef.current && createPortal(
           <g className="drag-fx-layer" pointerEvents="none">

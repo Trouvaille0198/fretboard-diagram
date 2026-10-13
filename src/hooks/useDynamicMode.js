@@ -476,7 +476,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 
 	const getDragInfo = useCallback(() => {
 		const d = dragRef.current;
-		const info = d ? { from: d.from, hoverId: d.hoverId, activatedTo: d.activatedTo, hpArmed: !!d.hpArmed, shift: !!d.shift, moved: !!d.moved } : null;
+		const info = d ? { mode: d.mode, from: d.from, hoverId: d.hoverId, activatedTo: d.activatedTo, preTo: d.preTo || null, hpArmed: !!d.hpArmed, moved: !!d.moved } : null;
 		if (typeof window !== "undefined") window.__dragInfo = info; // 调试口
 		return info;
 	}, []);
@@ -484,8 +484,12 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 	const beginSlideDrag = useCallback((noteId) => {
 		suppressClickRef.current = false; // 清残留：上一拖拽的吞击标记不该误吞本次点击（须在点亮守卫之前——点未点亮音也走这里）
 		if (viewMode !== "edit") return false;
-		if (!isNoteActive(dataRef.current[noteId], visibility)) return false;
-		dragRef.current = { from: noteId, hoverId: null, activatedTo: null, timer: null, moved: false };
+		if (!isNoteActive(dataRef.current[noteId], visibility)) {
+			// 前置划弦：从未激活音 B 起拖（激活音 A 为终点）——第一帧也可用
+			dragRef.current = { mode: "pre", from: noteId, hoverId: null, activatedTo: null, preTo: null, timer: null, moved: false };
+			return true;
+		}
+		dragRef.current = { mode: "slide", from: noteId, hoverId: null, activatedTo: null, timer: null, moved: false };
 		return true;
 	}, [dataRef, visibility, viewMode]);
 
@@ -496,6 +500,15 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 
 	const startDwell = (d, noteId) => {
 		if (!noteId) return;
+		// 前置划弦：目标是已激活音（同弦），停 200ms 确认为 preTo；目标熄灭则取消
+		if (d.mode === "pre") {
+			if (noteId === d.from) return;
+			if (stringOfNote(noteId) !== stringOfNote(d.from)) return;
+			d.timer = setTimeout(() => {
+				if (isNoteActive(dataRef.current[noteId], visibility)) d.preTo = noteId;
+			}, 200);
+			return;
+		}
 		// 拖回 A 区悬停：立刻松=原位滑弦 rt；停满 600ms（实线环变呼吸虚线环）=击勾 hp 待命
 		if (noteId === d.from) {
 			if (!d.activatedTo || d.hpArmed) return;
@@ -532,6 +545,18 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (!d) return false;
 		clearTimeout(d.timer);
 		if (d.moved) suppressClickRef.current = true; // 真拖过：吞掉引发的 click（防误切换源音/落点音）
+		// 前置划弦：B→A 记到当前帧 preSlides（任何帧可用，含第 1 帧）；板面保持不变
+		if (d.mode === "pre") {
+			if (!d.preTo || !isNoteActive(dataRef.current[d.preTo], visibility)) return false;
+			const idx = editIdxRef.current;
+			setFrames(prev => prev.map((f, i) => {
+				if (i !== idx) return f;
+				const slides = (f.preSlides || []).filter(s => !(s.from === d.from && s.to === d.preTo));
+				return { ...f, preSlides: [...slides, { from: d.from, to: d.preTo }] };
+			}));
+			toast?.("已设前置划弦（B 闪现滑到 A）", "success");
+			return true;
+		}
 		if (!d.activatedTo) return false; // 未激活就松手：取消，什么都不改
 
 		const from = d.from;
