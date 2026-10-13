@@ -5,7 +5,8 @@ from app.models import (
     SaveDataRequest, SaveDataResponse, LoadDataResponse,
     CreateDirectoryRequest, UpdateDirectoryRequest, DirectoryResponse,
     CreateStateRequest, UpdateStateRequest, StateResponse,
-    StandardResponse
+    StandardResponse,
+    SaveClipsRequest, ClipResponse
 )
 from app.auth import verify_token
 from app.database import get_database
@@ -426,3 +427,51 @@ async def delete_state(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"删除状态失败: {str(e)}")
+
+# ========== 动图（Clip）同步接口 ==========
+
+@router.post("/clips/save", response_model=ClipResponse)
+async def save_clips(request: SaveClipsRequest, username: str = Depends(verify_token)):
+    """保存用户动图（全量替换，旧 states 数据不动）"""
+    try:
+        db = get_database()
+        db.clips.delete_many({"username": username})
+        if request.clips:
+            db.clips.insert_many([
+                {
+                    "username": username,
+                    "clip_id": clip.id,
+                    "name": clip.name,
+                    "created_at": clip.createdAt,
+                    "frames": [frame.model_dump() if hasattr(frame, "model_dump") else frame for frame in clip.frames],
+                    "transitions": [t.model_dump() if hasattr(t, "model_dump") else t for t in clip.transitions],
+                }
+                for clip in request.clips
+            ])
+        return ClipResponse(success=True, message="动图已保存")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"保存动图失败: {str(e)}")
+
+
+@router.get("/clips")
+async def get_clips(username: str = Depends(verify_token)):
+    """获取用户全部动图"""
+    try:
+        db = get_database()
+        cursor = db.clips.find({"username": username}).sort("created_at", -1)
+        clips = []
+        for doc in cursor:
+            clips.append({
+                "id": doc.get("clip_id"),
+                "name": doc.get("name"),
+                "createdAt": doc.get("created_at"),
+                "frames": doc.get("frames", []),
+                "transitions": doc.get("transitions", []),
+            })
+        return clips
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取动图失败: {str(e)}")

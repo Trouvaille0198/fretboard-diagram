@@ -1,9 +1,12 @@
-import React, { useMemo, useRef, useCallback } from 'react';
+import React, { useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import { CONSTS } from '../constants';
 import { FretboardSVG } from './FretboardSVG';
 import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, generateMarkers, getNotePosition } from '../utils/fretboardCalculations';
-import { calculateArcPath, inlineCSS, noteToSolfege } from '../utils';
-import { activeNoteIdsOf, chordDisplay } from '../utils/songStructure';
+import { inlineCSS, noteToSolfege } from '../utils';
+import { chordDisplay } from '../utils/songStructure';
+import { describeTransition, sampleTransition, elsToSvgString } from '../utils/transitionAnimator';
+import { LanguageProvider } from '../i18n';
+import { createPortal } from 'react-dom';
 
 const noOp = () => {};
 
@@ -40,8 +43,12 @@ export function buildNotes(state) {
 }
 
 // 用一张快照渲染一块"哑"指板（复用完整渲染逻辑，交互全部置空）
-export function ScoreBoard({ snapshot }) {
+// memo：按 state 引用比较——帧数据不变就跳过重渲（拖拽/播放时帧条不重算）
+export const ScoreBoard = React.memo(function ScoreBoard({ snapshot, options }) {
   const s = snapshot.state;
+  // 展示设置（导出用）：品数标记 / 音名显示
+  const includeMarkers = options ? options.includeMarkers !== false : true;
+  const showNotes = options ? options.showNotes !== false : true;
   const geo = useMemo(() => boardGeometry(s.startFret, s.endFret), [s.startFret, s.endFret]);
   const notes = useMemo(
     () => buildNotes(s),
@@ -72,10 +79,11 @@ export function ScoreBoard({ snapshot }) {
       handleSvgContextMenu={noOp}
       handleSvgWheel={noOp}
       fretPath={generateFretPath(s.startFret, s.endFret)}
-      markers={generateMarkers(s.startFret, s.endFret)}
+      markers={includeMarkers ? generateMarkers(s.startFret, s.endFret) : []}
       generateStringPathMemo={generateStringPathMemo}
       notes={notes}
       notesElementRef={notesRef}
+      showNotes={showNotes}
       data={s.data}
       visibility={s.visibility}
       selected={null}
@@ -123,65 +131,106 @@ export function ScoreBoard({ snapshot }) {
       showNotes={s.showNotes}
     />
   );
-}
+}, (prev, next) => prev.snapshot?.state === next.snapshot?.state
+	&& prev.options?.includeMarkers === next.options?.includeMarkers
+	&& prev.options?.showNotes === next.options?.showNotes);
 
-// 帧间转移特效：退出的音淡出、进入的音扩散环、同弦转移画滑线 + 光点 + 技法字母
-export function TransitionFx({ prevState, nextState, technique, durationMs, className }) {
+// 帧间转移特效：退出的音淡出、进入的音扩散环（可琶音错开）、同弦转移光点移动
+// sl 画滑线，h/p 急促缓动 + 字母，hp 往返 + 瞬时音闪环；与导出动图共用 transitionAnimator 内核
+export function TransitionFx({ prevState, nextState, spec, durationMs = 300, width, height, className, portalTo }) {
   const geo = boardGeometry(nextState.startFret, nextState.endFret);
-  const prevNotes = buildNotes(prevState);
-  const nextNotes = buildNotes(nextState);
-  const exited = [];
-  const entered = [];
-  const pairs = [];
+  const desc = useMemo(
+    () => describeTransition(prevState, nextState, spec || { technique: null, pairs: [] }),
+    [prevState, nextState, spec]
+  );
+  const [t, setT] = useState(0);
+  const startRef = useRef(null);
 
-  // 只比较"正在发声"的音符（可见且有颜色），而不是整块指板
-  const prevActive = activeNoteIdsOf(prevState);
-  const nextActive = activeNoteIdsOf(nextState);
-  const removedList = prevNotes.filter(n => prevActive.has(n.id) && !nextActive.has(n.id));
-  const addedList = nextNotes.filter(n => nextActive.has(n.id) && !prevActive.has(n.id));
-  const used = new Set();
-  removedList.forEach(from => {
-    const to = addedList.find(n => !used.has(n.id) && n.y === from.y);
-    if (to) { used.add(n.id); pairs.push({ from, to }); }
-  });
-  addedList.forEach(n => { if (!used.has(n.id)) entered.push(n); });
-  removedList.forEach(n => { if (!pairs.some(p => p.from.id === n.id)) exited.push(n); });
+  useEffect(() => {
+    startRef.current = null;
+    setT(0);
+    let raf = 0;
+    const dur = Math.max(1, durationMs);
+    const tick = now => {
+      if (startRef.current === null) startRef.current = now;
+      const p = Math.min(1, (now - startRef.current) / dur);
+      setT(p);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [desc, durationMs]);
 
-  const key = `${prevState.timestamp}-${nextState.timestamp}`;
+  const els = useMemo(() => sampleTransition(desc, t, durationMs), [desc, t, durationMs]);
+  const body = useMemo(
+    () => elsToSvgString(els, `${geo.svgViewBoxX} ${geo.svgViewBoxY} ${geo.svgViewBoxWidth} ${geo.svgViewBoxHeight}`).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, ''),
+    [els, geo]
+  );
+
+  // portal 模式：直接渲染进主板 <svg> 内部，与板同坐标系，天然零偏移
+  if (portalTo) {
+    return createPortal(
+      <g className="stage-fx-layer" dangerouslySetInnerHTML={{ __html: body }} />,
+      portalTo
+    );
+  }
 
   return (
     <svg
-      key={key}
       className={className || 'score-fx'}
+      width={width}
+      height={height}
       viewBox={`${geo.svgViewBoxX} ${geo.svgViewBoxY} ${geo.svgViewBoxWidth} ${geo.svgViewBoxHeight}`}
       preserveAspectRatio="xMidYMid meet"
-    >
-      {exited.map(n => (
-        <circle key={`out-${n.id}`} className="fx-out" cx={n.x} cy={n.y} r={CONSTS.circleRadius} />
-      ))}
-      {entered.map(n => (
-        <circle key={`in-${n.id}`} className="fx-in" cx={n.x} cy={n.y} r={CONSTS.circleRadius} />
-      ))}
-      {pairs.map(({ from, to }) => {
-        const path = calculateArcPath(from.x, from.y, to.x, to.y, 0.4);
-        const mid = {
-          x: 0.25 * from.x + 0.5 * ((from.x + to.x) / 2) + 0.25 * to.x,
-          y: 0.25 * from.y + 0.5 * ((from.y + to.y) / 2 - Math.abs(to.x - from.x) * 0.12) + 0.25 * to.y
-        };
-        return (
-          <g key={`pair-${from.id}-${to.id}`}>
-            <path className="fx-line" d={path} />
-            <circle className="fx-dot" r="7" cx={from.x} cy={from.y}>
-              <animateMotion dur={`${durationMs}ms`} fill="freeze" path={path} />
-            </circle>
-            {technique && (
-              <text className="fx-letter" x={mid.x} y={mid.y - 12} textAnchor="middle">{technique}</text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+      dangerouslySetInnerHTML={{ __html: body }}
+    />
   );
+}
+
+// 离屏渲染一帧板面 → 独立样式的 HTMLImageElement（动图导出用）
+export async function renderBoardImage(state, width, options = {}) {
+  const { createRoot } = await import('react-dom/client');
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-99999px;top:0;width:600px;';
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  root.render(<LanguageProvider><ScoreBoard snapshot={{ state }} options={options} /></LanguageProvider>);
+  // 等两帧保证 SVG 完成 commit
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  const svgEl = host.querySelector('svg');
+  if (!svgEl) {
+    root.unmount();
+    host.remove();
+    throw new Error('板面渲染失败');
+  }
+  const clone = inlineCSS(svgEl.cloneNode(true), svgEl); // 原始树=本离屏 svg（此前误抄主舞台，导出帧全同）
+  const vb = (clone.getAttribute('viewBox') || '0 0 800 400').split(/\s+/).map(Number);
+  // 水平/垂直截断：由调用方统一计算的裁剪框（跨全部帧联合范围，保证动画各帧同视野不跳动）
+  let [vx, vy, vw, vh] = vb;
+  if (options.cropBox && options.cropBox.w > 0) {
+    vx = options.cropBox.x; vy = options.cropBox.y; vw = options.cropBox.w; vh = options.cropBox.h;
+    clone.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+  }
+  const height = Math.round(width * vh / vw);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('width', String(width));
+  clone.setAttribute('height', String(height));
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || '#10161c';
+  clone.setAttribute('style', `background-color:${bg};`);
+
+  const svgString = new XMLSerializer().serializeToString(clone);
+  const img = await new Promise((resolve, reject) => {
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('板面 SVG 解码失败')); };
+    image.src = url;
+  });
+  root.unmount();
+  host.remove();
+  return img;
 }
 
 // ============ 导出整首一张图 ============
@@ -248,7 +297,8 @@ export function exportSheetImage({ timelineEl, measures, meta, rootNote, isMinor
     parts.push(`<text x="${rowPad + 6}" y="${y + 74}" font-family="${fontStack}" font-size="17" fill="${textColor}">${escapeXml(chordText)}</text>`);
 
     minis.forEach((miniEl, i) => {
-      const clone = inlineCSS(miniEl.querySelector('svg').cloneNode(true));
+      const miniSvg = miniEl.querySelector('svg');
+      const clone = inlineCSS(miniSvg.cloneNode(true), miniSvg);
       clone.setAttribute('width', String(thumbW));
       clone.setAttribute('height', String(thumbH));
       clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');

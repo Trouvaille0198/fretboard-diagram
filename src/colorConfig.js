@@ -116,6 +116,71 @@ export function generateTintVariants(baseColor) {
     return [pale, vivid, rich, deep].map(toRgbString);
 }
 
+
+// —— 动态帧色阶：在 4 档 tint（pale→vivid→rich→deep）上按 t∈[0,1] 连续插值 ——
+
+function parseRgbString(str) {
+    if (typeof str !== 'string') return null;
+    let m = str.match(/^#([0-9a-f]{6})$/i);
+    if (m) {
+        const hex = m[1];
+        return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+    }
+    m = str.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
+    if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+    return null;
+}
+
+// 取色系在色阶位置 t 的颜色：t=0=pale（帧1），t=1=deep（末帧），中间线性插值
+export function tintAt(colorName, t) {
+    const tints = generateTintVariants(getLevel1FillColor(colorName));
+    const stops = tints.map(parseRgbString).filter(Boolean);
+    if (!stops.length) return '#ffffff';
+    const clamped = Math.max(0, Math.min(1, Number(t) || 0));
+    const seg = clamped * (stops.length - 1);
+    const i = Math.min(stops.length - 2, Math.floor(seg));
+    const local = seg - i;
+    const a = stops[i], b = stops[i + 1];
+    const mixed = [0, 1, 2].map(k => Math.round(a[k] + (b[k] - a[k]) * local));
+    return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
+}
+
+// 估计一个颜色在 4 档色阶上的位置 t（用于换色系原位映射）；离色阶太远/无法定位返回 null
+export function tintPosition(tints, custom) {
+    const idx = tints.indexOf(custom);
+    if (idx >= 0) return idx / (tints.length - 1);
+    const target = parseRgbString(custom);
+    if (!target) return null;
+    const stops = tints.map(parseRgbString).filter(Boolean);
+    if (stops.length < 2) return null;
+    let best = null, bestDist = Infinity;
+    for (let i = 0; i < stops.length - 1; i++) {
+        const a = stops[i], b = stops[i + 1];
+        const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        const ap = [target[0] - a[0], target[1] - a[1], target[2] - a[2]];
+        const abLen2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+        if (abLen2 === 0) continue;
+        const localRaw = (ap[0] * ab[0] + ap[1] * ab[1] + ap[2] * ab[2]) / abLen2;
+        const local = Math.max(0, Math.min(1, localRaw));
+        const proj = [a[0] + ab[0] * local, a[1] + ab[1] * local, a[2] + ab[2] * local];
+        const dist = Math.hypot(target[0] - proj[0], target[1] - proj[1], target[2] - proj[2]);
+        if (dist < bestDist) { bestDist = dist; best = (i + local) / (stops.length - 1); }
+    }
+    if (best === null || bestDist > 60) return null; // 离色阶太远：非本体系颜色，不动它
+    return best;
+}
+
+
+// 瞬时目标音（rt/hp 的 B）取比源音深一档：色阶位置 +1/4 步，最深处不再加深
+export function deepenTint(colorObj) {
+	if (!colorObj || typeof colorObj !== 'object' || !colorObj.custom) return null;
+	const name = colorObj.name || 'navy';
+	const tints = generateTintVariants(getLevel1FillColor(name));
+	const t = tintPosition(tints, colorObj.custom);
+	if (t === null) return null;
+	return tintAt(name, Math.min(1, t + 0.25));
+}
+
 // 初始化CSS变量（在组件挂载时调用）
 export function initColorCSSVariables() {
     const root = document.documentElement;

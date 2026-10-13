@@ -1,54 +1,98 @@
 import React from 'react';
+import { ScoreBoard, TransitionFx } from './ScorePieces';
+import { renameClip } from '../utils/clipModel';
 import './FretboardDock.css';
 
+// 动图卡片上的迷你播放器：仅悬停时循环播放；不悬停=静态首帧，零动画开销
+function ClipPreview({ clip, play }) {
+  const [idx, setIdx] = React.useState(0);
+  const timerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!play || clip.frames.length < 2) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      setIdx(0);
+      return;
+    }
+    const speed = (() => {
+      try { const cfg = JSON.parse(localStorage.getItem('fretboard-anim-settings') || '{}'); return (Number(cfg.holdMs) > 0 ? Number(cfg.holdMs) : 300) + (Number(cfg.transMs) > 0 ? Number(cfg.transMs) : 200); } catch (e) { return 500; }
+    })();
+    const step = (i) => {
+      timerRef.current = setTimeout(() => {
+        const next = (i + 1) % clip.frames.length;
+        setIdx(next);
+        step(next);
+      }, speed);
+    };
+    step(0);
+    return () => {
+      clearTimeout(timerRef.current);
+    };
+  }, [play, clip.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const frame = clip.frames[Math.min(idx, clip.frames.length - 1)];
+  const prevFrame = idx > 0 ? clip.frames[idx - 1] : null;
+
+  return (
+    <div className="clip-preview">
+      <ScoreBoard snapshot={{ state: frame }} />
+      {play && prevFrame && (
+        <TransitionFx
+          className="clip-preview-fx"
+          key={idx}
+          prevState={prevFrame}
+          nextState={frame}
+          spec={clip.transitions?.[idx - 1] || { technique: null, pairs: [] }}
+          durationMs={200}
+        />
+      )}
+    </div>
+  );
+}
+
+// 指板堆：只存动图。悬停预览播放，点击续编，双击重命名，× 删除
 export function FretboardDock({
-  historyStates = [],
-  currentDirectoryId = 'default',
-  selectedHistoryState,
-  onRestore,
+  clips = [],
+  clipVersion = 0,
+  hidden = false,
+  onLoad,
   onDelete,
   onClear,
-  hidden = false,
+  onExamples,
+  onRenamed,
   t,
 }) {
   const td = t?.dock ?? {};
 
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const [hoveredId, setHoveredId] = React.useState(null);
+  const [renamingId, setRenamingId] = React.useState(null);
   const collapseTimerRef = React.useRef(null);
 
   const openDock = React.useCallback(() => {
-    if (collapseTimerRef.current) {
-      clearTimeout(collapseTimerRef.current);
-      collapseTimerRef.current = null;
-    }
+    clearTimeout(collapseTimerRef.current);
+    collapseTimerRef.current = null;
     setIsExpanded(true);
   }, []);
 
   const scheduleCloseDock = React.useCallback(() => {
-    if (collapseTimerRef.current) {
-      clearTimeout(collapseTimerRef.current);
-    }
+    clearTimeout(collapseTimerRef.current);
     collapseTimerRef.current = setTimeout(() => {
       setIsExpanded(false);
-      collapseTimerRef.current = null;
-    }, 180);
+      setHoveredId(null);
+    }, 200);
   }, []);
 
   React.useEffect(() => () => {
-    if (collapseTimerRef.current) {
-      clearTimeout(collapseTimerRef.current);
-    }
+    clearTimeout(collapseTimerRef.current);
   }, []);
 
   if (hidden) {
     return null;
   }
 
-  const dockStates = historyStates.filter(
-    (state) => state.directoryId === currentDirectoryId
-  );
-  const latestState = dockStates[0] || null;
-  const stackCountLabel = dockStates.length > 99 ? '99+' : String(dockStates.length);
+  const countLabel = clips.length > 99 ? '99+' : String(clips.length);
 
   return (
     <div
@@ -56,89 +100,80 @@ export function FretboardDock({
       onMouseEnter={openDock}
       onMouseLeave={scheduleCloseDock}
     >
-      <div
-        className={`dock-stack ${isExpanded ? 'visible' : ''}`}
-      >
-        {dockStates.length === 0 ? (
-          <div className="dock-empty">{td.emptyHint ?? 'Press Ctrl+S to save'}</div>
-        ) : (
-          dockStates.map((stateSnapshot, index) => {
-            const depth = dockStates.length - index - 1;
-            const curveOffset = Math.min(depth * 10, 42);
-            const liftOffset = depth * 4;
-            const tilt = Math.min(depth * 1.5, 6);
+      <div className="dock-tabs">
+        <span className="dock-label">{td.clipsTitle ?? '动图堆'}</span>
+        <span className="dock-count">{countLabel}</span>
+        <button
+          className="dock-examples"
+          title={td.examplesHint ?? '载入六种技法/样式的示例动图（重复点击会刷新示例，不影响你自己的动图）'}
+          onClick={onExamples}
+        >
+          {td.examples ?? '示例'}
+        </button>
+      </div>
 
-            return (
-              <div
-                key={stateSnapshot.id}
-                className={`dock-item ${selectedHistoryState?.id === stateSnapshot.id ? 'selected' : ''}`}
-                title={td.itemTitle ? td.itemTitle(stateSnapshot.name) : `${stateSnapshot.name} · click to apply`}
-                style={{
-                  '--dock-depth': depth,
-                  '--dock-curve-offset': `${curveOffset}px`,
-                  '--dock-lift-offset': `${liftOffset}px`,
-                  '--dock-tilt': `${tilt}deg`
-                }}
-              >
+      {isExpanded && (
+        <div className="dock-content">
+          {clips.length === 0 && (
+            <div className="dock-empty">{td.emptyHint ?? '还没有动图：画好一帧按 Q 进入动态编辑，Ctrl+S 逐帧定格'}</div>
+          )}
+          {clips.map(clip => (
+            <div
+              key={`${clip.id}-${clipVersion}`}
+              className={`dock-clip ${hoveredId === clip.id ? 'hovered' : ''}`}
+              onMouseEnter={() => setHoveredId(clip.id)}
+              onMouseLeave={() => setHoveredId(null)}
+            >
+              <div className="dock-clip-board" onClick={() => onLoad?.(clip)} title={td.loadHint ?? '载入续编（追加帧）'}>
+                <ClipPreview clip={clip} play={hoveredId === clip.id} />
+              </div>
+              <div className="dock-clip-info">
+                {renamingId === clip.id ? (
+                  <input
+                    className="dock-clip-name-input"
+                    autoFocus
+                    defaultValue={clip.name}
+                    onBlur={e => {
+                      const name = e.target.value.trim();
+                      if (name && name !== clip.name) {
+                        renameClip(clip.id, name);
+                        onRenamed?.();
+                      }
+                      setRenamingId(null);
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') e.target.blur();
+                      if (e.key === 'Escape') setRenamingId(null);
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="dock-clip-name"
+                    title={td.renameHint ?? '双击重命名'}
+                    onDoubleClick={() => setRenamingId(clip.id)}
+                  >
+                    {clip.name}
+                  </span>
+                )}
+                <span className="dock-clip-frames">{clip.frames.length}f</span>
                 <button
-                  className="dock-item-apply"
-                  onClick={() => onRestore?.(stateSnapshot)}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    onDelete?.(stateSnapshot);
+                  className="dock-clip-del"
+                  title={td.deleteHint ?? '删除'}
+                  onClick={e => {
+                    e.stopPropagation();
+                    onDelete?.(clip.id);
                   }}
-                  title={td.applyTitle ? td.applyTitle(stateSnapshot.name) : stateSnapshot.name}
                 >
-                  {stateSnapshot.thumbnail ? (
-                    <img
-                      src={stateSnapshot.thumbnail}
-                      alt={stateSnapshot.name}
-                      className="dock-item-thumbnail"
-                    />
-                  ) : (
-                    <div className="dock-item-placeholder">{t?.gallery?.noThumbnail ?? 'No thumbnail'}</div>
-                  )}
+                  ×
                 </button>
               </div>
-            );
-          })
-        )}
-      </div>
-
-      <div className="dock-bar">
-        <div className="dock-primary-col">
-          <button
-            className="dock-primary"
-            onClick={() => latestState && onRestore?.(latestState)}
-            title={latestState ? (td.applyLatestTitle ? td.applyLatestTitle(latestState.name) : latestState.name) : (td.fallbackTitle ?? 'Stack')}
-          >
-            <span className="dock-stack-shadow dock-stack-shadow-back" />
-            <span className="dock-stack-shadow dock-stack-shadow-mid" />
-            <span className="dock-primary-face">
-              {latestState?.thumbnail ? (
-                <img
-                  src={latestState.thumbnail}
-                  alt={latestState.name}
-                  className="dock-preview"
-                />
-              ) : (
-                <span className="dock-label">{td.label ?? 'Stack'}</span>
-              )}
-            </span>
-            {dockStates.length > 0 && (
-              <span className="dock-count-badge">{stackCountLabel}</span>
-            )}
-          </button>
-
-          <button
-            className="dock-clear-btn"
-            onClick={onClear}
-            title={td.clearTitle ?? 'Clear current stack'}
-          >
-            {td.clear ?? 'Clear'}
-          </button>
+            </div>
+          ))}
+          {clips.length > 0 && (
+            <button className="dock-clear" onClick={onClear}>{td.clear ?? '清空'}</button>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

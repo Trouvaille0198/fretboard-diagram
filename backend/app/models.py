@@ -44,6 +44,27 @@ class StateData(BaseModel):
     class Config:
         populate_by_name = True
 
+# 动图（Clip）：指板堆的唯一存储单元
+class TransitionSpec(BaseModel):
+    technique: Optional[str] = None
+    pairs: List[dict] = []
+    arpeggio: Optional[dict] = None
+
+class ClipData(BaseModel):
+    id: str
+    name: str
+    createdAt: int
+    frames: List[dict]
+    transitions: List[TransitionSpec] = []
+
+class SaveClipsRequest(BaseModel):
+    clips: List[ClipData]
+
+class ClipResponse(BaseModel):
+    success: bool
+    message: str = ""
+    id: Optional[str] = None
+
 class SaveDataRequest(BaseModel):
     directories: List[DirectoryData]
     states: List[StateData]

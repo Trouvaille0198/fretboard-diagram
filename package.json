@@ -8,6 +8,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "gifenc": "^1.0.3",
         "lz-string": "^1.4.4",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",

@@ -18,7 +18,6 @@ export function FretboardMenu({
   enharmonic,
   onToggleEnharmonic,
   onToggleVisibility,
-  onOpenScore,
   connectionMode,
   connectionPresetId,
   onSelectConnectionPreset,
@@ -129,13 +128,6 @@ export function FretboardMenu({
             title={tm.toggleTitle ?? 'Toggle (Z)'}
           >
             {tm.toggle ?? 'Toggle'}
-          </button>
-          <button
-            className="button"
-            onClick={onOpenScore}
-            title={tm.scoreViewTitle ?? 'Open the song score'}
-          >
-            {tm.scoreView ?? 'Score'}
           </button>
           {onSaveState && (
             <button
