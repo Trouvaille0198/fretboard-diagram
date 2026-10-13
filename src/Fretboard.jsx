@@ -1195,7 +1195,7 @@ function Fretboard({ mode = 'normal' }) {
     const opts = {
       holdMs: Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300,
       transMs: Number(settings.transMs) > 0 ? Number(settings.transMs) : 200,
-      fps: Number(settings.fps) > 0 ? Number(settings.fps) : 20,
+      fps: Number(settings.fps) > 0 ? Number(settings.fps) : 30,
       width: Number(settings.width) || 720,
       background: getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || '#10161c',
       labelColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#dfe7ee',

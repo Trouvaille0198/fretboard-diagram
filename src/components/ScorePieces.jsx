@@ -196,8 +196,13 @@ export async function renderBoardImage(state, width, options = {}) {
   document.body.appendChild(host);
   const root = createRoot(host);
   root.render(<LanguageProvider><ScoreBoard snapshot={{ state }} options={options} /></LanguageProvider>);
-  // 等两帧保证 SVG 完成 commit
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  // 轮询等待 SVG 真正渲染完成（React 18 createRoot 异步 commit；固定等待会有竞态导致空板）
+  const t0 = Date.now();
+  while (Date.now() - t0 < 2000) {
+    const svg = host.querySelector('svg');
+    if (svg && svg.querySelectorAll('g.note').length > 0) break;
+    await new Promise(r => setTimeout(r, 25));
+  }
 
   const svgEl = host.querySelector('svg');
   if (!svgEl) {

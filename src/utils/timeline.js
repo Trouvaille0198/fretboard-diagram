@@ -37,6 +37,11 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		const t0 = frameStart + enter;
 		const events = [];
 		const mark = (t, on, off) => { if (t > frameStart) events.push({ t, on, off }); };
+		// 源音 A 的原始颜色（回归/保持时用原色，不被帧档色覆盖）
+		const origColor = id => {
+			const n = base[id];
+			return n && n.color && typeof n.color === "object" ? { name: n.color.name, custom: n.color.custom } : null;
+		};
 
 		pres.forEach(s => {
 			fx.push({ spec: { technique: null, pairs: [{ from: s.from, to: s.to, technique: "pre" }] }, t0, dur: DOT });
@@ -51,8 +56,8 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		rtP.forEach(p => {
 			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0, dur: RT_OUT });
 			fx.push({ spec: { technique: null, pairs: [{ from: p.to, to: p.from, technique: "sl" }] }, t0: t0 + RT_OUT + 110, dur: RT_BACK });
-			mark(t0 + RT_OUT, { id: p.to, c: ft }, { id: p.from });
-			mark(t0 + RT_OUT + 110 + RT_BACK, { id: p.from, c: ft }, { id: p.to });
+			mark(t0 + RT_OUT, { id: p.to, c: ft }, { id: p.from }); // 到 B：B=帧档色
+			mark(t0 + RT_OUT + 110 + RT_BACK, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }); // 回 A：恢复原色
 		});
 		hpP.forEach(p => {
 			mark(t0 + HPMOMENT, { id: p.to, c: ft }, null);
