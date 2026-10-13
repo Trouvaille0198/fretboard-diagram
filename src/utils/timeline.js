@@ -45,11 +45,11 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			return (i > 0 ? pick(frames[i - 1].data) : null) || pick(base);
 		};
 
-		// 瞬时 B 的颜色：A 原色深一档（pale→vivid，可见且与 sl 的 B 观感一致）；A 无色才回退帧档
+		// 瞬时 B 的颜色：A 原色深两档（pale→rich、vivid→deep）——比 A 明显深又不至于看不见；A 无色才回退帧档
 		const bTint = p => {
 			const a = origColor(p.from);
 			if (a) {
-				const d = deepenTint(a, 1 / 3);
+				const d = deepenTint(a, 2 / 3);
 				if (d) return { name: a.name, custom: d };
 			}
 			return ft;
@@ -60,7 +60,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		const edge = (t, on, off, enter) => edges.push({ t, on, off, enter });
 		pres.forEach(s => {
 			edge(Math.round(DOT * 0.5), { id: s.from, c: bTint(s) }, null, 60); // B 行程一半才亮（与 sl 的 B 同逻辑，不一开局就出现）
-			edge(DOT, null, { id: s.from }, 60); // 光点到达 A 后 B 熄灭
+			edge(DOT, null, { id: s.from }, 16); // 光点到达 A：B 立即消失（瞬切）
 		});
 		slP.forEach(p => {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
