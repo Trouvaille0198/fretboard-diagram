@@ -61,6 +61,7 @@ export function FretboardDock({
   onClear,
   onExamples,
   onRenamed,
+  currentId,
   t,
 }) {
   const td = t?.dock ?? {};
@@ -120,7 +121,7 @@ export function FretboardDock({
           {clips.map(clip => (
             <div
               key={`${clip.id}-${clipVersion}`}
-              className={`dock-clip ${hoveredId === clip.id ? 'hovered' : ''}`}
+              className={`dock-clip ${hoveredId === clip.id ? 'hovered' : ''} ${currentId === clip.id ? 'current' : ''}`}
               onMouseEnter={() => setHoveredId(clip.id)}
               onMouseLeave={() => setHoveredId(null)}
             >

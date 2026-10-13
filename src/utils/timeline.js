@@ -1,7 +1,7 @@
 // 时间轴展开：带 hp（击勾）过渡的帧在播放/导出时拆成 3 个子拍
 // 子拍间用纯 diff（B 环亮+A 淡出＝锤击，反向＝勾回），复用现有动画引擎
 
-import { deepenTint } from "../colorConfig.js";
+import { deepenTint, tintAt } from "../colorConfig.js";
 
 // 技法特效时长：滑弦轨迹/往返光点需要看清楚，比普通过渡窗（transMs）长
 export const TECH_FX_MS = { rt: 800, sl: 450 };
@@ -34,7 +34,11 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			for (let beat = 0; beat < 3; beat++) {
 				if (beat === 1) {
 					beatData = { ...frame.data };
-					hpPairs.forEach(p => { beatData = hpBeatData(beatData, p); });
+					// 本帧帧档色（=当帧新点亮音符得到的色）：B 的闪现与板面完全统一
+					const anyColor = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.color && typeof n.color === "object" && n.color.name);
+					const schemeName = (anyColor && anyColor.color.name) || "navy";
+					const frameTint = tintAt(schemeName, frames.length > 1 ? i / (frames.length - 1) : 0);
+					hpPairs.forEach(p => { beatData = hpBeatData(beatData, p, frameTint, schemeName); });
 				} else {
 					beatData = frame.data;
 				}
@@ -51,24 +55,26 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			if (states.length > 1) specs.push(inc || { technique: null, pairs: [] });
 		}
 	});
-	// 每步挂"出边特效时长"：带 sl/rt 的过渡拉长（轨迹看得清）；hp 子拍=与普通消失/展现同速
+	// 每步挂"出边特效时长"与停留：sl/rt 过渡拉长（轨迹看得清）；hp 起始拍几乎立即、随后两拍稍驻
+	const beatHold = [30, 70, 110];
+	let beatIdx = -1;
 	states.forEach((s, i) => {
 		s.transMs = i < specs.length
-			? (sub[i] ? baseTrans : effTransMs(specs[i], baseTrans))
+			? (sub[i] ? Math.min(150, baseTrans) : effTransMs(specs[i], baseTrans))
 			: baseTrans;
+		if (sub[i]) { beatIdx = (beatIdx + 1) % 3; s.holdMs = beatHold[beatIdx]; }
 	});
 	return { states, specs, frameOf, sub };
 }
 
-function hpBeatData(frameData, pair) {
+function hpBeatData(frameData, pair, frameTint, schemeName) {
 	const next = { ...frameData };
 	const fromData = frameData[pair.from] || {};
 	// A 全程不变（保持原色原可见）；击勾的视觉全部由 B 的进出表达（锤击=进环+深色闪现，勾回=淡出）
-	// B 的锤击闪现比 A 深一档（A 的色阶位置 +1/4，封顶 deep）；无法定位时回落 A 的颜色
-	const deeper = deepenTint(fromData.color);
-	const bColor = deeper && fromData.color && typeof fromData.color === "object"
-		? { name: fromData.color.name, custom: deeper }
-		: ((fromData.color && typeof fromData.color === "object") ? fromData.color : (fromData.color || "white"));
+	// B 的锤击闪现 = 当前帧帧档色（与当帧新增音符完全一致；旧数据无帧色时回落 A 深一档）
+	const bColor = frameTint
+		? { name: schemeName, custom: frameTint }
+		: ((() => { const deeper = deepenTint(fromData.color, 1 / 3); return deeper && fromData.color && typeof fromData.color === "object" ? { name: fromData.color.name, custom: deeper } : ((fromData.color && typeof fromData.color === "object") ? fromData.color : (fromData.color || "white")); })());
 	next[pair.to] = {
 		type: "note",
 		color: bColor,
