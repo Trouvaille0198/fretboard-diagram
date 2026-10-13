@@ -54,7 +54,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		});
 		slP.forEach(p => {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
-			edge(DOT - 120, { id: p.to, c: ft }, { id: p.from }, 60); // B 提前 120ms 亮（光点将到未到）
+			edge(Math.round(DOT * 0.5), { id: p.to, c: ft }, { id: p.from }, 60); // B 在行程一半就亮（提前约半个行程，明显可感）
 		});
 		rtP.forEach(p => {
 			edge(RT_OUT, { id: p.to, c: ft }, { id: p.from }, 60);
