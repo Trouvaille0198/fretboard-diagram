@@ -232,6 +232,10 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		setFrames(prev => prev.map(f => ({ ...f, data: mapper(f.data) })));
 	}, []);
 
+	const mapTransitions = useCallback((mapper) => {
+		setTransitions(prev => prev.map(mapper));
+	}, []);
+
 	// 前向传播：当前帧板面相对旧帧数据有变化的音符，同步写入其后所有帧（新加→后面全加；删/熄→后面全删；颜色一致）
 	const propagateForward = useCallback((frames, idx, board, oldData) => {
 		if (idx >= frames.length - 1) return frames;
@@ -544,7 +548,9 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 				if (i !== idx - 1) return t;
 				const spec = t || { technique: null, pairs: [] };
 				const pairs = (spec.pairs || []).filter(p => !(p.from === from && p.to === to)); // 仅同 from+to 覆盖；同源不同目标可共存（如 rt + hp）
-				pairs.push({ from, to, technique: tech });
+				// rt/hp 的瞬时 B 无帧数据可取色：把"当前帧内容色"存进 pair（与 sl 目标同源、随色系重映射）
+				const pairColor = tech === 'sl' ? null : (getVividColor ? getVividColor() : null);
+				pairs.push(pairColor ? { from, to, technique: tech, color: pairColor } : { from, to, technique: tech });
 				return { ...spec, pairs };
 			}));
 		}
@@ -610,7 +616,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		toggleQ, loadClip, setTechnique,
 		markNote, commitFrame, cancelMarking, undoStep, paintNote,
 		beginSlideDrag, hoverSlideTarget, endSlideDrag, isDragging, consumeDragClick, markDragMove, getDragInfo,
-		editIdx, gotoFrame, startSession, mapFrames, viewMode, applyPreviewFrames, newClip, revertToPrevFrame,
+		editIdx, gotoFrame, startSession, mapFrames, mapTransitions, viewMode, applyPreviewFrames, newClip, revertToPrevFrame,
 		syncFrame, addFrame, deleteFrame, persistClip, persistedOnce
 	};
 }
