@@ -119,7 +119,7 @@ export function describeTransition(prevState, nextState, spec = {}) {
 				fromColor: noteColorOf(prevState, p.from), // sl 补画 A（撑到光点抵达）用
 				fromLabel: fromNote ? fromNote.noteName : null, // fx 音符的数字/音名（与板面渲染同源）
 				toLabel: toNote ? toNote.noteName : null,
-				transient: tech === "rt" || tech === "hp", // 往返滑弦的 to 是瞬时音
+				transient: tech === "rt" || tech === "hp" || tech === "pre", // 往返/前置的瞬态音
 				// 轨迹颜色（渲染时实时算，不存快照——存了会随帧结构/色系变化过期）：
 				// sl 的 B 用结果帧实际色；rt/hp 瞬时 B = A 深一整档（pale→vivid→rich→deep）
 				color: noteColorOf(nextState, p.to)
@@ -188,6 +188,20 @@ export function sampleTransition(desc, t, transMs) {
 		const isSl = tech === "sl";
 		const isRT = tech === "rt";
 		const isQuick = tech === "h" || tech === "p";
+
+		if (tech === "pre") {
+			// 前置划弦：B 闪现（帧档色）→光点立即滑向 A→B 到达前后熄灭；A 全程保持
+			const prog = easeInOutCubic(t);
+			const x = p.from.x + (p.to.x - p.from.x) * prog;
+			const bHold = 1 - clamp01((t - 0.8) / 0.16); // B 撑到光点抵达 A 才熄灭
+			if (bHold > 0) {
+				els.push({ kind: "note", x: p.from.x, y: p.from.y, r: R, opacity: +bHold.toFixed(3), color: p.color, label: p.fromLabel });
+			}
+			const lineOp = t < 0.12 ? t / 0.12 : t > 0.88 ? (1 - t) / 0.12 : 1;
+			els.push({ kind: "line", x1: p.from.x, y1: p.from.y, x2: p.to.x, y2: p.to.y, opacity: +lineOp.toFixed(3), color: p.color });
+			els.push({ kind: "dot", x: +x.toFixed(2), y: p.from.y, r: 7, opacity: t > 0.96 ? +((1 - t) / 0.04).toFixed(3) : 1, color: p.color });
+			return;
+		}
 
 		if (isRT) {
 			// 原位滑弦：前半 A→B，后半 B→A（无字母，颜色跟随色系）
