@@ -26,11 +26,20 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		const inc = i > 0 ? (transitions[i - 1] || { pairs: [] }) : null;
 		const pairs = (inc && inc.pairs) || [];
 		const ft = beatTint(frame, i, frames);
-		const base = frame.data;
 		const pres = frame.preSlides || [];
 		const slP = pairs.filter(p => p.technique === "sl");
 		const rtP = pairs.filter(p => p.technique === "rt");
 		const hpP = pairs.filter(p => p.technique === "hp");
+		// 瞬时目标音（rt/hp 的 B、pre 的暗音）即使混进帧数据，窗口期也不得提前亮——base 里压暗，交给边点亮
+		const base = (() => {
+			const ids = new Set([...rtP.map(p => p.to), ...hpP.map(p => p.to), ...pres.map(s => s.from)]);
+			if (!ids.size) return frame.data;
+			let d = frame.data;
+			ids.forEach(id => {
+				if (d[id] && d[id].visibility === "visible") d = { ...d, [id]: { ...d[id], visibility: "transparent" } };
+			});
+			return d;
+		})();
 		const tech = pres.length + slP.length + rtP.length + hpP.length;
 
 		const frameStart = now;
@@ -64,8 +73,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		rtP.forEach(p => {
 			edge(Math.round(RT_OUT * 0.5), { id: p.to, c: bTint(p) }, null, 60); // B 行程一半亮（与 sl/pre 同逻辑）
 			edge(RT_OUT, null, { id: p.from }, 60); // 光点到达 B：A 灭、B 保持
-			edge(RT_OUT + 110 + Math.round(RT_BACK * 0.5), { id: p.from, c: origColor(p.from) || ft }, null, 60); // 回程一半：A 先亮
-			edge(RT_OUT + 110 + RT_BACK, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, 60); // 光点回抵 A：A 已亮，B 灭
+			edge(RT_OUT + 110 + Math.round(RT_BACK * 0.5), { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, 60); // 回程一半：A 先亮、B 同步灭（B 生命期=半出程→半回程，居中于驻留）
 		});
 		hpP.forEach(p => {
 			edge(HPMOMENT, { id: p.to, c: bTint(p) }, null, 100);

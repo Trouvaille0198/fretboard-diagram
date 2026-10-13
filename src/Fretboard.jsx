@@ -1119,18 +1119,27 @@ function Fretboard({ mode = 'normal' }) {
     setPlayingIdx(0);
   }, []);
 
-  // 播放推进：按展开步走；hp 子拍停留 = hold/3
+  // 播放推进：绝对时钟调度（每步按 playStart 起算的累计时刻一次性 setTimeout，消除链式 setTimeout 级联漂移）
   useEffect(() => {
     if (playingIdx === null) return;
     const steps = playStepsRef.current.states;
-    const sub = playStepsRef.current.sub || [];
     const settings = animSettingsRef.current;
     const holdFull = Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300;
     const baseTrans = Number(settings.transMs) > 0 ? Number(settings.transMs) : 200;
-    // 进入本步的特效时长（sl/rt 轨迹拉长、hp 子拍减半）——与导出同源
-    const trans = playingIdx > 0 && steps[playingIdx - 1]?.transMs > 0 ? steps[playingIdx - 1].transMs : baseTrans;
+    // 本步在绝对时钟上的起点：状态 k 显示 = hold_k + 下一状态的进入 enter（steps[k+1].transMs），
+    // 与 timeline 设计量（边时刻 t 严格对齐 fx 轨道）一致；无下一状态时回落旧语义
+    const enterOf = k => {
+      if (k + 1 < steps.length && steps[k + 1]?.transMs > 0) return steps[k + 1].transMs;
+      if (k > 0 && steps[k - 1]?.transMs > 0) return steps[k - 1].transMs;
+      return baseTrans;
+    };
+    let tAbs = 0;
+    for (let k = 0; k < playingIdx; k++) tAbs += (Number.isFinite(steps[k]?.holdMs) ? steps[k].holdMs : holdFull) + enterOf(k);
     const holdMsSelf = steps[playingIdx]?.holdMs;
-    const hold = Number.isFinite(holdMsSelf) ? holdMsSelf : holdFull; // v4：每步自带停留（0 也是有效值，不能用 ||）
+    const hold = Number.isFinite(holdMsSelf) ? holdMsSelf : holdFull;
+    const trans = enterOf(playingIdx);
+    const elapsed = performance.now() - playStartRef.current;
+    const wait = Math.max(0, tAbs + hold + trans - elapsed);
     const timer = setTimeout(() => {
       setPlayingIdx(prev => {
         if (prev === null) return null;
@@ -1138,7 +1147,7 @@ function Fretboard({ mode = 'normal' }) {
         if (next < steps.length) return next;
         return loopRef.current ? 0 : null;
       });
-    }, hold + trans);
+    }, wait);
     return () => clearTimeout(timer);
   }, [playingIdx, playSteps]);
 
