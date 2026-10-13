@@ -59,11 +59,12 @@
 }
 
 .dock-content {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     padding: 14px;
-    width: min(92vw, 1020px);
+    width: fit-content; /* 面板宽度包住内容：少卡窄、多卡换行封顶 */
+    max-width: min(92vw, 1020px);
     max-height: min(56vh, 560px);
     overflow-y: auto;
     border-radius: var(--app-radius-xl, 18px);
