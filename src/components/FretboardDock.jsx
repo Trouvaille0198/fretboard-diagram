@@ -2,7 +2,7 @@ import React from 'react';
 import { ScoreBoard, TransitionFx } from './ScorePieces';
 import { renameClip } from '../utils/clipModel';
 import './FretboardDock.css';
-import { tintAt } from '../colorConfig';
+import { tintAt, frameTintFromData } from '../colorConfig';
 
 // 动图卡片上的迷你播放器：仅悬停时循环播放；不悬停=静态首帧，零动画开销
 const frameTintValue = (name, i, total) => tintAt(name, total > 1 ? i / (total - 1) : 0);
@@ -40,9 +40,8 @@ function ClipPreview({ clip, play }) {
   const tintOf = (f, i) => {
     if (!f) return f;
     if (f.frameTint && f.frameTint.custom) return { ...f, frameTint: f.frameTint };
-    const any = Object.values(f.data || {}).find(n => n && typeof n === 'object' && n.color && typeof n.color === 'object' && n.color.name);
-    if (!any) return f;
-    return { ...f, frameTint: { name: any.color.name, custom: frameTintValue(any.color.name, i, clip.frames.length) } };
+    const ft = frameTintFromData(f.data, i, clip.frames.length);
+    return ft ? { ...f, frameTint: ft } : f;
   };
 
   return (

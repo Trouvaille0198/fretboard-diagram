@@ -1,7 +1,7 @@
 // 时间轴展开：带 hp（击勾）过渡的帧在播放/导出时拆成 3 个子拍
 // 子拍间用纯 diff（B 环亮+A 淡出＝锤击，反向＝勾回），复用现有动画引擎
 
-import { deepenTint, tintAt } from "../colorConfig.js";
+import { deepenTint, tintAt, frameTintFromData } from "../colorConfig.js";
 
 // 技法特效时长：滑弦轨迹/往返光点需要看清楚，比普通过渡窗（transMs）长
 export const TECH_FX_MS = { rt: 800, sl: 450 };
@@ -34,11 +34,9 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			for (let beat = 0; beat < 3; beat++) {
 				if (beat === 1) {
 					beatData = { ...frame.data };
-					// 本帧帧档色（=当帧新点亮音符得到的色）：B 的闪现与板面完全统一
-					const anyColor = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.color && typeof n.color === "object" && n.color.name);
-					const schemeName = (anyColor && anyColor.color.name) || "navy";
-					const frameTint = tintAt(schemeName, frames.length > 1 ? i / (frames.length - 1) : 0);
-					hpPairs.forEach(p => { beatData = hpBeatData(beatData, p, frameTint, schemeName); });
+					// 本帧帧档色＝从该帧板面真实音符颜色取（与板面逐字节一致，兼容旧配色示例档）
+					const ft = frameTintFromData(frame.data, i, frames.length);
+					hpPairs.forEach(p => { beatData = hpBeatData(beatData, p, ft ? ft.custom : null, ft ? ft.name : "navy"); });
 				} else {
 					beatData = frame.data;
 				}
@@ -56,12 +54,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		}
 	});
 	// 每步盖"帧档色"标记（rt/hp 瞬时 B 的闪现色＝当帧新增音符色；animator 优先取用）
-	const frameTintOf = (i) => {
-		const fd = frames[i]?.data || {};
-		const any = Object.values(fd).find(n => n && typeof n === "object" && n.color && typeof n.color === "object" && n.color.name);
-		const nm = (any && any.color.name) || "navy";
-		return { name: nm, custom: tintAt(nm, frames.length > 1 ? i / (frames.length - 1) : 0) };
-	};
+	const frameTintOf = (i) => frameTintFromData(frames[i]?.data, i, frames.length);
 	// 每步挂"出边特效时长"与停留：sl/rt 过渡拉长（轨迹看得清）；hp 起始拍几乎立即、随后两拍稍驻
 	const beatHold = [30, 70, 110];
 	let beatIdx = -1;
