@@ -57,8 +57,10 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			edge(Math.round(DOT * 0.5), { id: p.to, c: ft }, { id: p.from }, 60); // B 在行程一半就亮（提前约半个行程，明显可感）
 		});
 		rtP.forEach(p => {
-			edge(RT_OUT, { id: p.to, c: ft }, { id: p.from }, 60);
-			edge(RT_OUT + 110 + RT_BACK, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, 60);
+			edge(Math.round(RT_OUT * 0.5), { id: p.to, c: ft }, null, 60); // B 行程一半亮（与 sl/pre 同逻辑）
+			edge(RT_OUT, { id: p.from, c: origColor(p.from) || ft }, null, 60); // 光点到达 B：A 灭、B 保持，A 原色待回程
+			edge(RT_OUT + 110 + Math.round(RT_BACK * 0.5), { id: p.from, c: origColor(p.from) || ft }, null, 60); // 回程一半：A 先亮
+			edge(RT_OUT + 110 + RT_BACK, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, 60); // 光点回抵 A：A 已亮，B 灭
 		});
 		hpP.forEach(p => {
 			edge(HPMOMENT, { id: p.to, c: ft }, null, 100);
