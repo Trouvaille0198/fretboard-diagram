@@ -122,11 +122,11 @@ function Fretboard({ mode = 'normal' }) {
   const [loopPlay, setLoopPlay] = useState(true);
   const [animSettings, setAnimSettings] = useState(() => {
     try {
-      const s = JSON.parse(localStorage.getItem('fretboard-anim-settings') || 'null') || { holdMs: 300, transMs: 200, fps: 20, width: 720 };
-      if (!s.v3) { s.holdMs = 300; s.transMs = 200; s.v3 = 1; try { localStorage.setItem('fretboard-anim-settings', JSON.stringify(s)); } catch (e) { /* ignore */ } } // 回滚提速：300/200 观感合适
+      const s = JSON.parse(localStorage.getItem('fretboard-anim-settings') || 'null') || { holdMs: 300, transMs: 200, fps: 30, width: 720 };
+      if (!s.v4) { s.holdMs = 300; s.transMs = 200; s.fps = 30; s.v4 = 1; try { localStorage.setItem('fretboard-anim-settings', JSON.stringify(s)); } catch (e) { /* ignore */ } } // 回滚提速：300/200 观感合适
       return s;
     } catch {
-      return { holdMs: 300, transMs: 200, fps: 20, width: 720 };
+      return { holdMs: 300, transMs: 200, fps: 30, width: 720 };
     }
   });
   const [exporting, setExporting] = useState(null); // 'gif' | 'webm' | null
@@ -711,7 +711,10 @@ function Fretboard({ mode = 'normal' }) {
   }), [connectionMode, data, visibility, notes, setConnectionStartNote, setConnectionStartPosition]);
 
   const handleNoteMouseDown = useCallback((event, noteId) => {
-    if (dynamicRef.current.isDynamic && dynamicRef.current.beginSlideDrag(noteId)) return;
+    if (dynamicRef.current.isDynamic) {
+      if (playingIdx !== null) setPlayingIdx(null); // 播放中按下=停止播放（否则 playing 类挡住指针，手势全失效）
+      if (dynamicRef.current.beginSlideDrag(noteId)) return;
+    }
     baseNoteMouseDown(event, noteId);
   }, [baseNoteMouseDown]);
 
@@ -787,6 +790,7 @@ function Fretboard({ mode = 'normal' }) {
       const p = pt.matrixTransform(svg.getScreenCTM().inverse());
       return { x: +p.x.toFixed(1), y: +p.y.toFixed(1) };
     };
+    const cur = toSvg(dragPos.x, dragPos.y); // 先算指针 svg 坐标（pre 分支也要用）
     if (dragInfo.mode === 'pre') {
       // 前置划弦反馈：金色虚线 B→光标；确认目标 A 后 B→A 实线
       const fromPos0 = getNotePositionMemo(dragInfo.from);
@@ -798,7 +802,6 @@ function Fretboard({ mode = 'normal' }) {
     const anchorId = dragInfo.activatedTo || dragInfo.from; // 激活后锚点=B：再拖时线从 B 出发
     const fromPos = getNotePositionMemo(anchorId) || getNotePositionMemo(dragInfo.from);
     if (!fromPos) return null;
-    const cur = toSvg(dragPos.x, dragPos.y);
     const vivid = getHintColorValue().custom; // 提示色=上一帧档（浅）
     const targetPos = dragInfo.activatedTo ? getNotePositionMemo(dragInfo.activatedTo) : null;
     const aPos = getNotePositionMemo(dragInfo.from);
