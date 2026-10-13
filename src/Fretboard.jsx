@@ -1116,8 +1116,7 @@ function Fretboard({ mode = 'normal' }) {
     const baseTrans = Number(settings.transMs) > 0 ? Number(settings.transMs) : 200;
     // 进入本步的特效时长（sl/rt 轨迹拉长、hp 子拍减半）——与导出同源
     const trans = playingIdx > 0 && steps[playingIdx - 1]?.transMs > 0 ? steps[playingIdx - 1].transMs : baseTrans;
-    const isSub = sub[playingIdx] === true; // hp 子拍：整体提速
-    const hold = isSub ? (steps[playingIdx]?.holdMs || Math.max(40, holdFull / 6)) : holdFull;
+    const hold = steps[playingIdx]?.holdMs || holdFull; // v2：每步自带停留时长
     const timer = setTimeout(() => {
       setPlayingIdx(prev => {
         if (prev === null) return null;
