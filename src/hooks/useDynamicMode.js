@@ -524,7 +524,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			const orig = dataRef.current[noteId];
 			d.activatedOrig = orig && orig.color ? { color: orig.color, color2: orig.color2 ?? null, visibility: orig.visibility } : null;
 			d.activatedTo = noteId;
-			const hint = (getHintColor || getVividColor) ? (getHintColor || getVividColor)() : null; // 激活闪现=提示色（上一帧档，浅）
+			const hint = getVividColor ? getVividColor() : null; // 激活闪现=当前帧内容色（与动画 B 闪现完全一致）
 			if (hint) commitData(patchNote(dataRef.current, noteId, { color: hint, color2: null, visibility: "visible" }));
 		}, 200);
 	};
