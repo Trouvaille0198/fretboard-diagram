@@ -78,23 +78,23 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		now = frameStart + frameDur;
 	});
 
-	// 回填：步 k 的 enter（=进入它的动画时长）= 与上一步的时间差；尾步 transMs=回环首步 enter
+	// 回填：步 k 的进入动画时长 = 与上一边界的时间差；帧尾步停留补到帧尾；回环步=首步起点
+	const stepT = btimes.slice();
 	states.forEach((s, k) => {
-		const gap = k > 0 ? Math.max(16, btimes[k] - btimes[k - 1]) : 0;
-		if (k > 0) states[k - 1].transMs = gap;
-		const frameEnd = now; // 尾步停留已含在 gap 结构外——尾步 holdMs 延伸到帧尾
+		if (k === 0) { s.transMs = 0; return; }
+		states[k - 1].transMs = Math.max(16, stepT[k] - stepT[k - 1]);
 	});
-	// 尾步补足：每帧最后一步 hold 到帧尾（帧尾=该帧下一步的起点）
+	// 每帧尾步 hold 到帧尾（帧尾 = 下一帧首步时间；末帧 = total）
 	let idx = 0;
 	frames.forEach((frame, i) => {
-		// 找该帧的步区间
-		let start = idx;
+		const start = idx;
 		while (idx < frameOf.length && frameOf[idx] === i) idx++;
-		const tFirst = btimes[start], tLast = btimes[idx - 1];
-		const nextT = idx < btimes.length ? btimes[idx] : now + (btimes[0] || 0) + 300;
-		states[idx - 1].holdMs = Math.max(60, nextT - tLast - 60);
-		states[idx - 1].transMs = 60;
+		if (idx <= start) return;
+		const tLast = stepT[idx - 1];
+		const nextT = idx < stepT.length ? stepT[idx] : now;
+		const lastGap = Math.max(16, nextT - tLast - 60);
+		states[idx - 1].holdMs = Math.max(60, nextT - tLast - lastGap);
+		states[idx - 1].transMs = lastGap; // 尾步出边（到下一帧首步）
 	});
-	// 首步 transMs（进入第一步）= 0 已由默认；回环：最后一步到首步
-	return { states: states.map((s, k) => (k === 0 ? { ...s, transMs: 0 } : s)), specs: specs.slice(1), frameOf, sub, fx, total: now };
+	return { states, specs: specs.slice(1), frameOf, sub, fx, total: now };
 }
