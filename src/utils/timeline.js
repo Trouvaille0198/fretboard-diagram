@@ -1,26 +1,12 @@
-// 时间轴展开 v2 —— 事件模型
-// 每一步只有两个数：enter=变成这一步的动画时长（fx 时长），dur=这一步的停留时长。
-// 播放：mount 步 → 播 enter 动画 → 等 enter+dur → 下一步。
-// 传输格式（兼容导出引擎 buildPlan）：state.holdMs=dur_i；前一步的 state.transMs=enter_{i+1}。
-
+// 时间轴 v3 —— 全技法统一"数据步"建模
+// 每步 {state, enter, dur, spec}：enter=进入动画时长（diff/pair fx），dur=停留。
+// 原则：音符的亮/灭全由各步板面数据表达（颜色/数字/外框与板面天然一致），
+// fx 只画光点轨迹/装饰环；B 一律"光点到达才出现在数据里"。
 import { frameTintFromData, tintAt } from "../colorConfig.js";
 
-// 技法进入动画时长（轨迹要看得清）
-const ENTER = { sl: 450, rt: 800, pre: 450, plain: 200, snap: 0 };
-// 击勾三拍（预备/锤/勾回）各自的 enter 与 dur
-const HP_BEATS = [
-	{ enter: 60, dur: 60 },    // A 预备响
-	{ enter: 100, dur: 90 },   // B 锤击闪现
-	{ enter: 100, dur: null }  // A 勾回驻留（补足本帧总时长）
-];
+const DOT = 450; // 单程滑弦轨迹时长
+const RT_OUT = 350, RT_BACK = 330;
 
-function sameBoard(a, b) {
-	const actOf = d => new Set(Object.entries(d || {}).filter(([, n]) => n && (n.visibility === "visible" || n.visibility === "selected")).map(([id]) => id));
-	const sa = actOf(a.data), sb = actOf(b.data);
-	return sa.size === sb.size && [...sa].every(id => sb.has(id));
-}
-
-// 技法子拍的"当帧档色"：优先本帧出生（birth===i）音符的真实色（=当帧新增音），否则按帧位置公式
 function beatTint(frame, i, frames) {
 	const born = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.birth === i && n.color && typeof n.color === "object" && n.color.custom);
 	if (born) return { name: born.color.name, custom: born.color.custom };
@@ -28,73 +14,71 @@ function beatTint(frame, i, frames) {
 	if (!any) return null;
 	return { name: any.color.name, custom: tintAt(any.color.name, frames.length > 1 ? i / (frames.length - 1) : 0) };
 }
+const patch = (data, id, color) => ({ ...data, [id]: color ? { type: "note", color: { name: color.name, custom: color.custom }, color2: null, visibility: "visible" } : { type: "note", color: "white", color2: null, visibility: "transparent" } });
 
 export function expandTimeline(frames, transitions, holdMs, transMs) {
 	const H = holdMs > 0 ? holdMs : 300;
 	const T = transMs > 0 ? transMs : 200;
-	const states = [];
-	const specs = []; // specs[i] = states[i-1]→states[i] 的过渡（pairs 进 fx）
-	const frameOf = [];
-	const sub = []; // 是否技法子拍（缩略图高亮跟随帧号即可，此数组仅保留兼容）
-
-	// ① 生成步骤序列 {data-state, enter, dur}
+	const states = [], specs = [], frameOf = [], sub = [];
 	const steps = [];
+
 	frames.forEach((frame, i) => {
 		const inc = i > 0 ? (transitions[i - 1] || { pairs: [] }) : null;
 		const pairs = (inc && inc.pairs) || [];
-		const hpPairs = pairs.filter(p => p.technique === "hp");
-		const otherPairs = pairs.filter(p => p.technique !== "hp");
+		const ft = beatTint(frame, i, frames);
+		const base = frame.data;
 		const pres = frame.preSlides || [];
+		const slPairs = pairs.filter(p => p.technique === "sl");
+		const rtPairs = pairs.filter(p => p.technique === "rt");
+		const hpPairs = pairs.filter(p => p.technique === "hp");
+		const techCount = pres.length + slPairs.length + rtPairs.length + hpPairs.length;
+		const startEnter = i === 0 ? 0 : (techCount ? 60 : T); // 技法帧立即起手
 
-		// 进入本帧第一步的动画时长
-		let enter = T;
-		if (i === 0) enter = ENTER.snap;
-		else if (otherPairs.some(p => p.technique === "rt")) enter = ENTER.rt;
-		else if (otherPairs.some(p => p.technique === "sl")) enter = ENTER.sl;
-		else if (pres.length) enter = ENTER.pre;
-		else if (hpPairs.length && sameBoard(frames[i - 1], frame)) enter = ENTER.snap; // 纯等待：击勾立即起手
-
-		if (hpPairs.length) {
-			// 击勾帧：A 预备 → B 锤击闪现 → A 勾回；B 色优先本帧出生音，否则帧位置档
-			const ft = beatTint(frame, i, frames);
-			let b1 = frame.data;
-			hpPairs.forEach(p => {
-				const fromData = frame.data[p.from] || {};
-				b1 = { ...b1 };
-				b1[p.from] = fromData; // A 不动
-				b1[p.to] = { type: "note", color: ft ? { name: ft.name, custom: ft.custom } : "white", color2: null, visibility: "visible" };
-			});
-			const hpTotal = HP_BEATS[0].enter + HP_BEATS[0].dur + HP_BEATS[1].enter + HP_BEATS[1].dur + HP_BEATS[2].enter;
-			steps.push({ state: { ...frame }, enter, dur: HP_BEATS[0].dur, spec: { technique: null, pairs: otherPairs }, fi: i, sub: true });
-			steps.push({ state: { ...frame, data: b1 }, enter: HP_BEATS[1].enter, dur: HP_BEATS[1].dur, spec: { technique: null, pairs: [] }, fi: i, sub: true });
-			steps.push({ state: { ...frame }, enter: HP_BEATS[2].enter, dur: Math.max(60, H - hpTotal), spec: { technique: null, pairs: [] }, fi: i, sub: true });
-		} else if (pres.length) {
-			// 前置划弦：B 以帧档色亮起并滑向 A 熄灭，随后本帧正常停留
-			const ft = beatTint(frame, i, frames);
-			let pre = frame.data;
-			pres.forEach(s => {
-				pre = { ...pre, [s.from]: { type: "note", color: { name: ft ? ft.name : "navy", custom: ft ? ft.custom : "#888888" }, color2: null, visibility: "visible" } };
-			});
-			steps.push({ state: { ...frame, data: pre }, enter, dur: 80, spec: { technique: null, pairs: pres.map(s => ({ from: s.from, to: s.to, technique: "pre" })) }, fi: i, sub: true });
-			steps.push({ state: { ...frame }, enter: 150, dur: H, spec: { technique: null, pairs: [] }, fi: i, sub: false });
-		} else {
-			steps.push({ state: { ...frame }, enter, dur: H, spec: inc ? { technique: null, pairs: otherPairs } : null, fi: i, sub: false });
+		// —— 段编排：pre → sl → rt → hp，最后本帧驻留 ——
+		// 约定：第 k 步的 spec = "进入第 k 步"的过渡；滑行窗期间板面保持出发态（B 不提前亮），光点到达后下一步才切数据
+		const firstEnter = () => (steps.length && steps[steps.length - 1].fi === i) ? 60 : startEnter;
+		if (pres.length) {
+			let pre = base;
+			pres.forEach(s => { pre = patch(pre, s.from, ft); });
+			steps.push({ data: pre, enter: firstEnter(), dur: 10, spec: { technique: null, pairs: [] }, fi: i, sub: true });
+			steps.push({ data: pre, enter: DOT, dur: 10, spec: { technique: null, pairs: pres.map(s => ({ from: s.from, to: s.to, technique: "pre" })) }, fi: i, sub: true }); // 滑行窗：B 亮滑向 A
+			steps.push({ data: base, enter: 60, dur: 0, spec: { technique: null, pairs: [] }, fi: i, sub: true }); // B 熄灭
 		}
+		slPairs.forEach(p => {
+			let travel = base;
+			travel = patch(patch(travel, p.to, null), p.from, ft); // 途中态：B 灭、A 亮
+			steps.push({ data: travel, enter: firstEnter(), dur: 10, spec: { technique: null, pairs: [] }, fi: i, sub: true });
+			steps.push({ data: travel, enter: DOT, dur: 10, spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, fi: i, sub: true }); // 光点滑行（板面=途中）
+			steps.push({ data: base, enter: 60, dur: 0, spec: { technique: null, pairs: [] }, fi: i, sub: false }); // 抵达：B 亮 A 灭
+		});
+		rtPairs.forEach(p => {
+			const atB = patch(patch(base, p.from, null), p.to, ft); // 到 B 态：A 灭 B 亮
+			steps.push({ data: base, enter: firstEnter(), dur: 10, spec: { technique: null, pairs: [] }, fi: i, sub: true });
+			steps.push({ data: base, enter: RT_OUT, dur: 10, spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, fi: i, sub: true }); // 滑出窗（板面 A 亮）
+			steps.push({ data: atB, enter: 60, dur: 110, spec: { technique: null, pairs: [] }, fi: i, sub: true }); // 到 B：A 灭 B 亮
+			steps.push({ data: atB, enter: RT_BACK, dur: 10, spec: { technique: null, pairs: [{ from: p.to, to: p.from, technique: "sl" }] }, fi: i, sub: true }); // 滑回窗（板面仍 A 灭 B 亮）
+			steps.push({ data: base, enter: 60, dur: 20, spec: { technique: null, pairs: [] }, fi: i, sub: true }); // 回到 A：A 重亮
+		});
+		hpPairs.forEach(p => {
+			const b1 = patch(base, p.to, ft); // 锤击态：B 亮，A 不动
+			steps.push({ data: base, enter: firstEnter(), dur: 60, spec: { technique: null, pairs: [] }, fi: i, sub: true }); // 预备
+			steps.push({ data: b1, enter: 100, dur: 90, spec: { technique: null, pairs: [] }, fi: i, sub: true }); // 锤
+			steps.push({ data: base, enter: 100, dur: 20, spec: { technique: null, pairs: [] }, fi: i, sub: true }); // 勾回
+		});
+		// 本帧驻留
+		steps.push({ data: base, enter: steps.length && steps[steps.length - 1].fi === i ? 60 : startEnter, dur: H, spec: { technique: null, pairs: [] }, fi: i, sub: false });
 	});
 
-	// ② 展平为传输格式：holdMs=dur；前一步 transMs=本步 enter
 	steps.forEach((st, k) => {
-		const s = { ...st.state, holdMs: st.dur };
-		states.push(s);
+		const src = frames[st.fi];
+		states.push({ ...src, data: st.data, holdMs: st.dur });
 		frameOf.push(st.fi);
 		sub.push(st.sub);
 		if (k > 0) specs.push(st.spec || { technique: null, pairs: [] });
 	});
-	// transMs：states[i].transMs = 下一步的 enter（循环回到第一步）
 	states.forEach((s, k) => {
 		const nxt = steps[(k + 1) % steps.length];
 		s.transMs = nxt ? nxt.enter : T;
 	});
-
 	return { states, specs, frameOf, sub };
 }

@@ -226,13 +226,9 @@ export function sampleTransition(desc, t, transMs) {
 		const y = p.from.y + (p.to.y - p.from.y) * prog;
 
 		if (isSl) {
+			// 只画轨迹线+光点：A 的存续与 B 的抵达点亮全部由数据步表达（v3），不再覆盖绘制
 			const lineOp = t < 0.15 ? t / 0.15 : t > 0.85 ? (1 - t) / 0.15 : 1;
 			els.push({ kind: "line", x1: p.from.x, y1: p.from.y, x2: p.to.x, y2: p.to.y, opacity: +lineOp.toFixed(3), color: p.color });
-			// A 在光点抵达 B 之前保持原样亮着（底图=下一帧已无 A，这里补画），抵达前后快速熄灭
-			const aFade = 1 - clamp01((t - 0.8) / 0.16);
-			if (aFade > 0) {
-				els.push({ kind: "note", x: p.from.x, y: p.from.y, r: R, opacity: +aFade.toFixed(3), color: p.fromColor || p.color, label: p.fromLabel });
-			}
 		}
 		els.push({ kind: "dot", x: +x.toFixed(2), y: +y.toFixed(2), r: 7, opacity: t > 0.96 ? +((1 - t) / 0.04).toFixed(3) : 1, color: p.color });
 	});
