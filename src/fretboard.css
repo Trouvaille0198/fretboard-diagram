@@ -3098,8 +3098,26 @@ g.drag-fx-layer circle[stroke-dasharray] {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    width: 240px;
-    flex: 0 0 auto;
+    min-width: 0; /* 宽度交给 dock-content 的自适应网格 */
+}
+
+/* 当前生效动图高亮 */
+.dock-clip.current .dock-clip-board {
+    border-color: var(--app-accent, #f3ba62);
+    box-shadow: 0 0 0 2px rgba(243, 186, 98, 0.35);
+}
+.dock-clip.current .dock-clip-board::after {
+    content: "当前";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    z-index: 2;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: rgba(243, 186, 98, 0.92);
+    color: #20180a;
+    font-size: 11px;
+    font-weight: 700;
 }
 
 .dock-clip-board {

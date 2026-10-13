@@ -120,9 +120,10 @@ export function describeTransition(prevState, nextState, spec = {}) {
 				fromLabel: fromNote ? fromNote.noteName : null, // fx 音符的数字/音名（与板面渲染同源）
 				toLabel: toNote ? toNote.noteName : null,
 				transient: tech === "rt" || tech === "hp", // 往返滑弦的 to 是瞬时音
-				// 轨迹颜色：sl 的 B 用其在结果帧的实际颜色；rt/hp 瞬时 B 比源音深一档；最后回落 vivid/琥珀
+				// 轨迹颜色（渲染时实时算，不存快照——存了会随帧结构/色系变化过期）：
+				// sl 的 B 用结果帧实际色；rt/hp 瞬时 B = A 深一整档（pale→vivid→rich→deep）
 				color: noteColorOf(nextState, p.to)
-					|| deepenTint(prevState?.data?.[p.from]?.color)
+					|| deepenTint(prevState?.data?.[p.from]?.color, 1 / 3)
 					|| noteColorOf(prevState, p.from)
 					|| vividColorOf(prevState, p.from)
 					|| FX_COLORS.dotFill

@@ -59,10 +59,11 @@
 }
 
 .dock-content {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
     gap: 12px;
     padding: 14px;
+    width: min(92vw, 1020px);
     max-height: min(56vh, 560px);
     overflow-y: auto;
     border-radius: var(--app-radius-xl, 18px);

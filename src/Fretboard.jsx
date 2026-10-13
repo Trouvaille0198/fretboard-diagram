@@ -292,14 +292,6 @@ function Fretboard({ mode = 'normal' }) {
     setData(nextData);
     if (dynamic.viewMode === 'edit') {
       dynamic.mapFrames(restyleData);
-      // 标注 pair 里存的瞬时色（rt/hp 的 B）按色阶位置重映射
-      const remapPair = (c) => {
-        if (!c || typeof c !== 'object' || !c.custom || !c.name || !COLOR_SCHEMES.includes(c.name)) return c;
-        const oldTints = generateTintVariants(getLevel1FillColor(c.name));
-        const tp = tintPosition(oldTints, c.custom);
-        return tp === null ? c : { name, custom: tintAt(name, tp) };
-      };
-      dynamic.mapTransitions(t => ({ ...t, pairs: (t.pairs || []).map(p => (p.color ? { ...p, color: remapPair(p.color) } : p)) }));
       setSchemeName(name);
     } else {
       // 预览态：只改内存帧做展示，不落库；退出预览时由快照还原
@@ -1094,7 +1086,7 @@ function Fretboard({ mode = 'normal' }) {
     // 进入本步的特效时长（sl/rt 轨迹拉长、hp 子拍减半）——与导出同源
     const trans = playingIdx > 0 && steps[playingIdx - 1]?.transMs > 0 ? steps[playingIdx - 1].transMs : baseTrans;
     const isSub = sub[playingIdx] === true; // hp 子拍：整体提速
-    const hold = isSub ? Math.max(70, holdFull / 4) : holdFull;
+    const hold = isSub ? (steps[playingIdx]?.holdMs || Math.max(40, holdFull / 6)) : holdFull;
     const timer = setTimeout(() => {
       setPlayingIdx(prev => {
         if (prev === null) return null;
@@ -1594,6 +1586,7 @@ function Fretboard({ mode = 'normal' }) {
         hidden={hideDock || mode !== 'dynamic'}
         clips={clips}
         clipVersion={dynamic.clipVersion}
+        currentId={dynamic.sessionClip?.id}
         onLoad={handleLoadClip}
         onDelete={(clipId) => {
           deleteClip(clipId);

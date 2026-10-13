@@ -548,9 +548,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 				if (i !== idx - 1) return t;
 				const spec = t || { technique: null, pairs: [] };
 				const pairs = (spec.pairs || []).filter(p => !(p.from === from && p.to === to)); // 仅同 from+to 覆盖；同源不同目标可共存（如 rt + hp）
-				// rt/hp 的瞬时 B 无帧数据可取色：把"当前帧内容色"存进 pair（与 sl 目标同源、随色系重映射）
-				const pairColor = tech === 'sl' ? null : (getVividColor ? getVividColor() : null);
-				pairs.push(pairColor ? { from, to, technique: tech, color: pairColor } : { from, to, technique: tech });
+				pairs.push({ from, to, technique: tech });
 				return { ...spec, pairs };
 			}));
 		}

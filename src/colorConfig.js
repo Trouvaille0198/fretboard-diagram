@@ -172,13 +172,13 @@ export function tintPosition(tints, custom) {
 
 
 // 瞬时目标音（rt/hp 的 B）取比源音深一档：色阶位置 +1/4 步，最深处不再加深
-export function deepenTint(colorObj) {
+export function deepenTint(colorObj, step = 0.25) {
 	if (!colorObj || typeof colorObj !== 'object' || !colorObj.custom) return null;
 	const name = colorObj.name || 'navy';
 	const tints = generateTintVariants(getLevel1FillColor(name));
 	const t = tintPosition(tints, colorObj.custom);
 	if (t === null) return null;
-	return tintAt(name, Math.min(1, t + 0.25));
+	return tintAt(name, Math.min(1, t + step));
 }
 
 // 初始化CSS变量（在组件挂载时调用）
