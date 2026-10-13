@@ -404,7 +404,12 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (!isDynamic || !sessionClip || framesRef.current.length === 0) return false;
 		// 先冲刷：板面→帧是 250ms 防抖，落盘前强制合入当前板面，避免"手势后立刻 Ctrl+S"存进旧板面
 		const { frames, transitions } = flushBoard();
-		saveClip({ ...sessionClip, frames, transitions });
+		// 每帧烙"帧档色"（加载/dock 预览直接取用，动画色与板面严格一致）
+		const stamped = frames.map((f, i) => {
+			const any = Object.values(f.data || {}).find(n => n && typeof n === "object" && n.color && typeof n.color === "object" && n.color.name);
+			return any ? { ...f, frameTint: { name: any.color.name } } : f;
+		});
+		saveClip({ ...sessionClip, frames: stamped, transitions });
 		setClipVersion(v => v + 1);
 		setPersistedOnce(true);
 		toast?.(`已保存到动图堆（${frames.length} 帧）`, "success");

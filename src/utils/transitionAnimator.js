@@ -123,6 +123,7 @@ export function describeTransition(prevState, nextState, spec = {}) {
 				// 轨迹颜色（渲染时实时算，不存快照——存了会随帧结构/色系变化过期）：
 				// sl 的 B 用结果帧实际色；rt/hp 瞬时 B = A 深一整档（pale→vivid→rich→deep）
 				color: noteColorOf(nextState, p.to)
+					|| (nextState?.frameTint ? nextState.frameTint.custom : null) // rt/hp 瞬时 B＝当帧帧档色（与新增音符一致）
 					|| deepenTint(prevState?.data?.[p.from]?.color, 1 / 3)
 					|| noteColorOf(prevState, p.from)
 					|| vividColorOf(prevState, p.from)

@@ -2,8 +2,11 @@ import React from 'react';
 import { ScoreBoard, TransitionFx } from './ScorePieces';
 import { renameClip } from '../utils/clipModel';
 import './FretboardDock.css';
+import { tintAt } from '../colorConfig';
 
 // 动图卡片上的迷你播放器：仅悬停时循环播放；不悬停=静态首帧，零动画开销
+const frameTintValue = (name, i, total) => tintAt(name, total > 1 ? i / (total - 1) : 0);
+
 function ClipPreview({ clip, play }) {
   const [idx, setIdx] = React.useState(0);
   const timerRef = React.useRef(null);
@@ -33,6 +36,14 @@ function ClipPreview({ clip, play }) {
 
   const frame = clip.frames[Math.min(idx, clip.frames.length - 1)];
   const prevFrame = idx > 0 ? clip.frames[idx - 1] : null;
+  // 帧档色：与板面/主播放同源同公式（dock 预览不再走近似色）
+  const tintOf = (f, i) => {
+    if (!f) return f;
+    if (f.frameTint && f.frameTint.custom) return { ...f, frameTint: f.frameTint };
+    const any = Object.values(f.data || {}).find(n => n && typeof n === 'object' && n.color && typeof n.color === 'object' && n.color.name);
+    if (!any) return f;
+    return { ...f, frameTint: { name: any.color.name, custom: frameTintValue(any.color.name, i, clip.frames.length) } };
+  };
 
   return (
     <div className="clip-preview">
@@ -41,8 +52,8 @@ function ClipPreview({ clip, play }) {
         <TransitionFx
           className="clip-preview-fx"
           key={idx}
-          prevState={prevFrame}
-          nextState={frame}
+          prevState={tintOf(prevFrame, idx - 1)}
+          nextState={tintOf(frame, Math.min(idx, clip.frames.length - 1))}
           spec={clip.transitions?.[idx - 1] || { technique: null, pairs: [] }}
           durationMs={200}
         />
