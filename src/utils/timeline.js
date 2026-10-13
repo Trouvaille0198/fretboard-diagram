@@ -4,7 +4,7 @@
 import { deepenTint } from "../colorConfig.js";
 
 // 技法特效时长：滑弦轨迹/往返光点需要看清楚，比普通过渡窗（transMs）长
-export const TECH_FX_MS = { rt: 800, sl: 600 };
+export const TECH_FX_MS = { rt: 800, sl: 450 };
 
 function effTransMs(spec, base) {
 	const techs = (spec?.pairs || []).map(p => p.technique);
@@ -51,10 +51,10 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			if (states.length > 1) specs.push(inc || { technique: null, pairs: [] });
 		}
 	});
-	// 每步挂"出边特效时长"：带 sl/rt 的过渡拉长（轨迹看得清）；hp 子拍之间减半（利落）
+	// 每步挂"出边特效时长"：带 sl/rt 的过渡拉长（轨迹看得清）；hp 子拍=与普通消失/展现同速
 	states.forEach((s, i) => {
 		s.transMs = i < specs.length
-			? (sub[i] ? Math.max(80, baseTrans / 2) : effTransMs(specs[i], baseTrans))
+			? (sub[i] ? baseTrans : effTransMs(specs[i], baseTrans))
 			: baseTrans;
 	});
 	return { states, specs, frameOf, sub };
