@@ -92,7 +92,7 @@ export function describeTransition(prevState, nextState, spec = {}) {
 	// 差分：排除已被 pairs 消费的音
 	const exiting = prevNotes
 		.filter(n => prevActive.has(n.id) && !nextActive.has(n.id) && !pairFromIds.has(n.id))
-		.map(n => ({ id: n.id, x: n.x, y: n.y }));
+		.map(n => ({ id: n.id, x: n.x, y: n.y, color: noteColorOf(prevState, n.id) }));
 	const entering = nextNotes
 		.filter(n => nextActive.has(n.id) && !prevActive.has(n.id) && !pairToIds.has(n.id))
 		.map(n => ({ id: n.id, x: n.x, y: n.y }));
@@ -249,7 +249,7 @@ export function elsToSvgString(els, viewBox, opts = {}) {
 	const c = FX_COLORS;
 	const body = els.map(el => {
 		if (el.kind === "fade") {
-			return `<circle cx="${el.x}" cy="${el.y}" r="${el.r}" fill="${c.exitFill}" opacity="${el.opacity}"/>`;
+			return `<circle cx="${el.x}" cy="${el.y}" r="${el.r}" fill="${el.color || c.exitFill}" opacity="${el.opacity}"/>`;
 		}
 		if (el.kind === "ring") {
 			return `<circle cx="${el.x}" cy="${el.y}" r="${el.r}" fill="none" stroke="${el.color || c.ringStroke}" stroke-width="${el.width}" opacity="${el.opacity}"/>`;
