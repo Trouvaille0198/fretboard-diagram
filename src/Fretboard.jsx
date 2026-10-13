@@ -292,6 +292,14 @@ function Fretboard({ mode = 'normal' }) {
     setData(nextData);
     if (dynamic.viewMode === 'edit') {
       dynamic.mapFrames(restyleData);
+      // 标注 pair 里存的瞬时色（rt/hp 的 B）按色阶位置重映射
+      const remapPair = (c) => {
+        if (!c || typeof c !== 'object' || !c.custom || !c.name || !COLOR_SCHEMES.includes(c.name)) return c;
+        const oldTints = generateTintVariants(getLevel1FillColor(c.name));
+        const tp = tintPosition(oldTints, c.custom);
+        return tp === null ? c : { name, custom: tintAt(name, tp) };
+      };
+      dynamic.mapTransitions(t => ({ ...t, pairs: (t.pairs || []).map(p => (p.color ? { ...p, color: remapPair(p.color) } : p)) }));
       setSchemeName(name);
     } else {
       // 预览态：只改内存帧做展示，不落库；退出预览时由快照还原
