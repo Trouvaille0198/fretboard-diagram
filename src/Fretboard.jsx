@@ -10,7 +10,7 @@ import { useNoteEditing } from './hooks/useNoteEditing';
 import { computeNoteIndex, computeNoteName, generateNotes, generateMarkers, generateFretPath, generateStringPath, getNotePosition } from './utils/fretboardCalculations';
 import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors } from './utils/connectionUtils';
 import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow, replaceAllTintNotes } from './utils/fretboardActions';
-import { generateTintVariants, getLevel1FillColor, getLevel2Color, tintAt, tintPosition } from './colorConfig';
+import { generateTintVariants, getLevel1FillColor, getLevel2Color, tintAt, tintPosition, resolveNoteVisualStyle } from './colorConfig';
 import { createNoteClickHandler, createNoteContextMenuHandler, createDeleteNoteHandler, createFinishEditingHandler, createNoteMouseDownHandler, createConnectionDragEndHandler } from './handlers/noteHandlers';
 import { createSvgClickHandler, createSvgContextMenuHandler, createSvgMouseMoveHandler, createSvgMouseDownHandler, createSvgWheelHandler, createEditableKeyDownHandler, createEditableClickHandler } from './handlers/svgHandlers';
 import { createKeyboardHandler } from './handlers/keyboardHandlers';
@@ -1129,7 +1129,8 @@ function Fretboard({ mode = 'normal' }) {
     const baseTrans = Number(settings.transMs) > 0 ? Number(settings.transMs) : 200;
     // 进入本步的特效时长（sl/rt 轨迹拉长、hp 子拍减半）——与导出同源
     const trans = playingIdx > 0 && steps[playingIdx - 1]?.transMs > 0 ? steps[playingIdx - 1].transMs : baseTrans;
-    const hold = steps[playingIdx]?.holdMs || holdFull; // v2：每步自带停留时长
+    const holdMsSelf = steps[playingIdx]?.holdMs;
+    const hold = Number.isFinite(holdMsSelf) ? holdMsSelf : holdFull; // v4：每步自带停留（0 也是有效值，不能用 ||）
     const timer = setTimeout(() => {
       setPlayingIdx(prev => {
         if (prev === null) return null;
@@ -1153,7 +1154,7 @@ function Fretboard({ mode = 'normal' }) {
       wEnd = Math.max(wEnd, f.endFret);
     });
     if (wEnd - wStart > 16) wEnd = wStart + 16;
-    const { states: exStates, specs: exSpecs } = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200);
+    const { states: exStates, specs: exSpecs, fx: exFx } = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200);
     const windowed = exStates.map(f => ({ ...f, startFret: wStart, endFret: wEnd }));
     const geo = boardGeometry(wStart, wEnd);
     const fullVB = { x: geo.svgViewBoxX, y: geo.svgViewBoxY, w: geo.svgViewBoxWidth, h: geo.svgViewBoxHeight };
@@ -1189,7 +1190,7 @@ function Fretboard({ mode = 'normal' }) {
     const displayOpts = { includeMarkers, showNotes, horizontalCrop, verticalCrop, cropBox };
     const boardImages = [];
     for (const frame of windowed) {
-      boardImages.push(await renderBoardImage(frame, Number(settings.width) || 720, displayOpts));
+        boardImages.push(await renderBoardImage(frame, Number(settings.width) || 720, displayOpts));
     }
     const opts = {
       holdMs: Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300,
@@ -1200,9 +1201,10 @@ function Fretboard({ mode = 'normal' }) {
       labelColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#dfe7ee',
       noteStyle: resolveNoteVisualStyle() || undefined
     };
-    return format === 'gif'
-      ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts })
-      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts });
+    const out = format === 'gif'
+      ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [] } })
+      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [] } });
+    return out;
   }, [includeMarkers, showNotes, horizontalCrop, verticalCrop]);
 
   // 导出动图素材（下载）
