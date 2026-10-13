@@ -5,6 +5,7 @@
 
 import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 import { describeTransition, sampleTransition, elsToSvgString } from './transitionAnimator';
+import { stateClock } from './timeline';
 
 function svgToImage(svgString) {
 	return new Promise((resolve, reject) => {
@@ -17,33 +18,24 @@ function svgToImage(svgString) {
 	});
 }
 
-// 子帧计划：[帧1停留] [1→2过渡] [帧2停留] ... [末帧停留]
-// hold 期间只有底图；trans 期间底图=下一帧 + 动效层采样
+// 子帧计划：绝对时间网格（fps 网格中点采样）。状态定位/fx 窗口全部由 stateClock 的唯一时刻表决定，
+// 与页面播放共用同一时钟——导出画面 = 预览在该时刻的画面，按构造一致（不另起炉灶）。
 function buildPlan(states, opts) {
 	const holdMs = opts.holdMs ?? 500;
-	const transMs = opts.transMs ?? 300;
+	const transMs = opts.transMs ?? 200;
 	const fps = opts.fps ?? 20;
 	const dt = 1000 / fps;
-
+	const clock = stateClock(states, holdMs, transMs);
+	const n = Math.max(1, Math.round(clock.total / dt));
 	const plan = [];
-	let tAbs = 0;
-	states.forEach((state, i) => {
-		const hRaw = state.holdMs;
-		const h = Number.isFinite(hRaw) ? Math.max(0, hRaw) : holdMs; // 0 是合法停留（技法中间步），不能回退默认值
-		const hSteps = Math.max(1, Math.round(h / dt));
-		const hMs = Math.max(dt, Math.round(h / hSteps));
-		for (let s = 0; s < hSteps; s++) plan.push({ board: i, descIndex: -1, t: 0, delayMs: hMs, transMs: 0, tAbs: tAbs + hMs * s });
-		tAbs += hMs * hSteps;
-		if (i < states.length - 1) {
-			const tr = Number(state.transMs) > 0 ? Number(state.transMs) : transMs;
-			const steps = Math.max(2, Math.round(tr / dt));
-			const stepMs = tr / steps;
-			for (let s = 0; s < steps; s++) {
-				plan.push({ board: i + 1, descIndex: i, t: (s + 1) / steps, delayMs: stepMs, transMs: tr, tAbs: tAbs + stepMs * (s + 1) });
-			}
-			tAbs += tr;
+	for (let f = 0; f < n; f++) {
+		const t = (f + 0.5) * dt;
+		let board = 0;
+		for (let k = states.length - 1; k >= 0; k--) {
+			if (t >= clock.starts[k]) { board = k; break; }
 		}
-	});
+		plan.push({ board, t, delayMs: dt });
+	}
 	return plan;
 }
 
@@ -60,9 +52,19 @@ async function renderSubframes({ states, specs, boardImages, viewBox, opts, onPr
 
 	const bg = opts.background || '#10161c';
 	const descs = states.slice(0, -1).map((s, i) => describeTransition(states[i], states[i + 1], specs?.[i] || { technique: null, pairs: [] }));
-	// 并发轨道：desc 用同帧数据取音符位置/颜色（prevState=当帧基态）
+	// 并发轨道：desc 用「该帧末态」自身做 prev/next（diff 为空，只有 pair 光点）——
+	// 与播放器 TransitionFx 的 hintState 同构；绝不能用整段首尾态（全局 diff 会给每条轨道
+	// 叠上所有中途增删音符的涟漪，即"无关音符起涟漪"的来源）
 	const fxTrack = Array.isArray(opts.fx) ? opts.fx : [];
-	const fxDescs = fxTrack.map(fxi => describeTransition(states[0], states[states.length - 1], fxi.spec));
+	const frameOf = Array.isArray(opts.frameOf) ? opts.frameOf : null;
+	const fxDescs = fxTrack.map(fxi => {
+		const hint = frameOf
+			? states.filter((_, si) => frameOf[si] === fxi.frame).slice(-1)[0] || states[states.length - 1]
+			: states[states.length - 1];
+		return describeTransition(hint, hint, fxi.spec);
+	});
+	// 与播放器同源的进入切换窗口：状态 k 显示的前 enterOf(k) 毫秒内渲染 desc[k-1] 采样
+	const clock = stateClock(states, opts.holdMs ?? 500, opts.transMs ?? 200);
 
 	const subframes = [];
 	for (let p = 0; p < plan.length; p++) {
@@ -70,25 +72,34 @@ async function renderSubframes({ states, specs, boardImages, viewBox, opts, onPr
 		ctx.fillStyle = bg;
 		ctx.fillRect(0, 0, width, height);
 		ctx.drawImage(boardImages[item.board], 0, 0, width, height);
-		if (item.descIndex >= 0) {
-			const fxSvg = elsToSvgString(sampleTransition(descs[item.descIndex], item.t, item.transMs), viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle });
-			const fxImg = await svgToImage(fxSvg);
-			ctx.drawImage(fxImg, 0, 0, width, height);
+		const k = item.board;
+		const enter = clock.enterOf(k - 1);
+		if (k > 0 && enter > 0) {
+			const tIn = item.t - clock.starts[k];
+			if (tIn >= 0 && tIn < enter) {
+				const fxSvg = elsToSvgString(sampleTransition(descs[k - 1], Math.min(1, tIn / enter), enter), viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle });
+				const fxImg = await svgToImage(fxSvg);
+				ctx.drawImage(fxImg, 0, 0, width, height);
+			}
 		}
 		// 并发 fx 轨道：绝对时间在窗口内的轨迹叠加
-		if (fxTrack.length && item.tAbs !== undefined) {
+		if (fxTrack.length) {
 			let trackEls = [];
-			fxTrack.forEach((fxi, k) => {
-				if (item.tAbs < fxi.t0 || item.tAbs > fxi.t0 + fxi.dur) return;
-				const tt = (item.tAbs - fxi.t0) / fxi.dur;
-				trackEls = trackEls.concat(sampleTransition(fxDescs[k], tt, fxi.dur));
+			fxTrack.forEach((fxi, k2) => {
+				if (item.t < fxi.t0 || item.t > fxi.t0 + fxi.dur) return;
+				const tt = (item.t - fxi.t0) / fxi.dur;
+				trackEls = trackEls.concat(sampleTransition(fxDescs[k2], tt, fxi.dur));
 			});
 			if (trackEls.length) {
 				const trackImg = await svgToImage(elsToSvgString(trackEls, viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle }));
 				ctx.drawImage(trackImg, 0, 0, width, height);
 			}
 		}
-		subframes.push({ canvas: ctx.getImageData(0, 0, width, height), delayMs: item.delayMs });
+		// 逐帧快照（不能复用同一 canvas——编码阶段再读会全部变成最后一帧，GIF 冻结的根因）
+		const snap = document.createElement('canvas');
+		snap.width = width; snap.height = height;
+		snap.getContext('2d').drawImage(canvas, 0, 0);
+		subframes.push({ canvas: snap, delayMs: item.delayMs });
 		if (onProgress) onProgress(p + 1, plan.length);
 	}
 	return { subframes, width, height };
@@ -99,8 +110,9 @@ export async function exportGifAnimation({ states, specs, boardImages, viewBox, 
 	const { subframes, width, height } = await renderSubframes({ states, specs, boardImages, viewBox, opts, onProgress });
 	const gif = GIFEncoder();
 	subframes.forEach((f, i) => {
-		const palette = quantize(f.canvas.data, 256);
-		const index = applyPalette(f.canvas.data, palette);
+		const data = f.canvas.getContext('2d').getImageData(0, 0, width, height).data;
+		const palette = quantize(data, 256);
+		const index = applyPalette(data, palette);
 		gif.writeFrame(index, width, height, {
 			palette,
 			delay: Math.max(20, Math.round(f.delayMs)),
@@ -113,37 +125,8 @@ export async function exportGifAnimation({ states, specs, boardImages, viewBox, 
 
 // WebM：预渲染子帧到位图，再按计划时刻实时回放录制
 export async function exportWebmAnimation({ states, specs, boardImages, viewBox, opts, onProgress }) {
-	const plan = buildPlan(states, opts);
-	const width = opts.width ?? 720;
-	const [vx, vy, vw, vh] = String(viewBox).split(/\s+/).map(Number);
-	const height = Math.round(width * vh / vw);
-	const bg = opts.background || '#10161c';
-
-	// 预先把所有子帧画到独立位图（回放阶段只做 drawImage，保证不掉帧）
-	const subframes = [];
-	const descs = states.slice(0, -1).map((s, i) => describeTransition(states[i], states[i + 1], specs?.[i] || { technique: null, pairs: [] }));
-	// 并发轨道：desc 用同帧数据取音符位置/颜色（prevState=当帧基态）
-	const fxTrack = Array.isArray(opts.fx) ? opts.fx : [];
-	const fxDescs = fxTrack.map(fxi => describeTransition(states[0], states[states.length - 1], fxi.spec));
-	for (let p = 0; p < plan.length; p++) {
-		const item = plan[p];
-		const c = document.createElement('canvas');
-		c.width = width;
-		c.height = height;
-		const cx = c.getContext('2d');
-		cx.fillStyle = bg;
-		cx.fillRect(0, 0, width, height);
-		cx.drawImage(boardImages[item.board], 0, 0, width, height);
-		if (item.descIndex >= 0) {
-			const fxImg = await svgToImage(
-				elsToSvgString(sampleTransition(descs[item.descIndex], item.t, item.transMs), viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle })
-			);
-			cx.drawImage(fxImg, 0, 0, width, height);
-		}
-		subframes.push({ canvas: c, delayMs: item.delayMs });
-		if (onProgress) onProgress(p + 1, plan.length);
-	}
-
+	// 与 GIF 完全同一子帧渲染器（绝对时钟采样）——WebM=预览=GIF 三者同源
+	const { subframes, width, height } = await renderSubframes({ states, specs, boardImages, viewBox, opts, onProgress });
 	const totalMs = subframes.reduce((s, f) => s + f.delayMs, 0);
 	const canvas = document.createElement('canvas');
 	canvas.width = width;
