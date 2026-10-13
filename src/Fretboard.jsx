@@ -1102,7 +1102,17 @@ function Fretboard({ mode = 'normal' }) {
   const loopRef = useRef(loopPlay);
   loopRef.current = loopPlay;
 
+  const playStartRef = useRef(0);
   const stopPlaying = useCallback(() => setPlayingIdx(null), []);
+
+  // fx 轨道时钟：播放中周期 tick，驱动绝对时间光点层
+  const [fxTick, setFxTick] = useState(0);
+  useEffect(() => {
+    if (playingIdx === null) return undefined;
+    if (playingIdx === 0) playStartRef.current = performance.now(); // 回环重置时钟
+    const t = setInterval(() => setFxTick(v => v + 1), 33);
+    return () => clearInterval(t);
+  }, [playingIdx]);
 
   const startPlaying = useCallback(() => {
     if (playStepsRef.current.states.length < 2) return;
@@ -1401,6 +1411,22 @@ function Fretboard({ mode = 'normal' }) {
           setSelectedConnection={setSelectedConnection}
           showNotes={showNotes}
         />
+        {playingIdx !== null && (playSteps.fx || []).map((fxi, k) => {
+          const el = performance.now() - playStartRef.current;
+          if (el < fxi.t0 || el > fxi.t0 + fxi.dur) return null;
+          const frameStates = playSteps.states.filter((_, si) => playSteps.frameOf[si] === fxi.frame);
+          const hintState = frameStates[frameStates.length - 1] || playSteps.states[playingIdx];
+          return (
+            <TransitionFx
+              key={"fxtrack-" + k}
+              prevState={hintState}
+              nextState={hintState}
+              spec={fxi.spec}
+              durationMs={fxi.dur}
+              portalTo={svgElementRef.current}
+            />
+          );
+        })}
         {playingIdx !== null && playingIdx > 0 && playSteps.states[playingIdx - 1] && playSteps.states[playingIdx] && (
           <TransitionFx
             key={playingIdx}
