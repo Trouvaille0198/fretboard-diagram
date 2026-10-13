@@ -65,7 +65,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		const idx = editIdxRef.current;
 		const board = captureBoard();
 		const oldData = framesRef.current[idx]?.data || {};
-		const frames = propagateForward(framesRef.current.map((f, i) => (i === idx ? board : f)), idx, board, oldData);
+		const frames = propagateForward(framesRef.current.map((f, i) => (i === idx ? { ...f, ...board } : f)), idx, board, oldData); // {...f,...board}：保留 preSlides 等帧级标注（board 快照不带它们）
 		const activeIds = st => {
 			const frameData = st && st.data ? st.data : st || {};
 			const globalVis = st && st.visibility ? st.visibility : "transparent";
@@ -263,7 +263,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		setFrames(prev => {
 			const idx = editIdxRef.current;
 			const oldData = prev[idx]?.data || {};
-			return propagateForward(prev.map((f, i) => (i === idx ? board : f)), idx, board, oldData);
+			return propagateForward(prev.map((f, i) => (i === idx ? { ...f, ...board } : f)), idx, board, oldData);
 		});
 		const idx = editIdxRef.current;
 		if (idx > 0) {
