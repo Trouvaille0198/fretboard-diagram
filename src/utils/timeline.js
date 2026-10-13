@@ -59,7 +59,10 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		const edges = [];
 		const edge = (t, on, off, enter) => edges.push({ t, on, off, enter });
 		pres.forEach(s => {
-			edge(Math.round(DOT * 0.5), { id: s.from, c: bTint(s) }, null, 60); // B 行程一半才亮（与 sl 的 B 同逻辑，不一开局就出现）
+			// pre 的 B 色 = 终点 A 原色深两档（参照是 s.to 而非 s.from——from 是暗音自己）
+			const pa = origColor(s.to);
+			const pd = pa ? deepenTint(pa, 2 / 3) : null;
+			edge(Math.round(DOT * 0.5), { id: s.from, c: pd ? { name: pa.name, custom: pd } : ft }, null, 60);
 			edge(DOT, null, { id: s.from }, 16); // 光点到达 A：B 立即消失（瞬切）
 		});
 		slP.forEach(p => {
