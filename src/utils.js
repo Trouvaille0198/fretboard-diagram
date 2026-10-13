@@ -230,7 +230,7 @@ export function updateNote(elem, data, update) {
 }
 
 // 内联 CSS
-export function inlineCSS(svg) {
+export function inlineCSS(svg, originalSvgOverride) {
     const PROPERTIES = [
         "fill",
         "stroke",
@@ -262,8 +262,8 @@ export function inlineCSS(svg) {
         }
     }
 
-    // 从原始 SVG（在 DOM 中的）获取元素
-    const originalSvg = document.getElementById('fretboard-svg');
+    // 从原始 SVG（在 DOM 中的）获取元素；离屏渲染传自己的宿主 svg，禁止错抄主舞台样式
+    const originalSvg = originalSvgOverride || document.getElementById('fretboard-svg');
     if (!originalSvg) {
         // 如果找不到原始 SVG，使用传入的 svg（可能是克隆的）
         return svg;

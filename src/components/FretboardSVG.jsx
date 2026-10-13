@@ -47,7 +47,7 @@ function ArrowMarkers({ idPrefix, arrowLength, startColor, endColor, showStart, 
   );
 }
 
-export function FretboardSVG({
+export const FretboardSVG = React.memo(function FretboardSVG({
   svgElementRef,
   svgWidth,
   svgHeight,
@@ -1060,3 +1060,4 @@ export function FretboardSVG({
     </svg>
   );
 }
+);

@@ -206,6 +206,43 @@ export const zh = {
         langSwitch: "EN",
     },
 
+    // 动态编辑模式（DynamicToolbar / 动图）
+    dynamic: {
+        enterMode: "🎬 动态编辑",
+        exitMode: "← 返回",
+        toEdit: "✎ 编辑",
+        toPreview: "👁 预览",
+        enterHint: "进入动态编辑模式（Q）：当前指板为第 1 帧",
+        exitHint: "返回普通编辑（改动已自动保存）（Q）",
+        techNone: "不选工具时点击音符＝新增/熄灭（自动配色）",
+        hintNormal: "点击音符＝新增/熄灭（自动配色）；选滑弦工具后点两点标注；Ctrl+S 定格",
+        hintSource: "滑弦：先点亮着的源音",
+        hintTarget: "点目标位置（同弦），Esc 取消",
+        commitHint: "定格为下一帧（Ctrl+S）",
+        playHint: "播放当前动图",
+        loopHint: "循环播放",
+        settingsHint: "动效节奏设置",
+        exportGif: "导出 GIF 动图",
+        exportWebm: "导出 WebM 视频",
+        hold: "帧停留",
+        trans: "过渡时长",
+        fps: "导出帧率",
+        width: "导出宽度",
+    },
+
+    // 指板堆（动图）
+    dock: {
+        clipsTitle: "动图堆",
+        emptyHint: "还没有动图：画好一帧按 Q 进入动态编辑，Ctrl+S 逐帧定格",
+        loadHint: "载入续编（追加帧）",
+        renameHint: "双击重命名",
+        deleteHint: "删除",
+        clear: "清空",
+        examples: "示例",
+        examplesHint: "载入六种技法/样式的示例动图（重复点击刷新示例，不影响你自己的动图）",
+    },
+
+
     // 序列谱视图（SongScoreView）
     score: {
         back: "返回编辑",
