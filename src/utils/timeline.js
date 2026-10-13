@@ -21,8 +21,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 	const specs = []; // specs[i] = states[i]→states[i+1]，长度 = states-1
 	const frameOf = []; // 每步对应的原始帧号（缩略图高亮用）
 	const sub = []; // 该步是否 hp 子拍（播放提速用）
-	const hpFirstBeatIdxs = []; // hp 帧 beat0 的 state 下标
-	const hpEntryIdxs = []; // {frame, empty} 击勾帧的进入是否为空过渡
+	const hpFirstBeatIdxs = []; // {k, fast} hp 帧 beat0 下标与"可加速进入"判定
 
 	frames.forEach((frame, i) => {
 		const inc = i > 0 ? (transitions[i - 1] || { technique: null, pairs: [] }) : null;
@@ -33,7 +32,14 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			const otherPairs = (inc.pairs || []).filter(p => p.technique !== "hp");
 			let beatData = frame.data;
 			let firstBeat = true;
-			if (i > 0) hpEntryIdxs.push({ frame: i, empty: otherPairs.length === 0 }); // 击勾起手加速用
+			// 起手加速判定：前一帧与本帧点亮音完全一致（纯等待、无任何可看的进出场）且无其他技法
+			let fastEntry = otherPairs.length === 0;
+			if (fastEntry && i > 0) {
+				const actOf = d => new Set(Object.entries(d || {}).filter(([, n]) => n && (n.visibility === "visible" || n.visibility === "selected")).map(([id]) => id));
+				const sa = actOf(frames[i - 1].data), sb = actOf(frame.data);
+				fastEntry = sa.size === sb.size && [...sa].every(id => sb.has(id));
+			}
+			if (i > 0) hpFirstBeatIdxs.push({ k: -1, fast: fastEntry }); // k 占位，push beat0 时回填
 			for (let beat = 0; beat < 3; beat++) {
 				if (beat === 1) {
 					beatData = { ...frame.data };
@@ -46,7 +52,10 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 				states.push({ ...frame, data: beatData });
 				frameOf.push(i);
 				sub.push(true);
-				if (firstBeat && i > 0) hpFirstBeatIdxs.push(states.length - 1);
+				if (firstBeat && i > 0) {
+					const rec = hpFirstBeatIdxs[hpFirstBeatIdxs.length - 1];
+					if (rec && rec.k === -1) rec.k = states.length - 1;
+				}
 				if (states.length > 1) specs.push(firstBeat ? { technique: null, pairs: otherPairs } : { technique: null, pairs: [] });
 				firstBeat = false;
 			}
@@ -83,7 +92,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		s.frameTint = frameTintOf(frameOf[i]);
 	});
 	// 击勾起手不等：进入击勾帧的过渡若不带其他技法（空 pair），压到 80ms——锤击立即开始
-	hpFirstBeatIdxs.forEach(k => { if (k > 0 && states[k - 1]) states[k - 1].transMs = Math.min(80, states[k - 1].transMs || 200); });
+	hpFirstBeatIdxs.forEach(e => { if (e.fast && e.k > 0 && states[e.k - 1]) states[e.k - 1].transMs = Math.min(80, states[e.k - 1].transMs || 200); });
 	return { states, specs, frameOf, sub };
 }
 
