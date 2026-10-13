@@ -1598,6 +1598,7 @@ function Fretboard({ mode = 'normal' }) {
           if (!clips.length) return;
           if (!window.confirm(t.fretboard.confirmClearDock)) return;
           clips.forEach(c => deleteClip(c.id));
+          try { localStorage.setItem('fretboard-examples-cleared', '1'); } catch (e) { /* ignore */ }
           refreshClips();
           setToastMessage(t.fretboard.toastCleared);
           setToastType('success');
@@ -1605,7 +1606,7 @@ function Fretboard({ mode = 'normal' }) {
         onRenamed={refreshClips}
         onExamples={() => {
           import('./utils/exampleClips').then(({ ensureExampleClips }) => {
-            setClips(ensureExampleClips());
+            setClips(ensureExampleClips(true)); // 显式要求：清掉"已清空"标记并补回示例
             showToast('已载入 6 张示例动图', 'success');
           });
         }}

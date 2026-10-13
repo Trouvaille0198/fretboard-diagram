@@ -68,7 +68,12 @@ export function buildExampleClips() {
 	];}
 
 // 注入示例（先清掉旧的示例，保留用户自己的动图）
-export function ensureExampleClips() {
+// 用户"清空动图堆"后不再自动补回（显式点"示例"按钮才恢复）
+export function ensureExampleClips(force = false) {
+	let cleared = false;
+	try { cleared = localStorage.getItem('fretboard-examples-cleared') === '1'; } catch (e) { /* ignore */ }
+	if (cleared && !force) return loadClips();
+	if (force) { try { localStorage.removeItem('fretboard-examples-cleared'); } catch (e) { /* ignore */ } }
 	const existing = loadClips();
 	const kept = existing.filter(c => !c.id.startsWith('example-'));
 	const merged = [...buildExampleClips(), ...kept];

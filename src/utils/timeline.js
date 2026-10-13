@@ -55,6 +55,13 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			if (states.length > 1) specs.push(inc || { technique: null, pairs: [] });
 		}
 	});
+	// 每步盖"帧档色"标记（rt/hp 瞬时 B 的闪现色＝当帧新增音符色；animator 优先取用）
+	const frameTintOf = (i) => {
+		const fd = frames[i]?.data || {};
+		const any = Object.values(fd).find(n => n && typeof n === "object" && n.color && typeof n.color === "object" && n.color.name);
+		const nm = (any && any.color.name) || "navy";
+		return { name: nm, custom: tintAt(nm, frames.length > 1 ? i / (frames.length - 1) : 0) };
+	};
 	// 每步挂"出边特效时长"与停留：sl/rt 过渡拉长（轨迹看得清）；hp 起始拍几乎立即、随后两拍稍驻
 	const beatHold = [30, 70, 110];
 	let beatIdx = -1;
@@ -63,6 +70,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			? (sub[i] ? Math.min(150, baseTrans) : effTransMs(specs[i], baseTrans))
 			: baseTrans;
 		if (sub[i]) { beatIdx = (beatIdx + 1) % 3; s.holdMs = beatHold[beatIdx]; }
+		s.frameTint = frameTintOf(frameOf[i]);
 	});
 	return { states, specs, frameOf, sub };
 }
