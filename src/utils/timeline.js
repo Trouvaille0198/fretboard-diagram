@@ -37,10 +37,14 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		const t0 = frameStart + enter;
 		const events = [];
 		const mark = (t, on, off) => { if (t > frameStart) events.push({ t, on, off }); };
-		// 源音 A 的原始颜色（回归/保持时用原色，不被帧档色覆盖）
+		// 源音 A 的原始颜色：优先上一帧（sl 后 A 在本帧已熄灭，原色只在 frames[i-1]），
+		// 其次本帧仍亮着的数据（rt/hp A 保留在本帧）
 		const origColor = id => {
-			const n = base[id];
-			return n && n.color && typeof n.color === "object" ? { name: n.color.name, custom: n.color.custom } : null;
+			const pick = d => {
+				const n = d && d[id];
+				return n && n.color && typeof n.color === "object" && n.visibility === "visible" ? { name: n.color.name, custom: n.color.custom } : null;
+			};
+			return (i > 0 ? pick(frames[i - 1].data) : null) || pick(base);
 		};
 
 		pres.forEach(s => {
@@ -50,7 +54,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		});
 		slP.forEach(p => {
 			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0, dur: DOT });
-			mark(t0, { id: p.from, c: ft }, { id: p.to });
+			mark(t0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }); // 途中：A 用原色（上一帧），B 灭
 			mark(t0 + DOT, { id: p.to, c: ft }, { id: p.from });
 		});
 		rtP.forEach(p => {
