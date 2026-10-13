@@ -10,7 +10,7 @@ function effTransMs(spec, base) {
 	const techs = (spec?.pairs || []).map(p => p.technique);
 	let ms = base;
 	if (techs.includes("rt")) ms = Math.max(ms, TECH_FX_MS.rt);
-	if (techs.includes("sl")) ms = Math.max(ms, TECH_FX_MS.sl);
+	if (techs.includes("sl") || techs.includes("pre")) ms = Math.max(ms, TECH_FX_MS.sl);
 	return ms;
 }
 
@@ -47,6 +47,19 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 				firstBeat = false;
 			}
 		} else {
+			// 前置划弦：本帧开头插入"前置拍"——B 以帧档色点亮，随后滑向 A 熄灭（B 的进/出与滑动全由 diff+pair 表达）
+			const pres = frame.preSlides || [];
+			if (pres.length) {
+				const ft = frameTintFromData(frame.data, i, frames.length);
+				let preData = frame.data;
+				pres.forEach(s => {
+					preData = { ...preData, [s.from]: { type: "note", color: { name: ft ? ft.name : "navy", custom: ft ? ft.custom : "#888888" }, color2: null, visibility: "visible" } };
+				});
+				states.push({ ...frame, data: preData });
+				frameOf.push(i);
+				sub.push(true);
+				specs.push({ technique: null, pairs: pres.map(s => ({ from: s.from, to: s.to, technique: "pre" })) });
+			}
 			states.push(frame);
 			frameOf.push(i);
 			sub.push(false);
@@ -56,13 +69,13 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 	// 每步盖"帧档色"标记（rt/hp 瞬时 B 的闪现色＝当帧新增音符色；animator 优先取用）
 	const frameTintOf = (i) => frameTintFromData(frames[i]?.data, i, frames.length);
 	// 每步挂"出边特效时长"与停留：sl/rt 过渡拉长（轨迹看得清）；hp 起始拍几乎立即、随后两拍稍驻
-	const beatHold = [30, 70, 110];
+	const beatHold = [30, 70, 110, 30]; // 第4位=前置拍
 	let beatIdx = -1;
 	states.forEach((s, i) => {
 		s.transMs = i < specs.length
 			? (sub[i] ? Math.min(150, baseTrans) : effTransMs(specs[i], baseTrans))
 			: baseTrans;
-		if (sub[i]) { beatIdx = (beatIdx + 1) % 3; s.holdMs = beatHold[beatIdx]; }
+		if (sub[i]) { beatIdx = (beatIdx + 1) % 4; s.holdMs = beatHold[beatIdx]; }
 		s.frameTint = frameTintOf(frameOf[i]);
 	});
 	return { states, specs, frameOf, sub };
