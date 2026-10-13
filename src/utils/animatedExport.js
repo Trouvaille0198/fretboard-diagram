@@ -62,7 +62,7 @@ async function renderSubframes({ states, specs, boardImages, viewBox, opts, onPr
 		ctx.fillRect(0, 0, width, height);
 		ctx.drawImage(boardImages[item.board], 0, 0, width, height);
 		if (item.descIndex >= 0) {
-			const fxSvg = elsToSvgString(sampleTransition(descs[item.descIndex], item.t, item.transMs), viewBox, { labelColor: opts.labelColor });
+			const fxSvg = elsToSvgString(sampleTransition(descs[item.descIndex], item.t, item.transMs), viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle });
 			const fxImg = await svgToImage(fxSvg);
 			ctx.drawImage(fxImg, 0, 0, width, height);
 		}
@@ -111,7 +111,7 @@ export async function exportWebmAnimation({ states, specs, boardImages, viewBox,
 		cx.drawImage(boardImages[item.board], 0, 0, width, height);
 		if (item.descIndex >= 0) {
 			const fxImg = await svgToImage(
-				elsToSvgString(sampleTransition(descs[item.descIndex], item.t, item.transMs), viewBox, { labelColor: opts.labelColor })
+				elsToSvgString(sampleTransition(descs[item.descIndex], item.t, item.transMs), viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle })
 			);
 			cx.drawImage(fxImg, 0, 0, width, height);
 		}

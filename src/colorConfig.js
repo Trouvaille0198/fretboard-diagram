@@ -202,6 +202,24 @@ export function frameTintFromData(frameData, i, total) {
 	return { name: any.color.name, custom: tintAt(any.color.name, total > 1 ? i / (total - 1) : 0) };
 }
 
+
+// 解析应用当前的真实音符视觉样式（fx 与板面统一的单一来源）：外框色/描边宽/文字字号
+export function resolveNoteVisualStyle() {
+	if (typeof document === "undefined") return null;
+	const probe = document.querySelector(".fretboard-stage-wrap g.note") || document.querySelector("g.note");
+	if (!probe) return null;
+	const cs = getComputedStyle(probe);
+	const circle = probe.querySelector("circle");
+	const text = probe.querySelector("text");
+	const ccs = circle ? getComputedStyle(circle) : null;
+	const tcs = text ? getComputedStyle(text) : null;
+	return {
+		ink: (cs.stroke && cs.stroke !== "none") ? cs.stroke : ((ccs && ccs.stroke && ccs.stroke !== "none") ? ccs.stroke : "var(--text-color)"),
+		strokeW: parseFloat((ccs && ccs.strokeWidth) || cs.strokeWidth) || 1.5,
+		fontSz: parseFloat((tcs && tcs.fontSize) || "20") || 20
+	};
+}
+
 // 初始化CSS变量（在组件挂载时调用）
 export function initColorCSSVariables() {
     const root = document.documentElement;

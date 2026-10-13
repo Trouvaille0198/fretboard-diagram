@@ -1154,7 +1154,8 @@ function Fretboard({ mode = 'normal' }) {
       fps: Number(settings.fps) > 0 ? Number(settings.fps) : 20,
       width: Number(settings.width) || 720,
       background: getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || '#10161c',
-      labelColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#dfe7ee'
+      labelColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#dfe7ee',
+      noteStyle: resolveNoteVisualStyle() || undefined
     };
     return format === 'gif'
       ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts })
