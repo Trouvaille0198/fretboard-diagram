@@ -28,7 +28,8 @@ function buildPlan(states, opts) {
 	const plan = [];
 	let tAbs = 0;
 	states.forEach((state, i) => {
-		const h = Number(state.holdMs) > 0 ? Number(state.holdMs) : holdMs;
+		const hRaw = state.holdMs;
+		const h = Number.isFinite(hRaw) ? Math.max(0, hRaw) : holdMs; // 0 是合法停留（技法中间步），不能回退默认值
 		const hSteps = Math.max(1, Math.round(h / dt));
 		const hMs = Math.max(dt, Math.round(h / hSteps));
 		for (let s = 0; s < hSteps; s++) plan.push({ board: i, descIndex: -1, t: 0, delayMs: hMs, transMs: 0, tAbs: tAbs + hMs * s });
