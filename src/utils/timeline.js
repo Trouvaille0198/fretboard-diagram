@@ -2,7 +2,7 @@
 // 音符亮灭边：各技法自己的 enter（60-100ms 快速切换），按技法相对时刻排序依次应用；
 // 光点轨道：各技法独立的绝对时长（DOT/RT_OUT/RT_BACK），与边序列互不拉扯。
 // 同帧多技法 = 并发（同一窗起点、各走各的节奏），与单技法完全同观感。
-import { frameTintFromData, tintAt, deepenTint } from "../colorConfig.js";
+import { frameTintFromData, tintAt } from "../colorConfig.js";
 
 const DOT = 380, RT_OUT = 280, RT_BACK = 260, SETTLE = 60, HPMOMENT = 60, HPB = 190;
 
@@ -45,24 +45,14 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			return (i > 0 ? pick(frames[i - 1].data) : null) || pick(base);
 		};
 
-		// 瞬时 B 的颜色：A 原色深两档（pale→rich、vivid→deep）——比 A 明显深又不至于看不见；A 无色才回退帧档
-		const bTint = p => {
-			const a = origColor(p.from);
-			if (a) {
-				const d = deepenTint(a, 2 / 3);
-				if (d) return { name: a.name, custom: d };
-			}
-			return ft;
-		};
+		// 瞬时 B 的颜色 = 帧位档 ft（=当前帧新增音符得到的色，与 sl 的 B 观感完全一致）
+		const bTint = () => ft;
 
 		// 每技法独立边：{t=技法相对钟, on, off, enter=该边动画时长}
 		const edges = [];
 		const edge = (t, on, off, enter) => edges.push({ t, on, off, enter });
 		pres.forEach(s => {
-			// pre 的 B 色 = 终点 A 原色深两档（参照是 s.to 而非 s.from——from 是暗音自己）
-			const pa = origColor(s.to);
-			const pd = pa ? deepenTint(pa, 2 / 3) : null;
-			edge(Math.round(DOT * 0.5), { id: s.from, c: pd ? { name: pa.name, custom: pd } : ft }, null, 60);
+			edge(Math.round(DOT * 0.5), { id: s.from, c: ft }, null, 60); // B=帧位档（=当前帧新增音色）
 			edge(DOT, null, { id: s.from }, 16); // 光点到达 A：B 立即消失（瞬切）
 		});
 		slP.forEach(p => {
@@ -111,13 +101,15 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		edges.filter(e => e.t > 0).forEach(e => {
 			const gap = e.t - prevT;
 			prevT = e.t;
+			// 切换动画不得超过等待间隙（超过则压缩动画，防时钟漂移把后续技法边推迟）
+			const enter = Math.min(e.enter, gap);
 			// 上一态：先等 (gap - 切换时长)，再用切换时长过渡到本边状态
-			const waitPrev = Math.max(0, gap - e.enter);
+			const waitPrev = Math.max(0, gap - enter);
 			states[states.length - 1].holdMs = waitPrev;
 			let data = states[states.length - 1].data;
 			if (e.on) data = lit(data, e.on.id, e.on.c);
 			if (e.off) data = lit(data, e.off.id, null);
-			pushState(data, 0, true, e.enter);
+			pushState(data, 0, true, enter);
 			acc += gap;
 		});
 
