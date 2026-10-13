@@ -122,8 +122,8 @@ export function describeTransition(prevState, nextState, spec = {}) {
 				transient: tech === "rt" || tech === "hp" || tech === "pre", // 往返/前置的瞬态音
 				// 轨迹颜色（渲染时实时算，不存快照——存了会随帧结构/色系变化过期）：
 				// sl 的 B 用结果帧实际色；rt/hp 瞬时 B = A 深一整档（pale→vivid→rich→deep）
-				color: noteColorOf(nextState, p.to)
-					|| (nextState?.frameTint ? nextState.frameTint.custom : null) // rt/hp 瞬时 B＝当帧帧档色（与新增音符一致）
+				color: (tech === "pre" ? null : noteColorOf(nextState, p.to)) // pre 的 to=常亮 A，取 A 原色会和板面 B 瞬态色打架（淡蓝滑完突变深蓝）
+					|| (nextState?.frameTint ? nextState.frameTint.custom : null) // rt/hp/pre 瞬时 B＝当帧帧档色（与新增音符一致）
 					|| deepenTint(prevState?.data?.[p.from]?.color, 1 / 3)
 					|| noteColorOf(prevState, p.from)
 					|| vividColorOf(prevState, p.from)

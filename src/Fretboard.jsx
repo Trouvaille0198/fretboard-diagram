@@ -24,7 +24,7 @@ import { isLoggedIn } from './utils/api';
 import { exportGifAnimation, exportWebmAnimation } from './utils/animatedExport';
 import { Toast } from './components/Toast';
 import { createPortal } from 'react-dom';
-import { expandTimeline } from './utils/timeline';
+import { expandTimeline, stateClock } from './utils/timeline';
 import { FretboardSVG } from './components/FretboardSVG';
 import { useLanguage } from './i18n';
 
@@ -224,14 +224,20 @@ function Fretboard({ mode = 'normal' }) {
     window.location.hash = '#/dynamic';
   }, [captureBoard]);
 
-  // 动态页挂载：读取入口板面（或续编的动图）开 会话
+  // 动态页挂载：读取入口板面（或续编的动图）开 会话；URL ?c=<id> 优先（刷新/分享恢复到正在编辑的那张）
   useEffect(() => {
     if (mode !== 'dynamic') return;
     let entry = null;
     try { entry = JSON.parse(sessionStorage.getItem('fretboard-dynamic-entry') || 'null'); sessionStorage.removeItem('fretboard-dynamic-entry'); } catch (e) { /* 忽略 */ }
     let clipId = null;
-    try { clipId = sessionStorage.getItem('fretboard-dynamic-clip'); sessionStorage.removeItem('fretboard-dynamic-clip'); } catch (e) { /* 忽略 */ }
+    try {
+      const m = window.location.hash.match(/[?&]c=([^&]+)/);
+      if (m) clipId = decodeURIComponent(m[1]);
+    } catch (e) { /* 忽略 */ }
     if (!clipId) {
+      try { clipId = sessionStorage.getItem('fretboard-dynamic-clip'); sessionStorage.removeItem('fretboard-dynamic-clip'); } catch (e) { /* 忽略 */ }
+    }
+    if (!clipId && !entry) {
       // 刷新恢复：回到最近编辑的动图（预览态）
       try { clipId = localStorage.getItem('fretboard-last-clip'); } catch (e) { /* 忽略 */ }
     }
@@ -248,6 +254,15 @@ function Fretboard({ mode = 'normal' }) {
     dynamic.startSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 会话动图身份同步进 URL：新建/载入/续编后地址栏立即反映当前动图，刷新不再看错图
+  useEffect(() => {
+    if (mode !== 'dynamic') return;
+    const id = dynamic.sessionClip?.id;
+    if (!id) return;
+    const target = `#/dynamic?c=${encodeURIComponent(id)}`;
+    if (window.location.hash !== target) window.history.replaceState(null, '', target);
+  }, [mode, dynamic.sessionClip]);
 
   // 动态页 Q 退出：保存（≥2帧）并回普通页
   const exitDynamic = useCallback(() => {
@@ -1126,18 +1141,12 @@ function Fretboard({ mode = 'normal' }) {
     const settings = animSettingsRef.current;
     const holdFull = Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300;
     const baseTrans = Number(settings.transMs) > 0 ? Number(settings.transMs) : 200;
-    // 本步在绝对时钟上的起点：状态 k 显示 = hold_k + 下一状态的进入 enter（steps[k+1].transMs），
-    // 与 timeline 设计量（边时刻 t 严格对齐 fx 轨道）一致；无下一状态时回落旧语义
-    const enterOf = k => {
-      if (k + 1 < steps.length && steps[k + 1]?.transMs > 0) return steps[k + 1].transMs;
-      if (k > 0 && steps[k - 1]?.transMs > 0) return steps[k - 1].transMs;
-      return baseTrans;
-    };
-    let tAbs = 0;
-    for (let k = 0; k < playingIdx; k++) tAbs += (Number.isFinite(steps[k]?.holdMs) ? steps[k].holdMs : holdFull) + enterOf(k);
+    // 与导出共用的唯一时钟（timeline.stateClock）：状态起点/时长严格同轴，GIF=预览按构造成立
+    const clock = stateClock(steps, holdFull, baseTrans);
+    const tAbs = clock.starts[playingIdx] || 0;
     const holdMsSelf = steps[playingIdx]?.holdMs;
     const hold = Number.isFinite(holdMsSelf) ? holdMsSelf : holdFull;
-    const trans = enterOf(playingIdx);
+    const trans = clock.enterOf(playingIdx);
     const elapsed = performance.now() - playStartRef.current;
     const wait = Math.max(0, tAbs + hold + trans - elapsed);
     const timer = setTimeout(() => {
@@ -1163,7 +1172,7 @@ function Fretboard({ mode = 'normal' }) {
       wEnd = Math.max(wEnd, f.endFret);
     });
     if (wEnd - wStart > 16) wEnd = wStart + 16;
-    const { states: exStates, specs: exSpecs, fx: exFx } = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200);
+    const { states: exStates, specs: exSpecs, fx: exFx, frameOf: exFrameOf } = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200);
     const windowed = exStates.map(f => ({ ...f, startFret: wStart, endFret: wEnd }));
     const geo = boardGeometry(wStart, wEnd);
     const fullVB = { x: geo.svgViewBoxX, y: geo.svgViewBoxY, w: geo.svgViewBoxWidth, h: geo.svgViewBoxHeight };
@@ -1211,8 +1220,8 @@ function Fretboard({ mode = 'normal' }) {
       noteStyle: resolveNoteVisualStyle() || undefined
     };
     const out = format === 'gif'
-      ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [] } })
-      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [] } });
+      ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf } })
+      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf } });
     return out;
   }, [includeMarkers, showNotes, horizontalCrop, verticalCrop]);
 
@@ -1238,11 +1247,25 @@ function Fretboard({ mode = 'normal' }) {
     }
   }, [showToast, buildExportBlob]);
 
-  // Ctrl+C（动态模式）：复制 GIF 到剪贴板；剪贴板不支持 GIF 时回落首帧 PNG
+  // Ctrl+C（动态模式）：复制 GIF 到剪贴板；非安全上下文（无 clipboard API）自动转下载；剪贴板不支持 GIF 时回落首帧 PNG
   const copyGifToClipboard = useCallback(async () => {
+    const canClipboard = typeof ClipboardItem !== 'undefined' && !!navigator.clipboard && typeof navigator.clipboard.write === 'function';
     try {
       setExporting('gif');
       const blob = await buildExportBlob('gif');
+      if (!canClipboard) {
+        // 页面经 http://IP 等非安全上下文打开：navigator.clipboard 不存在，写剪贴板必报 cannot read 'write'——直接转下载
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `fretboard-${Date.now()}.gif`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast('当前页面不支持写剪贴板（需 localhost/HTTPS），已改为下载 GIF', 'info');
+        return;
+      }
       try {
         await navigator.clipboard.write([new ClipboardItem({ 'image/gif': blob })]);
         showToast(`已复制 GIF（${(blob.size / 1024).toFixed(0)} KB）`, 'success');

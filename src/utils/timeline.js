@@ -157,3 +157,32 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 	});
 	return { states, specs: specs.slice(1), frameOf, sub, fx, total: now };
 }
+
+
+// 状态绝对时钟（播放器与导出共用的唯一真源）：
+// 状态 k 显示 [starts[k], starts[k+1])，时长 = hold_k + enterOf(k)；
+// enterOf(k) = 进入下一状态的切换动画（存在 states[k+1].transMs）——与 fx 轨道 t0/dur 严格同轴。
+// GIF/WebM 导出按此时刻表采样，预览按此表调度，两边行为按构造一致。
+export function stateClock(states, holdMs = 300, transMs = 200) {
+	// states[k].transMs 的语义 =「进入状态 k+1」的切换动画（pushState 写在前驱上）。
+	// 0 是合法瞬切（同刻边群只有首条带动画），只有真正缺失才回退——
+	// 曾误用 states[k+1]（反向一格）又把 0 当缺失，同时刻技法被凭空错开（"不同步"的根因）。
+	const enterOf = k => {
+		const own = states[k]?.transMs;
+		if (Number.isFinite(own)) return Math.max(0, own);
+		if (k > 0) {
+			const pv = states[k - 1]?.transMs;
+			if (Number.isFinite(pv)) return Math.max(0, pv);
+		}
+		return transMs;
+	};
+	const starts = [0];
+	for (let k = 0; k < states.length - 1; k++) {
+		const h = Number.isFinite(states[k]?.holdMs) ? Math.max(0, states[k].holdMs) : holdMs;
+		starts.push(starts[k] + h + enterOf(k));
+	}
+	const last = states.length - 1;
+	const holdLast = Number.isFinite(states[last]?.holdMs) ? Math.max(0, states[last].holdMs) : holdMs;
+	const total = starts[last] + holdLast + enterOf(last);
+	return { starts, total, enterOf };
+}
