@@ -64,7 +64,9 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		});
 		slP.forEach(p => {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
-			edge(Math.round(DOT * 0.5), { id: p.to, c: bTint(p) }, { id: p.from }, 60); // B 在行程一半就亮（提前约半个行程，明显可感）
+			const bData = base[p.to]; // sl 的 B 是帧数据真实音：用它自己的出生色（半程亮＝终态色，不会中途变色）
+			const bC = bData && bData.color && typeof bData.color === 'object' && bData.visibility === 'visible' ? { name: bData.color.name, custom: bData.color.custom } : bTint(p);
+			edge(Math.round(DOT * 0.5), { id: p.to, c: bC }, { id: p.from }, 60); // B 在行程一半就亮（提前约半个行程，明显可感）
 		});
 		rtP.forEach(p => {
 			edge(Math.round(RT_OUT * 0.5), { id: p.to, c: bTint(p) }, null, 60); // B 行程一半亮（与 sl/pre 同逻辑）
