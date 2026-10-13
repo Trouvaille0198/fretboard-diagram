@@ -1,5 +1,7 @@
-// 时间轴 v4 —— 并发轨道模型
-// 同帧所有技法并发：音符亮灭=全局边界合成数据步（diff 表达进出），光点轨迹=绝对时间 fx 轨道（不排队）。
+// 时间轴 v5 —— 技法独立时钟
+// 音符亮灭边：各技法自己的 enter（60-100ms 快速切换），按技法相对时刻排序依次应用；
+// 光点轨道：各技法独立的绝对时长（DOT/RT_OUT/RT_BACK），与边序列互不拉扯。
+// 同帧多技法 = 并发（同一窗起点、各走各的节奏），与单技法完全同观感。
 import { frameTintFromData, tintAt } from "../colorConfig.js";
 
 const DOT = 450, RT_OUT = 350, RT_BACK = 330, SETTLE = 60, HPMOMENT = 60, HPB = 190;
@@ -16,9 +18,8 @@ const lit = (data, id, color) => ({ ...data, [id]: color ? { type: "note", color
 export function expandTimeline(frames, transitions, holdMs, transMs) {
 	const H = holdMs > 0 ? holdMs : 300;
 	const T = transMs > 0 ? transMs : 200;
-	const states = [], specs = [], frameOf = [], sub = [];
-	const fx = []; // {spec, t0, dur} 绝对时间光点轨道
-	const btimes = []; // 每步的绝对时间
+	const states = [], specs = [], frameOf = [], sub = [], fx = [];
+	const btimes = [];
 	let now = 0;
 
 	frames.forEach((frame, i) => {
@@ -33,12 +34,9 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		const tech = pres.length + slP.length + rtP.length + hpP.length;
 
 		const frameStart = now;
-		const enter = i === 0 ? 0 : (tech ? SETTLE : T);
-		const t0 = frameStart + enter;
-		const events = [];
-		const mark = (t, on, off) => { if (t > frameStart) events.push({ t, on, off }); };
-		// 源音 A 的原始颜色：优先上一帧（sl 后 A 在本帧已熄灭，原色只在 frames[i-1]），
-		// 其次本帧仍亮着的数据（rt/hp A 保留在本帧）
+		const enter0 = i === 0 ? 0 : (tech ? SETTLE : T);
+		const t0 = frameStart + enter0;
+
 		const origColor = id => {
 			const pick = d => {
 				const n = d && d[id];
@@ -47,63 +45,98 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			return (i > 0 ? pick(frames[i - 1].data) : null) || pick(base);
 		};
 
+		// 每技法独立边：{t=技法相对钟, on, off, enter=该边动画时长}
+		const edges = [];
+		const edge = (t, on, off, enter) => edges.push({ t, on, off, enter });
 		pres.forEach(s => {
-			fx.push({ spec: { technique: null, pairs: [{ from: s.from, to: s.to, technique: "pre" }] }, t0, dur: DOT });
-			mark(t0, { id: s.from, c: ft }, null);
-			mark(t0 + DOT, null, { id: s.from });
+			edge(0, { id: s.from, c: ft }, null, SETTLE);
+			edge(DOT, null, { id: s.from }, 60);
 		});
 		slP.forEach(p => {
-			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0, dur: DOT });
-			mark(t0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }); // 途中：A 用原色（上一帧），B 灭
-			mark(t0 + DOT, { id: p.to, c: ft }, { id: p.from });
+			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
+			edge(DOT, { id: p.to, c: ft }, { id: p.from }, 60);
 		});
 		rtP.forEach(p => {
-			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0, dur: RT_OUT });
-			fx.push({ spec: { technique: null, pairs: [{ from: p.to, to: p.from, technique: "sl" }] }, t0: t0 + RT_OUT + 110, dur: RT_BACK });
-			mark(t0 + RT_OUT, { id: p.to, c: ft }, { id: p.from }); // 到 B：B=帧档色
-			mark(t0 + RT_OUT + 110 + RT_BACK, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }); // 回 A：恢复原色
+			edge(RT_OUT, { id: p.to, c: ft }, { id: p.from }, 60);
+			edge(RT_OUT + 110 + RT_BACK, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, 60);
 		});
 		hpP.forEach(p => {
-			mark(t0 + HPMOMENT, { id: p.to, c: ft }, null);
-			mark(t0 + HPMOMENT + HPB, null, { id: p.to });
+			edge(HPMOMENT, { id: p.to, c: ft }, null, 100);
+			edge(HPMOMENT + HPB, null, { id: p.to }, 100);
 		});
+		edges.sort((a, b) => a.t - b.t);
 
-		const uniq = [...new Set([t0, ...events.map(e => e.t)])].sort((a, b) => a - b);
-		const patchAt = t => {
-			let data = base;
-			events.forEach(e => { if (e.t <= t) { if (e.on) data = lit(data, e.on.id, e.on.c); if (e.off) data = lit(data, e.off.id, null); } });
-			return data;
-		};
-		uniq.forEach(t => {
-			const data = tech ? patchAt(t) : base;
-			states.push({ ...frame, data, holdMs: 0 });
-			btimes.push(t);
+		const pushState = (data, hold, isSub, inEnter) => {
+			states.push({ ...frame, data, holdMs: hold });
+			btimes.push(-1); // 占位：事后按累积时间回填
 			frameOf.push(i);
-			sub.push(!!tech && t > frameStart);
-			specs.push({ technique: null, pairs: [] });
+			sub.push(isSub);
+			if (states.length > 1) specs.push({ technique: null, pairs: [] });
+			if (states.length > 1) states[states.length - 2].transMs = inEnter;
+		};
+
+		if (!tech) {
+			pushState(base, H, false, enter0);
+			now = frameStart + enter0 + H;
+			return;
+		}
+
+		// 窗开启态 = base + 全部 t=0 边（各技法出发态并发合成）
+		let startData = base;
+		edges.forEach(e => { if (e.t === 0) { if (e.on) startData = lit(startData, e.on.id, e.on.c); if (e.off) startData = lit(startData, e.off.id, null); } });
+		pushState(startData, 0, false, enter0);
+
+		// t>0 的边按技法相对时刻依次应用：
+		// 等待 = 与上一边的间隙（技法自己的节奏，与光点轨道同步）；
+		// 动画 = 短促切换（60ms/hp 100ms）——不把间隙当动画时长（那是 v4 乱象根源）
+		let acc = t0;
+		let prevT = 0;
+		edges.filter(e => e.t > 0).forEach(e => {
+			const gap = e.t - prevT;
+			prevT = e.t;
+			// 上一态：先等 (gap - 切换时长)，再用切换时长过渡到本边状态
+			const waitPrev = Math.max(0, gap - e.enter);
+			states[states.length - 1].holdMs = waitPrev;
+			let data = states[states.length - 1].data;
+			if (e.on) data = lit(data, e.on.id, e.on.c);
+			if (e.off) data = lit(data, e.off.id, null);
+			pushState(data, 0, true, e.enter);
+			acc += gap;
 		});
-		const techEnd = events.length ? Math.max(...events.map(e => e.t)) : t0;
-		const frameDur = Math.max(H, techEnd + 60 - frameStart);
-		now = frameStart + frameDur;
+
+		// 帧尾驻留
+		const tail = Math.max(60, H - (acc - frameStart));
+		states[states.length - 1].holdMs = tail;
+		states[states.length - 1].transMs = 60;
+		now = acc + tail + 60;
+
+		// 光点轨道：技法独立绝对时长（与单技法完全一致，不受边序列影响）
+		// 窗开启态（含尾驻留）在 states 里的下标 = 末尾 - t>0边数 - 尾步1；fx 轨道与它对齐
+		const winIdx = Math.max(0, states.length - 1 - edges.filter(e => e.t > 0).length - 1);
+		const winT0 = btimes[winIdx] !== undefined ? btimes[winIdx] : t0;
+		pres.forEach(s => fx.push({ spec: { technique: null, pairs: [{ from: s.from, to: s.to, technique: "pre" }] }, t0: winT0, dur: DOT, frame: i, _winOffset: 0 }));
+		slP.forEach(p => fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0: winT0, dur: DOT, frame: i, _winOffset: 0 }));
+		rtP.forEach(p => {
+			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0: winT0, dur: RT_OUT, frame: i, _winOffset: 0 });
+			fx.push({ spec: { technique: null, pairs: [{ from: p.to, to: p.from, technique: "sl" }] }, t0: 0, dur: RT_BACK, frame: i, _rtBack: true });
+		});
 	});
 
-	// 回填：步 k 的进入动画时长 = 与上一边界的时间差；帧尾步停留补到帧尾；回环步=首步起点
-	const stepT = btimes.slice();
-	states.forEach((s, k) => {
-		if (k === 0) { s.transMs = 0; return; }
-		states[k - 1].transMs = Math.max(16, stepT[k] - stepT[k - 1]);
-	});
-	// 每帧尾步 hold 到帧尾（帧尾 = 下一帧首步时间；末帧 = total）
-	let idx = 0;
-	frames.forEach((frame, i) => {
-		const start = idx;
-		while (idx < frameOf.length && frameOf[idx] === i) idx++;
-		if (idx <= start) return;
-		const tLast = stepT[idx - 1];
-		const nextT = idx < stepT.length ? stepT[idx] : now;
-		const lastGap = Math.max(16, nextT - tLast - 60);
-		states[idx - 1].holdMs = Math.max(60, nextT - tLast - lastGap);
-		states[idx - 1].transMs = lastGap; // 尾步出边（到下一帧首步）
+	// 回填每步的可见时刻：t[i] = t[i-1] + hold(i-1) + trans(i-1)
+	let acc = 0;
+	for (let k = 0; k < states.length; k++) {
+		btimes[k] = acc;
+		acc += (states[k].holdMs || 0) + (states[k].transMs || 0);
+	}
+	// fx 轨道 t0 重定位到窗开启态的真实可见时刻
+	fx.forEach(x => {
+		if (x.frame === undefined) return;
+		const idxs = [];
+		frameOf.forEach((f, k) => { if (f === x.frame) idxs.push(k); });
+		if (!idxs.length) return;
+		const winT = btimes[idxs[0]]; // 窗开态 = 该帧首态
+		if (x._rtBack) x.t0 = winT + RT_OUT + 110;
+		else x.t0 = winT;
 	});
 	return { states, specs: specs.slice(1), frameOf, sub, fx, total: now };
 }
