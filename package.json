@@ -9,7 +9,8 @@
         "smoke:core": "node scripts/smoke-core.mjs",
         "smoke:ui": "node scripts/smoke-ui.mjs",
         "sample:master": "node scripts/sample-master.mjs",
-        "sample:master:browser": "node scripts/sample-master.mjs --browser"
+        "sample:master:browser": "node scripts/sample-master.mjs --browser",
+        "audit:colors": "node scripts/color-audit.mjs"
     },
     "dependencies": {
         "gifenc": "^1.0.3",

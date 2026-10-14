@@ -68,7 +68,11 @@ console.log("== pre 前置划弦 ==");
 	F[1].preSlides = [{ from: "f1-s2", to: "f4-s2" }];
 	const r = run(F, [{ technique: null, pairs: [] }]);
 	const clock = stateClock(r.states, 300, 200);
-	A("pre A 恒亮原色", r.states.every(s => vis(s, "f4-s2") === T[0]));
+	A("pre 目标先灭后复亮（原色）", (() => {
+		const win = r.states.find(s => s.holdMs !== undefined && !vis(s, "f4-s2")); // 窗口态目标灭
+		const lit = r.states[r.states.length - 1];
+		return !!win && vis(lit, "f4-s2") === T[0];
+	})());
 	const bOn = r.states.findIndex(s => vis(s, "f1-s2"));
 	A("pre B 半程亮后瞬灭", bOn > 0 && vis(r.states[bOn + 1], "f1-s2") === null);
 	const fx = r.fx[0];

@@ -53,10 +53,28 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 
 	// 本步起点（Ctrl+Z 回滚点）：在结构边界（跳帧/加删帧/开会话/载入/拖拽成弦后）手动设置
 
-	const commitData = useCallback((nextData) => {
+	// 帧内撤销历史（Ctrl+Z/Ctrl+Shift+Z 多步）：结构边界（跳帧/加删帧/载入）重置，手势与笔迹连续可撤
+	const undoRef = useRef({ list: [], idx: -1, bypass: false });
+	const commitDataRaw = useCallback((nextData) => {
 		dataRef.current = nextData;
 		setData(nextData);
 	}, [dataRef, setData]);
+	const resetUndoHistory = useCallback((data) => {
+		undoRef.current = { list: [JSON.stringify(data)], idx: 0, bypass: false };
+	}, []);
+	const commitData = useCallback((nextData) => {
+		const u = undoRef.current;
+		if (!u.bypass) {
+			const str = JSON.stringify(nextData);
+			if (u.list[u.idx] !== str) {
+				u.list = u.list.slice(0, u.idx + 1);
+				u.list.push(str);
+				if (u.list.length > 60) u.list.shift();
+				u.idx = u.list.length - 1;
+			}
+		}
+		commitDataRaw(nextData);
+	}, [commitDataRaw]);
 
 	// 冲刷：把当前板面即时合入帧序列与过渡（不经过 250ms 防抖），供落盘/跳帧前强制一致
 	// （同步写回 framesRef/transitionsRef——setState 异步，调用方立刻读 ref 必须拿到新值）
@@ -107,6 +125,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		setPendingFrom(null);
 		setTechnique(null);
 		stepStartRef.current = frame.data;
+		resetUndoHistory(frame.data);
 	}, [applyBoard, commitData, viewMode, flushBoard]);
 
 
@@ -357,6 +376,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		commitData(applied.data);
 		if (applyBoard) applyBoard(applied);
 		stepStartRef.current = applied.data;
+		resetUndoHistory(applied.data);
 	}, [viewMode, repaintBirthColors, commitData, applyBoard]);
 
 	// 删帧：删除当前编辑帧（最后一帧不可删），指针停到前一帧（删第 1 帧则停到原第 2 帧）
@@ -397,6 +417,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			commitData(board.data);
 			if (applyBoard) applyBoard(board);
 			stepStartRef.current = board.data;
+		resetUndoHistory(board.data);
 		}
 	}, [viewMode, commitData, applyBoard, repaintBirthColors]);
 
@@ -583,7 +604,6 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 				return { ...spec, pairs };
 			}));
 		}
-		stepStartRef.current = dataRef.current;
 		return true;
 	}, [commitData, dataRef, visibility]);
 
@@ -621,14 +641,29 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (applyBoard) applyBoard(prev);
 	}, [viewMode, commitData, applyBoard, visibility]);
 
-	// 撤销本步：板面回到本步起点（最新帧定格时的状态）
+	// Ctrl+Z：帧内多步撤销（板面快照栈回退；预览/非动态不可用）
 	const undoStep = useCallback(() => {
-		if (!isDynamic || !stepStartRef.current) return false;
-		commitData(stepStartRef.current);
+		if (!isDynamic || viewMode !== "edit") return false;
+		const u = undoRef.current;
+		if (u.idx <= 0) return false;
+		u.idx--;
+		u.bypass = true;
+		try { commitDataRaw(JSON.parse(u.list[u.idx])); } finally { u.bypass = false; }
 		setPairs([]);
 		setPendingFrom(null);
 		return true;
-	}, [isDynamic, commitData]);
+	}, [isDynamic, viewMode, commitDataRaw]);
+
+	// Ctrl+Shift+Z：帧内多步重做
+	const redoStep = useCallback(() => {
+		if (!isDynamic || viewMode !== "edit") return false;
+		const u = undoRef.current;
+		if (u.idx >= u.list.length - 1) return false;
+		u.idx++;
+		u.bypass = true;
+		try { commitDataRaw(JSON.parse(u.list[u.idx])); } finally { u.bypass = false; }
+		return true;
+	}, [isDynamic, viewMode, commitDataRaw]);
 
 	// 动态模式普通点击：外部直接给某音写状态（自动配色用）
 	// 写色对象时记出生帧 birth：颜色语义=音符永远显示其出生帧的档位色
@@ -643,7 +678,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		isDynamic, frames, transitions, technique, pairs, pendingFrom,
 		sessionClip, clipVersion,
 		toggleQ, loadClip, setTechnique,
-		markNote, commitFrame, cancelMarking, undoStep, paintNote,
+		markNote, commitFrame, cancelMarking, undoStep, redoStep, paintNote,
 		beginSlideDrag, hoverSlideTarget, endSlideDrag, isDragging, consumeDragClick, markDragMove, getDragInfo,
 		editIdx, gotoFrame, startSession, mapFrames, mapTransitions, viewMode, applyPreviewFrames, newClip, revertToPrevFrame,
 		syncFrame, addFrame, deleteFrame, persistClip, persistedOnce

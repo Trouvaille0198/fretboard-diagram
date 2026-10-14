@@ -30,7 +30,7 @@ async function cdp() {
 	const pending = new Map();
 	ws.on("message", m => { const d = JSON.parse(m); if (d.id && pending.has(d.id)) { pending.get(d.id)(d); pending.delete(d.id); } });
 	const send = (method, params = {}) => new Promise(r => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
-	const raw = async (expr) => send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true });
+	const raw = async (expr, timeoutMs = 120000) => send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true, timeout: timeoutMs });
 	// 上下文销毁（页面加载/跳转竞态）会返回 error 且无 result——静默重试而不是吞成 undefined
 	const ev = async (expr) => {
 		for (let i = 0; i < 6; i++) {
@@ -56,6 +56,13 @@ for (let i = 0; i < 40 && !booted; i++) { await sleep(300); try { booted = await
 if (!booted) { console.error("应用未加载完成（40×300ms 内无 svg）——检查 preview 服务与 URL"); await c.close(); process.exit(1); }
 console.log("应用已加载");
 await sleep(1200); // 等事件处理器/会话稳定（过早 eval 会撞上加载期 context 更替）
+// 前台保障：隐藏标签节流会让页内等待全部×4 以上，套件超时像挂死
+for (let i = 0; i < 5 && !(await c.ev("document.hasFocus() && !document.hidden").catch(() => false)); i++) {
+	await c.activate();
+	await sleep(700);
+}
+const fgOK = await c.ev("document.hasFocus() && !document.hidden").catch(() => false);
+console.log(fgOK ? "标签前台 ✓" : "⚠ 标签在后台（节流可能拖垮套件）——保持 Chrome 窗口前台重跑");
 
 // ---------- 页内自治用例（单 eval 单 context：免疫 CDP 跨步竞态） ----------
 const suiteSrc = `(async () => {
@@ -73,6 +80,7 @@ const suiteSrc = `(async () => {
 	const clearSmoke = () => { try { const arr = JSON.parse(localStorage.getItem('fretboard-clips') || '[]').filter(x => !String(x.id).startsWith('smoke-')); localStorage.setItem('fretboard-clips', JSON.stringify(arr)); localStorage.removeItem('fretboard-last-clip'); } catch (e) {} };
 	clearSmoke();
 
+	localStorage.setItem('__smokeProgress', 'route');
 	console.log('== 路由 ==');
 	key('q');
 	await sleep(1000);
@@ -84,6 +92,7 @@ const suiteSrc = `(async () => {
 	A('新建动图 → hash 更新', location.hash !== h0 && location.hash.includes('c=clip-'), location.hash);
 	A('新建后 编辑 1/1', badge().includes('1/1'), badge());
 
+	localStorage.setItem('__smokeProgress', 'edit');
 	console.log('== 动态编辑 ==');
 	A('点音点亮', clickNote('f5-s2') && (await sleep(700), noteLit('f5-s2')));
 	const add = document.querySelector('.dyn-thumb-add');
@@ -99,6 +108,7 @@ const suiteSrc = `(async () => {
 	await sleep(800);
 	A('Ctrl+D 板面还原不崩', !!document.querySelector('svg'));
 
+	localStorage.setItem('__smokeProgress', 'play');
 	console.log('== 播放器 ==');
 	const played = btn('▶');
 	await sleep(600);
@@ -107,6 +117,7 @@ const suiteSrc = `(async () => {
 	await sleep(300);
 	A('▶ 播放/⏹ 停止', played && playing);
 
+	localStorage.setItem('__smokeProgress', 'gesture');
 	console.log('== 手势标注 ==');
 	btn('✎');
 	await sleep(500);
@@ -159,23 +170,26 @@ const suiteSrc = `(async () => {
 		if (!preDone) A('pre 不被追加帧继承（手势未注册=SKIP）', true, 'skip');
 	} else A('pre 不被追加帧继承（前置缺失=SKIP）', true, 'skip');
 
+	localStorage.setItem('__smokeProgress', 'dock');
 	console.log('== 动图堆 ==');
 	A('堆计数徽标', !!document.querySelector('.dock-count'));
 
+	localStorage.setItem('__smokeProgress', 'export');
 	console.log('== 导出 ==');
 	blobs.length = 0;
 	const gifBtn = btn('GIF');
 	let gif = null;
-	for (let i = 0; i < 70 && !gif; i++) { await sleep(400); gif = blobs.find(x => x.type === 'image/gif') || null; }
+	for (let i = 0; i < 45 && !gif; i++) { await sleep(400); gif = blobs.find(x => x.type === 'image/gif') || null; }
 	A('GIF 导出产出 blob', gifBtn && !!gif, gif ? gif.size + 'B' : 'no blob');
 
+	localStorage.setItem('__smokeProgress', 'ctrlc');
 	console.log('== Ctrl+C 守卫 ==');
 	const had = Object.getOwnPropertyDescriptor(Navigator.prototype, 'clipboard');
 	try { Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true }); } catch (e) {}
 	blobs.length = 0;
 	key('c', { ctrlKey: true });
 	let guard = null;
-	for (let i = 0; i < 60 && !guard; i++) { await sleep(400); if (blobs.some(x => x.type === 'image/gif')) guard = 'download'; }
+	for (let i = 0; i < 40 && !guard; i++) { await sleep(400); if (blobs.some(x => x.type === 'image/gif')) guard = 'download'; }
 	try { if (had) Object.defineProperty(navigator, 'clipboard', { ...had, configurable: true }); } catch (e) {}
 	A('Ctrl+C 无剪贴板 → 回落下载', guard === 'download', String(guard));
 
@@ -186,6 +200,7 @@ let results = null;
 try { results = await c.ev(suiteSrc); }
 catch (e) { console.error("页内用例执行异常:", e.message); results = null; }
 if (!Array.isArray(results)) {
+		try { console.error("挂起位置:", await c.ev(`localStorage.getItem('__smokeProgress')`)); } catch (e) {}
 	console.error("页内用例未返回结果数组（got " + typeof results + "）——转储原始响应：");
 	try { console.error(JSON.stringify(await c.rawT(suiteSrc)).slice(0, 500)); } catch (e) { console.error("raw 失败:", e.message); }
 }
