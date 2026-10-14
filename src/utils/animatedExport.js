@@ -138,9 +138,18 @@ export async function exportWebmAnimation({ states, specs, boardImages, viewBox,
 	document.body.appendChild(canvas);
 
 	const stream = canvas.captureStream(30);
-	const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-		? 'video/webm;codecs=vp9'
-		: 'video/webm';
+	let mime = null;
+	if (opts.preferMp4) {
+		// MP4/H.264：微信等聊天软件原生自动播放（WebM 在多数聊天端不能直接播）
+		for (const m of ['video/mp4;codecs=avc1.42E01E', 'video/mp4']) {
+			if (MediaRecorder.isTypeSupported(m)) { mime = m; break; }
+		}
+	}
+	if (!mime) {
+		mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+			? 'video/webm;codecs=vp9'
+			: 'video/webm';
+	}
 	const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2500000 });
 	const chunks = [];
 	recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };

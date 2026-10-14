@@ -255,6 +255,8 @@ function Fretboard({ mode = 'normal' }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [badgeEditing, setBadgeEditing] = useState(false);
+
   // 会话动图身份同步进 URL：新建/载入/续编后地址栏立即反映当前动图，刷新不再看错图
   useEffect(() => {
     if (mode !== 'dynamic') return;
@@ -1248,6 +1250,10 @@ function Fretboard({ mode = 'normal' }) {
       labelColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#dfe7ee',
       noteStyle: resolveNoteVisualStyle() || undefined
     };
+    if (format === 'mp4') {
+      const outMp4 = await buildExportBlob('webm-mp4');
+      return outMp4;
+    }
     if (format === 'svganim') {
       // 动画 SVG（SMIL）：矢量自包含动图——无限清晰、体积极小；与播放器同源时钟
       const { buildAnimatedSvg } = await import('./utils/animatedSvg');
@@ -1260,7 +1266,7 @@ function Fretboard({ mode = 'normal' }) {
     }
     const out = format === 'gif'
       ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf } })
-      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf } });
+      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf, preferMp4: format === 'webm-mp4' } });
     return out;
   }, [includeMarkers, showNotes, horizontalCrop, verticalCrop]);
 
@@ -1272,12 +1278,13 @@ function Fretboard({ mode = 'normal' }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `fretboard-${Date.now()}.${format}`;
+      const ext = format === 'svganim' ? 'svg' : (format === 'webm-mp4' ? 'mp4' : format);
+      a.download = `fretboard-${Date.now()}.${ext}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-      showToast(`已导出 ${format.toUpperCase()}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
+      showToast(`已导出 ${ext.toUpperCase()}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
     } catch (error) {
       console.error('导出失败:', error);
       showToast(`导出失败: ${error.message}`, 'error');
@@ -1286,45 +1293,50 @@ function Fretboard({ mode = 'normal' }) {
     }
   }, [showToast, buildExportBlob]);
 
-  // Ctrl+C（动态模式）：复制 GIF 到剪贴板；非安全上下文（无 clipboard API）自动转下载；剪贴板不支持 GIF 时回落首帧 PNG
+  // Ctrl+C（动态模式）：双格式复制——图像槽=首帧 PNG（聊天/文档直接粘贴），
+  // 文本槽=动画 SVG 源码（编辑器粘贴存 .svg 即得会动的矢量图）。
+  // 非安全上下文（无 clipboard API）自动转下载 SVG；GIF 仍走下载按钮。
   const copyGifToClipboard = useCallback(async () => {
     const canClipboard = typeof ClipboardItem !== 'undefined' && !!navigator.clipboard && typeof navigator.clipboard.write === 'function';
     try {
-      setExporting('gif');
-      const blob = await buildExportBlob('gif');
+      setExporting('svganim');
+      const svgBlob = await buildExportBlob('svganim');
       if (!canClipboard) {
-        // 页面经 http://IP 等非安全上下文打开：navigator.clipboard 不存在，写剪贴板必报 cannot read 'write'——直接转下载
-        const url = URL.createObjectURL(blob);
+        // 页面经 http://IP 等非安全上下文打开：navigator.clipboard 不存在——直接下载动画 SVG（秒级，比 GIF 快得多）
+        const url = URL.createObjectURL(svgBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `fretboard-${Date.now()}.gif`;
+        a.download = `fretboard-${Date.now()}.svg`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
-        showToast('当前页面不支持写剪贴板（需 localhost/HTTPS），已改为下载 GIF', 'info');
+        showToast('当前页面不支持写剪贴板（需 localhost/HTTPS），已改为下载动画 SVG', 'info');
         return;
       }
-      try {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/gif': blob })]);
-        showToast(`已复制 GIF（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
-      } catch (e) {
-        const png = await new Promise(async (resolve) => {
-          const bitmap = await createImageBitmap(blob);
-          const cv = document.createElement('canvas');
-          cv.width = bitmap.width; cv.height = bitmap.height;
-          cv.getContext('2d').drawImage(bitmap, 0, 0);
-          cv.toBlob(resolve, 'image/png');
-        });
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-        showToast('剪贴板不支持 GIF，已复制首帧 PNG（GIF 请用下载按钮）', 'info');
-      }
+      // 首帧 PNG（取展开后首状态栅格）
+      const { renderBoardImage } = await import('./components/ScorePieces');
+      const settings = animSettingsRef.current;
+      const frames = framesRef.current;
+      const wStart = Math.min(...frames.map(f => f.startFret)), wEnd = Math.max(...frames.map(f => f.endFret));
+      const { expandTimeline } = await import('./utils/timeline');
+      const first = expandTimeline(frames, transitionsRef.current, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200).states[0];
+      const img = await renderBoardImage({ ...first, startFret: wStart, endFret: wEnd }, Number(settings.width) || 720, { includeMarkers, showNotes, horizontalCrop, verticalCrop });
+      const png = await new Promise(resolve => {
+        const cv = document.createElement('canvas');
+        cv.width = img.naturalWidth || 720; cv.height = img.naturalHeight || 268;
+        cv.getContext('2d').drawImage(img, 0, 0);
+        cv.toBlob(resolve, 'image/png');
+      });
+      const item = new ClipboardItem({ 'image/png': png, 'text/plain': svgBlob });
+      await navigator.clipboard.write([item]);
+      showToast(`已复制：图像=首帧PNG，文本=动画SVG源码（${(svgBlob.size / 1024).toFixed(0)} KB，粘贴存 .svg 即动）`, 'success');
     } catch (error) {
       showToast(`复制失败: ${error.message}`, 'error');
     } finally {
       setExporting(null);
     }
-  }, [showToast, buildExportBlob]);
+  }, [showToast, buildExportBlob, includeMarkers, showNotes, horizontalCrop, verticalCrop]);
 
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
   const handlerParamsRef = useRef();
@@ -1405,11 +1417,29 @@ function Fretboard({ mode = 'normal' }) {
           </h1>
           <div className="datetime">{currentDateTime}</div>
           {dynamic.isDynamic && (
-            <div className="dyn-badge" title={dynamic.sessionClip?.id ? `存档：${dynamic.sessionClip.name}` : '新动图（尚未定格）'}>
+            <div
+              className="dyn-badge"
+              style={dynamic.sessionClip?.id ? { cursor: 'text' } : undefined}
+              onClick={() => { if (dynamic.sessionClip?.id) setBadgeEditing(true); }}
+              title={dynamic.sessionClip?.id ? '点击改名' : '新动图（尚未定格）'}>
               <span className="dyn-badge-dot" />
-              {(dynamic.sessionClip && (dynamic.persistedOnce || dynamic.viewMode === 'preview'))
-                ? (dynamic.sessionClip.name.length > 10 ? dynamic.sessionClip.name.slice(0, 10) + '…' : dynamic.sessionClip.name)
-                : '新动图'}
+              {badgeEditing
+                ? <input
+                    autoFocus
+                    defaultValue={dynamic.sessionClip?.name || ''}
+                    onBlur={e => { dynamic.renameClip(e.target.value); setBadgeEditing(false); }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { dynamic.renameClip(e.currentTarget.value); setBadgeEditing(false); }
+                      if (e.key === 'Escape') setBadgeEditing(false);
+                      e.stopPropagation();
+                    }}
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
+                    style={{ width: 110, background: 'transparent', border: 'none', outline: 'none', color: 'inherit', font: 'inherit', padding: 0 }}
+                  />
+                : (dynamic.sessionClip && (dynamic.persistedOnce || dynamic.viewMode === 'preview'))
+                  ? (dynamic.sessionClip.name.length > 10 ? dynamic.sessionClip.name.slice(0, 10) + '…' : dynamic.sessionClip.name)
+                  : '新动图'}
               <span className="dyn-badge-sep">|</span>
               {dynamic.viewMode === 'preview'
                 ? `${dynamic.frames.length} 帧`
