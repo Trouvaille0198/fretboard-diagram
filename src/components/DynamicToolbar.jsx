@@ -108,6 +108,11 @@ export function DynamicToolbar({
       <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('svganim')} title="导出动画 SVG（矢量动图：无限清晰、体积极小）">
         {exporting === 'svganim' ? '…' : 'SVG'}
       </button>
+      {typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E') && (
+        <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('mp4')} title="导出 MP4 视频（微信等聊天软件可直接播放）">
+          {exporting === 'mp4' ? '…' : 'MP4'}
+        </button>
+      )}
       <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('webm')} title={td.exportWebm ?? '导出 WebM 视频'}>
         {exporting === 'webm' ? '…' : 'WebM'}
       </button>
