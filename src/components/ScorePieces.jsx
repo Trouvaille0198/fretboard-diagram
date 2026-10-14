@@ -211,7 +211,8 @@ export async function renderBoardImage(state, width, options = {}) {
     throw new Error('板面渲染失败');
   }
   const clone = inlineCSS(svgEl.cloneNode(true), svgEl); // 原始树=本离屏 svg（此前误抄主舞台，导出帧全同）
-  const vb = (clone.getAttribute('viewBox') || '0 0 800 400').split(/\s+/).map(Number);
+  const vbStr = clone.getAttribute('viewBox') || '0 0 800 400';
+  const vb = vbStr.split(/\s+/).map(Number);
   // 水平/垂直截断：由调用方统一计算的裁剪框（跨全部帧联合范围，保证动画各帧同视野不跳动）
   let [vx, vy, vw, vh] = vb;
   if (options.cropBox && options.cropBox.w > 0) {
@@ -226,6 +227,11 @@ export async function renderBoardImage(state, width, options = {}) {
   clone.setAttribute('style', `background-color:${bg};`);
 
   const svgString = new XMLSerializer().serializeToString(clone);
+  if (options.svgOnly) {
+    root.unmount();
+    host.remove();
+    return svgString;
+  }
   const img = await new Promise((resolve, reject) => {
     const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);

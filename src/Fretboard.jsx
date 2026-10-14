@@ -24,7 +24,7 @@ import { isLoggedIn } from './utils/api';
 import { exportGifAnimation, exportWebmAnimation } from './utils/animatedExport';
 import { Toast } from './components/Toast';
 import { createPortal } from 'react-dom';
-import { expandTimeline, stateClock } from './utils/timeline';
+import { expandTimeline, stateClock, END_PAUSE_MS } from './utils/timeline';
 import { FretboardSVG } from './components/FretboardSVG';
 import { useLanguage } from './i18n';
 
@@ -1173,7 +1173,10 @@ function Fretboard({ mode = 'normal' }) {
     const hold = Number.isFinite(holdMsSelf) ? holdMsSelf : holdFull;
     const trans = clock.enterOf(playingIdx);
     const elapsed = performance.now() - playStartRef.current;
-    const wait = Math.max(0, tAbs + hold + trans - elapsed);
+    const atEnd = playingIdx === steps.length - 1;
+    // 末态多停一拍再回环（非循环则直接停）；导出侧 buildPlan 同步加同样的尾巴，两边观感一致
+    const endPause = atEnd && loopRef.current ? END_PAUSE_MS : 0;
+    const wait = Math.max(0, tAbs + hold + trans + endPause - elapsed);
     const timer = setTimeout(() => {
       setPlayingIdx(prev => {
         if (prev === null) return null;
@@ -1245,6 +1248,16 @@ function Fretboard({ mode = 'normal' }) {
       labelColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#dfe7ee',
       noteStyle: resolveNoteVisualStyle() || undefined
     };
+    if (format === 'svganim') {
+      // 动画 SVG（SMIL）：矢量自包含动图——无限清晰、体积极小；与播放器同源时钟
+      const { buildAnimatedSvg } = await import('./utils/animatedSvg');
+      const svgStr = await buildAnimatedSvg({
+        states: exStates, fx: exFx || [], frameOf: exFrameOf,
+        labelColor: opts.labelColor,
+        renderSvg: async (state) => renderBoardImage({ ...state, startFret: wStart, endFret: wEnd }, Number(settings.width) || 720, { ...displayOpts, svgOnly: true }),
+      });
+      return new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    }
     const out = format === 'gif'
       ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf } })
       : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf } });
