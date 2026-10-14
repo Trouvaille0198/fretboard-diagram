@@ -110,7 +110,8 @@ export const FretboardSVG = React.memo(function FretboardSVG({
   setData,
   setConnectionToolbarVisible,
   setSelectedConnection,
-  showNotes
+  showNotes,
+  hideInactiveNotes
 }) {
   const { t } = useLanguage();
   const ts = t?.svg ?? {};
@@ -294,8 +295,9 @@ export const FretboardSVG = React.memo(function FretboardSVG({
       <g className="notes" ref={notesElementRef}>
         {notes.map(note => {
           const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
-          // 显示音符=关：只保留激活音（visible/selected），未激活的暗圆彻底不渲染（主舞台与导出同源）
-          if (showNotes === false) {
+          // 查看开关："显示音符"关=主舞台只显示激活音（查看用）；导出路径由 ScoreBoard 的
+          // hideInactiveNotes 恒定控制（永远干净），两者互不影响。
+          if (hideInactiveNotes === true || showNotes === false) {
             const nv = noteData.visibility || visibility;
             if (nv !== 'visible' && nv !== 'selected') return null;
           }
