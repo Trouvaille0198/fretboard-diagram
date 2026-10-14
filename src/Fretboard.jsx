@@ -1341,7 +1341,9 @@ function Fretboard({ mode = 'normal' }) {
         cv.getContext('2d').drawImage(img, 0, 0);
         cv.toBlob(resolve, 'image/png');
       });
-      const item = new ClipboardItem({ 'image/png': png, 'text/plain': svgBlob });
+      // ClipboardItem 要求 blob.type 与 MIME 键严格一致——SVG 源码必须包成 text/plain 新 blob
+      const svgTextBlob = new Blob([await svgBlob.text()], { type: 'text/plain' });
+      const item = new ClipboardItem({ 'image/png': png, 'text/plain': svgTextBlob });
       await navigator.clipboard.write([item]);
       showToast(`已复制：图像=首帧PNG，文本=动画SVG源码（${(svgBlob.size / 1024).toFixed(0)} KB，粘贴存 .svg 即动）`, 'success');
     } catch (error) {
