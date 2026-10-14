@@ -1324,7 +1324,7 @@ function Fretboard({ mode = 'normal' }) {
       const name = `fretboard-${Date.now()}.svg`;
       const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
       let savedTo = null;
-      if (rememberedDirSupported()) savedTo = await saveToRememberedDir(name, svgBlob, { pickIfNone: false });
+      if (rememberedDirSupported()) savedTo = await saveToRememberedDir(name, svgBlob); // 与⬇导出同逻辑：有缓存目录直接用，没有弹一次记住
       if (savedTo) {
         showToast(`已保存「${savedTo}」/${name}（${(svgBlob.size / 1024).toFixed(0)} KB）`, 'success');
       } else {
