@@ -294,6 +294,11 @@ export const FretboardSVG = React.memo(function FretboardSVG({
       <g className="notes" ref={notesElementRef}>
         {notes.map(note => {
           const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
+          // 显示音符=关：只保留激活音（visible/selected），未激活的暗圆彻底不渲染（主舞台与导出同源）
+          if (showNotes === false) {
+            const nv = noteData.visibility || visibility;
+            if (nv !== 'visible' && nv !== 'selected') return null;
+          }
           const currentColor = noteData.color || 'white';
           const currentColor2 = noteData.color2 || null;
           const splitMode = getNoteSplitMode(noteData);
