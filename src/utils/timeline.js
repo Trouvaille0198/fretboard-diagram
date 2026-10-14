@@ -57,11 +57,24 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 		})();
 		// 中键链音：同帧新建的音按用户连接顺序依次点亮（上一帧已亮的不闪断，直接跳过）
 		const prevLitIds = i > 0 ? new Set(Object.entries(frames[i - 1].data || {}).filter(([, n]) => n && typeof n === "object" && (n.visibility === "visible" || n.visibility === "selected")).map(([id]) => id)) : new Set();
-		const chain = [...new Set(Array.isArray(frame.chain) ? frame.chain : [])].filter(id => id && !prevLitIds.has(id));
-		const tech = pres.length + slP.length + rtP.length + hpP.length + (chain.length >= 2 ? 1 : 0);
+		// 链接表 → 连通分量（各链内部依次激活，多条链并行）
+		const chainLinks = chainLinksOf(frame).filter(l => !prevLitIds.has(l.from) && !prevLitIds.has(l.to));
+		const chainOrders = (() => {
+			const succ = new Map(), hasIn = new Set(), ids = new Set();
+			chainLinks.forEach(l => { succ.set(l.from, l.to); hasIn.add(l.to); ids.add(l.from); ids.add(l.to); });
+			const heads = [...ids].filter(id => !hasIn.has(id));
+			return heads.map(h => {
+				const order = [h];
+				let cur = h, guard = 0;
+				while (succ.has(cur) && guard++ < 64) { cur = succ.get(cur); if (order.includes(cur)) break; order.push(cur); }
+				return order;
+			});
+		})();
+
+		const tech = pres.length + slP.length + rtP.length + hpP.length + (chainLinks.length >= 1 ? 1 : 0);
 		// 本帧技法涉及的全部音符 id（涟漪静默用）
 		const techIds = new Set();
-		chain.forEach(id => techIds.add(id));
+		chainOrders.forEach(o => o.forEach(id => techIds.add(id)));
 		pres.forEach(s => { techIds.add(s.from); techIds.add(s.to); });
 		slP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
 		rtP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
@@ -109,13 +122,15 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 			edge(HPMOMENT, { id: p.to, c: bTint(p) }, null, 100);
 			edge(HPMOMENT + HPB, null, { id: p.to }, 100);
 		});
-		// 链音边：窗开全灭，第 k 个在 k*CHAIN_GAP 时刻点亮（第 1 个随窗开即亮）
-		chain.forEach((id, k) => {
+		// 链音边：各链窗开全灭，链内第 k 个在 k*CHAIN_GAP 点亮（第 1 个随窗开即亮）；多条链并行
+		const colorOfChain = id => {
 			const bData = base[id];
-			const c = bData && bData.color && typeof bData.color === "object" && bData.visibility === "visible" ? { name: bData.color.name, custom: bData.color.custom } : ft;
+			return bData && bData.color && typeof bData.color === "object" && bData.visibility === "visible" ? { name: bData.color.name, custom: bData.color.custom } : ft;
+		};
+		chainOrders.forEach(order => order.forEach((id, k) => {
 			edge(0, null, { id }, SETTLE);
-			edge(k === 0 ? 0 : CHAIN_GAP * k, { id, c }, null, 60);
-		});
+			edge(k === 0 ? 0 : CHAIN_GAP * k, { id, c: colorOfChain(id) }, null, 60);
+		}));
 
 		edges.sort((a, b) => a.t - b.t);
 
@@ -235,6 +250,19 @@ export function stateClock(states, holdMs = 300, transMs = 200) {
 	const holdLast = Number.isFinite(states[last]?.holdMs) ? Math.max(0, states[last].holdMs) : holdMs;
 	const total = starts[last] + holdLast + enterOf(last);
 	return { starts, total, enterOf };
+}
+
+
+// 链音归一化：frame.chain 支持两种格式——链接表 [{from,to}]（新，可多条独立链）
+// 与路径 [id,id,...]（旧，单条）。统一输出链接表。
+export function chainLinksOf(frame) {
+	const raw = Array.isArray(frame && frame.chain) ? frame.chain : [];
+	if (raw.length && typeof raw[0] === 'string') {
+		const links = [];
+		for (let k = 1; k < raw.length; k++) links.push({ from: raw[k - 1], to: raw[k] });
+		return links;
+	}
+	return raw.filter(l => l && typeof l === 'object' && l.from && l.to);
 }
 
 // 累积态：激活过的音永不熄灭（"存在过的点不消失"样式）。
