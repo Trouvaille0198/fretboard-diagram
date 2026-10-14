@@ -641,6 +641,19 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (applyBoard) applyBoard(prev);
 	}, [viewMode, commitData, applyBoard, visibility]);
 
+	// 改名当前动图（顶部胶囊点按）：会话 + 已落盘同步更新
+	const renameClip = useCallback((name) => {
+		const n = String(name || '').trim().slice(0, 30);
+		if (!n || !sessionClipRef.current) return false;
+		setSessionClip(prev => (prev ? { ...prev, name: n } : prev));
+		try {
+			const arr = loadClips();
+			const i = arr.findIndex(c => c.id === sessionClipRef.current.id);
+			if (i >= 0) { arr[i] = { ...arr[i], name: n }; saveClip(arr[i]); }
+		} catch (e) { /* 忽略存储异常 */ }
+		return true;
+	}, []);
+
 	// 删除技法标注：当前帧进入的 pair（sl/rt/hp）与 preSlide（pre）按 from+to 匹配删除
 	const deletePair = useCallback((from, to) => {
 		const idx = editIdxRef.current;
@@ -697,7 +710,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		isDynamic, frames, transitions, technique, pairs, pendingFrom,
 		sessionClip, clipVersion,
 		toggleQ, loadClip, setTechnique,
-		markNote, commitFrame, cancelMarking, undoStep, redoStep, deletePair, paintNote,
+		markNote, commitFrame, cancelMarking, undoStep, redoStep, deletePair, renameClip, paintNote,
 		beginSlideDrag, hoverSlideTarget, endSlideDrag, isDragging, consumeDragClick, markDragMove, getDragInfo,
 		editIdx, gotoFrame, startSession, mapFrames, mapTransitions, viewMode, applyPreviewFrames, newClip, revertToPrevFrame,
 		syncFrame, addFrame, deleteFrame, persistClip, persistedOnce

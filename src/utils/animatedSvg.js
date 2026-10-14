@@ -112,6 +112,86 @@ export async function buildAnimatedSvg({ states, fx, frameOf, renderSvg, labelCo
 		}
 	});
 
+	// g 位置（data-x/y 优先，回退 translate 解析）
+	const posOfG = (root, gid) => {
+		const g = root.querySelector('#' + gid);
+		if (!g) return null;
+		const dx = parseFloat(g.getAttribute('data-x')), dy = parseFloat(g.getAttribute('data-y'));
+		if (Number.isFinite(dx) && Number.isFinite(dy)) return { x: dx, y: dy };
+		const m = (g.getAttribute('transform') || '').match(/translate\(\s*([\d.-]+)[\s,]+([\d.-]+)/);
+		return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : null;
+	};
+	const fxEnterLayer = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
+	fxEnterLayer.setAttribute('class', 'fx-enter-smil');
+	svg.appendChild(fxEnterLayer);
+
+	// 每状态进入窗口的差分 fx（与播放器/GIF 的 desc 层同口径）：
+	// 退场音=淡出圆（r 20→15 easeInCubic，op 0.9→0）；进场音=涟漪环（r 20→38 easeOutCubic，op 0.95*(1-u)^1.4）
+	const easeInCubic = u => u * u * u;
+	const easeOutCubic = u => 1 - Math.pow(1 - u, 3);
+	const visSet = st => new Set(Object.entries((st && st.data) || {}).filter(([, n]) => n && (n.visibility === 'visible' || n.visibility === 'selected')).map(([id]) => id));
+	const mkTrack = (pts, totalMs) => {
+		const times = pts.map(p => Math.max(0, Math.min(totalMs, p.t)));
+		if (times[0] > 0) { times.unshift(0); pts = [{ t: 0, v: pts[0].v }, ...pts]; }
+		if (times[times.length - 1] < totalMs) { pts = [...pts, { t: totalMs, v: pts[pts.length - 1].v }]; times.push(totalMs); }
+		return { values: pts.map(p => fmt(p.v)).join(';'), keyTimes: times.map(x => fmt(x / totalMs)).join(';') };
+	};
+	for (let k = 1; k < N; k++) {
+		const enter = clock.enterOf(k - 1);
+		if (!enter || enter <= 0) continue;
+		const w0 = clock.starts[k], w1 = w0 + enter;
+		const pv = visSet(states[k - 1]), cv = visSet(states[k]);
+		const sampleU = [0, 0.25, 0.5, 0.75, 1];
+		for (const id of pv) {
+			if (cv.has(id)) continue;
+			const pos = posOfG(svg, id);
+			if (!pos) continue;
+			const el = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
+			el.setAttribute('cx', String(pos.x)); el.setAttribute('cy', String(pos.y));
+			el.setAttribute('fill', 'rgba(159, 178, 192, 0.9)');
+			el.setAttribute('opacity', '0');
+			const rT = mkTrack([{ t: 0, v: 20 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: 20 * (1 - 0.25 * easeInCubic(u)) })), { t: total, v: 15 }], total);
+			const oT = mkTrack([{ t: 0, v: 0 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: 0.9 * (1 - easeInCubic(u)) })), { t: total, v: 0 }], total);
+			[['r', rT], ['opacity', oT]].forEach(([attr, tr]) => {
+				if (!tr) return;
+				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
+				a.setAttribute('attributeName', attr);
+				a.setAttribute('values', tr.values);
+				a.setAttribute('keyTimes', tr.keyTimes);
+				a.setAttribute('dur', total + 'ms');
+				a.setAttribute('repeatCount', 'indefinite');
+				el.appendChild(a);
+			});
+			fxEnterLayer.appendChild(el);
+		}
+		for (const id of cv) {
+			if (pv.has(id)) continue;
+			const pos = posOfG(svg, id);
+			if (!pos) continue;
+			const n = states[k].data[id];
+			const color = (n && n.color && typeof n.color === 'object' && n.color.custom) || 'rgba(243, 186, 98, 0.95)';
+			const el = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
+			el.setAttribute('cx', String(pos.x)); el.setAttribute('cy', String(pos.y));
+			el.setAttribute('fill', 'none');
+			el.setAttribute('stroke', color);
+			el.setAttribute('opacity', '0');
+			const rT = mkTrack([{ t: 0, v: 20 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: 20 + 18 * easeOutCubic(u) })), { t: total, v: 38 }], total);
+			const oT = mkTrack([{ t: 0, v: 0 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: +(0.95 * Math.pow(1 - u, 1.4)).toFixed(3) })), { t: total, v: 0 }], total);
+			const wT = mkTrack([{ t: 0, v: 3.5 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: 3.5 * (1 - 0.5 * u) })), { t: total, v: 1.75 }], total);
+			[['r', rT], ['opacity', oT], ['stroke-width', wT]].forEach(([attr, tr]) => {
+				if (!tr) return;
+				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
+				a.setAttribute('attributeName', attr);
+				a.setAttribute('values', tr.values);
+				a.setAttribute('keyTimes', tr.keyTimes);
+				a.setAttribute('dur', total + 'ms');
+				a.setAttribute('repeatCount', 'indefinite');
+				el.appendChild(a);
+			});
+			fxEnterLayer.appendChild(el);
+		}
+	}
+
 	// 光点轨道：每条 fx 一个圆，cx/cy 线性分段 + opacity 离散 + fill 恒定
 	const fxLayer = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
 	fxLayer.setAttribute('class', 'fx-smil');
@@ -132,9 +212,55 @@ export async function buildAnimatedSvg({ states, fx, frameOf, renderSvg, labelCo
 		if (!pa || !pb) return;
 		const ax = pa.x, ay = pa.y, bx = pb.x, by = pb.y;
 		const dur = track.dur, t0 = track.t0, t1 = t0 + dur;
+		// 配色同源：sl 光点=B 数据色；rt/hp/pre=该帧帧位档（与 describeTransition 一致）
+		const frameStates = frameOf ? states.filter((_, si) => frameOf[si] === track.frame) : [];
+		const hint = frameStates.length ? frameStates[frameStates.length - 1] : states[N - 1];
+		const toNote = hint && hint.data && hint.data[pair.to];
+		const pairColor = (pair.technique === 'sl' && toNote && toNote.color && typeof toNote.color === 'object' && toNote.color.custom)
+			? toNote.color.custom
+			: (hint && hint.frameTint ? hint.frameTint.custom : 'rgba(243, 186, 98, 0.95)');
+		// 滑线轨迹（sl/pre 与播放器同形：跟随光点、首尾 12% 淡入淡出）
+		if (pair.technique === 'sl' || pair.technique === 'pre') {
+			const ln = doc.createElementNS('http://www.w3.org/2000/svg', 'line');
+			ln.setAttribute('x1', String(ax)); ln.setAttribute('y1', String(ay));
+			ln.setAttribute('stroke', pairColor);
+			ln.setAttribute('stroke-width', '3');
+			ln.setAttribute('stroke-linecap', 'round');
+			ln.setAttribute('opacity', '0');
+			const mkX2 = linearTrack([...Array(13)].map((_, i) => { const u = i / 12; const e = 1 - Math.pow(1 - u, 3); return { t: t0 + u * dur, v: ax + (bx - ax) * e }; }), total);
+			const mkY2 = linearTrack([...Array(13)].map((_, i) => { const u = i / 12; const e = 1 - Math.pow(1 - u, 3); return { t: t0 + u * dur, v: ay + (by - ay) * e }; }), total);
+			// opacity 关键帧：0 → (窗口内按 12% 淡入淡出采样) → 0
+			const opPts = [];
+			for (let i = 0; i <= 12; i++) {
+				const u = i / 12;
+				const op = u < 0.12 ? u / 0.12 : u > 0.88 ? (1 - u) / 0.12 : 1;
+				opPts.push({ t: t0 + u * dur, v: +op.toFixed(3) });
+			}
+			const lopT = linearTrack(opPts, total);
+			[['x2', mkX2], ['y2', mkY2]].forEach(([attr, tr]) => {
+				if (!tr) return;
+				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
+				a.setAttribute('attributeName', attr);
+				a.setAttribute('values', tr.values);
+				a.setAttribute('keyTimes', tr.keyTimes);
+				a.setAttribute('dur', total + 'ms');
+				a.setAttribute('repeatCount', 'indefinite');
+				ln.appendChild(a);
+			});
+			if (lopT) {
+				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
+				a.setAttribute('attributeName', 'opacity');
+				a.setAttribute('values', lopT.values);
+				a.setAttribute('keyTimes', lopT.keyTimes);
+				a.setAttribute('dur', total + 'ms');
+				a.setAttribute('repeatCount', 'indefinite');
+				ln.appendChild(a);
+			}
+			fxLayer.appendChild(ln);
+		}
 		const c = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
 		c.setAttribute('r', '12');
-		c.setAttribute('fill', 'rgba(243, 186, 98, 0.95)');
+		c.setAttribute('fill', pairColor);
 		c.setAttribute('stroke', 'rgba(0,0,0,0.35)');
 		c.setAttribute('stroke-width', '2');
 		c.setAttribute('opacity', '0');
