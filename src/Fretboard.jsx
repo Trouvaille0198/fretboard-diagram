@@ -348,8 +348,13 @@ function Fretboard({ mode = 'normal' }) {
   const [previewFrame, setPreviewFrame] = useState(null);
   const previewFrameRef = useRef(null);
   // 展开时间轴：hp（击勾）帧拆 3 子拍（须在 dynamic 声明后、playingBoard 使用前）
-  // 累积式预览（"存在过的点不消失"）：激活过的音永不熄灭，随播放逐音铺满
-  const [cumulativeView, setCumulativeView] = useState(false);
+  // 累积式预览（"存在过的点不消失"）：激活过的音永不熄灭，随播放逐音铺满；选择跨刷新持久化
+  const [cumulativeView, setCumulativeView] = useState(() => {
+    try { return localStorage.getItem('fretboard-cumulative') === '1'; } catch (e) { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('fretboard-cumulative', cumulativeView ? '1' : '0'); } catch (e) { /* 忽略 */ }
+  }, [cumulativeView]);
   const playSteps = useMemo(() => {
     const hold = Number(animSettings.holdMs) > 0 ? Number(animSettings.holdMs) : 300;
     const trans = Number(animSettings.transMs) > 0 ? Number(animSettings.transMs) : 200;
@@ -1253,8 +1258,8 @@ function Fretboard({ mode = 'normal' }) {
         boardImages.push(await renderBoardImage(frame, Number(settings.width) || 720, displayOpts));
     }
     const out = format === 'gif'
-      ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...encOpts, fx: exFx || [], frameOf: exFrameOf, sub: exSub } })
-      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...encOpts, fx: exFx || [], frameOf: exFrameOf, sub: exSub, preferMp4: format === 'webm-mp4' } });
+      ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...encOpts, fx: exFx || [], frameOf: exFrameOf, sub: exSub }, onProgress: opts.onProgress })
+      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...encOpts, fx: exFx || [], frameOf: exFrameOf, sub: exSub, preferMp4: format === 'webm-mp4' }, onProgress: opts.onProgress });
     return out;
   }, [includeMarkers, showNotes, horizontalCrop, verticalCrop]);
 
@@ -1274,7 +1279,13 @@ function Fretboard({ mode = 'normal' }) {
           exportedAt: new Date().toISOString(),
         }, null, 2)], { type: 'application/json;charset=utf-8' });
       } else {
-        blob = await buildExportBlob(format);
+        let lastPct = -1;
+        blob = await buildExportBlob(format, {
+          onProgress: (i, n) => {
+            const pct = Math.floor(i / n * 100);
+            if (pct >= lastPct + 10 || i === n) { lastPct = pct; showToast(`编码中 ${i}/${n} 帧`, 'info'); }
+          }
+        });
       }
       const ext = format === 'svganim' ? 'svg' : (format === 'webm-mp4' ? 'mp4' : format);
       const name = `fretboard-${Date.now()}.${ext}`;
@@ -1306,6 +1317,7 @@ function Fretboard({ mode = 'normal' }) {
   // 动画 SVG 落盘共用（Ctrl+C / Ctrl+Shift+C）：记忆目录优先，回落普通下载
   const saveSvgBlobToDisk = useCallback(async (buildFn) => {
     try {
+      showToast('生成动图 SVG…', 'info');
       setExporting('svganim');
       const svgBlob = await buildFn();
       const name = `fretboard-${Date.now()}.svg`;
