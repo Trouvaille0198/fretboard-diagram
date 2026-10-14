@@ -1559,7 +1559,7 @@ function Fretboard({ mode = 'normal' }) {
                 <g key={i} opacity={hot ? 1 : 0.85}>
                   <title>{hot ? '按退格/Delete 删除该标注' : '悬停后按退格/Delete 删除'}</title>
                   {/* 命中层：只做悬停，不拦截点击（拖拽手势/点音不受影响） */}
-                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={16} style={{ pointerEvents: 'stroke' }}
+                  <line className="tech-hit" x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={16} style={{ pointerEvents: 'stroke' }}
                     onMouseEnter={() => setHoveredPair({ from: m.from, to: m.to })}
                     onMouseLeave={() => setHoveredPair(h => (h && h.from === m.from && h.to === m.to ? null : h))} />
                   <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={hot ? 'var(--app-accent, #f3ba62)' : stroke} strokeWidth={hot ? 4 : 2.5} strokeLinecap="round" strokeDasharray={dash} style={{ pointerEvents: 'none' }} />
