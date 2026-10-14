@@ -38,7 +38,7 @@ export function createKeyboardHandler(params) {
         // Ctrl+C 复制：动态模式(≥2帧)=GIF 到剪贴板；其余=SVG
         if (event.ctrlKey && event.code === 'KeyC' && !event.shiftKey) {
             event.preventDefault();
-            if (copyGif && dynamic?.isDynamic && (dynamic.frameCount ?? 0) >= 2) {
+            if (copyGif && dynamic?.isDynamic) { // 动态页一律复制动图（单帧带技法/前置也可导出）
                 copyGif();
             } else if (saveSVG) {
                 saveSVG();
