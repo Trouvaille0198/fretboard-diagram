@@ -30,21 +30,11 @@ export function createKeyboardHandler(params) {
         reset,
         saveSVG,
         copyGif,
-        copyCumulativeSvg,
         selectedColorLevel,
         selectConnectionPreset
     } = params;
 
     return (event) => {
-        // Ctrl+Shift+C：动态模式=导出累积式动图 SVG（激活过的音永不熄灭的样式）
-        if (event.ctrlKey && event.shiftKey && event.code === 'KeyC') {
-            event.preventDefault();
-            if (dynamic?.isDynamic && copyCumulativeSvg) {
-                copyCumulativeSvg();
-            }
-            return;
-        }
-
         // Ctrl+C 复制：动态模式(≥2帧)=GIF 到剪贴板；其余=SVG
         if (event.ctrlKey && event.code === 'KeyC' && !event.shiftKey) {
             event.preventDefault();

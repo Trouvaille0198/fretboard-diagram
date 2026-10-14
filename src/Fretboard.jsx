@@ -350,10 +350,10 @@ function Fretboard({ mode = 'normal' }) {
   const playSteps = useMemo(() => {
     const hold = Number(animSettings.holdMs) > 0 ? Number(animSettings.holdMs) : 300;
     const trans = Number(animSettings.transMs) > 0 ? Number(animSettings.transMs) : 200;
-    const tl = expandTimeline(dynamic.frames, dynamic.transitions, hold, trans);
+    const tl = expandTimeline(dynamic.frames, dynamic.transitions, hold, trans, { leadBlank: !!animSettings.leadBlank });
     if (!cumulativeView) return tl;
     return { ...tl, states: accumulateStates(tl.states) }; // 结构/时钟不变，仅板面态累积
-  }, [dynamic.frames, dynamic.transitions, animSettings.holdMs, animSettings.transMs, cumulativeView]);
+  }, [dynamic.frames, dynamic.transitions, animSettings.holdMs, animSettings.transMs, animSettings.leadBlank, cumulativeView]);
   const playStepsRef = useRef(playSteps);
   playStepsRef.current = playSteps;
 
@@ -1184,7 +1184,7 @@ function Fretboard({ mode = 'normal' }) {
       wEnd = Math.max(wEnd, f.endFret);
     });
     if (wEnd - wStart > 16) wEnd = wStart + 16;
-    const tl = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200);
+    const tl = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200, { leadBlank: !!settings.leadBlank });
     const exStates = opts.cumulative ? accumulateStates(tl.states) : tl.states;
     const { specs: exSpecs, fx: exFx, frameOf: exFrameOf, sub: exSub } = tl;
     const windowed = exStates.map(f => ({ ...f, startFret: wStart, endFret: wEnd }));
@@ -1325,15 +1325,11 @@ function Fretboard({ mode = 'normal' }) {
     }
   }, [showToast]);
 
-  // Ctrl+C（动态模式）：纯保存 SVG 到磁盘，不碰剪贴板——发送/分享用 ⚡分享按钮更直接
+  // Ctrl+C（动态模式）：纯保存 SVG 到磁盘，不碰剪贴板——发送/分享用 ⚡分享按钮更直接。
+  // 样式跟随「迹」开关：累积预览开着=导出累积式（激活过的音不熄灭），关着=普通式
   const copyGifToClipboard = useCallback(async () => {
-    await saveSvgBlobToDisk(() => buildExportBlob('svganim'));
-  }, [saveSvgBlobToDisk, buildExportBlob]);
-
-  // Ctrl+Shift+C：导出累积式动图 SVG（激活过的音永不熄灭，"存在过的点不消失"样式）
-  const copyCumulativeSvg = useCallback(async () => {
-    await saveSvgBlobToDisk(() => buildExportBlob('svganim', { cumulative: true }));
-  }, [saveSvgBlobToDisk, buildExportBlob]);
+    await saveSvgBlobToDisk(() => buildExportBlob('svganim', { cumulative: cumulativeView }));
+  }, [saveSvgBlobToDisk, buildExportBlob, cumulativeView]);
 
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
   const handlerParamsRef = useRef();
@@ -1344,7 +1340,6 @@ function Fretboard({ mode = 'normal' }) {
     connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level,
     toggleVisibility: toggleVisibilityMemo, reset: resetMemo, saveSVG: saveSVGMemo, copyGif: copyGifToClipboard,
-    copyCumulativeSvg,
     selectedColorLevel, selectConnectionPreset,
     dynamic: {
       isDynamic: dynamic.isDynamic,
