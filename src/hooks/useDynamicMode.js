@@ -328,6 +328,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		} else { src = editIdxRef.current; at = src + 1; }
 		const cur = fs[src];
 		const copy = JSON.parse(JSON.stringify(cur || {}));
+		delete copy.preSlides; // 前置划弦是"进入本帧"的标注，不随板面复制——否则 pre 在后续每一帧重放（B 始终出现的根因）
 		const withCopy = fs.slice();
 		withCopy.splice(at, 0, copy);
 		// 插入点之后的帧里，出生帧 ≥ 插入点的音符出生帧右移一位

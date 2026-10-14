@@ -328,3 +328,4 @@ Visible 状态 (white + visible)
   - 前置：`vite build && vite preview`（4173）+ 调试 Chrome（`--remote-debugging-port=9223`）且窗口**前台**（后台标签定时器节流会卡手势计时）
   - 用例：`node scripts/smoke-ui.mjs [基础URL] [CDP端口]`
 - 改 `src/utils/timeline.js` / `src/utils/animatedExport.js` / `src/Fretboard.jsx` 播放路径后，两组都要跑
+- `pnpm sample:master`：**完整测试样例**（7 帧覆盖全部技法与组合）的 Node 断言（21 项）；`pnpm sample:master:browser` 额外做浏览器端到端——注入样例→播放录制 DOM 时间线→导出 GIF→页内解码 108 帧→**预览↔GIF 首轮逐事件互相关比对**（GIF 与预览同源时钟的量化证明）
