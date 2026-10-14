@@ -1157,7 +1157,8 @@ function Fretboard({ mode = 'normal' }) {
   }, [playingIdx]);
 
   const startPlaying = useCallback(() => {
-    if (playStepsRef.current.states.length < 2) return;
+    const ps = playStepsRef.current;
+    if (ps.states.length < 2 && !(ps.fx || []).length) return; // 单帧纯前置划弦也可播（fx 驱动）
     setPlayingIdx(0);
   }, []);
 
@@ -1195,7 +1196,7 @@ function Fretboard({ mode = 'normal' }) {
     const frames = framesRef.current;
     const specs = transitionsRef.current;
     const preCheck = expandTimeline(frames, specs, 300, 200);
-    if (preCheck.states.length < 2) throw new Error('需要至少 2 帧，或单帧内含技法/前置划弦标注');
+    if (preCheck.states.length < 2 && !(preCheck.fx || []).length) throw new Error('需要至少 2 帧，或单帧内含技法/前置划弦标注');
     const settings = animSettingsRef.current;
     let wStart = Infinity, wEnd = -Infinity;
     frames.forEach(f => {
@@ -1312,19 +1313,9 @@ function Fretboard({ mode = 'normal' }) {
   const copyGifToClipboard = useCallback(async () => {
     const canClipboard = typeof ClipboardItem !== 'undefined' && !!navigator.clipboard && typeof navigator.clipboard.write === 'function';
     try {
-      setExporting('svganim');
-      const svgBlob = await buildExportBlob('svganim');
+      setExporting('png');
       if (!canClipboard) {
-        // 页面经 http://IP 等非安全上下文打开：navigator.clipboard 不存在——直接下载动画 SVG（秒级，比 GIF 快得多）
-        const url = URL.createObjectURL(svgBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `fretboard-${Date.now()}.svg`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-        showToast('当前页面不支持写剪贴板（需 localhost/HTTPS），已改为下载动画 SVG', 'info');
+        showToast('当前页面不支持写剪贴板（需 localhost/HTTPS 打开）', 'error');
         return;
       }
       // 首帧 PNG（取展开后首状态栅格）
@@ -1341,11 +1332,9 @@ function Fretboard({ mode = 'normal' }) {
         cv.getContext('2d').drawImage(img, 0, 0);
         cv.toBlob(resolve, 'image/png');
       });
-      // ClipboardItem 要求 blob.type 与 MIME 键严格一致——SVG 源码必须包成 text/plain 新 blob
-      const svgTextBlob = new Blob([await svgBlob.text()], { type: 'text/plain' });
-      const item = new ClipboardItem({ 'image/png': png, 'text/plain': svgTextBlob });
+      const item = new ClipboardItem({ 'image/png': png });
       await navigator.clipboard.write([item]);
-      showToast(`已复制：图像=首帧PNG，文本=动画SVG源码（${(svgBlob.size / 1024).toFixed(0)} KB，粘贴存 .svg 即动）`, 'success');
+      showToast('已复制首帧 PNG（动画请用导出菜单：GIF / SVG / MP4）', 'success');
     } catch (error) {
       showToast(`复制失败: ${error.message}`, 'error');
     } finally {
@@ -1691,7 +1680,7 @@ function Fretboard({ mode = 'normal' }) {
         loopPlay={loopPlay}
         animSettings={animSettings}
         exporting={exporting}
-        canPlay={playSteps.states.length >= 2}
+        canPlay={playSteps.states.length >= 2 || (playSteps.fx || []).length > 0}
         displayOptions={{ includeMarkers, showNotes, horizontalCrop, verticalCrop }}
         onDisplayChange={(key, value) => {
           if (key === 'includeMarkers') setIncludeMarkers(value);
