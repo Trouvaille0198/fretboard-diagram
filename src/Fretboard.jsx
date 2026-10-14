@@ -1274,7 +1274,20 @@ function Fretboard({ mode = 'normal' }) {
   const exportClip = useCallback(async (format) => {
     try {
       setExporting(format);
-      const blob = await buildExportBlob(format);
+      let blob;
+      if (format === 'json') {
+        // 数据导出：完整动图数据（帧/过渡/前置划弦/节奏设置）——排障与导入分析用
+        const settings = animSettingsRef.current;
+        blob = new Blob([JSON.stringify({
+          format: 'fretboard-clip-data',
+          version: 1,
+          clip: { id: dynamic.sessionClip?.id, name: dynamic.sessionClip?.name, frames: framesRef.current, transitions: transitionsRef.current },
+          animSettings: { holdMs: settings.holdMs, transMs: settings.transMs, fps: settings.fps, width: settings.width },
+          exportedAt: new Date().toISOString(),
+        }, null, 2)], { type: 'application/json;charset=utf-8' });
+      } else {
+        blob = await buildExportBlob(format);
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
