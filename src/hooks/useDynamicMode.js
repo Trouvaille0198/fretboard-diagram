@@ -51,6 +51,12 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 	sessionClipRef.current = sessionClip;
 	editIdxRef.current = editIdx;
 
+	// 取色走 ref：endSlideDrag/markNote 的 useCallback 依赖里没有 getVividColor，
+	// 直接捕获会把首渲染（schemeName=默认 navy）的取色函数冻进闭包——切色系后拖滑弦
+	// 落点音仍涂旧色系的色（"滑弦颜色不跟色系"的根因）
+	const getVividColorRef = useRef(getVividColor);
+	getVividColorRef.current = getVividColor;
+
 	// 本步起点（Ctrl+Z 回滚点）：在结构边界（跳帧/加删帧/开会话/载入/拖拽成弦后）手动设置
 
 	// 帧内撤销历史（Ctrl+Z/Ctrl+Shift+Z 多步）：结构边界（跳帧/加删帧/载入）重置，手势与笔迹连续可撤
@@ -91,12 +97,13 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		};
 		let transitions = transitionsRef.current;
 		if (idx > 0) {
-			const prevActive = activeIds(framesRef.current[idx - 1]);
 			const nowActive = activeIds(board);
 			transitions = transitions.map((t, i) => {
 				if (i !== idx - 1 || !t || !t.pairs || !t.pairs.length) return t;
 				const kept = t.pairs.filter(p => {
-					if (!prevActive.has(p.from)) return false;
+					// 只看结果音：sl=B 落在本帧、rt/hp=A 留在本帧——配对即有效。
+					// 源音不再要求上一帧亮着（同帧滑弦：本帧新激活 A 即拖出，A 随拖拽置白；
+					// 它的出现由时间轴负责——窗开启直接展示，随后滑弦接管）
 					return p.technique === "sl" ? nowActive.has(p.to) : nowActive.has(p.from);
 				});
 				return kept.length === t.pairs.length ? t : { ...t, pairs: kept };
@@ -291,12 +298,13 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 				const globalVis = st && st.visibility ? st.visibility : "transparent";
 				return new Set(Object.keys(frameData).filter(id => isNoteActive(frameData[id], globalVis)));
 			};
-			const prevActive = activeIds(framesRef.current[idx - 1]);
 			const nowActive = activeIds(board);
 			setTransitions(prev => prev.map((t, i) => {
 				if (i !== idx - 1 || !t || !t.pairs || !t.pairs.length) return t;
 				const kept = t.pairs.filter(p => {
-					if (!prevActive.has(p.from)) return false;
+					// 只看结果音：sl=B 落在本帧、rt/hp=A 留在本帧——配对即有效。
+					// 源音不再要求上一帧亮着（同帧滑弦：本帧新激活 A 即拖出，A 随拖拽置白；
+					// 它的出现由时间轴负责——窗开启直接展示，随后滑弦接管）
 					return p.technique === "sl" ? nowActive.has(p.to) : nowActive.has(p.from);
 				});
 				return kept.length === t.pairs.length ? t : { ...t, pairs: kept };
@@ -438,11 +446,6 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		return true;
 	}, [isDynamic, sessionClip, toast, flushBoard]);
 
-	// 预览态整包换帧（展示用，不落库）；也用于退出预览时还原快照
-	const applyPreviewFrames = useCallback((frames) => {
-		setFrames(frames);
-	}, []);
-
 	// 技法标注：第一下点源音（必须亮着），第二下点目标（限同弦）；返回 true 表示已消费点击
 	const markNote = useCallback((noteId) => {
 		if (!technique) return false;
@@ -471,7 +474,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			next = patchNote(next, noteId, { color: "trans", color2: null, visibility: "visible", noteText: fromData.noteText });
 		} else {
 			// sl：源音熄灭；目标自动上强色（vivid），不要求用户配色
-			const vivid = getVividColor ? getVividColor() : null;
+			const vivid = getVividColorRef.current ? getVividColorRef.current() : null;
 			next = patchNote(next, pendingFrom, { color: "white", color2: null, visibility, noteText: undefined });
 			next = patchNote(next, noteId, {
 				color: vivid || (fromData.color && fromData.color !== "white" ? fromData.color : "white"),
@@ -595,7 +598,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (!d.activatedTo) {
 			// 同理：未激活的滑弦手势若松手落在合法目标（同弦另一音）上，就地激活完成，不再整单作废
 			if (targetId && targetId !== d.from && stringOfNote(targetId) === stringOfNote(d.from)) {
-				const hint = getVividColor ? getVividColor() : null;
+				const hint = getVividColorRef.current ? getVividColorRef.current() : null;
 				if (hint) commitData(patchNote(dataRef.current, targetId, { color: hint, color2: null, visibility: "visible" }));
 				d.activatedTo = targetId;
 			} else return false; // 未激活且无合法目标：取消，什么都不改
@@ -607,7 +610,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		const tech = d.hpArmed ? "hp" : (targetId === from ? "rt" : "sl");
 				if (tech === "sl") {
 			// 滑弦：A 熄灭；B 落定为当前帧内容色（激活时用的是浅提示色）
-			const content = getVividColor ? getVividColor() : null;
+			const content = getVividColorRef.current ? getVividColorRef.current() : null;
 			commitData(patchNote(patchNote(dataRef.current, from, { color: "white", color2: null, visibility }), to, content ? { color: content, birth: editIdxRef.current } : {}));
 		} else {
 			// 原位滑弦 / 击勾：A 保持亮；B 是瞬时音，板面还原（不落帧）
@@ -693,6 +696,15 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		return true;
 	}, [toast]);
 
+	// 动图编辑态退格兜底：无悬停标注线时熄灭悬停的激活音——置白（同普通模式退格语义），
+	// 帧间 diff 自动出淡出动画；走 commitData 以进入帧内撤销栈
+	const extinguishNote = useCallback((noteId) => {
+		if (viewMode !== "edit" || !noteId) return false;
+		if (!isNoteActive(dataRef.current[noteId], visibility)) return false;
+		commitData(patchNote(dataRef.current, noteId, { color: "white", color2: null, visibility, noteText: undefined }));
+		return true;
+	}, [viewMode, dataRef, visibility, commitData]);
+
 	// Ctrl+Z：帧内多步撤销（板面快照栈回退；预览/非动态不可用）
 	const undoStep = useCallback(() => {
 		if (!isDynamic || viewMode !== "edit") return false;
@@ -730,9 +742,9 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		isDynamic, frames, transitions, technique, pairs, pendingFrom,
 		sessionClip, clipVersion,
 		toggleQ, loadClip, setTechnique,
-		markNote, commitFrame, cancelMarking, undoStep, redoStep, deletePair, renameClip, paintNote,
+		markNote, commitFrame, cancelMarking, undoStep, redoStep, deletePair, renameClip, paintNote, extinguishNote,
 		beginSlideDrag, hoverSlideTarget, endSlideDrag, isDragging, consumeDragClick, markDragMove, getDragInfo,
-		editIdx, gotoFrame, startSession, mapFrames, mapTransitions, viewMode, applyPreviewFrames, newClip, revertToPrevFrame,
+		editIdx, gotoFrame, startSession, mapFrames, mapTransitions, viewMode, newClip, revertToPrevFrame,
 		syncFrame, addFrame, deleteFrame, persistClip, persistedOnce
 	};
 }
