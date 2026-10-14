@@ -146,12 +146,13 @@ export async function buildAnimatedSvg({ states, fx, frameOf, renderSvg, labelCo
 			if (cv.has(id)) continue;
 			const pos = posOfG(svg, id);
 			if (!pos) continue;
-			const el = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
+			const el = doc.createElementNS('http://www.w3.org 2000/svg', 'circle');
 			el.setAttribute('cx', String(pos.x)); el.setAttribute('cy', String(pos.y));
 			el.setAttribute('fill', 'rgba(159, 178, 192, 0.9)');
 			el.setAttribute('opacity', '0');
-			const rT = mkTrack([{ t: 0, v: 20 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: 20 * (1 - 0.25 * easeInCubic(u)) })), { t: total, v: 15 }], total);
-			const oT = mkTrack([{ t: 0, v: 0 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: 0.9 * (1 - easeInCubic(u)) })), { t: total, v: 0 }], total);
+			// 窗口前强制平台（保持基态）——线性插值缺平台会让幽灵圆从循环开头缓慢渐显
+			const rT = mkTrack([{ t: 0, v: 20 }, { t: w0 - 1, v: 20 }, { t: w0, v: 20 }, ...sampleU.slice(1).map(u => ({ t: w0 + u * enter, v: 20 * (1 - 0.25 * easeInCubic(u)) })), { t: w1, v: 15 }, { t: total, v: 15 }], total);
+			const oT = mkTrack([{ t: 0, v: 0 }, { t: w0 - 1, v: 0 }, { t: w0, v: 0.9 }, ...sampleU.slice(1).map(u => ({ t: w0 + u * enter, v: 0.9 * (1 - easeInCubic(u)) })), { t: w1, v: 0 }, { t: total, v: 0 }], total);
 			[['r', rT], ['opacity', oT]].forEach(([attr, tr]) => {
 				if (!tr) return;
 				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
@@ -175,9 +176,9 @@ export async function buildAnimatedSvg({ states, fx, frameOf, renderSvg, labelCo
 			el.setAttribute('fill', 'none');
 			el.setAttribute('stroke', color);
 			el.setAttribute('opacity', '0');
-			const rT = mkTrack([{ t: 0, v: 20 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: 20 + 18 * easeOutCubic(u) })), { t: total, v: 38 }], total);
-			const oT = mkTrack([{ t: 0, v: 0 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: +(0.95 * Math.pow(1 - u, 1.4)).toFixed(3) })), { t: total, v: 0 }], total);
-			const wT = mkTrack([{ t: 0, v: 3.5 }, ...sampleU.map(u => ({ t: w0 + u * enter, v: 3.5 * (1 - 0.5 * u) })), { t: total, v: 1.75 }], total);
+			const rT = mkTrack([{ t: 0, v: 20 }, { t: w0 - 1, v: 20 }, { t: w0, v: 20 }, ...sampleU.slice(1).map(u => ({ t: w0 + u * enter, v: 20 + 18 * easeOutCubic(u) })), { t: w1, v: 38 }, { t: total, v: 38 }], total);
+			const oT = mkTrack([{ t: 0, v: 0 }, { t: w0 - 1, v: 0 }, { t: w0, v: 0.95 }, ...sampleU.slice(1).map(u => ({ t: w0 + u * enter, v: +(0.95 * Math.pow(1 - u, 1.4)).toFixed(3) })), { t: w1, v: 0 }, { t: total, v: 0 }], total);
+			const wT = mkTrack([{ t: 0, v: 3.5 }, { t: w0 - 1, v: 3.5 }, { t: w0, v: 3.5 }, ...sampleU.slice(1).map(u => ({ t: w0 + u * enter, v: 3.5 * (1 - 0.5 * u) })), { t: w1, v: 1.75 }, { t: total, v: 1.75 }], total);
 			[['r', rT], ['opacity', oT], ['stroke-width', wT]].forEach(([attr, tr]) => {
 				if (!tr) return;
 				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
