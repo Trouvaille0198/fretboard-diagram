@@ -1,21 +1,4 @@
 
-// 【临时调试】链音事件浮层：复现问题后截图即可定位断点，修好后移除
-function chainLog(msg) {
-	try {
-		if (typeof window === "undefined") return;
-		window.__chainLog = window.__chainLog || [];
-		window.__chainLog.push(msg);
-		if (window.__chainLog.length > 8) window.__chainLog.shift();
-		let el = document.getElementById("__chaindbg");
-		if (!el) {
-			el = document.createElement("div");
-			el.id = "__chaindbg";
-			el.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:99999;background:rgba(0,0,0,.85);color:#7fd4a0;font:12px/1.5 monospace;padding:6px 10px;border-radius:6px;pointer-events:none;white-space:pre;";
-			document.body.appendChild(el);
-		}
-		el.textContent = window.__chainLog.join("\n");
-	} catch (e) { /* ignore */ }
-}
 
 // 动态编辑模式状态机：
 // 普通模式画图 = 帧1 → Q 进入 → 技法工具点两点标注（板面即时预览结果状态）→ Ctrl+S 定格为下一帧
@@ -654,16 +637,13 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 	// 播放时按序逐个点亮（timeline 把链展开成顺序边）
 	const chainDragRef = useRef(null);
 	const beginChainDrag = useCallback((noteId) => {
-		chainLog("down " + noteId + (viewMode === "edit" ? "" : " (非编辑态!)"));
 		if (viewMode !== "edit") return false;
 		if (!isNoteActive(dataRef.current[noteId], visibility)) {
-			chainLog("down 拒绝：未激活");
 			toast?.("链音需从激活的音符开始", "info");
 			return true; // 消费手势（不落到分色等默认行为）
 		}
 		chainDragRef.current = { from: noteId, hoverId: null };
 		clearTimeout(chainDwellRef.current);
-		chainLog("链音开始 " + noteId);
 		toast?.("链音中：拖到激活的音符上松手", "info");
 		return true;
 	}, [viewMode, toast, dataRef, visibility]);
@@ -678,22 +658,19 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		clearTimeout(chainDwellRef.current);
 		d.hoverId = (noteId && noteId !== d.from && isNoteActive(dataRef.current[noteId], visibility)) ? noteId : null;
 		if (d.hoverId) {
-			chainLog("hover→" + d.hoverId);
 			const target = d.hoverId;
 			chainDwellRef.current = setTimeout(() => {
 				if (chainDragRef.current && chainDragRef.current.hoverId === target) {
-					chainLog("驻留自动成链 " + target);
 					endChainDrag(target);
 				}
 			}, 350);
 		}
 	}, [dataRef, visibility]);
 	const endChainDrag = useCallback((targetId) => {
-		chainLog("结束 目标=" + (targetId || "null"));
 		clearTimeout(chainDwellRef.current);
 		const d = chainDragRef.current;
 		chainDragRef.current = null;
-		if (!d) { chainLog("up 但无拖拽态!"); return false; }
+		if (!d) return false;
 		if (!targetId) { toast?.("链音需松手在音符上", "info"); return false; }
 		if (targetId === d.from) return false;
 		if (!isNoteActive(dataRef.current[targetId], visibility)) { toast?.("目标音符也需是激活的", "info"); return false; }
@@ -710,7 +687,6 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (ok) {
 			setFrames(prev => prev.map((f, i) => (i === idx ? { ...f, chain: next } : f)));
 		}
-		chainLog(ok ? "✓ 已连接 " + from + "→" + to : "✗ 断链拒绝（从链尾继续连）");
 		if (ok) toast?.("已连接：本帧内按顺序依次激活", "success");
 		else toast?.("链一次只连一条（从链尾继续连）", "info");
 		return ok;
