@@ -64,7 +64,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		pres.forEach(s => {
 			const toC = origColor(s.to) || ft;
 			edge(0, null, { id: s.to }, SETTLE);
-			edge(DOT, { id: s.to, c: toC }, null, 60);
+			edge(DOT, { id: s.to, c: toC }, null, 0); // 瞬切：fx 音符同位同色消失/板面 B 点亮，同一帧完成（无闪影）
 		});
 		slP.forEach(p => {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
@@ -133,7 +133,8 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		// 窗开启态（含尾驻留）在 states 里的下标 = 末尾 - t>0边数 - 尾步1；fx 轨道与它对齐
 		const winIdx = Math.max(0, states.length - 1 - edges.filter(e => e.t > 0).length - 1);
 		const winT0 = btimes[winIdx] !== undefined ? btimes[winIdx] : t0;
-		pres.forEach(s => fx.push({ spec: { technique: null, pairs: [{ from: s.from, to: s.to, technique: "pre" }] }, t0: winT0, dur: DOT, frame: i, _winOffset: 0 }));
+		// fx 音符比板面 B 的 CSS 渐入(0.1s)多停 100ms：全程满亮盖住渐入，交接无亮度塌陷（闪影根因）
+		pres.forEach(s => fx.push({ spec: { technique: null, pairs: [{ from: s.from, to: s.to, technique: "pre" }] }, t0: winT0, dur: DOT + 100, frame: i, _winOffset: 0 }));
 		slP.forEach(p => fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0: winT0, dur: DOT, frame: i, _winOffset: 0 }));
 		rtP.forEach(p => {
 			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0: winT0, dur: RT_OUT, frame: i, _winOffset: 0 });
