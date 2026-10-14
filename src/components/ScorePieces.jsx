@@ -85,7 +85,7 @@ export const ScoreBoard = React.memo(function ScoreBoard({ snapshot, options }) 
       notes={notes}
       notesElementRef={notesRef}
       showNotes={showNotes}
-      hideInactiveNotes /* 导出/复制一律不带未激活暗圆——与普通模式历史行为一致，不随"显示音符"查看开关 */
+      hideInactiveNotes={!showNotes} /* "显示音符"=导出/复制开关：关(默认)=只带激活音；开=带暗圆网格。网页查看/编辑永远全显 */
       data={s.data}
       visibility={s.visibility}
       selected={null}

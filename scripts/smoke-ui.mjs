@@ -179,7 +179,7 @@ const suiteSrc = `(async () => {
 	blobs.length = 0;
 	const gifBtn = btn('GIF');
 	let gif = null;
-	for (let i = 0; i < 45 && !gif; i++) { await sleep(400); gif = blobs.find(x => x.type === 'image/gif') || null; }
+	for (let i = 0; i < 90 && !gif; i++) // 36s：标签若被系统节流导出会显著变慢，放宽防误报 { await sleep(400); gif = blobs.find(x => x.type === 'image/gif') || null; }
 	A('GIF 导出产出 blob', gifBtn && !!gif, gif ? gif.size + 'B' : 'no blob');
 
 	localStorage.setItem('__smokeProgress', 'ctrlc');
@@ -189,7 +189,7 @@ const suiteSrc = `(async () => {
 	blobs.length = 0;
 	key('c', { ctrlKey: true });
 	let guard = null;
-	for (let i = 0; i < 40 && !guard; i++) { await sleep(400); if (blobs.some(x => x.type === 'image/gif')) guard = 'download'; }
+	for (let i = 0; i < 70 && !guard; i++) { await sleep(400); if (blobs.some(x => x.type === 'image/gif')) guard = 'download'; }
 	try { if (had) Object.defineProperty(navigator, 'clipboard', { ...had, configurable: true }); } catch (e) {}
 	A('Ctrl+C 无剪贴板 → 回落下载', guard === 'download', String(guard));
 

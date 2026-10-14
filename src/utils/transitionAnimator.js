@@ -43,7 +43,6 @@ const easeInOutCubic = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 const easeOutQuick = t => 1 - Math.pow(1 - t, 4);
 
 const FX_COLORS = {
-	exitFill: "rgba(159, 178, 192, 0.9)",
 	ringStroke: "rgba(243, 186, 98, 0.95)",
 	lineStroke: "rgba(243, 186, 98, 0.75)",
 	dotFill: "rgba(243, 186, 98, 0.95)"
@@ -154,9 +153,9 @@ export function sampleTransition(desc, t, transMs) {
 		const tech = p.tech || desc.technique;
 		// 击勾：离散跳音（TransitionFx 直连场景，如 dock 预览）——前半 B 亮起、后半 A 重亮环，无滑动
 		if (tech === "hp") {
-			// B 闪现由板面状态驱动；这里只保留 A 复亮装饰环
+			// A 复亮提示：光点短暂重现（技法帧无环——准则：板面+线+光点）
 			const aBack = clamp01((t - 0.55) / 0.12) * (1 - clamp01((t - 0.9) / 0.1));
-			if (aBack > 0) els.push({ kind: "ring", x: p.from.x, y: p.from.y, r: R + 4 + 8 * aBack, opacity: +(0.9 * aBack).toFixed(3), width: 3, color: p.color });
+			if (aBack > 0) els.push({ kind: "dot", x: p.from.x, y: p.from.y, r: 7, opacity: +(0.8 * aBack).toFixed(3), color: p.color });
 			return;
 		}
 		const isSl = tech === "sl";
@@ -184,12 +183,7 @@ export function sampleTransition(desc, t, transMs) {
 				? p.to.x + (p.from.x - p.to.x) * p2
 				: p.from.x + (p.to.x - p.from.x) * p1;
 			els.push({ kind: "dot", x: +x.toFixed(2), y: p.from.y, r: 7, opacity: 1, color: p.color });
-			// 返回抵达 A：A 重亮脉冲环
-			const back = clamp01((t - 0.72) / 0.2) * (1 - clamp01((t - 0.92) / 0.08));
-			if (back > 0) {
-				els.push({ kind: "ring", x: p.from.x, y: p.from.y, r: R + 4 + 10 * back, opacity: +(0.9 * back).toFixed(3), width: 3, color: p.color });
-			}
-			return;
+			return; // 回程抵达 A 的重亮由板面状态表达（无环）
 		}
 
 		const prog = isQuick ? easeOutQuick(t) : easeInOutCubic(t);
@@ -223,16 +217,6 @@ export function elsToSvgString(els, viewBox, opts = {}) {
 		}
 		if (el.kind === "line") {
 			return `<line x1="${el.x1}" y1="${el.y1}" x2="${el.x2}" y2="${el.y2}" stroke="${el.color || c.lineStroke}" stroke-width="3" stroke-linecap="round" opacity="${el.opacity}"/>`;
-		}
-		if (el.kind === "note") {
-			// 音符视觉三件套（填充/外框/文字）——参数一律取 opts.noteStyle（由调用方从应用真实计算样式解析），
-			// 与板面 g.note 单一来源，板面改样式这里自动跟随；数值仅是缺省兜底
-			const ns = opts.noteStyle || {};
-			const ink = ns.ink || "var(--text-color)";
-			const strokeW = ns.strokeW || 1.5;
-			const fontSz = ns.fontSz || 20;
-			const label = el.label ? `<text x="${el.x}" y="${el.y}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSz}" fill="${ink}" opacity="${el.opacity}">${esc(el.label)}</text>` : "";
-			return `<g><circle cx="${el.x}" cy="${el.y}" r="${el.r}" fill="${el.color || c.dotFill}" stroke="${ink}" stroke-width="${strokeW}" opacity="${el.opacity}"/>${label}</g>`;
 		}
 		if (el.kind === "dot") {
 			return `<circle cx="${el.x}" cy="${el.y}" r="${el.r}" fill="${el.color || c.dotFill}" opacity="${el.opacity}"/>`;
