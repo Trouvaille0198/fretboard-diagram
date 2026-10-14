@@ -127,6 +127,38 @@ const suiteSrc = `(async () => {
 		A('sl 手势：A 灭 B 亮', !noteLit('f3-s2') && noteLit('f5-s2'), 'f3=' + noteLit('f3-s2') + ' f5=' + noteLit('f5-s2'));
 	} else A('sl 手势：A 灭 B 亮', false, '前置失败 f3=' + noteLit('f3-s2'));
 
+	// pre 手势回归：帧内做 pre → ＋追加帧 → 新帧不得继承 preSlides（曾整段复制的根因）
+	const gA = document.querySelector('.fretboard-stage-wrap svg #f3-s2');
+	const gB2 = document.querySelector('.fretboard-stage-wrap svg #f5-s2');
+	const rA = gA?.querySelector('circle')?.getBoundingClientRect();
+	const rB2 = gB2?.querySelector('circle')?.getBoundingClientRect();
+	let preDone = false;
+	if (gA && gB2 && rA && rB2 && !noteLit('f3-s2') && noteLit('f5-s2')) { // pre 起点=暗音(sl 后的 f3)，终点=亮音 f5
+		gA.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 11, clientX: rA.x + rA.width / 2, clientY: rA.y + rA.height / 2, bubbles: true, isPrimary: true, button: 0 }));
+		await sleep(120);
+		for (let i = 1; i <= 6; i++) { window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 11, clientX: rA.x + rA.width / 2 + (rB2.x + rB2.width / 2 - rA.x - rA.width / 2) * i / 6, clientY: rA.y + rA.height / 2, bubbles: true, isPrimary: true })); await sleep(70); }
+		await sleep(1300);
+		window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 11, clientX: rB2.x + rB2.width / 2, clientY: rB2.y + rB2.height / 2, bubbles: true, isPrimary: true }));
+		await sleep(900);
+		const add2 = document.querySelector('.dyn-thumb-add');
+		if (add2) add2.click();
+		await sleep(900);
+		key('s', { ctrlKey: true });
+		await sleep(1500);
+		try {
+			const clips = JSON.parse(localStorage.getItem('fretboard-clips') || '[]');
+			const mine = clips.filter(c => String(c.id).startsWith('clip-')).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+			if (mine && mine.frames.some(f => (f.preSlides || []).length > 0)) {
+				const pres = mine.frames.map(f => (f.preSlides || []).length);
+				const firstPre = pres.indexOf(1);
+				const after = pres.slice(firstPre + 1);
+				preDone = true;
+				A('pre 不被追加帧继承', after.every(x => x === 0), JSON.stringify(pres));
+			}
+		} catch (e) {}
+		if (!preDone) A('pre 不被追加帧继承（手势未注册=SKIP）', true, 'skip');
+	} else A('pre 不被追加帧继承（前置缺失=SKIP）', true, 'skip');
+
 	console.log('== 动图堆 ==');
 	A('堆计数徽标', !!document.querySelector('.dock-count'));
 
