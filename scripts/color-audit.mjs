@@ -33,7 +33,7 @@ for (const scheme of SCHEMES) {
   F[1].preSlides = [{ from: 'f1-s2', to: 'f4-s2' }];
   r = expandTimeline(F, [{ technique: null, pairs: [] }], 300, 200);
   const relit = vis(r.states[r.states.length - 1], 'f4-s2');
-  A(`${scheme} pre: 目标恒亮原色（板面零改动）`, r.states.every(st => vis(st, 'f4-s2') === T[1]));
+  A(`${scheme} pre: B 到达才亮原色`, (() => { const w = r.states.find(st => !vis(st, 'f4-s2')); const tail = r.states[r.states.length - 1]; return !!w && vis(tail, 'f4-s2') === T[1]; })());
   A(`${scheme} pre: 无瞬态滑行音`, r.states.every(st => !vis(st, 'f1-s2')));
   // ⑤ hp B 帧位档
   r = expandTimeline([mk({ 'f5-s2': { c: T[0], b: 0 } }), mk({ 'f5-s2': { c: T[0], b: 0 } })], [{ technique: null, pairs: [{ from: 'f5-s2', to: 'f6-s2', technique: 'hp' }] }], 300, 200);
