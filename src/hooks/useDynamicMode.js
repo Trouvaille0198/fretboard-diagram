@@ -567,6 +567,12 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (!d) return false;
 		clearTimeout(d.timer);
 		if (d.moved) suppressClickRef.current = true; // 真拖过：吞掉引发的 click（防误切换源音/落点音）
+		// 手势被取消（pointercancel/拖出窗口等 targetId=null）：一切还原，绝不落帧——
+		// 曾误按滑弦提交，把激活提示色（浅色）画在目标音上留在板面（"偶发浅色音不消失"的真根因之一）
+		if (targetId === null || targetId === undefined) {
+			if (d.activatedTo && d.activatedOrig) commitData(patchNote(dataRef.current, d.activatedTo, d.activatedOrig));
+			return false;
+		}
 		// 前置划弦：B→A 记到当前帧 preSlides（任何帧可用，含第 1 帧）；板面保持不变
 		if (d.mode === "pre") {
 			// 松手即答案：驻留未确认时，若松手正落在同弦亮音上，直接认作目标——
