@@ -167,14 +167,14 @@ export function sampleTransition(desc, t, transMs) {
 			// 不再渲染 bHold 滑行音符（旧语义残留：80% 行程满透明 pale 音符=白点不消失的根因）
 			const prog = easeInOutCubic(t);
 			const x = p.from.x + (p.to.x - p.from.x) * prog;
-			const lineOp = t < 0.12 ? t / 0.12 : t > 0.88 ? (1 - t) / 0.12 : 1;
-			els.push({ kind: "line", x1: p.from.x, y1: p.from.y, x2: p.to.x, y2: p.to.y, opacity: +lineOp.toFixed(3), color: p.color });
-			els.push({ kind: "dot", x: +x.toFixed(2), y: p.from.y, r: 9, opacity: t > 0.96 ? +((1 - t) / 0.04).toFixed(3) : 1, color: p.color });
-			// 音名交叉淡化：前半程 A 名（起点）淡出，后半程 B 名（终点）淡入
+			// 移动的就是一个"音符"（圆 + 音名），从 A 划到 B，到达即与板面 B 重合停住
+			const noteOp = t > 0.96 ? +((1 - t) / 0.04).toFixed(3) : 1; // 到达前最后几毫秒淡交板面 B
+			els.push({ kind: "note", x: +x.toFixed(2), y: p.from.y, r: R, opacity: noteOp, color: p.color });
+			// 音名交叉淡化：前半程 A 名淡出，后半程 B 名淡入（居中在音符上）
 			const fromOp = t < 0.5 ? +(1 - t * 2).toFixed(3) : 0;
 			const toOp = t >= 0.5 ? +((t - 0.5) * 2).toFixed(3) : 0;
-			if (p.fromLabel && fromOp > 0) els.push({ kind: "label", x: +x.toFixed(2), y: p.from.y - 16, text: p.fromLabel, opacity: fromOp, color: p.color });
-			if (p.toLabel && toOp > 0) els.push({ kind: "label", x: +x.toFixed(2), y: p.from.y - 16, text: p.toLabel, opacity: toOp, color: p.color });
+			if (p.fromLabel && fromOp > 0.02) els.push({ kind: "label", x: +x.toFixed(2), y: p.from.y, text: p.fromLabel, opacity: fromOp, color: p.color });
+			if (p.toLabel && toOp > 0.02) els.push({ kind: "label", x: +x.toFixed(2), y: p.from.y, text: p.toLabel, opacity: toOp, color: p.color });
 			return;
 		}
 
@@ -231,6 +231,12 @@ export function elsToSvgString(els, viewBox, opts = {}) {
 			const ink = ns.ink || "var(--text-color)";
 			const fontSz = Math.round((ns.fontSz || 20) * 0.72);
 			return `<text x="${el.x}" y="${el.y}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSz}" font-weight="600" fill="${ink}" opacity="${el.opacity}">${esc(el.text)}</text>`;
+		}
+		if (el.kind === "note") {
+			const ns = opts.noteStyle || {};
+			const ink = ns.ink || "var(--text-color)";
+			const strokeW = ns.strokeW || 1.5;
+			return `<circle cx="${el.x}" cy="${el.y}" r="${el.r}" fill="${el.color || c.dotFill}" stroke="${ink}" stroke-width="${strokeW}" opacity="${el.opacity}"/>`;
 		}
 		return "";
 	}).join("");

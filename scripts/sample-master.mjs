@@ -69,7 +69,7 @@ function runCore() {
 	A("sl 终态：f4 亮 f3 灭", vis(last2, "f4-s0") && !vis(last2, "f3-s0"));
 	A("rt 终态：f5 还原 f6 灭", vis(last2, "f5-s2") && !vis(last2, "f6-s2"));
 	A("hp 终态：f7 还原 f8 灭", vis(last2, "f7-s3") && !vis(last2, "f8-s3"));
-	A("pre 纯视觉：目标 f9 恒亮、f1 无瞬态", vis(last2, "f9-s5") && R.states.filter((_, si) => R.frameOf[si] === 1).every(s => !vis(s, "f1-s1")));
+	A("pre B(f9) 到达才亮、f1 无瞬态", vis(last2, "f9-s5") === (typeof vis(last2, "f9-s5") === 'boolean' ? true : true) && R.states.filter((_, si) => R.frameOf[si] === 1).some(s => !vis(s, "f9-s5")) && R.states.filter((_, si) => R.frameOf[si] === 1).every(s => !vis(s, "f1-s1")));
 	A("sl B=数据出生色 vivid", last2.data["f4-s0"].color.custom === T[1]);
 	const rtB = f2.map(s => s.data["f6-s2"]).filter(d => d && d.visibility === "visible")[0];
 	const hpB = f2.map(s => s.data["f8-s3"]).filter(d => d && d.visibility === "visible")[0];
@@ -101,7 +101,7 @@ function runCore() {
 	console.log("== F6 双 hp+pre ==");
 	const f6 = frameStates(5), last6 = f6[f6.length - 1];
 	A("双 hp A 恒亮", f6.every(s => vis(s, "f9-s5") && vis(s, "f4-s0")));
-	A("双 hp B 闪现后灭；pre 纯视觉", !vis(last6, "f10-s5") && !vis(last6, "f5-s0") && !vis(last6, "f2-s2") && R.states.filter((_, si) => R.frameOf[si] === 5).every(s => vis(s, "f9-s3")));
+	A("双 hp B 闪现后灭；pre B 到达才亮", !vis(last6, "f10-s5") && !vis(last6, "f5-s0") && vis(last6, "f9-s3") && R.states.filter((_, si) => R.frameOf[si] === 5).some(s => !vis(s, "f9-s3")));
 
 	console.log("== F7 纯新增收尾 ==");
 	const f7 = frameStates(6), last7 = f7[f7.length - 1];

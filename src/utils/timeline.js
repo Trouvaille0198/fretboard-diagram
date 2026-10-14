@@ -60,8 +60,12 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		// 每技法独立边：{t=技法相对钟, on, off, enter=该边动画时长}
 		const edges = [];
 		const edge = (t, on, off, enter) => edges.push({ t, on, off, enter });
-		// 前置划弦：纯视觉动画——光点从 A 划到 B（fx 轨道画线+点），板面零改动（B 恒亮）
-		pres.forEach(() => {});
+		// 前置划弦：一个音符从 A 划到 B 最后停在 B——板面只做"B 到达后点亮并停住"（窗开先不显示）
+		pres.forEach(s => {
+			const toC = origColor(s.to) || ft;
+			edge(0, null, { id: s.to }, SETTLE);
+			edge(DOT, { id: s.to, c: toC }, null, 60);
+		});
 		slP.forEach(p => {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
 			const bData = base[p.to]; // sl 的 B 是帧数据真实音：用它自己的出生色（半程亮＝终态色，不会中途变色）

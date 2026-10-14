@@ -68,7 +68,11 @@ console.log("== pre 前置划弦 ==");
 	F[1].preSlides = [{ from: "f1-s2", to: "f4-s2" }];
 	const r = run(F, [{ technique: null, pairs: [] }]);
 	const clock = stateClock(r.states, 300, 200);
-	A("pre 目标恒亮（板面零改动）", r.states.every(s => vis(s, "f4-s2") === T[0]));
+	A("pre B 到达才亮（窗开不显示）", (() => {
+		const win = r.states.find(s => !vis(s, "f4-s2"));
+		const tail = r.states[r.states.length - 1];
+		return !!win && vis(tail, "f4-s2") === T[0];
+	})());
 	A("pre 无瞬态滑行音状态", r.states.every(s => !vis(s, "f1-s2")));
 	const fx = r.fx[0];
 	A("pre fx=DOT 全程", fx.t0 === 360 && fx.dur === 300, `${fx.t0}/${fx.dur}`);
