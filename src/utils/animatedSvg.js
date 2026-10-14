@@ -195,6 +195,33 @@ export async function buildAnimatedSvg({ states, fx, frameOf, sub, renderSvg, la
 		const ax = p0.from.x, ay = p0.from.y, bx = p0.to.x, by = p0.to.y;
 		const dur = track.dur, t0 = track.t0, t1 = t0 + dur;
 		const pairColor = p0.color; // B 数据色 → 帧位档 → A 数据色 → 金色兜底（describeTransition 色链，播放器同款）
+		// 击勾：板面只闪 B；回 A 的复亮涟漪由 fx 显式画（与 sampleTransition hp 分支同形：
+		// 后 55%~90% 时间窗内 r=R→R+18 扩散、透明度衰减）
+		if (pair.technique === 'hp') {
+			const R = 22;
+			const w0 = t0 + dur * 0.55, w1 = t0 + dur * 0.9;
+			const rc = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
+			rc.setAttribute('cx', String(ax)); rc.setAttribute('cy', String(ay));
+			rc.setAttribute('fill', 'none');
+			rc.setAttribute('stroke', pairColor);
+			rc.setAttribute('stroke-width', '3.5');
+			rc.setAttribute('opacity', '0');
+			const easeOut = u => 1 - Math.pow(1 - u, 3);
+			const rT = linearTrack([{ t: 0, v: R }, { t: w0 - 0.5, v: R }, ...[0, 0.25, 0.5, 0.75, 1].map(u => ({ t: w0 + (w1 - w0) * u, v: +(R + 18 * easeOut(u)).toFixed(2) })), { t: w1, v: R + 18 }, { t: total, v: R + 18 }], total);
+			const oT = linearTrack([{ t: 0, v: 0 }, { t: w0 - 0.5, v: 0 }, ...[0, 0.25, 0.5, 0.75, 1].map(u => ({ t: w0 + (w1 - w0) * u, v: +(0.9 * Math.pow(1 - u, 1.2)).toFixed(3) })), { t: w1, v: 0 }, { t: total, v: 0 }], total);
+			[['r', rT], ['opacity', oT]].forEach(([attr, tr]) => {
+				if (!tr) return;
+				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
+				a.setAttribute('attributeName', attr);
+				a.setAttribute('values', tr.values);
+				a.setAttribute('keyTimes', tr.keyTimes);
+				a.setAttribute('dur', total + 'ms');
+				a.setAttribute('repeatCount', 'indefinite');
+				rc.appendChild(a);
+			});
+			fxLayer.appendChild(rc);
+			return;
+		}
 		// 移动音符技法（sl 与前置划弦 pre 同款）：与播放器/GIF 同语义（sampleTransition 分支）——
 		// 一个音符（圆+音名交叉淡化）从 A 划到 B，到达与板面 B 同色交接。不画轨迹线
 		if (pair.technique === 'pre' || pair.technique === 'sl') {

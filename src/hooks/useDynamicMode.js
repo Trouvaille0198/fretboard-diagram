@@ -640,6 +640,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		return true;
 	}, [viewMode]);
 	const isChainDragging = useCallback(() => chainDragRef.current !== null, []);
+	const getChainDragInfo = useCallback(() => (chainDragRef.current ? { from: chainDragRef.current.from } : null), []);
 	const endChainDrag = useCallback((targetId) => {
 		const d = chainDragRef.current;
 		chainDragRef.current = null;
@@ -784,7 +785,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		toggleQ, loadClip, setTechnique,
 		markNote, commitFrame, cancelMarking, undoStep, redoStep, deletePair, renameClip, paintNote, extinguishNote,
 		beginSlideDrag, hoverSlideTarget, endSlideDrag, isDragging, consumeDragClick, markDragMove, getDragInfo,
-		beginChainDrag, endChainDrag, isChainDragging,
+		beginChainDrag, endChainDrag, isChainDragging, getChainDragInfo,
 		editIdx, gotoFrame, startSession, mapFrames, mapTransitions, viewMode, newClip, revertToPrevFrame,
 		syncFrame, addFrame, deleteFrame, persistClip, persistedOnce
 	};

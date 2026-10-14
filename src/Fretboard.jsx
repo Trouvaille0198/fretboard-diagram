@@ -807,8 +807,9 @@ function Fretboard({ mode = 'normal' }) {
   }, [dragPos !== null]);
 
   const dragInfo = dynamic.isDynamic && dragPos ? dynamic.getDragInfo() : null;
+  const chainDragInfo = dynamic.isDynamic && dragPos ? dynamic.getChainDragInfo() : null;
   const dragFeedbackG = useMemo(() => {
-    if (!dragInfo || !dragPos || !svgElementRef.current) return null;
+    if (!dragPos || !svgElementRef.current) return null;
     const svg = svgElementRef.current;
     const toSvg = (x, y) => {
       const pt = svg.createSVGPoint();
@@ -817,6 +818,13 @@ function Fretboard({ mode = 'normal' }) {
       return { x: +p.x.toFixed(1), y: +p.y.toFixed(1) };
     };
     const cur = toSvg(dragPos.x, dragPos.y); // 先算指针 svg 坐标（pre 分支也要用）
+    if (chainDragInfo) {
+      // 中键链音引导：金色虚线 起点→光标 + 跟手光点（与滑弦拖拽同款反馈）
+      const fromPosC = getNotePositionMemo(chainDragInfo.from);
+      if (!fromPosC) return null;
+      return { fromPos: fromPosC, cur, vivid: 'var(--app-accent, #f3ba62)', targetPos: null, armedPos: null, returnReadyPos: null };
+    }
+    if (!dragInfo) return null;
     if (dragInfo.mode === 'pre') {
       // 前置划弦反馈：金色虚线 B→光标；确认目标 A 后 B→A 实线
       const fromPos0 = getNotePositionMemo(dragInfo.from);
@@ -840,7 +848,7 @@ function Fretboard({ mode = 'normal' }) {
       if (dA < dB && dA / (dA + dB) < 0.34) returnReadyPos = aPos;
     }
     return { fromPos, cur, vivid, targetPos, armedPos, returnReadyPos };
-  }, [dragInfo, dragPos, getNotePositionMemo, getHintColorValue]);
+  }, [dragInfo, chainDragInfo, dragPos, getNotePositionMemo, getHintColorValue]);
 
   // 编辑态技法标记：当前帧的滑弦/原位/击勾/前置划弦在板面常驻可见、互相区分
   // 悬停某条标注线 + Backspace/Delete = 删除该标注（hoveredPair 同步 ref 供键盘取用）

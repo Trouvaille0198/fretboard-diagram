@@ -156,7 +156,11 @@ export function sampleTransition(desc, t, transMs) {
 		const tech = p.tech || desc.technique;
 		// 击勾：离散跳音（TransitionFx 直连场景，如 dock 预览）——前半 B 亮起、后半 A 重亮环，无滑动
 		if (tech === "hp") {
-			// A 复亮提示：光点短暂重现（技法帧无环——准则：板面+线+光点）
+			// 回 A 复亮：涟漪环（用户要求回 A 时 A 也有涟漪）+ 光点提示（技法帧无进入环——由 fx 显式画）
+			const rb = clamp01((t - 0.55) / 0.35);
+			if (rb > 0 && rb < 1) {
+				els.push({ kind: "ring", x: p.from.x, y: p.from.y, r: +(R + 18 * easeOutCubic(rb)).toFixed(2), opacity: +(0.9 * Math.pow(1 - rb, 1.2)).toFixed(3), width: +(3.5 * (1 - rb * 0.4)).toFixed(2), color: p.color });
+			}
 			const aBack = clamp01((t - 0.55) / 0.12) * (1 - clamp01((t - 0.9) / 0.1));
 			if (aBack > 0) els.push({ kind: "dot", x: p.from.x, y: p.from.y, r: 7, opacity: +(0.8 * aBack).toFixed(3), color: p.color });
 			return;
