@@ -152,7 +152,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 		});
 
 		// 帧尾驻留（滑弦帧在抵达后多停一下，让"到 B"读得清再切走）
-		const tail = Math.max(slP.length ? 150 : 60, H - (acc - frameStart));
+		const tail = Math.max(slP.length ? 260 : 60, H - (acc - frameStart));
 		states[states.length - 1].holdMs = tail;
 		states[states.length - 1].transMs = 60;
 		now = acc + tail + 60;
