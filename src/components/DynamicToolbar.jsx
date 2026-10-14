@@ -23,6 +23,7 @@ export function DynamicToolbar({
 }) {
   const td = t?.dynamic ?? {};
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   return (
     <div className={`dyn-toolbar ${dynamic.isDynamic ? 'on' : ''}`}>
@@ -102,20 +103,47 @@ export function DynamicToolbar({
       <button className="dyn-btn dyn-right" onClick={() => setSettingsOpen(v => !v)} title={td.settingsHint ?? '动效节奏设置'}>
         ⚙
       </button>
-      <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('gif')} title={td.exportGif ?? '导出 GIF 动图'}>
-        {exporting === 'gif' ? '…' : 'GIF'}
-      </button>
-      <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('svganim')} title="导出动画 SVG（矢量动图：无限清晰、体积极小）">
-        {exporting === 'svganim' ? '…' : 'SVG'}
-      </button>
-      {typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E') && (
-        <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('mp4')} title="导出 MP4 视频（微信等聊天软件可直接播放）">
-          {exporting === 'mp4' ? '…' : 'MP4'}
+      <div className="dyn-export-wrap" style={{ position: 'relative' }}>
+        <button
+          className="dyn-btn"
+          disabled={!canPlay || exporting !== null}
+          onClick={() => setExportOpen(v => !v)}
+          title="下载 / 导出（GIF · SVG · MP4 · WebM）"
+        >
+          {exporting !== null ? '…' : '⬇ 导出'}
         </button>
-      )}
-      <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('webm')} title={td.exportWebm ?? '导出 WebM 视频'}>
-        {exporting === 'webm' ? '…' : 'WebM'}
-      </button>
+        {exportOpen && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setExportOpen(false)} />
+            <div className="dyn-export-menu" style={{
+              position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 41,
+              background: 'var(--background-color, #10161c)', border: '1px solid var(--border-color, #2a3542)',
+              borderRadius: 8, minWidth: 220, padding: '4px 0', boxShadow: '0 8px 24px rgba(0,0,0,.45)'
+            }}>
+              {[
+                { id: 'gif', label: 'GIF 动图', hint: '通用动图，任何地方能开' },
+                { id: 'svganim', label: 'SVG 矢量动图', hint: '无限清晰体积小（浏览器打开/网页嵌入）' },
+                ...(typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E')
+                  ? [{ id: 'mp4', label: 'MP4 视频', hint: '微信等聊天软件直接播放' }] : []),
+                { id: 'webm', label: 'WebM 视频', hint: '视频格式，适合长序列' },
+              ].map(item => (
+                <button
+                  key={item.id}
+                  className="dyn-export-item"
+                  disabled={!canPlay || exporting !== null}
+                  onClick={() => { setExportOpen(false); onExport(item.id); }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: 'inherit', padding: '8px 14px', cursor: 'pointer', font: 'inherit' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.06)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ fontWeight: 600 }}>{item.label}</div>
+                  <div style={{ fontSize: 12, opacity: 0.65 }}>{item.hint}</div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {settingsOpen && (
         <div className="dyn-settings">
