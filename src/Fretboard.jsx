@@ -733,6 +733,14 @@ function Fretboard({ mode = 'normal' }) {
     baseNoteMouseDown(event, noteId);
   }, [baseNoteMouseDown]);
 
+  // 中键：帧内链音手势（同帧新建音符依次激活）——动态编辑态专用，普通模式仍走分色
+  const handleNoteMiddleDown = useCallback((noteId) => {
+    const dyn = dynamicRef.current;
+    if (!dyn.isDynamic || dyn.viewMode !== 'edit') return false;
+    if (playingIdx !== null) setPlayingIdx(null);
+    return dyn.beginChainDrag(noteId);
+  }, []);
+
   // 动态模式：全局拖拽跟踪（移动即重置悬停；实时反馈动画），并屏蔽连线模式
   const [dragPos, setDragPos] = useState(null); // 拖拽中的指针位置（client 坐标，跟手反馈用）
   useEffect(() => {
@@ -761,17 +769,20 @@ function Fretboard({ mode = 'normal' }) {
       return base;
     };
     const move = e => {
+      if (dynamicRef.current.isChainDragging()) { setDragPos({ x: e.clientX, y: e.clientY }); return; }
       if (!dynamicRef.current.isDragging()) return;
       dynamicRef.current.markDragMove();
       dynamicRef.current.hoverSlideTarget(releaseTargetAt(e.clientX, e.clientY));
       setDragPos({ x: e.clientX, y: e.clientY });
     };
     const up = e => {
+      if (dynamicRef.current.isChainDragging()) { dynamicRef.current.endChainDrag(noteAt(e.clientX, e.clientY)); setDragPos(null); return; }
       if (!dynamicRef.current.isDragging()) return;
       dynamicRef.current.endSlideDrag(releaseTargetAt(e.clientX, e.clientY));
       setDragPos(null);
     };
     const cancel = () => {
+      if (dynamicRef.current.isChainDragging()) dynamicRef.current.endChainDrag(null);
       if (dynamicRef.current.isDragging()) dynamicRef.current.endSlideDrag(null);
       setDragPos(null);
     };
@@ -859,6 +870,12 @@ function Fretboard({ mode = 'normal' }) {
       const a = posOf(s.from), b = posOf(s.to);
       if (!a || !b) return;
       marks.push({ tech: 'pre', a, b, from: s.from, to: s.to });
+    });
+    ((dynamic.frames[idx]?.chain) || []).forEach((id, k, arr) => {
+      if (k === 0) return;
+      const a = posOf(arr[k - 1]), b = posOf(id);
+      if (!a || !b) return;
+      marks.push({ tech: 'chain', a, b, from: arr[k - 1], to: id });
     });
     if (!marks.length) return null;
     return { marks, hint, gold };
@@ -1491,6 +1508,7 @@ function Fretboard({ mode = 'normal' }) {
           editingNote={editingNote}
           handleNoteClick={handleNoteClick}
           handleNoteMouseDown={handleNoteMouseDown}
+          onNoteMiddleDown={handleNoteMiddleDown}
           setPreviewHoverNote={setPreviewHoverNote}
           setUseColor2Level={setUseColor2Level}
           setHoveredNoteId={setHoveredNoteId}
@@ -1562,8 +1580,8 @@ function Fretboard({ mode = 'normal' }) {
               const r = 24;
               const x1 = m.a.x + dx / len * r, y1 = m.a.y + dy / len * r;
               const x2 = m.b.x - dx / len * r, y2 = m.b.y - dy / len * r;
-              const stroke = m.tech === 'pre' ? techMarksG.gold : techMarksG.hint;
-              const dash = m.tech === 'hp' ? '2 4' : (m.tech === 'rt' ? '8 4' : undefined);
+              const stroke = m.tech === 'pre' || m.tech === 'chain' ? techMarksG.gold : techMarksG.hint;
+              const dash = m.tech === 'hp' ? '2 4' : (m.tech === 'rt' ? '8 4' : (m.tech === 'chain' ? '2 3' : undefined));
               const hot = hoveredPair && hoveredPair.from === m.from && hoveredPair.to === m.to;
               return (
                 <g key={i} opacity={hot ? 1 : 0.85}>
