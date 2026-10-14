@@ -142,29 +142,7 @@ export async function buildAnimatedSvg({ states, fx, frameOf, renderSvg, labelCo
 		const w0 = clock.starts[k], w1 = w0 + enter;
 		const pv = visSet(states[k - 1]), cv = visSet(states[k]);
 		const sampleU = [0, 0.25, 0.5, 0.75, 1];
-		for (const id of pv) {
-			if (cv.has(id)) continue;
-			const pos = posOfG(svg, id);
-			if (!pos) continue;
-			const el = doc.createElementNS('http://www.w3.org 2000/svg', 'circle');
-			el.setAttribute('cx', String(pos.x)); el.setAttribute('cy', String(pos.y));
-			el.setAttribute('fill', 'rgba(159, 178, 192, 0.9)');
-			el.setAttribute('opacity', '0');
-			// 窗口前强制平台（保持基态）——线性插值缺平台会让幽灵圆从循环开头缓慢渐显
-			const rT = mkTrack([{ t: 0, v: 20 }, { t: w0 - 1, v: 20 }, { t: w0, v: 20 }, ...sampleU.slice(1).map(u => ({ t: w0 + u * enter, v: 20 * (1 - 0.25 * easeInCubic(u)) })), { t: w1, v: 15 }, { t: total, v: 15 }], total);
-			const oT = mkTrack([{ t: 0, v: 0 }, { t: w0 - 1, v: 0 }, { t: w0, v: 0.9 }, ...sampleU.slice(1).map(u => ({ t: w0 + u * enter, v: 0.9 * (1 - easeInCubic(u)) })), { t: w1, v: 0 }, { t: total, v: 0 }], total);
-			[['r', rT], ['opacity', oT]].forEach(([attr, tr]) => {
-				if (!tr) return;
-				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
-				a.setAttribute('attributeName', attr);
-				a.setAttribute('values', tr.values);
-				a.setAttribute('keyTimes', tr.keyTimes);
-				a.setAttribute('dur', total + 'ms');
-				a.setAttribute('repeatCount', 'indefinite');
-				el.appendChild(a);
-			});
-			fxEnterLayer.appendChild(el);
-		}
+		// 退场灰圆不渲染（与播放器统一：熄灭由板面状态/SMIL opacity 离散帧负责）
 		for (const id of cv) {
 			if (pv.has(id)) continue;
 			const pos = posOfG(svg, id);
