@@ -126,6 +126,7 @@ export function DynamicToolbar({
                 ...(typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E')
                   ? [{ id: 'mp4', label: 'MP4 视频', hint: '微信等聊天软件直接播放' }] : []),
                 { id: 'webm', label: 'WebM 视频', hint: '视频格式，适合长序列' },
+                { id: 'json', label: '数据 JSON', hint: '导出完整动图数据（排障/分析用）' },
               ].map(item => (
                 <button
                   key={item.id}
