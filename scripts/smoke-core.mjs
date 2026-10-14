@@ -75,7 +75,7 @@ console.log("== pre 前置划弦 ==");
 	})());
 	A("pre 无瞬态滑行音状态", r.states.every(s => !vis(s, "f1-s2")));
 	const fx = r.fx[0];
-	A("pre fx=DOT 全程", fx.t0 === 360 && fx.dur === 300, `${fx.t0}/${fx.dur}`);
+	A("pre fx=DOT+100 overlap", fx.t0 === 360 && fx.dur === 400, `${fx.t0}/${fx.dur}`);
 }
 
 console.log("== 同帧四技并发 ==");
