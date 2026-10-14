@@ -32,11 +32,9 @@ for (const scheme of SCHEMES) {
   const F = [mk({ 'f4-s2': { c: T[1], b: 0 } }), mk({ 'f4-s2': { c: T[1], b: 0 } })];
   F[1].preSlides = [{ from: 'f1-s2', to: 'f4-s2' }];
   r = expandTimeline(F, [{ technique: null, pairs: [] }], 300, 200);
-  const win = r.states.find(s => !vis(s, 'f4-s2'));
-  const preB = r.states.map(s => vis(s, 'f1-s2')).filter(Boolean)[0];
   const relit = vis(r.states[r.states.length - 1], 'f4-s2');
-  A(`${scheme} pre: 目标窗口灭→抵达复亮原色`, !!win && relit === T[1], relit);
-  A(`${scheme} pre: 滑行音=帧位档(deep)`, preB === T[3], preB);
+  A(`${scheme} pre: 目标恒亮原色（板面零改动）`, r.states.every(st => vis(st, 'f4-s2') === T[1]));
+  A(`${scheme} pre: 无瞬态滑行音`, r.states.every(st => !vis(st, 'f1-s2')));
   // ⑤ hp B 帧位档
   r = expandTimeline([mk({ 'f5-s2': { c: T[0], b: 0 } }), mk({ 'f5-s2': { c: T[0], b: 0 } })], [{ technique: null, pairs: [{ from: 'f5-s2', to: 'f6-s2', technique: 'hp' }] }], 300, 200);
   const hpB = r.states.map(s => vis(s, 'f6-s2')).filter(Boolean)[0];
@@ -54,8 +52,8 @@ for (const scheme of SCHEMES) {
   const cSl = r.states.map(s => vis(s, 'f4-s2')).filter(Boolean)[0];
   const cRt = r.states.map(s => vis(s, 'f6-s2')).filter(Boolean)[0];
   const cHp = r.states.map(s => vis(s, 'f8-s2')).filter(Boolean)[0];
-  const cPre = r.states.map(s => vis(s, 'f1-s2')).filter(Boolean)[0];
-  A(`${scheme} 并发: slB=数据色rich rtB/hpB/preB=帧位档(=rich)`, cSl === T[2] && cRt === T[2] && cHp === T[2] && cPre === T[2], [cSl, cRt, cHp, cPre].join('|'));
+
+  A(`${scheme} 并发: slB=数据色 rtB/hpB=帧位档 pre无瞬态`, cSl === T[2] && cRt === T[2] && cHp === T[2] && r.states.every(st => !vis(st, 'f1-s2')), [cSl, cRt, cHp].join('|'));
   // ⑦ A 源音色全程不漂移（rt A 用上一帧原色）
   const aSeq = r.states.map(s => vis(s, 'f5-s2')).filter(Boolean);
   A(`${scheme} rt A 全程原色(pale)`, aSeq.every(c => c === T[0]), aSeq.join(','));

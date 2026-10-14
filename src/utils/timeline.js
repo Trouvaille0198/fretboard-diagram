@@ -4,7 +4,7 @@
 // 同帧多技法 = 并发（同一窗起点、各走各的节奏），与单技法完全同观感。
 import { frameTintFromData, tintAt } from "../colorConfig.js";
 
-const DOT = 380, RT_OUT = 280, RT_BACK = 260, SETTLE = 60, HPMOMENT = 60, HPB = 190;
+const DOT = 300, RT_OUT = 280, RT_BACK = 260, SETTLE = 60, HPMOMENT = 60, HPB = 190; // DOT 380→300：滑动稍快
 
 function beatTint(frame, i, frames) {
 	const born = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.birth === i && n.color && typeof n.color === "object" && n.color.custom);
@@ -32,7 +32,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		const hpP = pairs.filter(p => p.technique === "hp");
 		// 瞬时目标音（rt/hp 的 B、pre 的暗音）即使混进帧数据，窗口期也不得提前亮——base 里压暗，交给边点亮
 		const base = (() => {
-			const ids = new Set([...rtP.map(p => p.to), ...hpP.map(p => p.to), ...pres.map(s => s.from)]);
+			const ids = new Set([...rtP.map(p => p.to), ...hpP.map(p => p.to)]);
 			if (!ids.size) return frame.data;
 			let d = frame.data;
 			ids.forEach(id => {
@@ -60,13 +60,8 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		// 每技法独立边：{t=技法相对钟, on, off, enter=该边动画时长}
 		const edges = [];
 		const edge = (t, on, off, enter) => edges.push({ t, on, off, enter });
-		pres.forEach(s => {
-			// 语义：滑音先"取消"目标（窗开目标先灭=回到未生效），滑行音半程亮，抵达瞬间目标以原色复亮（=生效）
-			const toC = origColor(s.to) || ft; // 目标自己的原色（帧数据里的生效色）
-			edge(0, null, { id: s.to }, SETTLE); // 窗开：目标先灭（未生效）
-			edge(Math.round(DOT * 0.5), { id: s.from, c: ft }, null, 60); // 滑行音半程亮（帧位档）
-			edge(DOT, { id: s.to, c: toC }, { id: s.from }, 60); // 抵达：目标复亮（原色）+ 滑行音灭
-		});
+		// 前置划弦：纯视觉动画——光点从 A 划到 B（fx 轨道画线+点），板面零改动（B 恒亮）
+		pres.forEach(() => {});
 		slP.forEach(p => {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
 			const bData = base[p.to]; // sl 的 B 是帧数据真实音：用它自己的出生色（半程亮＝终态色，不会中途变色）
