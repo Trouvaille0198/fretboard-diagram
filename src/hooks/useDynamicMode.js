@@ -655,8 +655,11 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 	const hoverChainTarget = useCallback((noteId) => {
 		const d = chainDragRef.current;
 		if (!d) return;
+		const valid = (noteId && noteId !== d.from && isNoteActive(dataRef.current[noteId], visibility)) ? noteId : null;
+		// 同一目标上的微动（人手抖动产生的高频 pointermove）不重置驻留计时——否则 350ms 永远攒不满
+		if (valid === d.hoverId) return;
 		clearTimeout(chainDwellRef.current);
-		d.hoverId = (noteId && noteId !== d.from && isNoteActive(dataRef.current[noteId], visibility)) ? noteId : null;
+		d.hoverId = valid;
 		if (d.hoverId) {
 			const target = d.hoverId;
 			chainDwellRef.current = setTimeout(() => {
@@ -676,20 +679,20 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (!isNoteActive(dataRef.current[targetId], visibility)) { toast?.("目标音符也需是激活的", "info"); return false; }
 		const from = d.from, to = targetId;
 		const idx = editIdxRef.current;
-		// 合并决策在 setFrames 外同步算好（React 更新器延后执行，内部翻转标志在外面读不到）
+		// 链接表：一帧可有多条独立链（各链内部依次激活）；同一条边去重，其余一律允许
 		const cur = (framesRef.current[idx] || {}).chain || [];
-		const fi = cur.indexOf(from), ti = cur.indexOf(to);
-		let next = null;
-		if (cur.length === 0) next = [from, to];
-		else if (fi >= 0 && ti < 0) { next = cur.slice(); next.splice(fi + 1, 0, to); }
-		else if (ti === 0 && fi < 0) next = [from, ...cur];
-		const ok = !!next;
-		if (ok) {
-			setFrames(prev => prev.map((f, i) => (i === idx ? { ...f, chain: next } : f)));
+		const isOldPath = cur.length > 0 && typeof cur[0] === 'string';
+		const links = isOldPath ? [] : cur;
+		// 旧路径格式：先转链接表再追加（单链场景等价）
+		if (isOldPath) {
+			for (let k = 1; k < cur.length; k++) links.push({ from: cur[k - 1], to: cur[k] });
 		}
-		if (ok) toast?.("已连接：本帧内按顺序依次激活", "success");
-		else toast?.("链一次只连一条（从链尾继续连）", "info");
-		return ok;
+		const dup = links.some(l => l.from === from && l.to === to);
+		if (dup) { toast?.("这条链已存在", "info"); return false; }
+		const next = [...links, { from, to }];
+		setFrames(prev => prev.map((f, i) => (i === idx ? { ...f, chain: next } : f)));
+		toast?.("已连接：本帧内按顺序依次激活", "success");
+		return true;
 	}, [toast]);
 
 	// 拖拽结束后的 pointerup 会引发一次 click：吞掉，避免把刚配好的音又切换掉
@@ -756,8 +759,13 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 				if (kept.length !== f.preSlides.length) return { ...f, preSlides: kept };
 			}
 			if (f.chain && f.chain.length) {
-				const ti = f.chain.indexOf(to);
-				if (ti > 0) return { ...f, chain: f.chain.filter(id => id !== to) }; // 删链上这跳：to 移出，其余顺序不变
+				if (typeof f.chain[0] === 'string') {
+					const ti = f.chain.indexOf(to);
+					if (ti > 0) return { ...f, chain: f.chain.filter(id => id !== to) }; // 旧路径格式：to 移出
+				} else {
+					const kept = f.chain.filter(l => !(l.from === from && l.to === to));
+					if (kept.length !== f.chain.length) return { ...f, chain: kept };
+				}
 			}
 			return f;
 		}));
