@@ -177,6 +177,8 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 		pres.forEach(s => fx.push({ spec: { technique: null, pairs: [{ from: s.from, to: s.to, technique: "pre" }] }, t0: winT0, dur: DOT + 100, frame: i, _winOffset: 0 }));
 		// sl 与 pre 同为移动音符：多停 100ms 盖住板面 B 的 CSS 渐入
 		slP.forEach(p => fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0: winT0, dur: DOT + 100, frame: i, _winOffset: 0 }));
+		// hp：fx 显式画回 A 涟漪+光点（板面只有 B 闪现；sub 边无涟漪）
+		hpP.forEach(p => fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "hp" }] }, t0: winT0, dur: HPMOMENT + HPB + 150, frame: i, _winOffset: 0 }));
 		rtP.forEach(p => {
 			// rt 仍用光点平移（mv=dot 无轨迹线；rt 板面 A/B 有点亮节奏，移动音符会双重渲染）
 			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "mv" }] }, t0: winT0, dur: RT_OUT, frame: i, _winOffset: 0 });
