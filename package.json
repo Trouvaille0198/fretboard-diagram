@@ -7,7 +7,9 @@
         "build": "vite build",
         "preview": "vite preview",
         "smoke:core": "node scripts/smoke-core.mjs",
-        "smoke:ui": "node scripts/smoke-ui.mjs"
+        "smoke:ui": "node scripts/smoke-ui.mjs",
+        "sample:master": "node scripts/sample-master.mjs",
+        "sample:master:browser": "node scripts/sample-master.mjs --browser"
     },
     "dependencies": {
         "gifenc": "^1.0.3",
