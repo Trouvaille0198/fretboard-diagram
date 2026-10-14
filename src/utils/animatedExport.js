@@ -5,7 +5,7 @@
 
 import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 import { describeTransition, sampleTransition, elsToSvgString } from './transitionAnimator';
-import { stateClock } from './timeline';
+import { stateClock, END_PAUSE_MS } from './timeline';
 
 function svgToImage(svgString) {
 	return new Promise((resolve, reject) => {
@@ -26,7 +26,7 @@ function buildPlan(states, opts) {
 	const fps = opts.fps ?? 20;
 	const dt = 1000 / fps;
 	const clock = stateClock(states, holdMs, transMs);
-	const n = Math.max(1, Math.round(clock.total / dt));
+	const n = Math.max(1, Math.round((clock.total + END_PAUSE_MS) / dt)); // 尾部停顿与播放器同源
 	const plan = [];
 	for (let f = 0; f < n; f++) {
 		const t = (f + 0.5) * dt;

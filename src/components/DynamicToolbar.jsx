@@ -105,6 +105,9 @@ export function DynamicToolbar({
       <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('gif')} title={td.exportGif ?? '导出 GIF 动图'}>
         {exporting === 'gif' ? '…' : 'GIF'}
       </button>
+      <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('svganim')} title="导出动画 SVG（矢量动图：无限清晰、体积极小）">
+        {exporting === 'svganim' ? '…' : 'SVG'}
+      </button>
       <button className="dyn-btn" disabled={!canPlay || exporting !== null} onClick={() => onExport('webm')} title={td.exportWebm ?? '导出 WebM 视频'}>
         {exporting === 'webm' ? '…' : 'WebM'}
       </button>
