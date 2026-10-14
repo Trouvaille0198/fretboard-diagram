@@ -9,6 +9,8 @@ export function DynamicToolbar({
   onSchemeChange,
   playing,
   loopPlay,
+  cumulative,
+  onToggleCumulative,
   animSettings,
   displayOptions,
   onDisplayChange,
@@ -97,6 +99,13 @@ export function DynamicToolbar({
         title={td.loopHint ?? '循环播放'}
       >
         ↻
+      </button>
+      <button
+        className={`dyn-btn ${cumulative ? 'on' : ''}`}
+        onClick={onToggleCumulative}
+        title={td.cumulativeHint ?? '累积预览：激活过的音不熄灭，随播放逐音铺满（Ctrl+Shift+C 导出此样式）'}
+      >
+        迹
       </button>
 
       <span className="dyn-sep" />

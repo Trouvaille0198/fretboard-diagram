@@ -157,7 +157,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		});
 	});
 
-	// 回填每步的可见时刻：t[i] = t[i-1] + hold(i-1) + trans(i-1)
+// 回填每步的可见时刻：t[i] = t[i-1] + hold(i-1) + trans(i-1)
 	let acc = 0;
 	for (let k = 0; k < states.length; k++) {
 		btimes[k] = acc;
@@ -206,4 +206,23 @@ export function stateClock(states, holdMs = 300, transMs = 200) {
 	const holdLast = Number.isFinite(states[last]?.holdMs) ? Math.max(0, states[last].holdMs) : holdMs;
 	const total = starts[last] + holdLast + enterOf(last);
 	return { starts, total, enterOf };
+}
+
+// 累积态：激活过的音永不熄灭（"存在过的点不消失"样式）。
+// 逐态前向回填——每个音保留它最后一次点亮时的形（颜色/标签），
+// 在其后被熄灭的状态里恢复为该形；结构与时钟不变，fx 轨道照常对齐。
+export function accumulateStates(states) {
+	const carry = new Map();
+	return states.map(s => {
+		const data = { ...s.data };
+		carry.forEach((n, id) => {
+			const cur = data[id];
+			const active = cur && (cur.visibility === "visible" || cur.visibility === "selected");
+			if (!active) data[id] = n;
+		});
+		Object.entries(data).forEach(([id, n]) => {
+			if (n && typeof n === "object" && (n.visibility === "visible" || n.visibility === "selected")) carry.set(id, n);
+		});
+		return { ...s, data };
+	});
 }
