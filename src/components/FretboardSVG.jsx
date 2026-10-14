@@ -295,9 +295,9 @@ export const FretboardSVG = React.memo(function FretboardSVG({
       <g className="notes" ref={notesElementRef}>
         {notes.map(note => {
           const noteData = data[note.id] || { type: 'note', color: 'white', visibility: visibility };
-          // 查看开关："显示音符"关=主舞台只显示激活音（查看用）；导出路径由 ScoreBoard 的
-          // hideInactiveNotes 恒定控制（永远干净），两者互不影响。
-          if (hideInactiveNotes === true || showNotes === false) {
+          // 只有导出上下文（ScoreBoard 的 hideInactiveNotes）才隐藏未激活音——
+          // 交互板必须保留全部音符点击目标（隐藏会让点音/手势不可用，编辑直接报废）
+          if (hideInactiveNotes === true) {
             const nv = noteData.visibility || visibility;
             if (nv !== 'visible' && nv !== 'selected') return null;
           }
