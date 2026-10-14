@@ -636,17 +636,29 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 	const chainDragRef = useRef(null);
 	const beginChainDrag = useCallback((noteId) => {
 		if (viewMode !== "edit") return false;
-		chainDragRef.current = { from: noteId };
+		if (!isNoteActive(dataRef.current[noteId], visibility)) {
+			toast?.("链音需从激活的音符开始", "info");
+			return true; // 消费手势（不落到分色等默认行为）
+		}
+		chainDragRef.current = { from: noteId, hoverId: null };
+		toast?.("链音中：拖到激活的音符上松手", "info");
 		return true;
-	}, [viewMode]);
+	}, [viewMode, toast, dataRef, visibility]);
 	const isChainDragging = useCallback(() => chainDragRef.current !== null, []);
-	const getChainDragInfo = useCallback(() => (chainDragRef.current ? { from: chainDragRef.current.from } : null), []);
+	const getChainDragInfo = useCallback(() => (chainDragRef.current ? { from: chainDragRef.current.from, hoverId: chainDragRef.current.hoverId || null } : null), []);
+	// 拖动中的悬停目标（仅激活音有效）：驱动引导线末端的提示环
+	const hoverChainTarget = useCallback((noteId) => {
+		const d = chainDragRef.current;
+		if (!d) return;
+		d.hoverId = (noteId && noteId !== d.from && isNoteActive(dataRef.current[noteId], visibility)) ? noteId : null;
+	}, [dataRef, visibility]);
 	const endChainDrag = useCallback((targetId) => {
 		const d = chainDragRef.current;
 		chainDragRef.current = null;
 		if (!d) return false;
 		if (!targetId) { toast?.("链音需松手在音符上", "info"); return false; }
 		if (targetId === d.from) return false;
+		if (!isNoteActive(dataRef.current[targetId], visibility)) { toast?.("目标音符也需是激活的", "info"); return false; }
 		const from = d.from, to = targetId;
 		const idx = editIdxRef.current;
 		let ok = false, rejected = false;
@@ -788,7 +800,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		toggleQ, loadClip, setTechnique,
 		markNote, commitFrame, cancelMarking, undoStep, redoStep, deletePair, renameClip, paintNote, extinguishNote,
 		beginSlideDrag, hoverSlideTarget, endSlideDrag, isDragging, consumeDragClick, markDragMove, getDragInfo,
-		beginChainDrag, endChainDrag, isChainDragging, getChainDragInfo,
+		beginChainDrag, endChainDrag, isChainDragging, getChainDragInfo, hoverChainTarget,
 		editIdx, gotoFrame, startSession, mapFrames, mapTransitions, viewMode, newClip, revertToPrevFrame,
 		syncFrame, addFrame, deleteFrame, persistClip, persistedOnce
 	};
