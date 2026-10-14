@@ -644,10 +644,12 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 	const endChainDrag = useCallback((targetId) => {
 		const d = chainDragRef.current;
 		chainDragRef.current = null;
-		if (!d || !targetId || targetId === d.from) return false;
+		if (!d) return false;
+		if (!targetId) { toast?.("链音需松手在音符上", "info"); return false; }
+		if (targetId === d.from) return false;
 		const from = d.from, to = targetId;
 		const idx = editIdxRef.current;
-		let ok = false;
+		let ok = false, rejected = false;
 		setFrames(prev => prev.map((f, i) => {
 			if (i !== idx) return f;
 			const chain = f.chain || [];
@@ -656,11 +658,12 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			if (chain.length === 0) next = [from, to];
 			else if (fi >= 0 && ti < 0) { next = chain.slice(); next.splice(fi + 1, 0, to); }
 			else if (ti === 0 && fi < 0) next = [from, ...chain];
-			if (!next) return f; // 两头都不在链上：暂只支持一条链
+			if (!next) { rejected = true; return f; } // 两头都不在链上：暂只支持一条链
 			ok = true;
 			return { ...f, chain: next };
 		}));
 		if (ok) toast?.("已连接：本帧内按顺序依次激活", "success");
+		else if (rejected) toast?.("链一次只连一条（从链尾继续连）", "info");
 		return ok;
 	}, [toast]);
 
