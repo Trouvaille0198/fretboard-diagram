@@ -4,7 +4,7 @@
 // 同帧多技法 = 并发（同一窗起点、各走各的节奏），与单技法完全同观感。
 import { frameTintFromData, tintAt } from "../colorConfig.js";
 
-const DOT = 300, RT_OUT = 280, RT_BACK = 260, SETTLE = 60, HPMOMENT = 60, HPB = 190; // DOT 380→300：滑动稍快
+const DOT = 300, RT_OUT = 280, RT_BACK = 260, SETTLE = 60, HPMOMENT = 60, HPB = 190, CHAIN_GAP = 170; // 链音逐个点亮的间隔 // DOT 380→300：滑动稍快
 
 function beatTint(frame, i, frames) {
 	const born = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.birth === i && n.color && typeof n.color === "object" && n.color.custom);
@@ -55,9 +55,13 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 			});
 			return d;
 		})();
-		const tech = pres.length + slP.length + rtP.length + hpP.length;
+		// 中键链音：同帧新建的音按用户连接顺序依次点亮（上一帧已亮的不闪断，直接跳过）
+		const prevLitIds = i > 0 ? new Set(Object.entries(frames[i - 1].data || {}).filter(([, n]) => n && typeof n === "object" && (n.visibility === "visible" || n.visibility === "selected")).map(([id]) => id)) : new Set();
+		const chain = [...new Set(Array.isArray(frame.chain) ? frame.chain : [])].filter(id => id && !prevLitIds.has(id));
+		const tech = pres.length + slP.length + rtP.length + hpP.length + (chain.length >= 2 ? 1 : 0);
 		// 本帧技法涉及的全部音符 id（涟漪静默用）
 		const techIds = new Set();
+		chain.forEach(id => techIds.add(id));
 		pres.forEach(s => { techIds.add(s.from); techIds.add(s.to); });
 		slP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
 		rtP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
@@ -105,6 +109,14 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 			edge(HPMOMENT, { id: p.to, c: bTint(p) }, null, 100);
 			edge(HPMOMENT + HPB, null, { id: p.to }, 100);
 		});
+		// 链音边：窗开全灭，第 k 个在 k*CHAIN_GAP 时刻点亮（第 1 个随窗开即亮）
+		chain.forEach((id, k) => {
+			const bData = base[id];
+			const c = bData && bData.color && typeof bData.color === "object" && bData.visibility === "visible" ? { name: bData.color.name, custom: bData.color.custom } : ft;
+			edge(0, null, { id }, SETTLE);
+			edge(k === 0 ? 0 : CHAIN_GAP * k, { id, c }, null, 60);
+		});
+
 		edges.sort((a, b) => a.t - b.t);
 
 		const pushState = (data, hold, isSub, inEnter) => {

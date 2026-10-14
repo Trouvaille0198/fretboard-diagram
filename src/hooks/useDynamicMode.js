@@ -630,6 +630,39 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		return true;
 	}, [commitData, dataRef, visibility]);
 
+	// ===== 中键链音：同帧新建音符 A→B→C 依次激活 =====
+	// 手势与滑弦拖拽同构（按住-拖-放），按中键触发；链存在帧上（chain: [id...]），
+	// 播放时按序逐个点亮（timeline 把链展开成顺序边）
+	const chainDragRef = useRef(null);
+	const beginChainDrag = useCallback((noteId) => {
+		if (viewMode !== "edit") return false;
+		chainDragRef.current = { from: noteId };
+		return true;
+	}, [viewMode]);
+	const isChainDragging = useCallback(() => chainDragRef.current !== null, []);
+	const endChainDrag = useCallback((targetId) => {
+		const d = chainDragRef.current;
+		chainDragRef.current = null;
+		if (!d || !targetId || targetId === d.from) return false;
+		const from = d.from, to = targetId;
+		const idx = editIdxRef.current;
+		let ok = false;
+		setFrames(prev => prev.map((f, i) => {
+			if (i !== idx) return f;
+			const chain = f.chain || [];
+			const fi = chain.indexOf(from), ti = chain.indexOf(to);
+			let next = null;
+			if (chain.length === 0) next = [from, to];
+			else if (fi >= 0 && ti < 0) { next = chain.slice(); next.splice(fi + 1, 0, to); }
+			else if (ti === 0 && fi < 0) next = [from, ...chain];
+			if (!next) return f; // 两头都不在链上：暂只支持一条链
+			ok = true;
+			return { ...f, chain: next };
+		}));
+		if (ok) toast?.("已连接：本帧内按顺序依次激活", "success");
+		return ok;
+	}, [toast]);
+
 	// 拖拽结束后的 pointerup 会引发一次 click：吞掉，避免把刚配好的音又切换掉
 	const consumeDragClick = useCallback(() => {
 		const s = suppressClickRef.current;
@@ -688,9 +721,16 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			}));
 		}
 		setFrames(prev => prev.map((f, i) => {
-			if (i !== idx || !f.preSlides || !f.preSlides.length) return f;
-			const kept = f.preSlides.filter(s => !(s.from === from && s.to === to));
-			return kept.length === f.preSlides.length ? f : { ...f, preSlides: kept };
+			if (i !== idx) return f;
+			if (f.preSlides && f.preSlides.length) {
+				const kept = f.preSlides.filter(s => !(s.from === from && s.to === to));
+				if (kept.length !== f.preSlides.length) return { ...f, preSlides: kept };
+			}
+			if (f.chain && f.chain.length) {
+				const ti = f.chain.indexOf(to);
+				if (ti > 0) return { ...f, chain: f.chain.filter(id => id !== to) }; // 删链上这跳：to 移出，其余顺序不变
+			}
+			return f;
 		}));
 		toast?.("已删除该划弦/击勾标注", "info");
 		return true;
@@ -744,6 +784,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		toggleQ, loadClip, setTechnique,
 		markNote, commitFrame, cancelMarking, undoStep, redoStep, deletePair, renameClip, paintNote, extinguishNote,
 		beginSlideDrag, hoverSlideTarget, endSlideDrag, isDragging, consumeDragClick, markDragMove, getDragInfo,
+		beginChainDrag, endChainDrag, isChainDragging,
 		editIdx, gotoFrame, startSession, mapFrames, mapTransitions, viewMode, newClip, revertToPrevFrame,
 		syncFrame, addFrame, deleteFrame, persistClip, persistedOnce
 	};
