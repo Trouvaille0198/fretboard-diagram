@@ -1203,7 +1203,7 @@ function Fretboard({ mode = 'normal' }) {
       wEnd = Math.max(wEnd, f.endFret);
     });
     if (wEnd - wStart > 16) wEnd = wStart + 16;
-    const { states: exStates, specs: exSpecs, fx: exFx, frameOf: exFrameOf } = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200);
+    const { states: exStates, specs: exSpecs, fx: exFx, frameOf: exFrameOf, sub: exSub } = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200);
     const windowed = exStates.map(f => ({ ...f, startFret: wStart, endFret: wEnd }));
     const geo = boardGeometry(wStart, wEnd);
     const fullVB = { x: geo.svgViewBoxX, y: geo.svgViewBoxY, w: geo.svgViewBoxWidth, h: geo.svgViewBoxHeight };
@@ -1258,15 +1258,15 @@ function Fretboard({ mode = 'normal' }) {
       // 动画 SVG（SMIL）：矢量自包含动图——无限清晰、体积极小；与播放器同源时钟
       const { buildAnimatedSvg } = await import('./utils/animatedSvg');
       const svgStr = await buildAnimatedSvg({
-        states: exStates, fx: exFx || [], frameOf: exFrameOf,
+        states: exStates, fx: exFx || [], frameOf: exFrameOf, sub: exSub,
         labelColor: opts.labelColor,
         renderSvg: async (state) => renderBoardImage({ ...state, startFret: wStart, endFret: wEnd }, Number(settings.width) || 720, { ...displayOpts, svgOnly: true }),
       });
       return new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
     }
     const out = format === 'gif'
-      ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf } })
-      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf, preferMp4: format === 'webm-mp4' } });
+      ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf, sub: exSub } })
+      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf, sub: exSub, preferMp4: format === 'webm-mp4' } });
     return out;
   }, [includeMarkers, showNotes, horizontalCrop, verticalCrop]);
 
@@ -1546,7 +1546,7 @@ function Fretboard({ mode = 'normal' }) {
             />
           );
         })}
-        {playingIdx !== null && playingIdx > 0 && playSteps.states[playingIdx - 1] && playSteps.states[playingIdx] && (
+        {playingIdx !== null && playingIdx > 0 && playSteps.states[playingIdx - 1] && playSteps.states[playingIdx] && !playSteps.sub?.[playingIdx] && (
           <TransitionFx
             key={playingIdx}
             prevState={playSteps.states[playingIdx - 1]}

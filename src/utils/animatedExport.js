@@ -40,6 +40,7 @@ function buildPlan(states, opts) {
 }
 
 async function renderSubframes({ states, specs, boardImages, viewBox, opts, onProgress }) {
+	const statesOptsSub = Array.isArray(opts.sub) ? opts.sub : null;
 	const plan = buildPlan(states, opts);
 	const width = opts.width ?? 720;
 	const [vx, vy, vw, vh] = String(viewBox).split(/\s+/).map(Number);
@@ -74,7 +75,7 @@ async function renderSubframes({ states, specs, boardImages, viewBox, opts, onPr
 		ctx.drawImage(boardImages[item.board], 0, 0, width, height);
 		const k = item.board;
 		const enter = clock.enterOf(k - 1);
-		if (k > 0 && enter > 0) {
+		if (k > 0 && enter > 0 && !(statesOptsSub && statesOptsSub[k])) { // 技法边状态不渲染涟漪（与播放器统一）
 			const tIn = item.t - clock.starts[k];
 			if (tIn >= 0 && tIn < enter) {
 				const fxSvg = elsToSvgString(sampleTransition(descs[k - 1], Math.min(1, tIn / enter), enter), viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle });

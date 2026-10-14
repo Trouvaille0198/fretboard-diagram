@@ -85,6 +85,7 @@ export const ScoreBoard = React.memo(function ScoreBoard({ snapshot, options }) 
       notes={notes}
       notesElementRef={notesRef}
       showNotes={showNotes}
+      hideInactiveNotes /* 导出/复制一律不带未激活暗圆——与普通模式历史行为一致，不随"显示音符"查看开关 */
       data={s.data}
       visibility={s.visibility}
       selected={null}
@@ -159,7 +160,10 @@ export function TransitionFx({ prevState, nextState, spec, durationMs = 300, wid
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    // 硬性寿命兜底：rAF 可能被同刻状态切换的 remount 取消在半途（冻结涟漪的根因），
+    // 到期定时器强制 t=1（完成态=空元素），任何 fx 都不允许超过自己的时长存活
+    const kill = setTimeout(() => { cancelAnimationFrame(raf); setT(1); }, dur + 80);
+    return () => { cancelAnimationFrame(raf); clearTimeout(kill); };
   }, [desc, durationMs]);
 
   const els = useMemo(() => sampleTransition(desc, t, durationMs), [desc, t, durationMs]);

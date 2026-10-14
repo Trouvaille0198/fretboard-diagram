@@ -42,7 +42,8 @@ function linearTrack(waypoints, totalMs) {
 	return { values: vals.map(fmt).join(';'), keyTimes: times.map(t => fmt(t / totalMs)).join(';') };
 }
 
-export async function buildAnimatedSvg({ states, fx, frameOf, renderSvg, labelColor }) {
+export async function buildAnimatedSvg({ states, fx, frameOf, sub, renderSvg, labelColor }) {
+	const subList = Array.isArray(sub) ? sub : null;
 	const clock = stateClock(states, 300, 200);
 	const total = clock.total + END_PAUSE_MS;
 	const N = states.length;
@@ -139,6 +140,7 @@ export async function buildAnimatedSvg({ states, fx, frameOf, renderSvg, labelCo
 	for (let k = 1; k < N; k++) {
 		const enter = clock.enterOf(k - 1);
 		if (!enter || enter <= 0) continue;
+		if (subList && subList[k]) continue; // 技法边状态不渲染涟漪（与播放器统一）
 		const w0 = clock.starts[k], w1 = w0 + enter;
 		const pv = visSet(states[k - 1]), cv = visSet(states[k]);
 		const sampleU = [0, 0.25, 0.5, 0.75, 1];
