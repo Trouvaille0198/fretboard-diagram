@@ -171,13 +171,17 @@ export function sampleTransition(desc, t, transMs) {
 		if (tech === "pre" || tech === "sl") {
 			// 移动音符语义（sl 与前置划弦同款，用户定稿"A 直接到 B"）：
 			// 滑行的就是一个"音符"（圆 + 音名），从 A 划到 B，到达即与板面 B 重合停住。
-			// 出发原位/抵达点亮的亮灭由板面状态边驱动，fx 只画移动音符
-			const prog = easeInOutCubic(t);
+			// 出发原位/抵达点亮的亮灭由板面状态边驱动，fx 只画移动音符。
+			// 行程在前 (dur - 100)ms 内完成、尾部 100ms 停在目的地盖住板面 B 的 CSS 渐入——
+			// 板面点亮边在 DOT（=行程完成时刻），音符必须同一刻抵达，否则 B 会"提前出现"
+			// （100 = timeline 的 fx 尾驻留，两边常量需一起改）
+			const mt = clamp01(t * dur / Math.max(1, dur - 100));
+			const prog = easeInOutCubic(mt);
 			const x = p.from.x + (p.to.x - p.from.x) * prog;
 			els.push({ kind: "note", x: +x.toFixed(2), y: p.from.y, r: R, opacity: 1, color: p.color }); // 全程不透明：到达瞬间与板面 B 同位同色交接
-			// 音名交叉淡化：前半程 A 名淡出，后半程 B 名淡入（居中在音符上）
-			const fromOp = t < 0.5 ? +(1 - t * 2).toFixed(3) : 0;
-			const toOp = t >= 0.5 ? +((t - 0.5) * 2).toFixed(3) : 0;
+			// 音名交叉淡化：行程前半 A 名淡出，后半 B 名淡入（居中在音符上）
+			const fromOp = mt < 0.5 ? +(1 - mt * 2).toFixed(3) : 0;
+			const toOp = mt >= 0.5 ? +((mt - 0.5) * 2).toFixed(3) : 0;
 			if (p.fromLabel && fromOp > 0.02) els.push({ kind: "label", x: +x.toFixed(2), y: p.from.y, text: p.fromLabel, opacity: fromOp, color: p.color });
 			if (p.toLabel && toOp > 0.02) els.push({ kind: "label", x: +x.toFixed(2), y: p.from.y, text: p.toLabel, opacity: toOp, color: p.color });
 			return;
