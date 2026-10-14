@@ -75,6 +75,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
   editingNote,
   handleNoteClick,
   handleNoteMouseDown,
+  onNoteMiddleDown,
   setPreviewHoverNote,
   setUseColor2Level,
   setHoveredNoteId,
@@ -373,6 +374,9 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                 if (e.button === 1) {
                   e.preventDefault();
                   e.stopPropagation();
+                  if (onNoteMiddleDown && onNoteMiddleDown(note.id)) {
+                    return;
+                  }
                   if (!shouldSplitFill) {
                     return;
                   }
