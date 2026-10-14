@@ -82,7 +82,10 @@ export function createKeyboardHandler(params) {
         // Ctrl+Shift+Z 重做（预览模式屏蔽）
         if (event.ctrlKey && event.shiftKey && event.code === 'KeyZ') {
             event.preventDefault();
-            if (dynamic?.isDynamic && dynamic.viewMode !== 'edit') return;
+            if (dynamic?.isDynamic) {
+                if (dynamic.viewMode === 'edit' && dynamic.redoStep && dynamic.redoStep()) return;
+                return; // 预览态不重做
+            }
             if (redo) {
                 redo();
             }

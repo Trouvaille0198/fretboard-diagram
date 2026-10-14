@@ -61,8 +61,11 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		const edges = [];
 		const edge = (t, on, off, enter) => edges.push({ t, on, off, enter });
 		pres.forEach(s => {
-			edge(Math.round(DOT * 0.5), { id: s.from, c: ft }, null, 60); // B=帧位档（=当前帧新增音色）
-			edge(DOT, null, { id: s.from }, 16); // 光点到达 A：B 立即消失（瞬切）
+			// 语义：滑音先"取消"目标（窗开目标先灭=回到未生效），滑行音半程亮，抵达瞬间目标以原色复亮（=生效）
+			const toC = origColor(s.to) || ft; // 目标自己的原色（帧数据里的生效色）
+			edge(0, null, { id: s.to }, SETTLE); // 窗开：目标先灭（未生效）
+			edge(Math.round(DOT * 0.5), { id: s.from, c: ft }, null, 60); // 滑行音半程亮（帧位档）
+			edge(DOT, { id: s.to, c: toC }, { id: s.from }, 60); // 抵达：目标复亮（原色）+ 滑行音灭
 		});
 		slP.forEach(p => {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
