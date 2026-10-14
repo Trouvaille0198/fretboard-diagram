@@ -662,21 +662,35 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			return true; // 消费手势（不落到分色等默认行为）
 		}
 		chainDragRef.current = { from: noteId, hoverId: null };
+		clearTimeout(chainDwellRef.current);
 		chainLog("链音开始 " + noteId);
 		toast?.("链音中：拖到激活的音符上松手", "info");
 		return true;
 	}, [viewMode, toast, dataRef, visibility]);
 	const isChainDragging = useCallback(() => chainDragRef.current !== null, []);
 	const getChainDragInfo = useCallback(() => (chainDragRef.current ? { from: chainDragRef.current.from, hoverId: chainDragRef.current.hoverId || null } : null), []);
-	// 拖动中的悬停目标（仅激活音有效）：驱动引导线末端的提示环
+	// 拖动中的悬停目标（仅激活音有效）：驱动引导线末端的提示环。
+	// 悬停稳定 350ms 即自动成链（松手事件在某些浏览器会被中键手势吞掉，不能只靠 pointerup）
+	const chainDwellRef = useRef(null);
 	const hoverChainTarget = useCallback((noteId) => {
 		const d = chainDragRef.current;
 		if (!d) return;
+		clearTimeout(chainDwellRef.current);
 		d.hoverId = (noteId && noteId !== d.from && isNoteActive(dataRef.current[noteId], visibility)) ? noteId : null;
-		if (d.hoverId) chainLog("hover→" + d.hoverId);
+		if (d.hoverId) {
+			chainLog("hover→" + d.hoverId);
+			const target = d.hoverId;
+			chainDwellRef.current = setTimeout(() => {
+				if (chainDragRef.current && chainDragRef.current.hoverId === target) {
+					chainLog("驻留自动成链 " + target);
+					endChainDrag(target);
+				}
+			}, 350);
+		}
 	}, [dataRef, visibility]);
 	const endChainDrag = useCallback((targetId) => {
-		chainLog("up 目标=" + (targetId || "null"));
+		chainLog("结束 目标=" + (targetId || "null"));
+		clearTimeout(chainDwellRef.current);
 		const d = chainDragRef.current;
 		chainDragRef.current = null;
 		if (!d) { chainLog("up 但无拖拽态!"); return false; }
