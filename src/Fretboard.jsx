@@ -781,13 +781,21 @@ function Fretboard({ mode = 'normal' }) {
       setDragPos({ x: e.clientX, y: e.clientY });
     };
     const up = e => {
-      if (dynamicRef.current.isChainDragging()) { dynamicRef.current.endChainDrag(noteAt(e.clientX, e.clientY)); setDragPos(null); return; }
+      if (dynamicRef.current.isChainDragging()) {
+        // 松手落点没压中音符时，用最后悬停确认的目标（提示环所示）——真实鼠标常偏出圆几像素
+        const info = dynamicRef.current.getChainDragInfo();
+        dynamicRef.current.endChainDrag(noteAt(e.clientX, e.clientY) || (info && info.hoverId));
+        setDragPos(null); return;
+      }
       if (!dynamicRef.current.isDragging()) return;
       dynamicRef.current.endSlideDrag(releaseTargetAt(e.clientX, e.clientY));
       setDragPos(null);
     };
     const cancel = () => {
-      if (dynamicRef.current.isChainDragging()) dynamicRef.current.endChainDrag(null);
+      if (dynamicRef.current.isChainDragging()) {
+        const info = dynamicRef.current.getChainDragInfo();
+        dynamicRef.current.endChainDrag((info && info.hoverId) || null);
+      }
       if (dynamicRef.current.isDragging()) dynamicRef.current.endSlideDrag(null);
       setDragPos(null);
     };
