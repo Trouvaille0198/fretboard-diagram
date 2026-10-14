@@ -1322,9 +1322,21 @@ function Fretboard({ mode = 'normal' }) {
   const copyGifToClipboard = useCallback(async () => {
     const canClipboard = typeof ClipboardItem !== 'undefined' && !!navigator.clipboard && typeof navigator.clipboard.write === 'function';
     try {
-      setExporting('png');
+      setExporting('svganim');
       if (!canClipboard) {
-        showToast('当前页面不支持写剪贴板（需 localhost/HTTPS 打开）', 'error');
+        // 非安全上下文：直接下载 SVG 动图
+        const blob = await buildExportBlob('svganim');
+        const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
+        const name = `fretboard-${Date.now()}.svg`;
+        const savedTo = rememberedDirSupported() ? await saveToRememberedDir(name, blob) : null;
+        if (savedTo) showToast(`已保存到「${savedTo}」/${name}`, 'success');
+        else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = name;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+          showToast('已下载 SVG 动图', 'info');
+        }
         return;
       }
       // 首帧 PNG（取展开后首状态栅格）
@@ -1341,9 +1353,11 @@ function Fretboard({ mode = 'normal' }) {
         cv.getContext('2d').drawImage(img, 0, 0);
         cv.toBlob(resolve, 'image/png');
       });
-      const item = new ClipboardItem({ 'image/png': png });
+      // SVG 动图为主格式（矢量动画），PNG 首帧兜底（不支持 SVG 的应用自动取 PNG）
+      const svgBlob = await buildExportBlob('svganim');
+      const item = new ClipboardItem({ 'image/svg+xml': svgBlob, 'image/png': png });
       await navigator.clipboard.write([item]);
-      showToast('已复制首帧 PNG（动画请用导出菜单：GIF / SVG / MP4）', 'success');
+      showToast(`已复制 SVG 动图（${(svgBlob.size / 1024).toFixed(0)} KB）——支持 SVG 的应用粘出矢量动画，其余粘出首帧 PNG`, 'success');
     } catch (error) {
       showToast(`复制失败: ${error.message}`, 'error');
     } finally {
