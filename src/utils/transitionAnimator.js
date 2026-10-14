@@ -111,8 +111,8 @@ export function describeTransition(prevState, nextState, spec = {}) {
 				transient: tech === "rt" || tech === "hp" || tech === "pre", // 往返/前置的瞬态音
 				// 轨迹颜色（渲染时实时算，不存快照——存了会随帧结构/色系变化过期）：
 				// sl 的 B 用结果帧实际色；rt/hp 瞬时 B = A 深一整档（pale→vivid→rich→deep）
-				color: (tech === "pre" ? null : noteColorOf(nextState, p.to)) // pre 的 to=常亮 A，取 A 原色会和板面 B 瞬态色打架
-					|| (nextState?.frameTint ? nextState.frameTint.custom : null) // 瞬时 B＝当帧帧档色（与新增音符一致）
+				color: noteColorOf(nextState, p.to) // 优先 B 的数据色：pre 移动音符到达时与板面 B 同色交接（无缝，无闪影）
+					|| (nextState?.frameTint ? nextState.frameTint.custom : null)
 					|| noteColorOf(prevState, p.from)
 					|| FX_COLORS.dotFill
 			};
@@ -168,8 +168,7 @@ export function sampleTransition(desc, t, transMs) {
 			const prog = easeInOutCubic(t);
 			const x = p.from.x + (p.to.x - p.from.x) * prog;
 			// 移动的就是一个"音符"（圆 + 音名），从 A 划到 B，到达即与板面 B 重合停住
-			const noteOp = t > 0.96 ? +((1 - t) / 0.04).toFixed(3) : 1; // 到达前最后几毫秒淡交板面 B
-			els.push({ kind: "note", x: +x.toFixed(2), y: p.from.y, r: R, opacity: noteOp, color: p.color });
+			els.push({ kind: "note", x: +x.toFixed(2), y: p.from.y, r: R, opacity: 1, color: p.color }); // 全程不透明：到达瞬间与板面 B 同位同色交接
 			// 音名交叉淡化：前半程 A 名淡出，后半程 B 名淡入（居中在音符上）
 			const fromOp = t < 0.5 ? +(1 - t * 2).toFixed(3) : 0;
 			const toOp = t >= 0.5 ? +((t - 0.5) * 2).toFixed(3) : 0;
