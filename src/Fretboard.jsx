@@ -781,6 +781,7 @@ function Fretboard({ mode = 'normal' }) {
       setDragPos({ x: e.clientX, y: e.clientY });
     };
     const up = e => {
+      if (e.button === 1) { try { const el = document.getElementById('__chaindbg'); if (el) el.textContent += '\n[up btn=1 ' + e.clientX + ',' + e.clientY + ']'; } catch (err) {} }
       if (dynamicRef.current.isChainDragging()) {
         // 松手落点没压中音符时，用最后悬停确认的目标（提示环所示）——真实鼠标常偏出圆几像素
         const info = dynamicRef.current.getChainDragInfo();
