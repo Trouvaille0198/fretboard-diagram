@@ -11,6 +11,8 @@ export function DynamicToolbar({
   loopPlay,
   cumulative,
   onToggleCumulative,
+  transTool,
+  onToggleTransTool,
   animSettings,
   displayOptions,
   onDisplayChange,
@@ -61,6 +63,14 @@ export function DynamicToolbar({
               <span className="dyn-scheme-dot" style={{ background: getLevel1FillColor(name) }} />
             </button>
           ))}
+          <button
+            className={`dyn-btn dyn-scheme ${transTool ? 'on' : ''}`}
+            onClick={onToggleTransTool}
+            title="透明音：开启后点击音符涂背景色幽灵音（独立于色系，换色系不变）"
+          >
+            <span className="dyn-scheme-dot" style={{ background: 'var(--background-color)', boxShadow: 'inset 0 0 0 2px rgba(230,237,242,0.55)' }} />
+            透
+          </button>
           <span className="dyn-sep" />
         </>
       )}

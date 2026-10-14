@@ -348,6 +348,9 @@ function Fretboard({ mode = 'normal' }) {
   const [previewFrame, setPreviewFrame] = useState(null);
   const previewFrameRef = useRef(null);
   // 展开时间轴：hp（击勾）帧拆 3 子拍（须在 dynamic 声明后、playingBoard 使用前）
+  // 透明音工具（独立于色系）：开启后点击未激活的音涂 trans（背景色幽灵音），再点熄灭
+  const [transTool, setTransTool] = useState(false);
+
   // 累积式预览（"存在过的点不消失"）：激活过的音永不熄灭，随播放逐音铺满；选择跨刷新持久化
   const [cumulativeView, setCumulativeView] = useState(() => {
     try { return localStorage.getItem('fretboard-cumulative') === '1'; } catch (e) { return false; }
@@ -706,14 +709,15 @@ function Fretboard({ mode = 'normal' }) {
       const vis = noteData.visibility || visibility;
       const active = (vis === 'visible' || vis === 'selected') && noteData.color && noteData.color !== 'white';
       if (!active) {
-        dyn.paintNote(noteId, { color: getVividColorValue(), color2: null, visibility: 'visible' });
+        // 透明音工具优先：涂 trans（字符串色，独立于色系——restyle 不认它，换色系不变）
+        dyn.paintNote(noteId, { color: transTool ? 'trans' : getVividColorValue(), color2: null, visibility: 'visible' });
       } else {
         dyn.paintNote(noteId, { color: 'white', color2: null, visibility });
       }
       return;
     }
     baseNoteClick(event, noteId);
-  }, [baseNoteClick, visibility, dataRef, getVividColorValue]);
+  }, [baseNoteClick, visibility, dataRef, getVividColorValue, transTool]);
 
   // 按下音符：动态模式优先进入滑弦拖拽（从亮着的音拖出）；否则走连线拖拽
   const baseNoteMouseDown = useCallback(createNoteMouseDownHandler({
@@ -1685,6 +1689,8 @@ function Fretboard({ mode = 'normal' }) {
         loopPlay={loopPlay}
         cumulative={cumulativeView}
         onToggleCumulative={() => setCumulativeView(v => !v)}
+        transTool={transTool}
+        onToggleTransTool={() => setTransTool(v => !v)}
         animSettings={animSettings}
         exporting={exporting}
         canPlay={playSteps.states.length >= 2 || (playSteps.fx || []).length > 0}
