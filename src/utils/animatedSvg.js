@@ -195,9 +195,9 @@ export async function buildAnimatedSvg({ states, fx, frameOf, sub, renderSvg, la
 		const ax = p0.from.x, ay = p0.from.y, bx = p0.to.x, by = p0.to.y;
 		const dur = track.dur, t0 = track.t0, t1 = t0 + dur;
 		const pairColor = p0.color; // B 数据色 → 帧位档 → A 数据色 → 金色兜底（describeTransition 色链，播放器同款）
-		// 前置划弦：与播放器/GIF 同语义（sampleTransition pre 分支）——一个音符（圆+音名交叉淡化）
-		// 从 A 划到 B，到达与板面 B 同色交接。不画轨迹线（sl 专属语义）
-		if (pair.technique === 'pre') {
+		// 移动音符技法（sl 与前置划弦 pre 同款）：与播放器/GIF 同语义（sampleTransition 分支）——
+		// 一个音符（圆+音名交叉淡化）从 A 划到 B，到达与板面 B 同色交接。不画轨迹线
+		if (pair.technique === 'pre' || pair.technique === 'sl') {
 			const STEPS = 24;
 			const notePts = [];
 			let noteR = 22, noteY = null; // 采样元素自带 r/y（同弦滑动 y 恒定），与播放器同源
@@ -270,45 +270,6 @@ export async function buildAnimatedSvg({ states, fx, frameOf, sub, renderSvg, la
 				fxLayer.appendChild(tx);
 			});
 			return;
-		}
-		// 滑线轨迹（sl 与播放器同形：跟随光点、首尾 12% 淡入淡出）
-		if (pair.technique === 'sl') {
-			const ln = doc.createElementNS('http://www.w3.org/2000/svg', 'line');
-			ln.setAttribute('x1', String(ax)); ln.setAttribute('y1', String(ay));
-			ln.setAttribute('stroke', pairColor);
-			ln.setAttribute('stroke-width', '3');
-			ln.setAttribute('stroke-linecap', 'round');
-			ln.setAttribute('opacity', '0');
-			const mkX2 = linearTrack([...Array(13)].map((_, i) => { const u = i / 12; const e = 1 - Math.pow(1 - u, 3); return { t: t0 + u * dur, v: ax + (bx - ax) * e }; }), total);
-			const mkY2 = linearTrack([...Array(13)].map((_, i) => { const u = i / 12; const e = 1 - Math.pow(1 - u, 3); return { t: t0 + u * dur, v: ay + (by - ay) * e }; }), total);
-			// opacity 关键帧：0 → (窗口内按 12% 淡入淡出采样) → 0
-			const opPts = [];
-			for (let i = 0; i <= 12; i++) {
-				const u = i / 12;
-				const op = u < 0.12 ? u / 0.12 : u > 0.88 ? (1 - u) / 0.12 : 1;
-				opPts.push({ t: t0 + u * dur, v: +op.toFixed(3) });
-			}
-			const lopT = linearTrack(opPts, total);
-			[['x2', mkX2], ['y2', mkY2]].forEach(([attr, tr]) => {
-				if (!tr) return;
-				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
-				a.setAttribute('attributeName', attr);
-				a.setAttribute('values', tr.values);
-				a.setAttribute('keyTimes', tr.keyTimes);
-				a.setAttribute('dur', total + 'ms');
-				a.setAttribute('repeatCount', 'indefinite');
-				ln.appendChild(a);
-			});
-			if (lopT) {
-				const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
-				a.setAttribute('attributeName', 'opacity');
-				a.setAttribute('values', lopT.values);
-				a.setAttribute('keyTimes', lopT.keyTimes);
-				a.setAttribute('dur', total + 'ms');
-				a.setAttribute('repeatCount', 'indefinite');
-				ln.appendChild(a);
-			}
-			fxLayer.appendChild(ln);
 		}
 		const c = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
 		c.setAttribute('r', '12');
