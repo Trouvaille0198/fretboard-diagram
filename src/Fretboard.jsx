@@ -1353,11 +1353,14 @@ function Fretboard({ mode = 'normal' }) {
         cv.getContext('2d').drawImage(img, 0, 0);
         cv.toBlob(resolve, 'image/png');
       });
-      // SVG 动图为主格式（矢量动画），PNG 首帧兜底（不支持 SVG 的应用自动取 PNG）
+      // 三口味：text/html 内联 SVG（粘进网页编辑器=活DOM会动）+ image/svg+xml（矢量文件口味）
+      // + image/png（位图兜底）。接收端各取所需。
       const svgBlob = await buildExportBlob('svganim');
-      const item = new ClipboardItem({ 'image/svg+xml': svgBlob, 'image/png': png });
+      const svgText = await svgBlob.text();
+      const htmlBlob = new Blob([`<span style="display:inline-block">${svgText}</span>`], { type: 'text/html' });
+      const item = new ClipboardItem({ 'text/html': htmlBlob, 'image/svg+xml': svgBlob, 'image/png': png });
       await navigator.clipboard.write([item]);
-      showToast(`已复制 SVG 动图（${(svgBlob.size / 1024).toFixed(0)} KB）——支持 SVG 的应用粘出矢量动画，其余粘出首帧 PNG`, 'success');
+      showToast(`已复制 SVG 动图（${(svgBlob.size / 1024).toFixed(0)} KB）——粘进网页文档（飞书/Notion等）是会动的，Word/Figma 得矢量图，聊天窗口得图片`, 'success');
     } catch (error) {
       showToast(`复制失败: ${error.message}`, 'error');
     } finally {
