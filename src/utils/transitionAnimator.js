@@ -9,7 +9,6 @@ import { generateNotes, computeNoteName, computeNoteIndex } from "./fretboardCal
 import { noteToSolfege } from "../utils";
 import { getLevel1FillColor, generateTintVariants } from "../colorConfig";
 import { activeNoteIdsOf } from "./songStructure";
-import { deepenTint } from "../colorConfig";
 
 // 与编辑区一致的音符构建（全指板所有位置，含未点亮的）
 function buildAllNotes(state) {
