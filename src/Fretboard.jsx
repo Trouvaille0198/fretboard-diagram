@@ -770,7 +770,11 @@ function Fretboard({ mode = 'normal' }) {
       return base;
     };
     const move = e => {
-      if (dynamicRef.current.isChainDragging()) { setDragPos({ x: e.clientX, y: e.clientY }); return; }
+      if (dynamicRef.current.isChainDragging()) {
+        dynamicRef.current.hoverChainTarget?.(noteAt(e.clientX, e.clientY));
+        setDragPos({ x: e.clientX, y: e.clientY });
+        return;
+      }
       if (!dynamicRef.current.isDragging()) return;
       dynamicRef.current.markDragMove();
       dynamicRef.current.hoverSlideTarget(releaseTargetAt(e.clientX, e.clientY));
@@ -820,10 +824,11 @@ function Fretboard({ mode = 'normal' }) {
     };
     const cur = toSvg(dragPos.x, dragPos.y); // 先算指针 svg 坐标（pre 分支也要用）
     if (chainDragInfo) {
-      // 中键链音引导：金色虚线 起点→光标 + 跟手光点（与滑弦拖拽同款反馈）
+      // 中键链音引导：起点→光标金色线（悬停到有效目标时变实线）+ 跟手光点 + 目标提示环
       const fromPosC = getNotePositionMemo(chainDragInfo.from);
       if (!fromPosC) return null;
-      return { fromPos: fromPosC, cur, vivid: 'var(--app-accent, #f3ba62)', targetPos: null, armedPos: null, returnReadyPos: null };
+      const targetPosC = chainDragInfo.hoverId ? getNotePositionMemo(chainDragInfo.hoverId) : null;
+      return { fromPos: fromPosC, cur, vivid: 'var(--app-accent, #f3ba62)', targetPos: targetPosC, armedPos: null, returnReadyPos: null };
     }
     if (!dragInfo) return null;
     if (dragInfo.mode === 'pre') {
