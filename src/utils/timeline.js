@@ -162,6 +162,9 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 }
 
 
+// 整轮播完、回环重启前的尾部停顿（末帧多停一拍再循环；播放与导出同源）
+export const END_PAUSE_MS = 600;
+
 // 状态绝对时钟（播放器与导出共用的唯一真源）：
 // 状态 k 显示 [starts[k], starts[k+1])，时长 = hold_k + enterOf(k)；
 // enterOf(k) = 进入下一状态的切换动画（存在 states[k+1].transMs）——与 fx 轨道 t0/dur 严格同轴。
