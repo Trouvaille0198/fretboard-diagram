@@ -28,7 +28,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 		const blankData = {};
 		Object.entries(frames[0].data || {}).forEach(([id, n]) => {
 			if (id === 'connections' || id.startsWith('conn-')) { blankData[id] = n; return; }
-			blankData[id] = n && typeof n === 'object' ? { ...n, visibility: 'transparent' } : n;
+			blankData[id] = n && typeof n === 'object' ? { ...n, color: 'white', color2: null, visibility: 'transparent' } : n;
 		});
 		states.push({ ...frames[0], data: blankData, holdMs: H });
 		btimes.push(-1);

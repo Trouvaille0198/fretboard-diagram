@@ -193,7 +193,7 @@ export function DynamicToolbar({
           <div className="dyn-settings-checks">
             <label className="dyn-settings-check">
               <input type="checkbox" checked={!!animSettings.leadBlank} onChange={e => onSettingsChange({ leadBlank: e.target.checked })} />
-              <span>{td.leadBlank ?? '从空白开始（第一帧的音也有激活动画）'}</span>
+              <span>{td.leadBlank ?? '从空白开始'}</span>
             </label>
           </div>
           <div className="dyn-settings-sep">导出显示（与普通模式共用）</div>
