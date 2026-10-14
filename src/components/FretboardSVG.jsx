@@ -183,6 +183,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
       onPointerDown={handleSvgMouseDown}
       onContextMenu={handleSvgContextMenu}
       onWheel={handleSvgWheel}
+      onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}
     >
       <defs>
         {/* 毛玻璃效果filter */}

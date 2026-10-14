@@ -736,7 +736,8 @@ function Fretboard({ mode = 'normal' }) {
   // 中键：帧内链音手势（同帧新建音符依次激活）——动态编辑态专用，普通模式仍走分色
   const handleNoteMiddleDown = useCallback((noteId) => {
     const dyn = dynamicRef.current;
-    if (!dyn.isDynamic || dyn.viewMode !== 'edit') return false;
+    if (!dyn.isDynamic) return false;
+    if (dyn.viewMode !== 'edit') { showToast('中键链音只在编辑态可用（Q 切回编辑）', 'info'); return true; }
     if (playingIdx !== null) setPlayingIdx(null);
     return dyn.beginChainDrag(noteId);
   }, []);
