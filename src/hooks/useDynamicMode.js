@@ -641,6 +641,25 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (applyBoard) applyBoard(prev);
 	}, [viewMode, commitData, applyBoard, visibility]);
 
+	// 删除技法标注：当前帧进入的 pair（sl/rt/hp）与 preSlide（pre）按 from+to 匹配删除
+	const deletePair = useCallback((from, to) => {
+		const idx = editIdxRef.current;
+		if (idx > 0) {
+			setTransitions(prev => prev.map((tr, i) => {
+				if (i !== idx - 1 || !tr || !tr.pairs || !tr.pairs.length) return tr;
+				const kept = tr.pairs.filter(p => !(p.from === from && p.to === to));
+				return kept.length === tr.pairs.length ? tr : { ...tr, pairs: kept };
+			}));
+		}
+		setFrames(prev => prev.map((f, i) => {
+			if (i !== idx || !f.preSlides || !f.preSlides.length) return f;
+			const kept = f.preSlides.filter(s => !(s.from === from && s.to === to));
+			return kept.length === f.preSlides.length ? f : { ...f, preSlides: kept };
+		}));
+		toast?.("已删除该划弦/击勾标注", "info");
+		return true;
+	}, [toast]);
+
 	// Ctrl+Z：帧内多步撤销（板面快照栈回退；预览/非动态不可用）
 	const undoStep = useCallback(() => {
 		if (!isDynamic || viewMode !== "edit") return false;
@@ -678,7 +697,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		isDynamic, frames, transitions, technique, pairs, pendingFrom,
 		sessionClip, clipVersion,
 		toggleQ, loadClip, setTechnique,
-		markNote, commitFrame, cancelMarking, undoStep, redoStep, paintNote,
+		markNote, commitFrame, cancelMarking, undoStep, redoStep, deletePair, paintNote,
 		beginSlideDrag, hoverSlideTarget, endSlideDrag, isDragging, consumeDragClick, markDragMove, getDragInfo,
 		editIdx, gotoFrame, startSession, mapFrames, mapTransitions, viewMode, applyPreviewFrames, newClip, revertToPrevFrame,
 		syncFrame, addFrame, deleteFrame, persistClip, persistedOnce

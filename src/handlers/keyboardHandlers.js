@@ -25,6 +25,7 @@ export function createKeyboardHandler(params) {
         setPreviewHoverNote,
         setUseColor2Level,
         dynamic,
+        deleteHoveredPair,
         toggleVisibility,
         reset,
         saveSVG,
@@ -45,12 +46,26 @@ export function createKeyboardHandler(params) {
             return;
         }
 
-        // 动态模式 ←/→ 逐帧跳转
+        // 动态编辑态：退格/Delete 删除悬停的技法标注线（无悬停则不响应）
+        if (dynamic?.isDynamic && dynamic.viewMode === 'edit' && !event.ctrlKey && !event.altKey && !event.shiftKey
+            && (event.code === 'Backspace' || event.code === 'Delete')) {
+            if (deleteHoveredPair && deleteHoveredPair()) event.preventDefault();
+            return;
+        }
+
+        // 动态模式逐帧跳转：←/→ 边界停；编辑态 A/D 循环绕回（首帧←D=末帧，末帧 D→=首帧）
         if (dynamic?.isDynamic && !event.ctrlKey && !event.altKey && !event.shiftKey
-            && (event.code === 'ArrowLeft' || event.code === 'ArrowRight')) {
+            && (event.code === 'ArrowLeft' || event.code === 'ArrowRight'
+                || (dynamic.viewMode === 'edit' && (event.code === 'KeyA' || event.code === 'KeyD')))) {
             event.preventDefault();
             if (dynamic.gotoFrame) {
-                dynamic.gotoFrame(dynamic.editIdx + (event.code === 'ArrowRight' ? 1 : -1));
+                const dir = (event.code === 'ArrowRight' || event.code === 'KeyD') ? 1 : -1;
+                if (event.code === 'KeyA' || event.code === 'KeyD') {
+                    const n = Number(dynamic.frameCount) || 0;
+                    if (n > 0) dynamic.gotoFrame((dynamic.editIdx + dir + n) % n);
+                } else {
+                    dynamic.gotoFrame(dynamic.editIdx + dir);
+                }
             }
             return;
         }
