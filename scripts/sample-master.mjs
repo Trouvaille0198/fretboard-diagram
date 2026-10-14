@@ -69,13 +69,12 @@ function runCore() {
 	A("sl 终态：f4 亮 f3 灭", vis(last2, "f4-s0") && !vis(last2, "f3-s0"));
 	A("rt 终态：f5 还原 f6 灭", vis(last2, "f5-s2") && !vis(last2, "f6-s2"));
 	A("hp 终态：f7 还原 f8 灭", vis(last2, "f7-s3") && !vis(last2, "f8-s3"));
-	A("pre 终态：f1 灭 f9 常亮", !vis(last2, "f1-s1") && vis(last2, "f9-s5"));
+	A("pre 纯视觉：目标 f9 恒亮、f1 无瞬态", vis(last2, "f9-s5") && R.states.filter((_, si) => R.frameOf[si] === 1).every(s => !vis(s, "f1-s1")));
 	A("sl B=数据出生色 vivid", last2.data["f4-s0"].color.custom === T[1]);
 	const rtB = f2.map(s => s.data["f6-s2"]).filter(d => d && d.visibility === "visible")[0];
 	const hpB = f2.map(s => s.data["f8-s3"]).filter(d => d && d.visibility === "visible")[0];
-	const preB = f2.map(s => s.data["f1-s1"]).filter(d => d && d.visibility === "visible")[0];
-	A("rt/hp/pre 瞬时 B=帧位档（=F2 新增音 f4 的 vivid）", rtB && rtB.color.custom === T[1] && hpB && hpB.color.custom === T[1] && preB && preB.color.custom === T[1],
-		[rtB, hpB, preB].map(x => x && x.color.custom).join("/"));
+	A("rt/hp 瞬时 B=帧位档（=当前帧新增音色）", rtB && rtB.color.custom === T[1] && hpB && hpB.color.custom === T[1],
+		[rtB, hpB].map(x => x && x.color.custom).join("/"));
 	const f2fx = R.fx.filter(x => x.frame === 1);
 	A("F2 fx 4 轨道（sl+rt出+rt回+pre；hp 离散无光点）", f2fx.length === 4, String(f2fx.length));
 	A("F2 出程轨道同起点", f2fx.filter(x => !x._rtBack).every(x => x.t0 === f2fx[0].t0));
@@ -102,7 +101,7 @@ function runCore() {
 	console.log("== F6 双 hp+pre ==");
 	const f6 = frameStates(5), last6 = f6[f6.length - 1];
 	A("双 hp A 恒亮", f6.every(s => vis(s, "f9-s5") && vis(s, "f4-s0")));
-	A("双 hp B 闪现后灭、pre B 灭", !vis(last6, "f10-s5") && !vis(last6, "f5-s0") && !vis(last6, "f2-s2"));
+	A("双 hp B 闪现后灭；pre 纯视觉", !vis(last6, "f10-s5") && !vis(last6, "f5-s0") && !vis(last6, "f2-s2") && R.states.filter((_, si) => R.frameOf[si] === 5).every(s => vis(s, "f9-s3")));
 
 	console.log("== F7 纯新增收尾 ==");
 	const f7 = frameStates(6), last7 = f7[f7.length - 1];
