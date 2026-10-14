@@ -15,12 +15,27 @@ function beatTint(frame, i, frames) {
 }
 const lit = (data, id, color) => ({ ...data, [id]: color ? { type: "note", color: { name: color.name, custom: color.custom }, color2: null, visibility: "visible" } : { type: "note", color: "white", color2: null, visibility: "transparent" } });
 
-export function expandTimeline(frames, transitions, holdMs, transMs) {
+export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) {
 	const H = holdMs > 0 ? holdMs : 300;
 	const T = transMs > 0 ? transMs : 200;
 	const states = [], specs = [], frameOf = [], sub = [], fx = [];
 	const btimes = [];
 	let now = 0;
+
+	// 从空白开始：最前面垫一块全空白态（等效"第0帧"），第一帧的音经标准过渡 T 进入——
+	// 否则首帧音"天生就在"，没有出现动画。frameOf=-1：不属于任何帧（fx 定位/帧高亮不认它）
+	if (opts.leadBlank && frames.length) {
+		const blankData = {};
+		Object.entries(frames[0].data || {}).forEach(([id, n]) => {
+			if (id === 'connections' || id.startsWith('conn-')) { blankData[id] = n; return; }
+			blankData[id] = n && typeof n === 'object' ? { ...n, visibility: 'transparent' } : n;
+		});
+		states.push({ ...frames[0], data: blankData, holdMs: H });
+		btimes.push(-1);
+		frameOf.push(-1);
+		sub.push(false);
+		now = H; // 空白态先驻留 H，再经 T 过渡进第 1 帧（首态的 transMs 由 pushState 写到空白态上）
+	}
 
 	frames.forEach((frame, i) => {
 		const inc = i > 0 ? (transitions[i - 1] || { pairs: [] }) : null;
@@ -49,7 +64,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		hpP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
 
 		const frameStart = now;
-		const enter0 = i === 0 ? 0 : (tech ? SETTLE : T);
+		const enter0 = i === 0 ? (opts.leadBlank ? T : 0) : (tech ? SETTLE : T);
 		const t0 = frameStart + enter0;
 
 		const origColor = id => {
