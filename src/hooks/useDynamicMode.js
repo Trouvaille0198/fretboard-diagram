@@ -569,17 +569,31 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (d.moved) suppressClickRef.current = true; // 真拖过：吞掉引发的 click（防误切换源音/落点音）
 		// 前置划弦：B→A 记到当前帧 preSlides（任何帧可用，含第 1 帧）；板面保持不变
 		if (d.mode === "pre") {
-			if (!d.preTo || !isNoteActive(dataRef.current[d.preTo], visibility)) return false;
+			// 松手即答案：驻留未确认时，若松手正落在同弦亮音上，直接认作目标——
+			// 否则快速点放（零 pointermove）会漏到手势、click 把起点画成浅色音（偶发"浅音不消失"的根因）
+			let to = d.preTo;
+			if ((!to || !isNoteActive(dataRef.current[to], visibility)) && targetId && targetId !== d.from
+				&& stringOfNote(targetId) === stringOfNote(d.from) && isNoteActive(dataRef.current[targetId], visibility)) {
+				to = targetId;
+			}
+			if (!to || !isNoteActive(dataRef.current[to], visibility)) return false;
 			const idx = editIdxRef.current;
 			setFrames(prev => prev.map((f, i) => {
 				if (i !== idx) return f;
-				const slides = (f.preSlides || []).filter(s => !(s.from === d.from && s.to === d.preTo));
-				return { ...f, preSlides: [...slides, { from: d.from, to: d.preTo }] };
+				const slides = (f.preSlides || []).filter(s => !(s.from === d.from && s.to === to));
+				return { ...f, preSlides: [...slides, { from: d.from, to }] };
 			}));
 			toast?.("已设前置划弦（B 闪现滑到 A）", "success");
 			return true;
 		}
-		if (!d.activatedTo) return false; // 未激活就松手：取消，什么都不改
+		if (!d.activatedTo) {
+			// 同理：未激活的滑弦手势若松手落在合法目标（同弦另一音）上，就地激活完成，不再整单作废
+			if (targetId && targetId !== d.from && stringOfNote(targetId) === stringOfNote(d.from)) {
+				const hint = getVividColor ? getVividColor() : null;
+				if (hint) commitData(patchNote(dataRef.current, targetId, { color: hint, color2: null, visibility: "visible" }));
+				d.activatedTo = targetId;
+			} else return false; // 未激活且无合法目标：取消，什么都不改
+		}
 
 		const from = d.from;
 		const to = d.activatedTo; // 激活时已点亮强色
