@@ -161,16 +161,15 @@ export function sampleTransition(desc, t, transMs) {
 			if (aBack > 0) els.push({ kind: "dot", x: p.from.x, y: p.from.y, r: 7, opacity: +(0.8 * aBack).toFixed(3), color: p.color });
 			return;
 		}
-		const isSl = tech === "sl";
 		const isRT = tech === "rt";
 		const isQuick = tech === "h" || tech === "p";
 
-		if (tech === "pre") {
-			// 前置划弦：滑行音的亮/灭由板面状态驱动（半程亮、抵达灭）——fx 只画线+光点，
-			// 不再渲染 bHold 滑行音符（旧语义残留：80% 行程满透明 pale 音符=白点不消失的根因）
+		if (tech === "pre" || tech === "sl") {
+			// 移动音符语义（sl 与前置划弦同款，用户定稿"A 直接到 B"）：
+			// 滑行的就是一个"音符"（圆 + 音名），从 A 划到 B，到达即与板面 B 重合停住。
+			// 出发原位/抵达点亮的亮灭由板面状态边驱动，fx 只画移动音符
 			const prog = easeInOutCubic(t);
 			const x = p.from.x + (p.to.x - p.from.x) * prog;
-			// 移动的就是一个"音符"（圆 + 音名），从 A 划到 B，到达即与板面 B 重合停住
 			els.push({ kind: "note", x: +x.toFixed(2), y: p.from.y, r: R, opacity: 1, color: p.color }); // 全程不透明：到达瞬间与板面 B 同位同色交接
 			// 音名交叉淡化：前半程 A 名淡出，后半程 B 名淡入（居中在音符上）
 			const fromOp = t < 0.5 ? +(1 - t * 2).toFixed(3) : 0;
@@ -193,15 +192,10 @@ export function sampleTransition(desc, t, transMs) {
 			return; // 回程抵达 A 的重亮由板面状态表达（无环）
 		}
 
+		// mv/h/p 等：光点平移（rt 双腿、击勾直连场景）
 		const prog = isQuick ? easeOutQuick(t) : easeInOutCubic(t);
 		const x = p.from.x + (p.to.x - p.from.x) * prog;
 		const y = p.from.y + (p.to.y - p.from.y) * prog;
-
-		if (isSl) {
-			// 只画轨迹线+光点：A 的存续与 B 的抵达点亮全部由数据步表达（v3），不再覆盖绘制
-			const lineOp = t < 0.15 ? t / 0.15 : t > 0.85 ? (1 - t) / 0.15 : 1;
-			els.push({ kind: "line", x1: p.from.x, y1: p.from.y, x2: p.to.x, y2: p.to.y, opacity: +lineOp.toFixed(3), color: p.color });
-		}
 		els.push({ kind: "dot", x: +x.toFixed(2), y: +y.toFixed(2), r: 7, opacity: t > 0.96 ? +((1 - t) / 0.04).toFixed(3) : 1, color: p.color });
 	});
 

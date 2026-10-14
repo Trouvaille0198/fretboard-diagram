@@ -73,13 +73,13 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			edge(DOT, { id: s.to, c: toC }, null, 0); // 瞬切：fx 音符同位同色消失/板面 B 点亮，同一帧完成（无闪影）
 		});
 		slP.forEach(p => {
-			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
-			const bData = base[p.to]; // sl 的 B 是帧数据真实音：用它自己的出生色（半程亮＝终态色，不会中途变色）
+			// 滑弦与前置划弦同构的"移动音符"语义：A 本体从原位滑到 B，出发原位即离场、
+			// 抵达 B 点亮停住——不再用光点+轨迹线（用户定稿：A 直接到 B）
+			const bData = base[p.to]; // sl 的 B 是帧数据真实音：用它自己的出生色（抵达即终态色，无闪影）
 			const bC = bData && bData.color && typeof bData.color === 'object' && bData.visibility === 'visible' ? { name: bData.color.name, custom: bData.color.custom } : bTint(p);
-			// B 在行程一半就亮（提前约半个行程，明显可感）；A 撑到光点抵达（DOT）才熄灭——
-			// 滑动全程 A 持续发声，半程就灭会显得"A 消失得太快"（与 rt 的抵达熄灭同逻辑）
-			edge(Math.round(DOT * 0.5), { id: p.to, c: bC }, null, 60);
-			edge(DOT, null, { id: p.from }, 60);
+			edge(0, null, { id: p.from }, SETTLE);
+			edge(0, null, { id: p.to }, SETTLE);
+			edge(DOT, { id: p.to, c: bC }, null, 0);
 		});
 		rtP.forEach(p => {
 			edge(Math.round(RT_OUT * 0.5), { id: p.to, c: bTint(p) }, null, 60); // B 行程一半亮（与 sl/pre 同逻辑）
@@ -148,10 +148,12 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		const winT0 = btimes[winIdx] !== undefined ? btimes[winIdx] : t0;
 		// fx 音符比板面 B 的 CSS 渐入(0.1s)多停 100ms：全程满亮盖住渐入，交接无亮度塌陷（闪影根因）
 		pres.forEach(s => fx.push({ spec: { technique: null, pairs: [{ from: s.from, to: s.to, technique: "pre" }] }, t0: winT0, dur: DOT + 100, frame: i, _winOffset: 0 }));
-		slP.forEach(p => fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0: winT0, dur: DOT, frame: i, _winOffset: 0 }));
+		// sl 与 pre 同为移动音符：多停 100ms 盖住板面 B 的 CSS 渐入
+		slP.forEach(p => fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0: winT0, dur: DOT + 100, frame: i, _winOffset: 0 }));
 		rtP.forEach(p => {
-			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0: winT0, dur: RT_OUT, frame: i, _winOffset: 0 });
-			fx.push({ spec: { technique: null, pairs: [{ from: p.to, to: p.from, technique: "sl" }] }, t0: 0, dur: RT_BACK, frame: i, _rtBack: true });
+			// rt 仍用光点平移（mv=dot 无轨迹线；rt 板面 A/B 有点亮节奏，移动音符会双重渲染）
+			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "mv" }] }, t0: winT0, dur: RT_OUT, frame: i, _winOffset: 0 });
+			fx.push({ spec: { technique: null, pairs: [{ from: p.to, to: p.from, technique: "mv" }] }, t0: 0, dur: RT_BACK, frame: i, _rtBack: true });
 		});
 	});
 
