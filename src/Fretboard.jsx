@@ -1353,14 +1353,21 @@ function Fretboard({ mode = 'normal' }) {
         cv.getContext('2d').drawImage(img, 0, 0);
         cv.toBlob(resolve, 'image/png');
       });
-      // 三口味：text/html 内联 SVG（粘进网页编辑器=活DOM会动）+ image/svg+xml（矢量文件口味）
-      // + image/png（位图兜底）。接收端各取所需。
+      // 复制前先落盘：ctrl c = 保存+复制，粘贴进飞书/flowus/notion 等文档编辑器时 sanitzer 会吃 SVG，
+      // 只能通过文件上传——落盘后用户从资源管理器拖拽上传播放。
       const svgBlob = await buildExportBlob('svganim');
+      const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
+      const name = `fretboard-${Date.now()}.svg`;
+      let savedTo = null;
+      if (rememberedDirSupported()) savedTo = await saveToRememberedDir(name, svgBlob, { pickIfNone: false });
+      // 同时写剪贴板（矢量+位图+HTML，各取所需）
       const svgText = await svgBlob.text();
       const htmlBlob = new Blob([`<span style="display:inline-block">${svgText}</span>`], { type: 'text/html' });
       const item = new ClipboardItem({ 'text/html': htmlBlob, 'image/svg+xml': svgBlob, 'image/png': png });
       await navigator.clipboard.write([item]);
-      showToast(`已复制 SVG 动图（${(svgBlob.size / 1024).toFixed(0)} KB）——粘进网页文档（飞书/Notion等）是会动的，Word/Figma 得矢量图，聊天窗口得图片`, 'success');
+      const msg = savedTo ? `已保存到「${savedTo}」/${name}（${(svgBlob.size / 1024).toFixed(0)} KB）——飞书/notion/flowus 文档从文件夹拖此文件上传即动`
+        : `已复制 SVG 动图（${(svgBlob.size / 1024).toFixed(0)} KB）；内存盘路径未配置——点「⬇导出→SVG」选一次文件夹后即可自动落盘`;
+      showToast(msg, 'success');
     } catch (error) {
       showToast(`复制失败: ${error.message}`, 'error');
     } finally {
