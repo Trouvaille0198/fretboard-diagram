@@ -1289,16 +1289,25 @@ function Fretboard({ mode = 'normal' }) {
       } else {
         blob = await buildExportBlob(format);
       }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
       const ext = format === 'svganim' ? 'svg' : (format === 'webm-mp4' ? 'mp4' : format);
-      a.download = `fretboard-${Date.now()}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      showToast(`已导出 ${ext.toUpperCase()}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
+      const name = `fretboard-${Date.now()}.${ext}`;
+      // 记忆式保存：首次弹一次目录选择，之后直接写入该目录（不再每次问路径）
+      const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
+      let savedTo = null;
+      if (rememberedDirSupported()) savedTo = await saveToRememberedDir(name, blob);
+      if (savedTo) {
+        showToast(`已保存到「${savedTo}」/${name}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast(`已导出 ${ext.toUpperCase()}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
+      }
     } catch (error) {
       console.error('导出失败:', error);
       showToast(`导出失败: ${error.message}`, 'error');
