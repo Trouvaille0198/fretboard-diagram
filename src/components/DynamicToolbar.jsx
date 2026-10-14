@@ -103,7 +103,7 @@ export function DynamicToolbar({
       <button
         className={`dyn-btn ${cumulative ? 'on' : ''}`}
         onClick={onToggleCumulative}
-        title={td.cumulativeHint ?? '累积预览：激活过的音不熄灭，随播放逐音铺满（Ctrl+Shift+C 导出此样式）'}
+        title={td.cumulativeHint ?? '累积预览：激活过的音不熄灭，随播放逐音铺满（Ctrl+C 按当前样式导出）'}
       >
         迹
       </button>
@@ -189,6 +189,13 @@ export function DynamicToolbar({
               onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }} />
             px
           </label>
+          <div className="dyn-settings-sep">动效</div>
+          <div className="dyn-settings-checks">
+            <label className="dyn-settings-check">
+              <input type="checkbox" checked={!!animSettings.leadBlank} onChange={e => onSettingsChange({ leadBlank: e.target.checked })} />
+              <span>{td.leadBlank ?? '从空白开始（第一帧的音也有激活动画）'}</span>
+            </label>
+          </div>
           <div className="dyn-settings-sep">导出显示（与普通模式共用）</div>
           <div className="dyn-settings-checks">
             {[
