@@ -2,6 +2,7 @@
 // 产物为自包含矢量动图——无限清晰、体积极小，浏览器/文档/<img> 直接播放，微信可作为文件发。
 // 注意：剪贴板 API 只收 image/png（浏览器限制），所以 Ctrl+C 仍是 PNG 回落；动画 SVG 走下载。
 import { stateClock, END_PAUSE_MS } from './timeline.js';
+import { describeTransition, sampleTransition } from './transitionAnimator.js';
 
 const fmt = (n) => Math.round(n * 1000) / 1000;
 
@@ -143,10 +144,13 @@ export async function buildAnimatedSvg({ states, fx, frameOf, sub, renderSvg, la
 		if (subList && subList[k]) continue; // 技法边状态不渲染涟漪（与播放器统一）
 		const w0 = clock.starts[k], w1 = w0 + enter;
 		const pv = visSet(states[k - 1]), cv = visSet(states[k]);
+		// 涟漪静默（与 describeTransition 的 muteEnter 同口径）：技法参与音的新进入不出环
+		const muteEnter = new Set(states[k].muteEnter || []);
 		const sampleU = [0, 0.25, 0.5, 0.75, 1];
 		// 退场灰圆不渲染（与播放器统一：熄灭由板面状态/SMIL opacity 离散帧负责）
 		for (const id of cv) {
 			if (pv.has(id)) continue;
+			if (muteEnter.has(id)) continue;
 			const pos = posOfG(svg, id);
 			if (!pos) continue;
 			const n = states[k].data[id];
@@ -180,28 +184,95 @@ export async function buildAnimatedSvg({ states, fx, frameOf, sub, renderSvg, la
 	(fx || []).forEach(track => {
 		const pair = track.spec && track.spec.pairs && track.spec.pairs[0];
 		if (!pair) return;
-		// 端点坐标：序列化后的音符 g 用 transform 定位（circle 本地坐标 0,0）——优先 data-x/y，回退解析 translate
-		const posOf = (gid) => {
-			const g = svg.querySelector('#' + gid);
-			if (!g) return null;
-			const dx = parseFloat(g.getAttribute('data-x')), dy = parseFloat(g.getAttribute('data-y'));
-			if (Number.isFinite(dx) && Number.isFinite(dy)) return { x: dx, y: dy };
-			const m = (g.getAttribute('transform') || '').match(/translate\(\s*([\d.-]+)[\s,]+([\d.-]+)/);
-			return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : null;
-		};
-		const pa = posOf(pair.from), pb = posOf(pair.to);
-		if (!pa || !pb) return;
-		const ax = pa.x, ay = pa.y, bx = pb.x, by = pb.y;
-		const dur = track.dur, t0 = track.t0, t1 = t0 + dur;
-		// 配色同源：sl 光点=B 数据色；rt/hp/pre=该帧帧位档（与 describeTransition 一致）
+		// 几何与配色同源：与播放器/GIF 一样取自 describeTransition（generateNotes 全指板坐标，与音符亮灭无关）。
+		// 绝不能从渲染板 DOM 反查音符 g——pre 的起点音从未点亮，showNotes=false 的导出板不渲染它，
+		// 反查 null 会整条静默丢轨（"多条前置滑弦只有一条有动画"的根因）
 		const frameStates = frameOf ? states.filter((_, si) => frameOf[si] === track.frame) : [];
 		const hint = frameStates.length ? frameStates[frameStates.length - 1] : states[N - 1];
-		const toNote = hint && hint.data && hint.data[pair.to];
-		const pairColor = (pair.technique === 'sl' && toNote && toNote.color && typeof toNote.color === 'object' && toNote.color.custom)
-			? toNote.color.custom
-			: (hint && hint.frameTint ? hint.frameTint.custom : 'rgba(243, 186, 98, 0.95)');
-		// 滑线轨迹（sl/pre 与播放器同形：跟随光点、首尾 12% 淡入淡出）
-		if (pair.technique === 'sl' || pair.technique === 'pre') {
+		const desc = describeTransition(hint, hint, track.spec);
+		const p0 = desc.pairs && desc.pairs[0];
+		if (!p0 || !p0.from || !p0.to) return;
+		const ax = p0.from.x, ay = p0.from.y, bx = p0.to.x, by = p0.to.y;
+		const dur = track.dur, t0 = track.t0, t1 = t0 + dur;
+		const pairColor = p0.color; // B 数据色 → 帧位档 → A 数据色 → 金色兜底（describeTransition 色链，播放器同款）
+		// 前置划弦：与播放器/GIF 同语义（sampleTransition pre 分支）——一个音符（圆+音名交叉淡化）
+		// 从 A 划到 B，到达与板面 B 同色交接。不画轨迹线（sl 专属语义）
+		if (pair.technique === 'pre') {
+			const STEPS = 24;
+			const notePts = [];
+			let noteR = 22, noteY = null; // 采样元素自带 r/y（同弦滑动 y 恒定），与播放器同源
+			const labelPts = new Map(); // text -> {x:[], op:[], y}
+			for (let i = 0; i <= STEPS; i++) {
+				const t = i / STEPS;
+				const at = t0 + t * dur;
+				sampleTransition(desc, t, dur).forEach(el => {
+					if (el.kind === 'note') {
+						noteR = el.r || noteR;
+						if (Number.isFinite(el.y)) noteY = el.y;
+						notePts.push({ t: at, v: el.x });
+					} else if (el.kind === 'label') {
+						let tr = labelPts.get(el.text);
+						if (!tr) { tr = { x: [], op: [] }; labelPts.set(el.text, tr); }
+						tr.y = Number.isFinite(el.y) ? el.y : (tr.y ?? noteY);
+						tr.x.push({ t: at, v: el.x });
+						tr.op.push({ t: at, v: el.opacity });
+					}
+				});
+			}
+			if (notePts.length) {
+				const nc = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
+				nc.setAttribute('r', String(noteR));
+				if (noteY !== null) nc.setAttribute('cy', String(noteY)); // 缺省 y=0 → 音符画到板顶
+				nc.setAttribute('fill', p0.color);
+				nc.setAttribute('stroke', labelColor || 'var(--text-color)');
+				nc.setAttribute('stroke-width', '1.5');
+				nc.setAttribute('opacity', '0');
+				const cxT = linearTrack(notePts, total);
+				const nopT = discreteTrack([{ t: 0, v: 0 }, { t: t0, v: 1 }, { t: t1, v: 0 }], total);
+				[['cx', cxT], ['opacity', nopT]].forEach(([attr, tr]) => {
+					if (!tr) return;
+					const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
+					a.setAttribute('attributeName', attr);
+					if (attr === 'opacity') a.setAttribute('calcMode', 'discrete');
+					a.setAttribute('values', tr.values);
+					a.setAttribute('keyTimes', tr.keyTimes);
+					a.setAttribute('dur', total + 'ms');
+					a.setAttribute('repeatCount', 'indefinite');
+					nc.appendChild(a);
+				});
+				fxLayer.appendChild(nc);
+			}
+			labelPts.forEach((tr, text) => {
+				const tx = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
+				tx.setAttribute('text-anchor', 'middle');
+				tx.setAttribute('dominant-baseline', 'middle');
+				tx.setAttribute('font-size', '14');
+				tx.setAttribute('font-weight', '600');
+				tx.setAttribute('fill', labelColor || 'var(--text-color)');
+				tx.setAttribute('opacity', '0');
+				if (tr.y !== null && tr.y !== undefined) tx.setAttribute('y', String(tr.y)); // 缺省 y=0 → 数字飘到板顶
+				tx.textContent = text;
+				const xT = linearTrack([{ t: 0, v: tr.x[0].v }, ...tr.x], total);
+				// 窗口外强制 0（linearTrack 会拿首采样值向前填充，而交叉淡化首值是 1 → 标签整程可见）。
+				// 前置零点停在 t0-0.5ms：与首采样同刻会撞出非单调 keyTimes；t0=0（首帧前置）无需前置
+				const opPre = t0 > 0.5 ? [{ t: 0, v: 0 }, { t: t0 - 0.5, v: 0 }] : [];
+				const opT = linearTrack([...opPre, ...tr.op, { t: t1 + 0.5, v: 0 }], total);
+				[['x', xT], ['opacity', opT]].forEach(([attr, trk]) => {
+					if (!trk) return;
+					const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
+					a.setAttribute('attributeName', attr);
+					a.setAttribute('values', trk.values);
+					a.setAttribute('keyTimes', trk.keyTimes);
+					a.setAttribute('dur', total + 'ms');
+					a.setAttribute('repeatCount', 'indefinite');
+					tx.appendChild(a);
+				});
+				fxLayer.appendChild(tx);
+			});
+			return;
+		}
+		// 滑线轨迹（sl 与播放器同形：跟随光点、首尾 12% 淡入淡出）
+		if (pair.technique === 'sl') {
 			const ln = doc.createElementNS('http://www.w3.org/2000/svg', 'line');
 			ln.setAttribute('x1', String(ax)); ln.setAttribute('y1', String(ay));
 			ln.setAttribute('stroke', pairColor);

@@ -41,6 +41,12 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			return d;
 		})();
 		const tech = pres.length + slP.length + rtP.length + hpP.length;
+		// 本帧技法涉及的全部音符 id（涟漪静默用）
+		const techIds = new Set();
+		pres.forEach(s => { techIds.add(s.from); techIds.add(s.to); });
+		slP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
+		rtP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
+		hpP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
 
 		const frameStart = now;
 		const enter0 = i === 0 ? 0 : (tech ? SETTLE : T);
@@ -70,7 +76,10 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 			edge(0, { id: p.from, c: origColor(p.from) || ft }, { id: p.to }, SETTLE);
 			const bData = base[p.to]; // sl 的 B 是帧数据真实音：用它自己的出生色（半程亮＝终态色，不会中途变色）
 			const bC = bData && bData.color && typeof bData.color === 'object' && bData.visibility === 'visible' ? { name: bData.color.name, custom: bData.color.custom } : bTint(p);
-			edge(Math.round(DOT * 0.5), { id: p.to, c: bC }, { id: p.from }, 60); // B 在行程一半就亮（提前约半个行程，明显可感）
+			// B 在行程一半就亮（提前约半个行程，明显可感）；A 撑到光点抵达（DOT）才熄灭——
+			// 滑动全程 A 持续发声，半程就灭会显得"A 消失得太快"（与 rt 的抵达熄灭同逻辑）
+			edge(Math.round(DOT * 0.5), { id: p.to, c: bC }, null, 60);
+			edge(DOT, null, { id: p.from }, 60);
 		});
 		rtP.forEach(p => {
 			edge(Math.round(RT_OUT * 0.5), { id: p.to, c: bTint(p) }, null, 60); // B 行程一半亮（与 sl/pre 同逻辑）
@@ -102,6 +111,10 @@ export function expandTimeline(frames, transitions, holdMs, transMs) {
 		let startData = base;
 		edges.forEach(e => { if (e.t === 0) { if (e.on) startData = lit(startData, e.on.id, e.on.c); if (e.off) startData = lit(startData, e.off.id, null); } });
 		pushState(startData, 0, false, enter0);
+		// 技法参与音（sl/rt/hp 的 A/B、pre 的 B/A）钉在窗开启态上：这些音若恰在本帧新激活，
+		// 进入涟漪要让位——划线/滑弦本身的表演已交代其出现（"有划线优先级更高，直接展示"）。
+		// 渲染面（播放/GIF/SMIL）从 nextState.muteEnter 读取并在差分涟漪里跳过它们。
+		states[states.length - 1].muteEnter = [...techIds];
 
 		// t>0 的边按技法相对时刻依次应用：
 		// 等待 = 与上一边的间隙（技法自己的节奏，与光点轨道同步）；

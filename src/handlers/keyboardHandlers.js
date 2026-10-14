@@ -46,10 +46,11 @@ export function createKeyboardHandler(params) {
             return;
         }
 
-        // 动态编辑态：退格/Delete 删除悬停的技法标注线（无悬停则不响应）
+        // 动态编辑态：退格/Delete 优先删悬停的技法标注线；无悬停线则熄灭悬停的激活音（与普通模式退格同语义）
         if (dynamic?.isDynamic && dynamic.viewMode === 'edit' && !event.ctrlKey && !event.altKey && !event.shiftKey
             && (event.code === 'Backspace' || event.code === 'Delete')) {
-            if (deleteHoveredPair && deleteHoveredPair()) event.preventDefault();
+            if (deleteHoveredPair && deleteHoveredPair()) { event.preventDefault(); return; }
+            if (hoveredNoteId && dynamic.extinguishNote && dynamic.extinguishNote(hoveredNoteId)) { event.preventDefault(); return; }
             return;
         }
 

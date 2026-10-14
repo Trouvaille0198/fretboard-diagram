@@ -77,13 +77,16 @@ export function describeTransition(prevState, nextState, spec = {}) {
 	const nextActive = activeNoteIdsOf(nextState);
 	const pairFromIds = new Set(pairs.map(p => p.from));
 	const pairToIds = new Set(pairs.map(p => p.to));
+	// 涟漪静默：目标态若标注了 muteEnter（技法帧窗开启态），其中技法参与音的新进入
+	// 不再出扩散环——划线/滑弦的表演已交代其出现（"有划线优先级更高"）
+	const muteEnter = new Set(nextState?.muteEnter || []);
 
 	// 差分：排除已被 pairs 消费的音
 	const exiting = prevNotes
 		.filter(n => prevActive.has(n.id) && !nextActive.has(n.id) && !pairFromIds.has(n.id))
 		.map(n => ({ id: n.id, x: n.x, y: n.y, color: noteColorOf(prevState, n.id) }));
 	const entering = nextNotes
-		.filter(n => nextActive.has(n.id) && !prevActive.has(n.id) && !pairToIds.has(n.id))
+		.filter(n => nextActive.has(n.id) && !prevActive.has(n.id) && !pairToIds.has(n.id) && !muteEnter.has(n.id))
 		.map(n => ({ id: n.id, x: n.x, y: n.y }));
 
 	// 琶音：进入音按音高次序错开延迟（pairs 始终同步，保证"整体移动"观感）
