@@ -227,6 +227,9 @@ function Fretboard({ mode = 'normal' }) {
   // 动态页挂载：读取入口板面（或续编的动图）开 会话；URL ?c=<id> 优先（刷新/分享恢复到正在编辑的那张）
   useEffect(() => {
     if (mode !== 'dynamic') return;
+    // 预热导出模块：Ctrl+C 首次导出不再等 vite 按需编译（挂载即后台加载，与交互并行）
+    import('./utils/animatedSvg').catch(() => {});
+    import('./utils/saveFile').catch(() => {});
     let entry = null;
     try { entry = JSON.parse(sessionStorage.getItem('fretboard-dynamic-entry') || 'null'); sessionStorage.removeItem('fretboard-dynamic-entry'); } catch (e) { /* 忽略 */ }
     let clipId = null;
