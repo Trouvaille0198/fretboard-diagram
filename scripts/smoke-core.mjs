@@ -31,7 +31,8 @@ console.log("== sl 滑弦 ==");
 	A("sl B=数据出生色且全程一色", r.states.slice(bOn).every(s => vis(s, "f8-s2") === null || vis(s, "f8-s2") === T[1]));
 	A("sl A 终态灭", vis(r.states[r.states.length - 1], "f5-s2") === null);
 	const fx = r.fx[0];
-	A("sl B 半程前置亮（早于光点到达 ≥100ms）", clock.starts[bOn] < fx.t0 + fx.dur - 100, `B@${clock.starts[bOn]} dot@${fx.t0 + fx.dur}`);
+	A("sl B 抵达点亮（=移动音符到达时刻，fx 多停 100ms 盖板面渐入）", clock.starts[bOn] === fx.t0 + fx.dur - 100, `B@${clock.starts[bOn]} 到达@${fx.t0 + fx.dur - 100}`);
+	A("sl A 出发即离场（窗开启态已灭，由移动音符本体表达）", vis(r.states[1], "f5-s2") === null, "窗开A=" + vis(r.states[1], "f5-s2"));
 	A("sl fx 从窗口出发", fx.t0 === 300 + 60);
 }
 
