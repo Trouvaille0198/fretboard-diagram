@@ -146,11 +146,7 @@ export function sampleTransition(desc, t, transMs) {
 	const R = CONSTS.circleRadius;
 	const dur = Math.max(1, Number(transMs) || 300);
 	const isRT = desc.technique === "rt" || desc.technique === "hp"; // 原位滑弦（兼容旧 hp 数据）
-	desc.exiting.forEach(n => {
-		const u = clamp01(t / 0.7);
-		if (u >= 1) return;
-		els.push({ kind: "fade", x: n.x, y: n.y, r: R * (1 - 0.25 * easeInCubic(u)), opacity: +(0.9 * (1 - easeInCubic(u))).toFixed(3) });
-	});
+	// 退场灰圆已移除：v5 板面状态用 CSS 过渡处理熄灭，fx 层灰圆是双重渲染（用户报告的"白点"）
 
 	desc.entering.forEach(n => {
 		const delayN = Math.min(0.6, n.delayMs / dur);
@@ -166,21 +162,11 @@ export function sampleTransition(desc, t, transMs) {
 		});
 	});
 
-	// 原位滑弦/击勾的瞬时音：到达 B 时 B 真正点亮（有色音符圆+数字），随光点返回而熄灭
-	desc.pairs.forEach(p => {
-		if (p.tech !== "rt" && p.tech !== "hp") return;
-		const light = clamp01((t - 0.3) / 0.15) * (1 - clamp01((t - 0.62) / 0.18));
-		if (light > 0) {
-			els.push({ kind: "note", x: p.to.x, y: p.to.y, r: R, opacity: +light.toFixed(3), color: p.color, label: p.toLabel });
-		}
-	});
-
 	desc.pairs.forEach(p => {
 		const tech = p.tech || desc.technique;
 		// 击勾：离散跳音（TransitionFx 直连场景，如 dock 预览）——前半 B 亮起、后半 A 重亮环，无滑动
 		if (tech === "hp") {
-			const bLight = clamp01((t - 0.1) / 0.12) * (1 - clamp01((t - 0.48) / 0.14));
-			if (bLight > 0) els.push({ kind: "note", x: p.to.x, y: p.to.y, r: R, opacity: +bLight.toFixed(3), color: p.color, label: p.toLabel });
+			// B 闪现由板面状态驱动；这里只保留 A 复亮装饰环
 			const aBack = clamp01((t - 0.55) / 0.12) * (1 - clamp01((t - 0.9) / 0.1));
 			if (aBack > 0) els.push({ kind: "ring", x: p.from.x, y: p.from.y, r: R + 4 + 8 * aBack, opacity: +(0.9 * aBack).toFixed(3), width: 3, color: p.color });
 			return;
@@ -190,13 +176,10 @@ export function sampleTransition(desc, t, transMs) {
 		const isQuick = tech === "h" || tech === "p";
 
 		if (tech === "pre") {
-			// 前置划弦：B 闪现（帧档色）→光点立即滑向 A→B 到达前后熄灭；A 全程保持
+			// 前置划弦：滑行音的亮/灭由板面状态驱动（半程亮、抵达灭）——fx 只画线+光点，
+			// 不再渲染 bHold 滑行音符（旧语义残留：80% 行程满透明 pale 音符=白点不消失的根因）
 			const prog = easeInOutCubic(t);
 			const x = p.from.x + (p.to.x - p.from.x) * prog;
-			const bHold = 1 - clamp01((t - 0.8) / 0.16); // B 撑到光点抵达 A 才熄灭
-			if (bHold > 0) {
-				els.push({ kind: "note", x: p.from.x, y: p.from.y, r: R, opacity: +bHold.toFixed(3), color: p.color, label: p.fromLabel });
-			}
 			const lineOp = t < 0.12 ? t / 0.12 : t > 0.88 ? (1 - t) / 0.12 : 1;
 			els.push({ kind: "line", x1: p.from.x, y1: p.from.y, x2: p.to.x, y2: p.to.y, opacity: +lineOp.toFixed(3), color: p.color });
 			els.push({ kind: "dot", x: +x.toFixed(2), y: p.from.y, r: 7, opacity: t > 0.96 ? +((1 - t) / 0.04).toFixed(3) : 1, color: p.color });
