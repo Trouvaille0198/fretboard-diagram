@@ -1271,6 +1271,29 @@ function Fretboard({ mode = 'normal' }) {
     return out;
   }, [includeMarkers, showNotes, horizontalCrop, verticalCrop]);
 
+  // 系统级分享：直接调起 Windows 分享面板送到微信/飞书/邮件等（Chrome 支持 File 分享）
+  const shareSvg = useCallback(async () => {
+    try {
+      setExporting('svganim');
+      const blob = await buildExportBlob('svganim');
+      const file = new File([blob], `fretboard-${Date.now()}.svg`, { type: 'image/svg+xml' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: '指板动图' });
+      } else {
+        // 系统不支持文件分享——回落下载
+        const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
+        const savedTo = rememberedDirSupported() ? await saveToRememberedDir(file.name, blob) : null;
+        if (savedTo) showToast(`已保存到「${savedTo}」/${file.name}`, 'success');
+        else {
+          const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = file.name;
+          document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+          showToast('已下载 SVG', 'success');
+        }
+      }
+    } catch (e) { if (e.name !== 'AbortError') showToast('分享失败: ' + e.message, 'error'); }
+    setExporting(null);
+  }, [showToast, buildExportBlob]);
+
   // 导出动图素材（下载）
   const exportClip = useCallback(async (format) => {
     try {
@@ -1726,6 +1749,7 @@ function Fretboard({ mode = 'normal' }) {
         onCommit={dynamic.commitFrame}
         onSettingsChange={updateAnimSettings}
         onExport={exportClip}
+        onShare={shareSvg}
         t={t}
       />
       )}

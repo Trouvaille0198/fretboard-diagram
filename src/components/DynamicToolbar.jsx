@@ -19,6 +19,7 @@ export function DynamicToolbar({
   onCommit,
   onSettingsChange,
   onExport,
+  onShare,
   t
 }) {
   const td = t?.dynamic ?? {};
@@ -127,12 +128,13 @@ export function DynamicToolbar({
                   ? [{ id: 'mp4', label: 'MP4 视频', hint: '微信等聊天软件直接播放' }] : []),
                 { id: 'webm', label: 'WebM 视频', hint: '视频格式，适合长序列' },
                 { id: 'json', label: '数据 JSON', hint: '导出完整动图数据（排障/分析用）' },
-              ].map(item => (
+                (onShare ? [{ id: 'share', label: '⚡分享 SVG 动图', hint: '直接发送到微信/飞书/邮件等应用' }] : []),
+              ].flat().map(item => (
                 <button
                   key={item.id}
                   className="dyn-export-item"
                   disabled={!canPlay || exporting !== null}
-                  onClick={() => { setExportOpen(false); onExport(item.id); }}
+                  onClick={() => { setExportOpen(false); (item.id === 'share' ? onShare : onExport)(item.id); }}
                   style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: 'inherit', padding: '8px 14px', cursor: 'pointer', font: 'inherit' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.06)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
