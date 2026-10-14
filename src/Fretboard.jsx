@@ -1271,29 +1271,6 @@ function Fretboard({ mode = 'normal' }) {
     return out;
   }, [includeMarkers, showNotes, horizontalCrop, verticalCrop]);
 
-  // 系统级分享：直接调起 Windows 分享面板送到微信/飞书/邮件等（Chrome 支持 File 分享）
-  const shareSvg = useCallback(async () => {
-    try {
-      setExporting('svganim');
-      const blob = await buildExportBlob('svganim');
-      const file = new File([blob], `fretboard-${Date.now()}.svg`, { type: 'image/svg+xml' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: '指板动图' });
-      } else {
-        // 系统不支持文件分享——回落下载
-        const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
-        const savedTo = rememberedDirSupported() ? await saveToRememberedDir(file.name, blob) : null;
-        if (savedTo) showToast(`已保存到「${savedTo}」/${file.name}`, 'success');
-        else {
-          const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = file.name;
-          document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
-          showToast('已下载 SVG', 'success');
-        }
-      }
-    } catch (e) { if (e.name !== 'AbortError') showToast('分享失败: ' + e.message, 'error'); }
-    setExporting(null);
-  }, [showToast, buildExportBlob]);
-
   // 导出动图素材（下载）
   const exportClip = useCallback(async (format) => {
     try {
@@ -1339,64 +1316,30 @@ function Fretboard({ mode = 'normal' }) {
     }
   }, [showToast, buildExportBlob]);
 
-  // Ctrl+C（动态模式）：双格式复制——图像槽=首帧 PNG（聊天/文档直接粘贴），
-  // 文本槽=动画 SVG 源码（编辑器粘贴存 .svg 即得会动的矢量图）。
-  // 非安全上下文（无 clipboard API）自动转下载 SVG；GIF 仍走下载按钮。
+  // Ctrl+C（动态模式）：纯保存 SVG 到磁盘，不碰剪贴板——发送/分享用 ⚡分享按钮更直接
   const copyGifToClipboard = useCallback(async () => {
-    const canClipboard = typeof ClipboardItem !== 'undefined' && !!navigator.clipboard && typeof navigator.clipboard.write === 'function';
     try {
       setExporting('svganim');
-      if (!canClipboard) {
-        // 非安全上下文：直接下载 SVG 动图
-        const blob = await buildExportBlob('svganim');
-        const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
-        const name = `fretboard-${Date.now()}.svg`;
-        const savedTo = rememberedDirSupported() ? await saveToRememberedDir(name, blob) : null;
-        if (savedTo) showToast(`已保存到「${savedTo}」/${name}`, 'success');
-        else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a'); a.href = url; a.download = name;
-          document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 5000);
-          showToast('已下载 SVG 动图', 'info');
-        }
-        return;
-      }
-      // 首帧 PNG（取展开后首状态栅格）
-      const { renderBoardImage } = await import('./components/ScorePieces');
-      const settings = animSettingsRef.current;
-      const frames = framesRef.current;
-      const wStart = Math.min(...frames.map(f => f.startFret)), wEnd = Math.max(...frames.map(f => f.endFret));
-      const { expandTimeline } = await import('./utils/timeline');
-      const first = expandTimeline(frames, transitionsRef.current, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200).states[0];
-      const img = await renderBoardImage({ ...first, startFret: wStart, endFret: wEnd }, Number(settings.width) || 720, { includeMarkers, showNotes, horizontalCrop, verticalCrop });
-      const png = await new Promise(resolve => {
-        const cv = document.createElement('canvas');
-        cv.width = img.naturalWidth || 720; cv.height = img.naturalHeight || 268;
-        cv.getContext('2d').drawImage(img, 0, 0);
-        cv.toBlob(resolve, 'image/png');
-      });
-      // 复制前先落盘：ctrl c = 保存+复制，粘贴进飞书/flowus/notion 等文档编辑器时 sanitzer 会吃 SVG，
-      // 只能通过文件上传——落盘后用户从资源管理器拖拽上传播放。
       const svgBlob = await buildExportBlob('svganim');
-      const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
       const name = `fretboard-${Date.now()}.svg`;
+      const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
       let savedTo = null;
       if (rememberedDirSupported()) savedTo = await saveToRememberedDir(name, svgBlob, { pickIfNone: false });
-      // 同时写剪贴板（矢量+位图+HTML，各取所需）
-      const svgText = await svgBlob.text();
-      const htmlBlob = new Blob([`<span style="display:inline-block">${svgText}</span>`], { type: 'text/html' });
-      const item = new ClipboardItem({ 'text/html': htmlBlob, 'image/svg+xml': svgBlob, 'image/png': png });
-      await navigator.clipboard.write([item]);
-      const msg = savedTo ? `已保存到「${savedTo}」/${name}（${(svgBlob.size / 1024).toFixed(0)} KB）——飞书/notion/flowus 文档从文件夹拖此文件上传即动`
-        : `已复制 SVG 动图（${(svgBlob.size / 1024).toFixed(0)} KB）；内存盘路径未配置——点「⬇导出→SVG」选一次文件夹后即可自动落盘`;
-      showToast(msg, 'success');
+      if (savedTo) {
+        showToast(`已保存「${savedTo}」/${name}（${(svgBlob.size / 1024).toFixed(0)} KB）`, 'success');
+      } else {
+        const url = URL.createObjectURL(svgBlob);
+        const a = document.createElement('a'); a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast(`已下载 SVG（${(svgBlob.size / 1024).toFixed(0)} KB）`, 'success');
+      }
     } catch (error) {
-      showToast(`复制失败: ${error.message}`, 'error');
+      showToast(`保存失败: ${error.message}`, 'error');
     } finally {
       setExporting(null);
     }
-  }, [showToast, buildExportBlob, includeMarkers, showNotes, horizontalCrop, verticalCrop]);
+  }, [showToast, buildExportBlob]);
 
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
   const handlerParamsRef = useRef();
@@ -1749,7 +1692,7 @@ function Fretboard({ mode = 'normal' }) {
         onCommit={dynamic.commitFrame}
         onSettingsChange={updateAnimSettings}
         onExport={exportClip}
-        onShare={shareSvg}
+
         t={t}
       />
       )}
