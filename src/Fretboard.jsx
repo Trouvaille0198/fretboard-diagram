@@ -264,6 +264,21 @@ function Fretboard({ mode = 'normal' }) {
     if (window.location.hash !== target) window.history.replaceState(null, '', target);
   }, [mode, dynamic.sessionClip]);
 
+  // 动态页内直接改地址 ?c=<id>（或从外链进入另一张）：立即换载对应动图（URL 是动图身份）
+  useEffect(() => {
+    if (mode !== 'dynamic') return undefined;
+    const onHash = () => {
+      const m = window.location.hash.match(/[?&]c=([^&]+)/);
+      if (!m) return;
+      const id = decodeURIComponent(m[1]);
+      if (id === dynamicRef.current?.sessionClip?.id) return;
+      const clip = loadClips().find(c => c.id === id);
+      if (clip) handleLoadClipRef.current(clip);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [mode]);
+
   // 动态页 Q 退出：保存（≥2帧）并回普通页
   const exitDynamic = useCallback(() => {
     dynamic.toggleQ();

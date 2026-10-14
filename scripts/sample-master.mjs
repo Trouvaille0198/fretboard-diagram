@@ -126,7 +126,8 @@ async function runBrowser(base, cdpHost) {
 	let bid = 0; const bp = new Map();
 	bws.on("message", m => { const d = JSON.parse(m); if (d.id && bp.has(d.id)) { bp.get(d.id)(d); bp.delete(d.id); } });
 	const bs = (method, params = {}) => new Promise(r => { const i = ++bid; bp.set(i, r); bws.send(JSON.stringify({ id: i, method, params })); });
-	const tid = (await bs("Target.createTarget", { url: `${base}/?master-sample=${Date.now()}#/` })).result.targetId;
+	const installMode = process.argv.includes("--install");
+		const tid = (await bs("Target.createTarget", { url: `${base}/?master-sample=${Date.now()}#/` })).result.targetId;
 	await bs("Target.activateTarget", { targetId: tid });
 	await sleep(3500);
 	const list = await (await fetch(`http://${cdpHost}/json/list`)).json();
@@ -146,6 +147,18 @@ async function runBrowser(base, cdpHost) {
 			localStorage.setItem('fretboard-clips', JSON.stringify([clip, ...JSON.parse(localStorage.getItem('fretboard-clips') || '[]').filter(c => c.id !== clip.id)]));
 			return true;
 		})()`);
+		if (installMode) {
+			await ev(`(() => {
+				const clip = ${JSON.stringify(MASTER_CLIP)};
+				clip.name = '★完整测试样例（全技法）';
+				localStorage.setItem('fretboard-clips', JSON.stringify([clip, ...JSON.parse(localStorage.getItem('fretboard-clips') || '[]').filter(c => c.id !== clip.id)]));
+				return true;
+			})()`);
+			console.log('已安装样例到动图堆：★完整测试样例（全技法）');
+			await bs("Target.closeTarget", { targetId: tid });
+			ws.close(); bws.close();
+			return true;
+		}
 		await ev(`location.href = '${base}/?master=${Date.now()}#/dynamic?c=smoke-master'; true`);
 		await sleep(4000);
 		// 前台保障：隐藏标签会节流播放链（几十个状态×1s），失败即警告
@@ -308,7 +321,8 @@ async function runBrowser(base, cdpHost) {
 }
 
 const args = process.argv.slice(2);
-if (args[0] === "--browser") {
+const doInstall = args[0] === "--install";
+if (args.includes("--install") || args[0] === "--browser") {
 	const ok = await runBrowser(args[1] || "http://localhost:4173", (args[2] || "127.0.0.1:9223").replace(/^http:\/\//, ""));
 	process.exit(ok ? 0 : 1);
 } else {
