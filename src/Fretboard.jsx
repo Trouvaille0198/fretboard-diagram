@@ -1179,7 +1179,8 @@ function Fretboard({ mode = 'normal' }) {
   const buildExportBlob = useCallback(async (format) => {
     const frames = framesRef.current;
     const specs = transitionsRef.current;
-    if (frames.length < 2) throw new Error('至少需要 2 帧才能导出');
+    const preCheck = expandTimeline(frames, specs, 300, 200);
+    if (preCheck.states.length < 2) throw new Error('需要至少 2 帧，或单帧内含技法/前置划弦标注');
     const settings = animSettingsRef.current;
     let wStart = Infinity, wEnd = -Infinity;
     frames.forEach(f => {
@@ -1327,7 +1328,7 @@ function Fretboard({ mode = 'normal' }) {
       toggleQ: mode === 'dynamic' ? dynamic.toggleQ : gotoDynamic,
       commitFrame: dynamic.commitFrame,
       cancelMarking: dynamic.cancelMarking,
-      undoStep: dynamic.undoStep
+      undoStep: dynamic.undoStep, redoStep: dynamic.redoStep
     }
   };
 
@@ -1615,7 +1616,7 @@ function Fretboard({ mode = 'normal' }) {
         loopPlay={loopPlay}
         animSettings={animSettings}
         exporting={exporting}
-        canPlay={dynamic.frames.length >= 2}
+        canPlay={playSteps.states.length >= 2}
         displayOptions={{ includeMarkers, showNotes, horizontalCrop, verticalCrop }}
         onDisplayChange={(key, value) => {
           if (key === 'includeMarkers') setIncludeMarkers(value);
