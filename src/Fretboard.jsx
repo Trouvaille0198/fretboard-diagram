@@ -24,7 +24,7 @@ import { isLoggedIn } from './utils/api';
 import { exportGifAnimation, exportWebmAnimation } from './utils/animatedExport';
 import { Toast } from './components/Toast';
 import { createPortal } from 'react-dom';
-import { expandTimeline, stateClock, END_PAUSE_MS, accumulateStates } from './utils/timeline';
+import { expandTimeline, stateClock, END_PAUSE_MS, accumulateStates, chainLinksOf } from './utils/timeline';
 import { FretboardSVG } from './components/FretboardSVG';
 import { useLanguage } from './i18n';
 
@@ -894,11 +894,10 @@ function Fretboard({ mode = 'normal' }) {
       if (!a || !b) return;
       marks.push({ tech: 'pre', a, b, from: s.from, to: s.to });
     });
-    ((dynamic.frames[idx]?.chain) || []).forEach((id, k, arr) => {
-      if (k === 0) return;
-      const a = posOf(arr[k - 1]), b = posOf(id);
+    chainLinksOf(dynamic.frames[idx] || {}).forEach(l => {
+      const a = posOf(l.from), b = posOf(l.to);
       if (!a || !b) return;
-      marks.push({ tech: 'chain', a, b, from: arr[k - 1], to: id });
+      marks.push({ tech: 'chain', a, b, from: l.from, to: l.to });
     });
     if (!marks.length) return null;
     return { marks, hint, gold };
