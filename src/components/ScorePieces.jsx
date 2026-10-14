@@ -200,11 +200,19 @@ export async function renderBoardImage(state, width, options = {}) {
   document.body.appendChild(host);
   const root = createRoot(host);
   root.render(<LanguageProvider><ScoreBoard snapshot={{ state }} options={options} /></LanguageProvider>);
-  // 轮询等待 SVG 真正渲染完成（React 18 createRoot 异步 commit；固定等待会有竞态导致空板）
+  // 轮询等待 SVG 真正渲染完成（React 18 createRoot 异步 commit；固定等待会有竞态导致空板）。
+  // 空板（showNotes 关=无暗圆网格且 0 激活音）没有 g.note 可等：计数连续稳定即视为落定，
+  // 否则每张空板都会白等满 2000ms 上限（动图导出慢的元凶之一）
   const t0 = Date.now();
+  let lastCount = -1, stableTicks = 0;
   while (Date.now() - t0 < 2000) {
     const svg = host.querySelector('svg');
-    if (svg && svg.querySelectorAll('g.note').length > 0) break;
+    if (svg) {
+      const count = svg.querySelectorAll('g.note').length;
+      if (count > 0) break;
+      if (count === lastCount) { if (++stableTicks >= 2) break; }
+      else { stableTicks = 0; lastCount = count; }
+    }
     await new Promise(r => setTimeout(r, 25));
   }
 

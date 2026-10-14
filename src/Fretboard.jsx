@@ -287,21 +287,12 @@ function Fretboard({ mode = 'normal' }) {
     window.location.hash = '';
   }, [dynamic]);
 
-  // 预览态换色：只改展示（内存），不落库；进入编辑时还原原始帧
-  const previewSnapshotRef = useRef(null);
-  useEffect(() => {
-    if (dynamic.viewMode === 'preview' && !previewSnapshotRef.current && dynamic.frames.length) {
-      previewSnapshotRef.current = JSON.parse(JSON.stringify(dynamic.frames));
-    }
-    if (dynamic.viewMode !== 'preview' && previewSnapshotRef.current) {
-      previewSnapshotRef.current = null;
-    }
-  }, [dynamic.viewMode, dynamic.frames]);
-
-  // 色系切换：编辑态=真实重刷并自动保存；预览态=仅展示
+  // 色系切换：一律真切换（编辑/预览同权）——重刷全部帧的着色音并更新会话色系。
+  // 曾有"预览态试色不落库、退出预览快照还原"机制：用户预览里换了色系，回编辑全部弹回旧色，
+  // 导出也全是旧色（"换了色系还是蓝色"的根因），反直觉，已拆除。
+  // 再点当前色系＝强制重刷（自愈历史 bug 留在帧里的杂色音，不切色系）
   const switchScheme = useCallback((name) => {
-    if (!COLOR_SCHEMES.includes(name) || name === schemeName) return;
-    const newTints = generateTintVariants(getLevel1FillColor(name));
+    if (!COLOR_SCHEMES.includes(name)) return;
     const restyleData = (data) => {
       const next = { ...data };
       Object.entries(data).forEach(([id, noteData]) => {
@@ -322,33 +313,9 @@ function Fretboard({ mode = 'normal' }) {
     const nextData = restyleData(dataRef.current);
     dataRef.current = nextData;
     setData(nextData);
-    if (dynamic.viewMode === 'edit') {
-      dynamic.mapFrames(restyleData);
-      setSchemeName(name);
-    } else {
-      // 预览态：只改内存帧做展示，不落库；退出预览时由快照还原
-      const snap = previewSnapshotRef.current || dynamic.frames;
-      dynamic.applyPreviewFrames(snap.map(f => ({ ...f, data: restyleData(f.data) })));
-      setSchemePreview(name);
-    }
+    dynamic.mapFrames(restyleData);
+    if (name !== schemeName) setSchemeName(name);
   }, [schemeName, dynamic, dataRef, setData]);
-
-  // 退出预览 → 还原快照帧与板面（预览色不保存）
-  useEffect(() => {
-    if (dynamic.viewMode !== 'preview' && previewSnapshotRef.current) {
-      const snap = previewSnapshotRef.current;
-      previewSnapshotRef.current = null;
-      setSchemePreview(null);
-      dynamic.applyPreviewFrames(snap);
-      dataRef.current = snap[0]?.data ?? {};
-      setData(snap[0]?.data ?? {});
-      applyClipBoardRef.current?.(snap[0]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dynamic.viewMode]);
-
-  // 预览态色系（不保存）：进入编辑时还原真实色系与帧数据
-  const [schemePreview, setSchemePreview] = useState(null);
 
   const dynamicRef = useRef(dynamic);
   dynamicRef.current = dynamic;
@@ -1147,6 +1114,14 @@ function Fretboard({ mode = 'normal' }) {
   const playStartRef = useRef(0);
   const stopPlaying = useCallback(() => setPlayingIdx(null), []);
 
+  // ＋新建必停播放：newClip 只重置帧序列/编辑指针，够不到这里的 playingIdx——
+  // playing 类给整个 svg 挂 pointer-events:none，1 帧新档 + 循环播放会让播放器永远回环，
+  // 板面从此吃不到任何指针（"新建后点不了任何东西，必须刷新"的根因）
+  const handleNewClip = useCallback(() => {
+    stopPlaying();
+    dynamicRef.current.newClip();
+  }, [stopPlaying]);
+
   // fx 轨道时钟：播放中周期 tick，驱动绝对时间光点层
   const [fxTick, setFxTick] = useState(0);
   useEffect(() => {
@@ -1238,10 +1213,6 @@ function Fretboard({ mode = 'normal' }) {
     }
     const viewBox = cropBox ? `${cropBox.x} ${cropBox.y} ${cropBox.w} ${cropBox.h}` : `${fullVB.x} ${fullVB.y} ${fullVB.w} ${fullVB.h}`;
     const displayOpts = { includeMarkers, showNotes, horizontalCrop, verticalCrop, cropBox };
-    const boardImages = [];
-    for (const frame of windowed) {
-        boardImages.push(await renderBoardImage(frame, Number(settings.width) || 720, displayOpts));
-    }
     const opts = {
       holdMs: Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300,
       transMs: Number(settings.transMs) > 0 ? Number(settings.transMs) : 200,
@@ -1257,6 +1228,7 @@ function Fretboard({ mode = 'normal' }) {
     }
     if (format === 'svganim') {
       // 动画 SVG（SMIL）：矢量自包含动图——无限清晰、体积极小；与播放器同源时钟
+      // 只要 buildAnimatedSvg 内对联合板面的一次矢量渲染，不需要逐状态光栅帧
       const { buildAnimatedSvg } = await import('./utils/animatedSvg');
       const svgStr = await buildAnimatedSvg({
         states: exStates, fx: exFx || [], frameOf: exFrameOf, sub: exSub,
@@ -1264,6 +1236,11 @@ function Fretboard({ mode = 'normal' }) {
         renderSvg: async (state) => renderBoardImage({ ...state, startFret: wStart, endFret: wEnd }, Number(settings.width) || 720, { ...displayOpts, svgOnly: true }),
       });
       return new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    }
+    // GIF/WebM 才需要逐状态光栅帧（每帧一次离屏渲染；svganim 跳过——Ctrl+C 导出慢的元凶）
+    const boardImages = [];
+    for (const frame of windowed) {
+        boardImages.push(await renderBoardImage(frame, Number(settings.width) || 720, displayOpts));
     }
     const out = format === 'gif'
       ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...opts, fx: exFx || [], frameOf: exFrameOf, sub: exSub } })
@@ -1366,7 +1343,8 @@ function Fretboard({ mode = 'normal' }) {
       toggleQ: mode === 'dynamic' ? dynamic.toggleQ : gotoDynamic,
       commitFrame: dynamic.commitFrame,
       cancelMarking: dynamic.cancelMarking,
-      undoStep: dynamic.undoStep, redoStep: dynamic.redoStep
+	      undoStep: dynamic.undoStep, redoStep: dynamic.redoStep,
+	      extinguishNote: dynamic.extinguishNote
     },
     deleteHoveredPair
   };
@@ -1671,7 +1649,7 @@ function Fretboard({ mode = 'normal' }) {
         </button>
       ) : (
       <DynamicToolbar
-        dynamic={dynamic}
+        dynamic={{ ...dynamic, newClip: handleNewClip }}
         scheme={schemeName}
         schemes={COLOR_SCHEMES}
         onSchemeChange={switchScheme}
