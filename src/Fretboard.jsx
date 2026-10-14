@@ -847,6 +847,16 @@ function Fretboard({ mode = 'normal' }) {
   }, [dragInfo, dragPos, getNotePositionMemo, getHintColorValue]);
 
   // 编辑态技法标记：当前帧的滑弦/原位/击勾/前置划弦在板面常驻可见、互相区分
+  // 悬停某条标注线 + Backspace/Delete = 删除该标注（hoveredPair 同步 ref 供键盘取用）
+  const [hoveredPair, setHoveredPair] = useState(null);
+  const hoveredPairRef = useRef(null);
+  hoveredPairRef.current = hoveredPair;
+  const deleteHoveredPair = useCallback(() => {
+    const m = hoveredPairRef.current;
+    if (!m || !dynamicRef.current?.deletePair) return false;
+    setHoveredPair(null);
+    return dynamicRef.current.deletePair(m.from, m.to);
+  }, []);
   const techMarksG = useMemo(() => {
     if (mode !== 'dynamic' || dynamic.viewMode !== 'edit' || !svgElementRef.current) return null;
     const idx = dynamic.editIdx;
@@ -858,12 +868,12 @@ function Fretboard({ mode = 'normal' }) {
     pairs.forEach(p => {
       const a = posOf(p.from), b = posOf(p.to);
       if (!a || !b) return;
-      marks.push({ tech: p.technique, a, b });
+      marks.push({ tech: p.technique, a, b, from: p.from, to: p.to });
     });
     ((dynamic.frames[idx]?.preSlides) || []).forEach(s => {
       const a = posOf(s.from), b = posOf(s.to);
       if (!a || !b) return;
-      marks.push({ tech: 'pre', a, b });
+      marks.push({ tech: 'pre', a, b, from: s.from, to: s.to });
     });
     if (!marks.length) return null;
     return { marks, hint, gold };
@@ -1329,7 +1339,8 @@ function Fretboard({ mode = 'normal' }) {
       commitFrame: dynamic.commitFrame,
       cancelMarking: dynamic.cancelMarking,
       undoStep: dynamic.undoStep, redoStep: dynamic.redoStep
-    }
+    },
+    deleteHoveredPair
   };
 
   useEffect(() => {
@@ -1488,7 +1499,7 @@ function Fretboard({ mode = 'normal' }) {
           />
         )}
         {techMarksG && svgElementRef.current && createPortal(
-          <g className="drag-fx-layer tech-marks" pointerEvents="none">
+          <g className="drag-fx-layer tech-marks">
             {techMarksG.marks.map((m, i) => {
               const dx = m.b.x - m.a.x, dy = m.b.y - m.a.y;
               const len = Math.hypot(dx, dy) || 1;
@@ -1497,13 +1508,19 @@ function Fretboard({ mode = 'normal' }) {
               const x2 = m.b.x - dx / len * r, y2 = m.b.y - dy / len * r;
               const stroke = m.tech === 'pre' ? techMarksG.gold : techMarksG.hint;
               const dash = m.tech === 'hp' ? '2 4' : (m.tech === 'rt' ? '8 4' : undefined);
+              const hot = hoveredPair && hoveredPair.from === m.from && hoveredPair.to === m.to;
               return (
-                <g key={i} opacity={0.85}>
-                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={stroke} strokeWidth={2.5} strokeLinecap="round" strokeDasharray={dash} />
-                  {m.tech !== 'pre' && <circle cx={x2} cy={y2} r={4} fill={stroke} />}
-                  {m.tech === 'rt' && <circle cx={x1} cy={y1} r={4} fill={stroke} />}
-                  {m.tech === 'hp' && <circle cx={x1} cy={y1} r={4} fill="none" stroke={stroke} strokeWidth={2} />}
-                  {m.tech === 'pre' && <circle cx={x1} cy={y1} r={5} fill="none" stroke={stroke} strokeWidth={2} />}
+                <g key={i} opacity={hot ? 1 : 0.85}>
+                  <title>{hot ? '按退格/Delete 删除该标注' : '悬停后按退格/Delete 删除'}</title>
+                  {/* 命中层：只做悬停，不拦截点击（拖拽手势/点音不受影响） */}
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={16} style={{ pointerEvents: 'stroke' }}
+                    onMouseEnter={() => setHoveredPair({ from: m.from, to: m.to })}
+                    onMouseLeave={() => setHoveredPair(h => (h && h.from === m.from && h.to === m.to ? null : h))} />
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={hot ? 'var(--app-accent, #f3ba62)' : stroke} strokeWidth={hot ? 4 : 2.5} strokeLinecap="round" strokeDasharray={dash} style={{ pointerEvents: 'none' }} />
+                  {m.tech !== 'pre' && <circle cx={x2} cy={y2} r={4} fill={stroke} style={{ pointerEvents: 'none' }} />}
+                  {m.tech === 'rt' && <circle cx={x1} cy={y1} r={4} fill={stroke} style={{ pointerEvents: 'none' }} />}
+                  {m.tech === 'hp' && <circle cx={x1} cy={y1} r={4} fill="none" stroke={stroke} strokeWidth={2} style={{ pointerEvents: 'none' }} />}
+                  {m.tech === 'pre' && <circle cx={x1} cy={y1} r={5} fill="none" stroke={stroke} strokeWidth={2} style={{ pointerEvents: 'none' }} />}
                 </g>
               );
             })}
