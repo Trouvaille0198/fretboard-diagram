@@ -4,11 +4,12 @@
 //   退出音 → 淡出消隐；进入音 → 扩散环（可琶音错开）
 //   pairs：sl 滑线+匀速光点；h/p 急促缓动+字母；mv 光点平移无字母；hp A→B→A 往返+双字母，B 为瞬时音
 
-import { CONSTS } from "../constants";
-import { generateNotes, computeNoteName, computeNoteIndex } from "./fretboardCalculations";
-import { noteToSolfege } from "../utils";
-import { getLevel1FillColor, generateTintVariants } from "../colorConfig";
-import { activeNoteIdsOf } from "./songStructure";
+import { CONSTS } from "../constants.js";
+import { generateNotes, computeNoteName, computeNoteIndex } from "./fretboardCalculations.js";
+import { noteToSolfege } from "../utils.js";
+import { getLevel1FillColor, generateTintVariants } from "../colorConfig.js";
+import { activeNoteIdsOf } from "./songStructure.js";
+import { BEND_OUT, BEND_HOLD, BEND_TOTAL } from "./timeline.js";
 
 // 与编辑区一致的音符构建（全指板所有位置，含未点亮的）
 function buildAllNotes(state) {
@@ -104,6 +105,15 @@ export function describeTransition(prevState, nextState, spec = {}) {
 			const tech = p.technique || technique; // 每对自带技法（拖拽标注），兼容旧的整步技法
 			const fromNote = prevNotes.find(n => n.id === p.from);
 			const toNote = nextNotes.find(n => n.id === p.to);
+			// 轨迹颜色（渲染时实时算，不存快照——存了会随帧结构/色系变化过期）：
+			// sl 的 B 用结果帧实际色；rt/hp 瞬时 B = A 深一整档（pale→vivid→rich→deep）；
+			// bd 推弦的移动本体就是 A——必须用 A 的数据色（B 从未点亮，帧档色会造成推出去时换色）
+			const color = tech === "bd"
+				? (noteColorOf(nextState, p.from) || noteColorOf(prevState, p.from) || FX_COLORS.dotFill)
+				: (noteColorOf(nextState, p.to) // 优先 B 的数据色：pre 移动音符到达时与板面 B 同色交接（无缝，无闪影）
+					|| (nextState?.frameTint ? nextState.frameTint.custom : null)
+					|| noteColorOf(prevState, p.from)
+					|| FX_COLORS.dotFill);
 			return {
 				from: posOf(prevNotes, p.from),
 				to: posOf(nextNotes, p.to),
@@ -112,12 +122,7 @@ export function describeTransition(prevState, nextState, spec = {}) {
 				fromLabel: fromNote ? fromNote.noteName : null, // fx 音符的数字/音名（与板面渲染同源）
 				toLabel: toNote ? toNote.noteName : null,
 				transient: tech === "rt" || tech === "hp" || tech === "pre", // 往返/前置的瞬态音
-				// 轨迹颜色（渲染时实时算，不存快照——存了会随帧结构/色系变化过期）：
-				// sl 的 B 用结果帧实际色；rt/hp 瞬时 B = A 深一整档（pale→vivid→rich→deep）
-				color: noteColorOf(nextState, p.to) // 优先 B 的数据色：pre 移动音符到达时与板面 B 同色交接（无缝，无闪影）
-					|| (nextState?.frameTint ? nextState.frameTint.custom : null)
-					|| noteColorOf(prevState, p.from)
-					|| FX_COLORS.dotFill
+				color
 			};
 		})
 		.filter(p => p.from && p.to);
@@ -165,6 +170,35 @@ export function sampleTransition(desc, t, transMs) {
 			if (aBack > 0) els.push({ kind: "dot", x: p.from.x, y: p.from.y, r: 7, opacity: +(0.8 * aBack).toFixed(3), color: p.color });
 			return;
 		}
+		// 推弦：模仿真实吉他推弦——音符本体垂直推向邻弦（半程）再弹回，A 的亮灭由板面状态边驱动。
+		// 时间分配 = 弯弓搭箭射箭：弯弓（慢推出、张力渐满）→ 搭箭（满弓屏息停顿）→
+		// 放箭（出弦即最快、微过冲后回稳，弓弦回弹的余韵）。尾部 100ms 停在 A 盖住板面复亮渐入
+		//（dur = BEND_TOTAL + 100，与 timeline 的 fx 轨道同源约定，改常量两边一起）
+		if (tech === "bd") {
+			const ms = t * dur;
+			const amp = (p.to.y - p.from.y) * 0.5; // 推出半程：读作"弦被推向邻弦"，不误读为落到邻弦上
+			// 三拍按 dur 等比缩放：标准 fx 轨道 dur=BEND_TOTAL+100 时 k=1（比例即绝对时长）；
+			// dock 预览等短窗口（200ms）也能读出弯弓→搭箭→放箭的节奏，而非几乎不动
+			const TOT = Math.max(1, dur - 100);
+			const k = TOT / BEND_TOTAL;
+			const T_OUT = BEND_OUT * k, T_HOLD = (BEND_OUT + BEND_HOLD) * k;
+			let disp = 0;
+			if (ms >= TOT) disp = 0; // 尾驻留：已回到 A，等板面复亮交接
+			else if (ms >= T_HOLD) {
+				// 放箭：前段急速弹回并微过冲（越过原位 8%），后段从过冲回稳
+				const u = (ms - T_HOLD) / Math.max(1, TOT - T_HOLD);
+				if (u < 0.72) disp = amp + (-1.08 * amp) * easeOutQuick(u / 0.72);
+				else disp = -0.08 * amp * (1 - easeInOutCubic((u - 0.72) / 0.28));
+			}
+			else if (ms >= T_OUT) disp = amp; // 搭箭：满弓屏息
+			else disp = amp * easeOutCubic(ms / T_OUT); // 弯弓：越拉越沉
+			const y = +(p.from.y + disp).toFixed(2);
+			els.push({ kind: "note", x: p.from.x, y, r: R, opacity: 1, color: p.color }); // 全程不透明：回到 A 与板面同位同色交接
+			// 音名走板面同款渲染（boardStyle）：推的是同一个音，文字观感必须与静止时一致，不能显"变浅"
+			if (p.fromLabel) els.push({ kind: "label", x: p.from.x, y, text: p.fromLabel, opacity: 1, color: p.color, boardStyle: true });
+			return;
+		}
+
 		const isRT = tech === "rt";
 		const isQuick = tech === "h" || tech === "p";
 
@@ -233,6 +267,11 @@ export function elsToSvgString(els, viewBox, opts = {}) {
 		if (el.kind === "label") {
 			const ns = opts.noteStyle || {};
 			const ink = ns.ink || "var(--text-color)";
+			// 板面同款音名（推弦移动音符用）：白字 + 同字号 + 投影，与静止音符的文字观感一致；
+			// 默认走 ink（sl 交叉淡化等轻提示场景）
+			if (el.boardStyle) {
+				return `<text x="${el.x}" y="${el.y}" text-anchor="middle" dominant-baseline="middle" font-size="${Math.round(ns.fontSz || 20)}" fill="#ffffff" style="filter:drop-shadow(0 0 1.6px rgb(0,0,1))" opacity="${el.opacity}">${esc(el.text)}</text>`;
+			}
 			const fontSz = Math.round((ns.fontSz || 20) * 0.72);
 			return `<text x="${el.x}" y="${el.y}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSz}" font-weight="600" fill="${ink}" opacity="${el.opacity}">${esc(el.text)}</text>`;
 		}

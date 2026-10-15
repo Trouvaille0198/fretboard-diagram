@@ -30,11 +30,22 @@ export function createKeyboardHandler(params) {
         reset,
         saveSVG,
         copyGif,
+        copyUnionSnapshot,
         selectedColorLevel,
         selectConnectionPreset
     } = params;
 
     return (event) => {
+        // Ctrl+Shift+C（动态模式）：复制「整图所有点都在」的静态快照（累积态终帧 PNG，色深浅=加入顺序）；
+        // 非动态模式不拦截（保留浏览器默认行为）
+        if (event.ctrlKey && event.shiftKey && event.code === 'KeyC') {
+            if (copyUnionSnapshot && dynamic?.isDynamic) {
+                event.preventDefault();
+                copyUnionSnapshot();
+            }
+            return;
+        }
+
         // Ctrl+C 复制：动态模式(≥2帧)=GIF 到剪贴板；其余=SVG
         if (event.ctrlKey && event.code === 'KeyC' && !event.shiftKey) {
             event.preventDefault();
