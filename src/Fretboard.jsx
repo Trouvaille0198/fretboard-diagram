@@ -25,6 +25,7 @@ import { exportGifAnimation, exportWebmAnimation } from './utils/animatedExport'
 import { Toast } from './components/Toast';
 import { createPortal } from 'react-dom';
 import { expandTimeline, stateClock, END_PAUSE_MS, accumulateStates, chainLinksOf } from './utils/timeline';
+import { buildActionOverlay } from './utils/staticSummary';
 import { FretboardSVG } from './components/FretboardSVG';
 import { useLanguage } from './i18n';
 
@@ -789,7 +790,9 @@ function Fretboard({ mode = 'normal' }) {
         setDragPos(null); return;
       }
       if (!dynamicRef.current.isDragging()) return;
-      dynamicRef.current.endSlideDrag(releaseTargetAt(e.clientX, e.clientY));
+      // 松手没压中音符时，推弦用最后驻留确认的目标兜底（虚线环所示）——真实鼠标常偏出圆几像素，与链音同款防御
+      const slideDi = dynamicRef.current.getDragInfo();
+      dynamicRef.current.endSlideDrag(releaseTargetAt(e.clientX, e.clientY) || (slideDi && slideDi.bendTo));
       setDragPos(null);
     };
     const cancel = () => {
@@ -853,6 +856,8 @@ function Fretboard({ mode = 'normal' }) {
     if (!fromPos) return null;
     const vivid = getHintColorValue().custom; // 提示色=上一帧档（浅）
     const targetPos = dragInfo.activatedTo ? getNotePositionMemo(dragInfo.activatedTo) : null;
+    // 推弦方向确认（同品邻弦驻留 200ms）：目标音加金色虚线环（与滑弦的实线环区分）
+    const bendPos = dragInfo.bendTo ? getNotePositionMemo(dragInfo.bendTo) : null;
     const aPos = getNotePositionMemo(dragInfo.from);
     const armedPos = dragInfo.hpArmed ? aPos : null; // 击勾待命（A 区停满 0.6s）：A 呼吸虚线环
     // 回程进入 A 区（明显更近 A，松手即吸附判回 A=原位滑弦）：A 立即亮实线环，与待命虚线环区分
@@ -862,7 +867,7 @@ function Fretboard({ mode = 'normal' }) {
       const dB = Math.hypot(cur.x - targetPos.x, cur.y - targetPos.y);
       if (dA < dB && dA / (dA + dB) < 0.34) returnReadyPos = aPos;
     }
-    return { fromPos, cur, vivid, targetPos, armedPos, returnReadyPos };
+    return { fromPos, cur, vivid, targetPos, armedPos, returnReadyPos, bendPos };
   }, [dragInfo, chainDragInfo, dragPos, getNotePositionMemo, getHintColorValue]);
 
   // 编辑态技法标记：当前帧的滑弦/原位/击勾/前置划弦在板面常驻可见、互相区分
@@ -1389,6 +1394,125 @@ function Fretboard({ mode = 'normal' }) {
     await saveSvgBlobToDisk(() => buildExportBlob('svganim', { cumulative: cumulativeView }));
   }, [saveSvgBlobToDisk, buildExportBlob, cumulativeView]);
 
+  // Ctrl+Shift+C（动态模式）：复制「整图所有点都在」的一张静态快照（PNG）到剪贴板。
+  // 累积态终帧 = 并集板面：出现过的音全部点亮，各保留最后一次点亮的形——
+  // 色档深浅即加入时间线（浅早深晚），静态图里动画的趋势依然可读。
+  // 剪贴板只收 image/png（浏览器限制）；非安全上下文（http://IP）无剪贴板 API 时回落下载 PNG
+  const copyUnionSnapshot = useCallback(async () => {
+    try {
+      setExporting('png');
+      const frames = framesRef.current;
+      if (!frames.length) throw new Error('动图为空');
+      const specs = transitionsRef.current;
+      const settings = animSettingsRef.current;
+      const tl = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200, { leadBlank: !!settings.leadBlank });
+      const acc = accumulateStates(tl.states);
+      let union = acc[acc.length - 1];
+      if (!union) throw new Error('动图为空');
+      // 品窗：跨全部帧的联合窗口（与动图导出同款规则）
+      let wStart = Infinity, wEnd = -Infinity;
+      frames.forEach(f => {
+        wStart = Math.min(wStart, f.startFret);
+        wEnd = Math.max(wEnd, f.endFret);
+      });
+      if (wEnd - wStart > 16) wEnd = wStart + 16;
+      union = { ...union, startFret: wStart, endFret: wEnd };
+      // 截断框：对并集板面算一次（全部出现过的音都在，天然覆盖动画全程范围）
+      const geo = boardGeometry(wStart, wEnd);
+      const fullVB = { x: geo.svgViewBoxX, y: geo.svgViewBoxY, w: geo.svgViewBoxWidth, h: geo.svgViewBoxHeight };
+      let cropBox = null;
+      if (horizontalCrop || verticalCrop) {
+        const unionNotes = buildNotes(union);
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        Object.entries(union.data || {}).forEach(([id, n]) => {
+          if (!n || (n.visibility !== 'visible' && n.visibility !== 'selected')) return;
+          const p = getNotePosition(id, unionNotes);
+          if (!p) return;
+          minX = Math.min(minX, p.x - CONSTS.circleRadius); maxX = Math.max(maxX, p.x + CONSTS.circleRadius);
+          minY = Math.min(minY, p.y - CONSTS.circleRadius); maxY = Math.max(maxY, p.y + CONSTS.circleRadius);
+        });
+        if (minX !== Infinity) {
+          const padX = 14, padY = includeMarkers === false ? 8 : 30;
+          let cx = fullVB.x, cy = fullVB.y, cw = fullVB.w, ch = fullVB.h;
+          if (horizontalCrop) {
+            const x1 = Math.max(fullVB.x, minX - padX), x2 = Math.min(fullVB.x + fullVB.w, maxX + padX);
+            cx = x1; cw = Math.max(120, x2 - x1);
+          }
+          if (verticalCrop) {
+            const y1 = Math.max(fullVB.y, minY - padY), y2 = Math.min(fullVB.y + fullVB.h, maxY + padY);
+            cy = y1; ch = Math.max(80, y2 - y1);
+          }
+          cropBox = { x: cx, y: cy, w: cw, h: ch };
+        }
+      }
+      // 末帧仍在响的音（其余在并集里亮着的=离场音，快照里降透明区分"还在响 vs 已离开"）
+      const lastState = tl.states[tl.states.length - 1];
+      const finalActiveIds = new Set(Object.entries(lastState?.data || {}).filter(([, n]) => n && (n.visibility === 'visible' || n.visibility === 'selected')).map(([id]) => id));
+      // 板面 SVG（离屏渲染，svgOnly 拿字符串再叠层）
+      let boardSvg = await renderBoardImage(union, Number(settings.width) || 720, { includeMarkers, showNotes, horizontalCrop, verticalCrop, cropBox, svgOnly: true });
+      const doc = new DOMParser().parseFromString(boardSvg, 'image/svg+xml');
+      doc.querySelectorAll('g.note').forEach(g => {
+        const cls = g.getAttribute('class') || '';
+        if (!/(^|\s)(visible|selected)(\s|$)/.test(cls)) return; // 暗圆网格不动（本就不显眼）
+        if (finalActiveIds.has(g.id)) return;
+        g.setAttribute('style', `${g.getAttribute('style') || ''};opacity:0.4`);
+      });
+      // 动作 glyph 层：每类动作的静态图形语言（sl/rt/hp/pre/bd/chain）。
+      // 连线层（under）插到音符层之前——线从音符背后穿过，长滑弦/跨弦链不压任何音名；
+      // 记号层（over：推弦弯钩、幽灵音小圆）叠最上
+      const unionNotes = buildNotes(union);
+      const { under, over } = buildActionOverlay({ transitions: specs, frames, posOf: id => getNotePosition(id, unionNotes) });
+      const fragNode = s => {
+        const d = new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${s}</svg>`, 'image/svg+xml');
+        return d.documentElement && d.documentElement.firstChild ? doc.importNode(d.documentElement.firstChild, true) : null;
+      };
+      if (under) {
+        const node = fragNode(under);
+        const notesG = doc.querySelector('g.notes');
+        if (node && notesG) notesG.parentNode.insertBefore(node, notesG);
+        else if (node) doc.documentElement.appendChild(node);
+      }
+      if (over) {
+        const node = fragNode(over);
+        if (node) doc.documentElement.appendChild(node);
+      }
+      boardSvg = new XMLSerializer().serializeToString(doc);
+      const img = await new Promise((resolve, reject) => {
+        const blob = new Blob([boardSvg], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const image = new Image();
+        image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+        image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('快照 SVG 解码失败')); };
+        image.src = url;
+      });
+      const w = img.naturalWidth || Number(settings.width) || 720;
+      const h = img.naturalHeight || Math.round(w * ((cropBox ? cropBox.h / cropBox.w : fullVB.h / fullVB.w)));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || '#10161c';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0);
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      if (!blob) throw new Error('PNG 编码失败');
+      if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('已复制整图快照（所有点都在，含动作标注与离场音）', 'success');
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `fretboard-${Date.now()}.png`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast('剪贴板不可用（非安全上下文），已改为下载 PNG', 'info');
+      }
+    } catch (error) {
+      showToast(`复制快照失败：${error.message}`, 'error');
+    } finally {
+      setExporting(null);
+    }
+  }, [includeMarkers, showNotes, horizontalCrop, verticalCrop, showToast]);
+
   // 键盘事件 - 使用 ref 保持最新值，避免频繁重新注册导致重复触发
   const handlerParamsRef = useRef();
   handlerParamsRef.current = {
@@ -1398,6 +1522,7 @@ function Fretboard({ mode = 'normal' }) {
     connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level,
     toggleVisibility: toggleVisibilityMemo, reset: resetMemo, saveSVG: saveSVGMemo, copyGif: copyGifToClipboard,
+    copyUnionSnapshot,
     selectedColorLevel, selectConnectionPreset,
     dynamic: {
       isDynamic: dynamic.isDynamic,
@@ -1602,8 +1727,8 @@ function Fretboard({ mode = 'normal' }) {
               const r = 24;
               const x1 = m.a.x + dx / len * r, y1 = m.a.y + dy / len * r;
               const x2 = m.b.x - dx / len * r, y2 = m.b.y - dy / len * r;
-              const stroke = m.tech === 'pre' || m.tech === 'chain' ? techMarksG.gold : techMarksG.hint;
-              const dash = m.tech === 'hp' ? '2 4' : (m.tech === 'rt' ? '8 4' : (m.tech === 'chain' ? '2 3' : undefined));
+              const stroke = m.tech === 'pre' || m.tech === 'chain' || m.tech === 'bd' ? techMarksG.gold : techMarksG.hint;
+              const dash = m.tech === 'hp' ? '2 4' : (m.tech === 'rt' ? '8 4' : (m.tech === 'chain' ? '2 3' : (m.tech === 'bd' ? '3 3' : undefined)));
               const hot = hoveredPair && hoveredPair.from === m.from && hoveredPair.to === m.to;
               return (
                 <g key={i} opacity={hot ? 1 : 0.85}>
@@ -1649,6 +1774,13 @@ function Fretboard({ mode = 'normal' }) {
                 cx={dragFeedbackG.armedPos.x} cy={dragFeedbackG.armedPos.y} r={CONSTS.circleRadius + 6}
                 fill="none" stroke={dragFeedbackG.vivid} strokeWidth={3} opacity={0.9}
                 strokeDasharray="6 4"
+              />
+            )}
+            {dragFeedbackG.bendPos && (
+              <circle
+                cx={dragFeedbackG.bendPos.x} cy={dragFeedbackG.bendPos.y} r={CONSTS.circleRadius + 6}
+                fill="none" stroke="var(--app-accent, #f3ba62)" strokeWidth={3} opacity={0.9}
+                strokeDasharray="3 5"
               />
             )}
           </g>,
