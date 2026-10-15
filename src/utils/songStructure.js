@@ -1,4 +1,4 @@
-import { CONSTS } from "../constants";
+import { CONSTS } from "../constants.js";
 
 // ============ 小节 / 帧结构 ============
 

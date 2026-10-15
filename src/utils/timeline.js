@@ -6,6 +6,11 @@ import { frameTintFromData, tintAt } from "../colorConfig.js";
 
 const DOT = 300, RT_OUT = 280, RT_BACK = 260, SETTLE = 60, HPMOMENT = 60, HPB = 190, CHAIN_GAP = 170; // 链音逐个点亮的间隔 // DOT 380→300：滑动稍快
 
+// 推弦（bd）三拍绝对时长——弯弓搭箭射箭的时间分配：
+// 弯弓（慢出，张力渐满）→ 搭箭（满弓屏息停顿）→ 放箭（急速弹回）。transitionAnimator 的 bd 采样分支同源取用
+export const BEND_OUT = 310, BEND_HOLD = 140, BEND_BACK = 110;
+export const BEND_TOTAL = BEND_OUT + BEND_HOLD + BEND_BACK;
+
 function beatTint(frame, i, frames) {
 	const born = Object.values(frame.data || {}).find(n => n && typeof n === "object" && n.birth === i && n.color && typeof n.color === "object" && n.color.custom);
 	if (born) return { name: born.color.name, custom: born.color.custom };
@@ -45,6 +50,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 		const slP = pairs.filter(p => p.technique === "sl");
 		const rtP = pairs.filter(p => p.technique === "rt");
 		const hpP = pairs.filter(p => p.technique === "hp");
+		const bdP = pairs.filter(p => p.technique === "bd");
 		// 瞬时目标音（rt/hp 的 B、pre 的暗音）即使混进帧数据，窗口期也不得提前亮——base 里压暗，交给边点亮
 		const base = (() => {
 			const ids = new Set([...rtP.map(p => p.to), ...hpP.map(p => p.to)]);
@@ -71,7 +77,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 			});
 		})();
 
-		const tech = pres.length + slP.length + rtP.length + hpP.length + (chainLinks.length >= 1 ? 1 : 0);
+		const tech = pres.length + slP.length + rtP.length + hpP.length + bdP.length + (chainLinks.length >= 1 ? 1 : 0);
 		// 本帧技法涉及的全部音符 id（涟漪静默用）
 		const techIds = new Set();
 		chainOrders.forEach(o => o.forEach(id => techIds.add(id)));
@@ -79,6 +85,7 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 		slP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
 		rtP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
 		hpP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
+		bdP.forEach(p => { techIds.add(p.from); techIds.add(p.to); });
 
 		const frameStart = now;
 		const enter0 = i === 0 ? (opts.leadBlank ? T : 0) : (tech ? SETTLE : T);
@@ -121,6 +128,12 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 		hpP.forEach(p => {
 			edge(HPMOMENT, { id: p.to, c: bTint(p) }, null, 100);
 			edge(HPMOMENT + HPB, null, { id: p.to }, 100);
+		});
+		// 推弦：窗开 A 熄灭、交给 fx 音符表演（弯弓推出→满弓停顿→放箭弹回）；BEND_TOTAL 那一刻
+		// fx 音符恰好回到 A——板面 A 原色瞬切复亮，fx 尾部多停 100ms 盖住 CSS 渐入（与 sl 到达交接同款）
+		bdP.forEach(p => {
+			edge(0, null, { id: p.from }, SETTLE);
+			edge(BEND_TOTAL, { id: p.from, c: origColor(p.from) || ft }, null, 0);
 		});
 		// 链音边：各链窗开全灭，链内第 k 个在 k*CHAIN_GAP 点亮（第 1 个随窗开即亮）；多条链并行
 		const colorOfChain = id => {
@@ -194,6 +207,8 @@ export function expandTimeline(frames, transitions, holdMs, transMs, opts = {}) 
 		slP.forEach(p => fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "sl" }] }, t0: winT0, dur: DOT + 100, frame: i, _winOffset: 0 }));
 		// hp：fx 显式画回 A 涟漪+光点（板面只有 B 闪现；sub 边无涟漪）
 		hpP.forEach(p => fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "hp" }] }, t0: winT0, dur: HPMOMENT + HPB + 150, frame: i, _winOffset: 0 }));
+		// 推弦：fx 音符本体表演（含尾部 100ms 停 A 盖住复亮渐入——dur 与 sampleTransition 的 bd 分支同源约定）
+		bdP.forEach(p => fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "bd" }] }, t0: winT0, dur: BEND_TOTAL + 100, frame: i, _winOffset: 0 }));
 		rtP.forEach(p => {
 			// rt 仍用光点平移（mv=dot 无轨迹线；rt 板面 A/B 有点亮节奏，移动音符会双重渲染）
 			fx.push({ spec: { technique: null, pairs: [{ from: p.from, to: p.to, technique: "mv" }] }, t0: winT0, dur: RT_OUT, frame: i, _winOffset: 0 });

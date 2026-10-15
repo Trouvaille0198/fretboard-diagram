@@ -1,7 +1,8 @@
 // 核心动效不变量冒烟：四技法 × 场景矩阵，纯 Node 直跑（node scripts/smoke-core.mjs）
 // 覆盖：状态序列 / B 颜色（帧位档·数据出生色）/ 半程前置亮 / 到达与回程时刻 /
 //       fx 轨道对齐 / 瞬时目标音不提前亮 / 时钟单调性 / 多技法同帧并发同步
-import { expandTimeline, stateClock } from "../src/utils/timeline.js";
+import { expandTimeline, stateClock, BEND_OUT, BEND_HOLD, BEND_BACK, BEND_TOTAL } from "../src/utils/timeline.js";
+import { describeTransition, sampleTransition } from "../src/utils/transitionAnimator.js";
 
 const T = ["rgb(204, 224, 250)", "rgb(78, 149, 247)", "rgb(8, 70, 165)", "rgb(9, 46, 103)"];
 let fail = 0, n = 0;
@@ -14,7 +15,7 @@ const mk = (lit, extra) => {
 			? { type: "note", color: "white", color2: null, visibility: "transparent" }
 			: { type: "note", color: { name: "navy", custom: v.c }, color2: null, visibility: "visible", birth: v.b };
 	});
-	return { data, startFret: 1, endFret: 13, visibility: "transparent", ...(extra || {}) };
+	return { data, startFret: 1, endFret: 13, visibility: "transparent", enharmonic: 0, ...(extra || {}) };
 };
 const vis = (s, id) => (s.data[id] && s.data[id].visibility === "visible" ? s.data[id].color.custom : null);
 const seq = (r, id) => r.states.map(s => (vis(s, id) ? "L" : "-")).join("");
@@ -124,6 +125,34 @@ console.log("== 瞬时目标音混入帧数据（健壮性）==");
 	const clock = stateClock(r.states, 300, 200);
 	const bOn = r.states.findIndex(s => vis(s, "f6-s2"));
 	A("rt B 混入数据也不提前亮（窗口态仍灭）", clock.starts[bOn] >= 500, String(clock.starts[bOn]));
+}
+
+console.log("== bd 推弦 ==");
+{
+	// 3弦2品同款：f5-s2（3弦）→ f5-s3（4弦，同品邻弦，向下推）
+	const r = run(
+		[mk({ "f5-s2": { c: T[0], b: 0 } }), mk({ "f5-s2": { c: T[0], b: 0 } })],
+		[{ technique: null, pairs: [{ from: "f5-s2", to: "f5-s3", technique: "bd" }] }]
+	);
+	const clock = stateClock(r.states, 300, 200);
+	A("bd A 窗开熄灭（交给 fx 音符），TOTAL 时刻原色复亮", seq(r, "f5-s2") === "L-L", seq(r, "f5-s2"));
+	A("bd A 复亮=原色", vis(r.states[r.states.length - 1], "f5-s2") === T[0]);
+	A("bd 目标音 B 全程不亮", r.states.every(s => vis(s, "f5-s3") === null));
+	const fx = r.fx[0];
+	A("bd fx=BEND_TOTAL+100（尾部停 A 盖复亮渐入）", fx.spec.pairs[0].technique === "bd" && fx.dur === BEND_TOTAL + 100 && fx.dur === BEND_OUT + BEND_HOLD + BEND_BACK + 100, `${fx.dur}`);
+	const relight = r.states.findIndex((s, i) => i > 1 && vis(s, "f5-s2") === T[0]);
+	A("bd A 复亮与 fx 弹回同刻", clock.starts[relight] === fx.t0 + BEND_TOTAL, `复亮@${clock.starts[relight]} 回位@${fx.t0 + BEND_TOTAL}`);
+	// 动画轨迹：弯弓（慢出）→ 搭箭（停在半程）→ 放箭（急回+微过冲）→ 尾驻 A
+	const hint = r.states.filter((_, si) => r.frameOf[si] === 1).slice(-1)[0];
+	const desc = describeTransition(hint, hint, fx.spec);
+	const yOf = t => { const el = sampleTransition(desc, t, fx.dur).find(e => e.kind === "note"); return el ? el.y : null; };
+	const A_Y = 30 + 60 * 2, AMP = 30; // s2 弦 y=150；推向 s3 半程=30px
+	A("bd 出发在 A 原位", yOf(0) === A_Y, String(yOf(0)));
+	A("bd 满弓停在半程（搭箭屏息）", yOf((BEND_OUT + BEND_HOLD / 2) / fx.dur) === A_Y + AMP, String(yOf((BEND_OUT + BEND_HOLD / 2) / fx.dur)));
+	const yMid = yOf((BEND_OUT + BEND_HOLD + BEND_BACK * 0.5) / fx.dur);
+	A("bd 放箭半程已弹回越过原位（急回+过冲）", yMid !== null && yMid < A_Y, String(yMid));
+	A("bd 尾驻回到 A 原位", yOf(1) === A_Y, String(yOf(1)));
+	A("bd 音符带音名标签", sampleTransition(desc, 0.3, fx.dur).some(e => e.kind === "label"));
 }
 
 console.log("== 时钟不变量 ==");

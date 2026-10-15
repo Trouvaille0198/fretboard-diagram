@@ -1,4 +1,4 @@
-import { CONSTS } from "../constants";
+import { CONSTS } from "../constants.js";
 
 export function computeNoteIndex(fret, string) {
 	const interval = CONSTS.stringIntervals[string] + fret + 1;

@@ -18,6 +18,24 @@ function isNoteActive(noteData, globalVisibility) {
 	return !!(noteData.color && noteData.color !== "white") || !!noteData.color2;
 }
 
+// 音符 id → 品位（o-s2 开放弦=0；f5-s2=5）
+function fretOfNote(noteId) {
+	if (typeof noteId !== "string") return null;
+	if (noteId.startsWith("o-s")) return 0;
+	const m = noteId.match(/^f(-?\d+)-s\d+$/);
+	return m ? parseInt(m[1], 10) : null;
+}
+
+// 推弦目标：同品、邻弦（垂直上下最近相邻的音符）。
+// 弦号 s0=1弦在顶、s5=6弦在底：1弦无上邻、6弦无下邻，天然排除"1弦上推/6弦下拉"
+function isBendTarget(from, to) {
+	if (!from || !to || from === to) return false;
+	const fs = stringOfNote(from), ts = stringOfNote(to);
+	if (fs === null || ts === null || Math.abs(fs - ts) !== 1) return false;
+	const ff = fretOfNote(from), tf = fretOfNote(to);
+	return ff !== null && ff === tf;
+}
+
 // 就地改一音，返回新的 data 对象（不经过 setState，调用方决定何时提交）
 function patchNote(data, noteId, patch) {
 	const next = { ...data };
@@ -503,7 +521,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 
 	const getDragInfo = useCallback(() => {
 		const d = dragRef.current;
-		const info = d ? { mode: d.mode, from: d.from, hoverId: d.hoverId, activatedTo: d.activatedTo, preTo: d.preTo || null, hpArmed: !!d.hpArmed, moved: !!d.moved } : null;
+		const info = d ? { mode: d.mode, from: d.from, hoverId: d.hoverId, activatedTo: d.activatedTo, preTo: d.preTo || null, bendTo: d.bendTo || null, hpArmed: !!d.hpArmed, moved: !!d.moved } : null;
 		if (typeof window !== "undefined") window.__dragInfo = info; // 调试口
 		return info;
 	}, []);
@@ -513,10 +531,10 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (viewMode !== "edit") return false;
 		if (!isNoteActive(dataRef.current[noteId], visibility)) {
 			// 前置划弦：从未激活音 B 起拖（激活音 A 为终点）——第一帧也可用
-			dragRef.current = { mode: "pre", from: noteId, hoverId: null, activatedTo: null, preTo: null, timer: null, moved: false };
-			return true;
-		}
-		dragRef.current = { mode: "slide", from: noteId, hoverId: null, activatedTo: null, timer: null, moved: false };
+		dragRef.current = { mode: "pre", from: noteId, hoverId: null, activatedTo: null, preTo: null, bendTo: null, timer: null, moved: false };
+		return true;
+	}
+		dragRef.current = { mode: "slide", from: noteId, hoverId: null, activatedTo: null, bendTo: null, timer: null, moved: false };
 		return true;
 	}, [dataRef, visibility, viewMode]);
 
@@ -542,6 +560,19 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			d.timer = setTimeout(() => { d.hpArmed = true; }, 600);
 			return;
 		}
+		// 推弦：目标是同品邻弦（垂直上下最近相邻音）——停 200ms 确认为推弦方向（目标加虚线环），
+		// 板面不动（推弦不改帧数据，A 全程保持）；若此前滑弦已激活 B，先还原（意图切换）
+		if (isBendTarget(d.from, noteId)) {
+			d.timer = setTimeout(() => {
+				if (d.activatedTo && d.activatedOrig) {
+					commitData(patchNote(dataRef.current, d.activatedTo, d.activatedOrig));
+				}
+				d.activatedTo = null;
+				d.hpArmed = false;
+				d.bendTo = noteId;
+			}, 200);
+			return;
+		}
 		if (stringOfNote(noteId) !== stringOfNote(d.from)) return;
 		d.timer = setTimeout(() => {
 			// 停住达标：换目标悬停 = 换激活（旧的还原为激活前状态），松手才定稿
@@ -562,6 +593,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		if (noteId === d.hoverId) return; // 同一音符上微动（人手抖动）：不重置计时，悬停照样激活
 		clearTimeout(d.timer); // 换了目标音符才重置
 		if (d.hpArmed && noteId !== d.from) d.hpArmed = false; // 离开 A 区=取消击勾待命（反馈环随之消失）
+		if (d.bendTo) d.bendTo = null; // 换目标=取消推弦确认（新目标重新驻留计时）
 		d.hoverId = noteId;
 		startDwell(d, noteId);
 	}, [commitData, dataRef, getVividColor]);
@@ -597,7 +629,32 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			toast?.("已设前置划弦（B 闪现滑到 A）", "success");
 			return true;
 		}
+		// 推弦提交：板面不动（A 全程保持），只把 {from,to,technique:'bd'} 记进本帧的进入过渡；
+		// 推弦方向（上/下邻弦）由 to 携带，播放时 A 弯弓式推出再弹回
+		const commitBend = (to) => {
+			// 意图已切推弦但滑弦激活色还没还原（未驻留满就松手）：还原 B 的激活前状态
+			if (d.activatedTo && d.activatedOrig) commitData(patchNote(dataRef.current, d.activatedTo, d.activatedOrig));
+			const from = d.from;
+			const idx = editIdxRef.current;
+			if (idx <= 0) {
+				toast?.("推弦标在「进入本帧」的过渡上——第 1 帧没有进入过渡，先加一帧再标", "info");
+				return true;
+			}
+			setTransitions(prev => prev.map((t, i) => {
+				if (i !== idx - 1) return t;
+				const spec = t || { technique: null, pairs: [] };
+				const pairs = (spec.pairs || []).filter(p => !(p.from === from && p.to === to));
+				pairs.push({ from, to, technique: "bd" });
+				return { ...spec, pairs };
+			}));
+			toast?.("已设推弦（弯弓推出 → 搭箭停满 → 放箭弹回）", "success");
+			return true;
+		};
+		if (d.bendTo && isBendTarget(d.from, d.bendTo)) return commitBend(d.bendTo);
 		if (!d.activatedTo) {
+			// 推弦兜底：松手正落在同品邻弦音上，直接认作推弦方向（快速拖放不漏手势）
+			if (targetId && targetId !== d.from && isBendTarget(d.from, targetId)) return commitBend(targetId);
+
 			// 同理：未激活的滑弦手势若松手落在合法目标（同弦另一音）上，就地激活完成，不再整单作废
 			if (targetId && targetId !== d.from && stringOfNote(targetId) === stringOfNote(d.from)) {
 				const hint = getVividColorRef.current ? getVividColorRef.current() : null;
@@ -630,7 +687,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			}));
 		}
 		return true;
-	}, [commitData, dataRef, visibility]);
+	}, [commitData, dataRef, visibility, toast]);
 
 	// ===== 中键链音：同帧新建音符 A→B→C 依次激活 =====
 	// 手势与滑弦拖拽同构（按住-拖-放），按中键触发；链存在帧上（chain: [id...]），
@@ -769,7 +826,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			}
 			return f;
 		}));
-		toast?.("已删除该划弦/击勾标注", "info");
+		toast?.("已删除该划弦/击勾/推弦标注", "info");
 		return true;
 	}, [toast]);
 

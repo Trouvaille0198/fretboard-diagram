@@ -77,7 +77,7 @@ function rgbToHex(r, g, b) {
 }
 
 // 从颜色配置文件导入
-import { getLevel2Color as getLevel2ColorFromConfig, LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from './colorConfig';
+import { getLevel2Color as getLevel2ColorFromConfig, LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from './colorConfig.js';
 
 // 获取第二层级颜色值（独立设置，不依赖第一层级）
 export function getLevel2Color(colorName) {

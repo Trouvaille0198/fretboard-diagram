@@ -298,6 +298,77 @@ export async function buildAnimatedSvg({ states, fx, frameOf, sub, renderSvg, la
 			});
 			return;
 		}
+		// 推弦（bd）：与播放器/GIF 同语义（sampleTransition bd 分支）——音符本体垂直推出/弹回。
+		// x 恒定（同品），只有 cy 动；弯弓慢出→满弓停→放箭急回的轨迹用采样点分段线性逼近
+		//（急回段短，采样密度比 sl 高一档，不然放箭的过冲回稳会被线性抹平）
+		if (pair.technique === 'bd') {
+			const STEPS = 40;
+			const noteYP = [];
+			const labelYP = [];
+			let noteR = 22, noteX = null, labelText = null;
+			for (let i = 0; i <= STEPS; i++) {
+				const t = i / STEPS;
+				const at = t0 + t * dur;
+				sampleTransition(desc, t, dur).forEach(el => {
+					if (el.kind === 'note') {
+						noteR = el.r || noteR;
+						noteX = el.x;
+						noteYP.push({ t: at, v: el.y });
+					} else if (el.kind === 'label') {
+						labelText = el.text;
+						labelYP.push({ t: at, v: el.y });
+					}
+				});
+			}
+			const opT = discreteTrack([{ t: 0, v: 0 }, { t: t0, v: 1 }, { t: t1, v: 0 }], total);
+			if (noteYP.length && noteX !== null) {
+				const nc = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
+				nc.setAttribute('cx', String(noteX));
+				nc.setAttribute('r', String(noteR));
+				nc.setAttribute('fill', pairColor);
+				nc.setAttribute('stroke', labelColor || 'var(--text-color)');
+				nc.setAttribute('stroke-width', '1.5');
+				nc.setAttribute('opacity', '0');
+				const cyT = linearTrack(noteYP, total);
+				[['cy', cyT, null], ['opacity', opT, 'discrete']].forEach(([attr, tr, calc]) => {
+					if (!tr) return;
+					const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
+					a.setAttribute('attributeName', attr);
+					if (calc) a.setAttribute('calcMode', calc);
+					a.setAttribute('values', tr.values);
+					a.setAttribute('keyTimes', tr.keyTimes);
+					a.setAttribute('dur', total + 'ms');
+					a.setAttribute('repeatCount', 'indefinite');
+					nc.appendChild(a);
+				});
+				fxLayer.appendChild(nc);
+			}
+			if (labelText !== null && labelYP.length && noteX !== null) {
+				const tx = doc.createElementNS('http://www.w3.org/2000/svg', 'text');
+				tx.setAttribute('text-anchor', 'middle');
+				tx.setAttribute('dominant-baseline', 'middle');
+				tx.setAttribute('font-size', '20'); // 板面同款：推的是同一个音，音名观感与静止一致（白字+投影），不显"变浅"
+				tx.setAttribute('fill', '#ffffff');
+				tx.setAttribute('style', 'filter:drop-shadow(0 0 1.6px rgb(0,0,1))');
+				tx.setAttribute('opacity', '0');
+				tx.setAttribute('x', String(noteX));
+				tx.textContent = labelText;
+				const yT = linearTrack(labelYP, total);
+				[['y', yT, null], ['opacity', opT, 'discrete']].forEach(([attr, tr, calc]) => {
+					if (!tr) return;
+					const a = doc.createElementNS('http://www.w3.org/2000/svg', 'animate');
+					a.setAttribute('attributeName', attr);
+					if (calc) a.setAttribute('calcMode', calc);
+					a.setAttribute('values', tr.values);
+					a.setAttribute('keyTimes', tr.keyTimes);
+					a.setAttribute('dur', total + 'ms');
+					a.setAttribute('repeatCount', 'indefinite');
+					tx.appendChild(a);
+				});
+				fxLayer.appendChild(tx);
+			}
+			return;
+		}
 		const c = doc.createElementNS('http://www.w3.org/2000/svg', 'circle');
 		c.setAttribute('r', '12');
 		c.setAttribute('fill', pairColor);
