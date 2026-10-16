@@ -19,7 +19,8 @@ export const CHORD_INTERVALS = {
 	sus4: [0, 5, 7],
 	sus2: [0, 2, 7],
 	dim: [0, 3, 6],
-	aug: [0, 4, 8]
+	aug: [0, 4, 8],
+	dim7: [0, 3, 6, 9]
 };
 
 export const QUALITIES = Object.keys(CHORD_INTERVALS);
@@ -45,6 +46,14 @@ export const stepsOf = (key) => (key.minor ? MINOR_STEPS : MAJOR_STEPS);
 export function degreePc(degree, acc, key) {
 	const steps = stepsOf(key);
 	return ((((key.root || 0) + (acc || 0) + steps[degree - 1]) % 12) + 12) % 12;
+}
+
+// 调内七和弦：级数点击的默认形态——大调 5 级属七，其余大三 maj7、小三 m7、减 dim7
+export function diatonicSeventh(degree, acc, key) {
+	const triad = diatonicQuality(degree, acc, key);
+	if (triad === "m") return "m7";
+	if (triad === "dim") return "dim7";
+	return (!key.minor && degree === 5 && !acc) ? "7" : "maj7";
 }
 
 export function diatonicQuality(degree, acc, key) {
@@ -165,10 +174,38 @@ function resolveChromaticPc(rel, key) {
 	return null;
 }
 
-// 统一格式化（display: 'degree' | 'name'；viewKey 为移调后的调，默认原调）
+// 统一格式化（display: 'degree' | 'roman' | 'name'；viewKey 为移调后的调，默认原调）
 export function formatChord(chord, display, viewKey) {
 	if (!chord) return "";
-	return display === "name" ? formatName(chord, viewKey) : formatDegree(chord);
+	if (display === "name") return formatName(chord, viewKey);
+	if (display === "roman") { const p = formatRomanParts(chord, viewKey); return p.main + (p.sub ? " " + p.sub : ""); }
+	return formatDegree(chord);
+}
+
+// 罗马数字功能谱（预览显示）：三和弦性质决定大小写——大三/属七/增/挂留大写，
+// 小三/减/小七族小写（i、ii、vii dim）；扩展音与转位低音进副行，与数字谱共用副行词表
+const ROMAN_NUMS = ["I", "II", "III", "IV", "V", "VI", "VII"];
+export function formatRomanParts(chord, viewKey) {
+	if (!chord) return { main: "", sub: "" };
+	const q = resolvedQuality(chord, viewKey);
+	const roman = (deg, acc) => `${ACC_SIGN[String(acc || 0)]}${ROMAN_NUMS[(deg - 1 + 7) % 7]}`;
+	const head = roman(chord.degree, chord.acc);
+	const lowerTriad = q.startsWith("dim") || q === "m" || (q.startsWith("m") && !q.startsWith("maj")); // dim 族、m/m7/m6/m9… 小写，maj7 除外
+	const main = lowerTriad ? head.toLowerCase() : head;
+	let sub = "";
+	if (q !== "" && q !== "m") {
+		const extMap = { maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
+		sub = extMap[q] ?? (chord.quality || "");
+	}
+	if (chord.bass) sub = (sub ? sub + " " : "") + "/" + roman(chord.bass.degree, chord.bass.acc).toLowerCase();
+	return { main, sub };
+}
+
+// 单行内联记号（8pu 式）：4M7 / 57（属七省 M）/ 6m / 5M/7 / 4sus4 / 7° —— 主行+副行串成一行
+export function formatInline(chord, display, viewKey) {
+	const p = chordParts(chord, display, viewKey);
+	if (!p.sub) return p.main;
+	return p.main + p.sub.replace(/\s+/g, "").replace("dim", "°").replace("aug", "+");
 }
 
 // 8pu 式竖排记号分解：主行（级数+三和弦质量）+ 副行（扩展音/特殊质量/转位）
@@ -176,17 +213,18 @@ export function formatChord(chord, display, viewKey) {
 export function chordParts(chord, display, viewKey) {
 	if (!chord) return { main: "", sub: "" };
 	if (display === "name") return { main: formatName(chord, viewKey), sub: "" };
+	if (display === "roman") return formatRomanParts(chord, viewKey);
 	const q = resolvedQuality(chord, viewKey);
 	const head = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}`;
 	let main = head, sub = "";
-	const triadMap = { "": "M", m: "m" };
-	const extMap = { maj7: "7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", aug: "aug" };
+	const triadMap = { "": "", m: "m" }; // 大三和弦省字母（1 不写 1M），小三写 m
+	const extMap = { maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
 	if (triadMap[q] !== undefined) {
 		main = head + triadMap[q];
 	} else if (extMap[q] !== undefined) {
-		// 七/六/九族：主行带三和弦质量（属七/九省略 M，与 8pu 一致）；
+		// 七/六/九族：主行只带小三质量（属七/六/九默认大三省字母），maj7 全写；
 		// dim/aug/sus 无三和弦质量可言，主行只写级数
-		const triadOf = { maj7: "M", m7: "m", m6: "m", 6: "M", add9: "M" }[q] || "";
+		const triadOf = { m7: "m", m6: "m" }[q] || "";
 		main = head + triadOf;
 		sub = extMap[q];
 	} else {
@@ -238,7 +276,8 @@ export const QUALITY_TO_KIND = {
 	dim: "diminished",
 	aug: "augmented",
 	sus4: "suspended-fourth",
-	sus2: "suspended-second"
+	sus2: "suspended-second",
+	dim7: "diminished-seventh"
 };
 
 export const KIND_TO_QUALITY = Object.fromEntries(

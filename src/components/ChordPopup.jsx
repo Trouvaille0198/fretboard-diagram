@@ -37,7 +37,7 @@ const RHYTHMS = [
 
 // 8pu 式就地和弦面板（结构原样照抄）：
 // 顶部动作条（休止符/— 延音/⇄拆分/✕删/⌫收起）+ 数字格(带音名) + 质量行 + 变音行 + 底部页签(和弦C/低音B/节奏型R)
-export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUnit, onSetKind, onToggleSplit, onClose, t, tab: tabProp, onTab }) {
+export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUnit, onSetKind, onToggleSplit, onClose, t, tab: tabProp, onTab, hasAttach, onAttach, defaultQuality }) {
 	const ts = t?.chords ?? {};
 	const [tabLocal, setTabLocal] = useState("chord");
 	const tab = tabProp ?? tabLocal;
@@ -53,12 +53,6 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 		<div className="cc-cp">
 			{/* 顶部动作条（8pu 同款） */}
 			<div className="cc-cp-menu">
-				<button onClick={() => onSetKind("rest")} title={ts.restHint ?? "休止（0）"}>
-					<span>𝄽</span><small>{ts.restLabel ?? "休止符"}</small>
-				</button>
-				<button onClick={() => onSetKind("hold")} title={ts.holdHint ?? "延音（-）"}>
-					<span>—</span><small>{ts.holdLabel ?? "延音"}</small>
-				</button>
 				<button onClick={onToggleSplit} disabled={!canSplit} title={ts.splitHint ?? "拆分当前拍（Enter）"}><span>⇄</span></button>
 				<button className="danger" onClick={() => onSetKind("empty")} disabled={!unit || unit.kind === "empty"} title={ts.clearHint ?? "删（⌫）"}><span>✕</span></button>
 				<button onClick={onClose} title={ts.closePanel ?? "收起（Esc）"} className="cc-cp-back"><span>⌫</span></button>
@@ -72,7 +66,7 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 							const demo = { degree: d, acc: 0, quality: "", bass: null };
 							const on = hasChord && chord.degree === d;
 							return (
-								<button key={d} className={`cc-cp-deg ${on ? "on" : ""}`} onClick={() => setChord({ degree: d, acc: 0, quality: "", bass: null })}>
+								<button key={d} className={`cc-cp-deg ${on ? "on" : ""}`} onClick={() => setChord({ degree: d, acc: 0, quality: defaultQuality ? defaultQuality(d) : "", bass: null })}>
 									<span>{d}</span>
 									<small>{formatName(demo, key)}</small>
 								</button>
@@ -134,36 +128,14 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 
 			{/* 底部页签：和弦(C) / 低音(B) / 节奏型(R) —— 8pu 同款 */}
 			<div className="cc-cp-tabs">
+					{onAttach ? (
+						<button className={`cc-cp-attach ${hasAttach ? "has" : ""}`} disabled={!hasChord}
+							title={hasAttach ? (ts.attachViewTip ?? "查看/更换该和弦的指法图") : (ts.attachTip ?? "给该和弦配一张指法图（静态/动图）")}
+							onClick={onAttach}>🖼{hasAttach ? "✓" : ""}</button>
+					) : null}
 				<button className={tab === "chord" ? "on" : ""} onClick={() => setTab("chord")}>{ts.tabChord ?? "和弦"} <kbd>C</kbd></button>
 				<button className={tab === "bass" ? "on" : ""} onClick={() => setTab("bass")}>{ts.bassLabel ?? "低音"} <kbd>B</kbd></button>
 				<button className={tab === "rhythm" ? "on" : ""} onClick={() => setTab("rhythm")}>{ts.rhythmLabel ?? "节奏型"} <kbd>R</kbd></button>
-			</div>
-		</div>
-	);
-}
-
-// 底部虚拟钢琴（8pu 式）：点键 = 以该音为根写入当前槽
-const PITCHES = [
-	{ pc: 0, name: "C", black: false }, { pc: 1, name: "C#", black: true },
-	{ pc: 2, name: "D", black: false }, { pc: 3, name: "D#", black: true },
-	{ pc: 4, name: "E", black: false },
-	{ pc: 5, name: "F", black: false }, { pc: 6, name: "F#", black: true },
-	{ pc: 7, name: "G", black: false }, { pc: 8, name: "G#", black: true },
-	{ pc: 9, name: "A", black: false }, { pc: 10, name: "A#", black: true },
-	{ pc: 11, name: "B", black: false }
-];
-
-export function PianoBar({ onPickRoot, t }) {
-	const ts = t?.chords ?? {};
-	return (
-		<div className="cc-piano">
-			<div className="cc-piano-label">{ts.pianoHint ?? "点琴键选根音"}</div>
-			<div className="cc-piano-keys">
-				{PITCHES.map(p => (
-					<button key={p.pc} className={`cc-pkey ${p.black ? "black" : ""}`} onClick={() => onPickRoot(p.name)}>
-						<span>{p.name}</span>
-					</button>
-				))}
 			</div>
 		</div>
 	);

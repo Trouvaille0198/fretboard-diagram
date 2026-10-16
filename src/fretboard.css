@@ -65,6 +65,15 @@ html[data-theme="light"] body {
         linear-gradient(180deg, #eef2f7 0%, #f5f8fc 100%);
 }
 
+/* 日间模式：#app 同步亮色背景（否则内容限宽外露出夜色底，两侧出现黑条） */
+html[data-theme="light"] #app {
+    background:
+        radial-gradient(ellipse 60% 50% at 0% 0%, rgba(243, 186, 98, 0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, rgba(90, 160, 220, 0.09) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.06) 0%, transparent 58%),
+        linear-gradient(180deg, #eef2f7 0%, #f5f8fc 100%);
+}
+
 html[data-theme="light"] .title-header h1 {
     background: linear-gradient(135deg, #1a2a36 0%, rgba(26, 42, 54, 0.60) 100%);
     -webkit-background-clip: text;
@@ -3570,65 +3579,47 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cp-typing { color: var(--app-accent-text); font-size: 12px; font-weight: 600; }
 .cc-cp-hint { color: var(--app-text-soft); font-size: 11px; }
 
-/* 底部虚拟钢琴（8pu 式） */
-.cc-piano {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    height: 74px;
-    background: var(--app-panel);
-    border-top: 1px solid var(--app-border);
-    display: flex;
-    align-items: stretch;
-    gap: 10px;
-    padding: 6px 14px;
-    z-index: 900;
-}
-.cc-piano-label {
-    display: flex; align-items: center;
-    color: var(--app-text-soft);
-    font-size: 11px;
-    white-space: nowrap;
-}
-.cc-piano-keys {
-    flex: 1;
-    display: flex;
-    position: relative;
-    max-width: 560px;
-    margin: 0 auto;
-}
-.cc-pkey {
-    flex: 1;
-    position: relative;
-    background: #f7f8fa;
-    border: 1px solid #c8ccd2;
-    border-radius: 0 0 6px 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: 5px;
-    color: #5a6470;
-    font-size: 10px;
-}
-.cc-pkey:hover { background: #eef1f5; }
-.cc-pkey.black {
-    position: absolute;
-    top: -3px;
-    height: 58%;
-    background: #2a3138;
-    border-color: #14181d;
-    color: #c8ccd2;
-    z-index: 2;
-    transform: translateX(-52%);
-}
-.cc-pkey.black:nth-of-type(2) { left: calc(100% / 12 * 1); }
-.cc-pkey.black:nth-of-type(4) { left: calc(100% / 12 * 3); }
-.cc-pkey.black:nth-of-type(7) { left: calc(100% / 12 * 6); }
-.cc-pkey.black:nth-of-type(9) { left: calc(100% / 12 * 8); }
-.cc-pkey.black:nth-of-type(11) { left: calc(100% / 12 * 10); }
 
 /* 页面给钢琴条让位 */
-.cc-page { padding-bottom: 84px; }
+.cc-page { padding-bottom: 16px; } /* 钢琴条已删，仅留呼吸空间 */
+
+/* Q 复制模式：模式条 + 选区段高亮（整段一个框）+ 非选区淡出 */
+.cc-copybar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--cc-accent-weak, rgba(61, 139, 255, 0.12));
+    border: 1px solid var(--cc-accent, #3d8bff);
+    border-radius: 10px;
+    padding: 7px 12px;
+    margin-bottom: 12px;
+    font-size: 12.5px;
+    color: var(--app-text);
+    animation: ccModalIn 0.14s ease-out;
+}
+.cc-copybar b { color: var(--cc-accent-text, #2f7ae8); white-space: nowrap; }
+.cc-copybar-state { color: var(--app-text-muted); }
+.cc-copybar kbd {
+    background: var(--app-panel-soft);
+    border: 1px solid var(--app-border);
+    border-radius: 4px;
+    padding: 0 4px;
+    font-size: 10px;
+    color: var(--app-text-soft);
+}
+.cc-page.cc-copying .cc-line-cells { cursor: pointer; }
+.cc-page.cc-copying { user-select: none; -webkit-user-select: none; } /* 拖选不触发文本选中 */
+.cc-page.cc-copying .cc-cell > * { pointer-events: none; } /* 拖选以小节格为原子目标 */
+.cc-page.cc-copying .cc-cell { opacity: 0.42; transition: opacity 0.15s; }
+.cc-page.cc-copying .cc-cell.sel {
+    opacity: 1;
+    background: var(--cc-accent-weak, rgba(61, 139, 255, 0.12));
+    border-top: 2px solid var(--cc-accent, #3d8bff);
+    border-bottom: 2px solid var(--cc-accent, #3d8bff);
+}
+.cc-page.cc-copying .cc-cell.sel-first { border-left: 2px solid var(--cc-accent, #3d8bff); border-radius: 9px 0 0 9px; }
+.cc-page.cc-copying .cc-cell.sel-last { border-right: 2px solid var(--cc-accent, #3d8bff); border-radius: 0 9px 9px 0; }
+.cc-page.cc-copying .cc-cell.sel-first.sel-last { border-radius: 9px; }
 
 /* 空歌引导条 */
 .cc-guide {
@@ -3801,46 +3792,90 @@ g.drag-fx-layer circle[stroke-dasharray] {
     white-space: nowrap;
 }
 
-.cc-line-cells { display: flex; flex: 1; min-width: 0; }
-.cc-cell { min-width: 96px; }
+/* 网格轨道由内联 style 按 rowsPerLine 定：小节等宽铺满整行（末行不满列宽也一致） */
+.cc-line-cells { display: grid; grid-template-columns: repeat(4, 1fr); flex: 1; min-width: 0; }
 
-/* 小节格：左竖线贯穿；小节线类型画在右缘 */
+/* 小节线（谱面刻版）：每小节左缘画细线（行首加粗）；特殊结尾画在右缘——
+   单线=细｜双线=细细｜终止=细+粗｜反复=点+细+粗；反复点是真圆点不是文字符号 */
+.cc-page { --cc-bar-ink: var(--app-text-muted); }
 .cc-cell {
     position: relative;
-    flex: 1 1 0;
     min-width: 0;
-    padding: 4px 2px 2px;
-    border-left: 1px solid var(--app-border-strong);
+    padding: 4px 8px 2px 14px; /* 左侧让开小节线的呼吸空间 */
 }
-.cc-cell:last-child { border-right: 1px solid var(--app-border-strong); }
+.cc-cell::before { /* 左小节线 */
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 1.5px;
+    background: var(--cc-bar-ink);
+}
+.cc-cell:first-child::before { width: 3px; } /* 行首系统线加粗 */
 .cc-cell.cur { background: var(--app-panel-soft); }
 
-/* 反复/终止：右缘记号（粗线 + 冒点） */
-.cc-cell.end-repeatEnd { border-right: 2.5px solid var(--app-text-muted); margin-right: 3px; }
-.cc-cell.end-repeatEnd::after {
-    content: "⋮";
+/* 右缘结尾小节线 */
+.cc-cell.end-double::after {
+    content: "";
     position: absolute;
-    top: 42%;
-    right: -8px;
-    transform: translateY(-50%);
-    color: var(--app-text-muted);
-    font-size: 13px;
-    letter-spacing: -3px;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 1.5px;
+    background: var(--cc-bar-ink);
+    box-shadow: -4px 0 0 var(--cc-bar-ink);
 }
-.cc-cell.end-final { border-right: 2.5px solid var(--app-text-muted); box-shadow: inset -5px 0 0 -4px var(--app-border-strong); margin-right: 1px; }
-.cc-cell.end-double { border-right: 1px solid var(--app-border-strong); box-shadow: inset -4px 0 0 -3px var(--app-border-strong); margin-right: 2px; }
-.cc-cell.rep-start { margin-left: 4px; }
-.cc-cell.rep-start::before {
-    content: "⋮";
+.cc-cell.end-final::after { /* 终止：细+粗 */
+    content: "";
     position: absolute;
-    top: 42%;
-    left: -8px;
-    transform: translateY(-50%);
-    color: var(--app-text-muted);
-    font-size: 13px;
-    letter-spacing: -3px;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--cc-bar-ink);
+    box-shadow: -5.5px 0 0 var(--cc-bar-ink);
+}
+.cc-cell.end-repeatEnd::after { /* 反复结束：细+粗（点另画） */
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--cc-bar-ink);
+    box-shadow: -5.5px 0 0 var(--cc-bar-ink);
+}
+.cc-cell.end-repeatEnd, .cc-cell.end-final { padding-right: 12px; } /* 记号区让位（padding 不改列宽） */
+.cc-cell.rep-start { padding-left: 12px; }
+.cc-cell.rep-start::before { /* 反复开始：粗+细（点另画） */
+    width: 4px;
+    box-shadow: 4.5px 0 0 var(--cc-bar-ink);
+}
+
+/* 反复记号双圆点（真实圆点，居中小节高度上下各一枚） */
+.cc-bardots {
+    position: absolute;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    margin-top: -2.5px;
+    pointer-events: none;
     z-index: 2;
 }
+.cc-bardots::before, .cc-bardots::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--cc-bar-ink);
+}
+.cc-bardots::before { top: -9px; }
+.cc-bardots::after { top: 9px; }
+.cc-bardots.end { right: 14px; }
+.cc-bardots.start { left: 14px; }
 
 /* 跳房子：小节上方数字+短横 */
 .cc-house {
@@ -3910,17 +3945,16 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-beat-unit.cur { outline: 1px solid var(--app-accent); background: var(--app-panel-soft); }
 
 /* 和弦竖排记号（8pu 式：主行 1M/3m + 副行 7 下沉小字） */
+/* 8pu 式单行内联和弦记号：4M7 / 57 / 6m / 5M/7 —— 数字+质量+扩展一行 */
 .cc-chordsign {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    line-height: 1.1;
+    display: inline-flex;
+    align-items: baseline;
+    font-size: 16.5px;
+    font-weight: 600;
+    line-height: 1.15;
+    white-space: nowrap;
 }
-.cc-chordsign-main { font-size: 17px; font-weight: 600; white-space: nowrap; }
-.cc-chordsign-sub { font-size: 10.5px; color: var(--app-text-muted); margin-top: -1px; white-space: nowrap; }
-
 .cc-chordsign-compact { font-size: 13px; font-weight: 600; white-space: nowrap; }
-.cc-chordsign-compact sub { font-size: 8.5px; color: var(--app-text-muted); margin-left: 1px; }
 
 .cc-glyph { color: var(--app-text-muted); font-size: 16px; }
 .cc-glyph.hold { color: var(--app-text-muted); }
@@ -4035,7 +4069,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-stage-fab {
     position: fixed;
     right: 14px;
-    bottom: 88px;
+    bottom: 14px;
     z-index: 905;
     display: inline-flex;
     align-items: center;
@@ -4053,7 +4087,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-stage-float {
     position: fixed;
     right: 14px;
-    bottom: 128px;
+    bottom: 58px;
     z-index: 904;
     width: 300px;
     background: var(--app-panel-strong);
@@ -4229,13 +4263,38 @@ html[data-theme="light"] .cc-cell-tools { box-shadow: 0 4px 14px rgba(20, 40, 60
 .cc-build-ver {
     position: fixed;
     left: 12px;
-    bottom: 80px;
+    bottom: 10px;
     z-index: 901;
     font-size: 10px;
     color: var(--app-text-soft);
     opacity: 0.6;
     pointer-events: none;
 }
+
+/* 转调步进器：当前调 + ♭/♯ 升降半音 + m 小调 + × 清除 */
+.cc-key-stepper { display: inline-flex; align-items: center; gap: 6px; }
+.cc-key-stepper b {
+    font-size: 12.5px;
+    color: var(--cc-accent-text, #2f7ae8);
+    background: var(--app-panel-soft);
+    border: 1px solid var(--app-border-strong);
+    border-radius: 6px;
+    padding: 3px 8px;
+    min-width: 58px;
+    text-align: center;
+}
+.cc-key-stepper button {
+    width: 28px; height: 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--app-bg-secondary);
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    color: var(--app-text);
+    font-size: 14px;
+    cursor: pointer;
+}
+.cc-key-stepper button:hover { border-color: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #2f7ae8); }
+.cc-key-stepper .cc-key-clear { color: var(--app-text-soft); font-size: 13px; }
 
 /* 谱内转调标记 */
 .cc-keymark {
@@ -4426,6 +4485,77 @@ html[data-theme="light"] .cc-cell-tools { box-shadow: 0 4px 14px rgba(20, 40, 60
 }
 .cc-ap-remove:hover { color: var(--app-danger); background: rgba(240, 138, 132, 0.1); }
 
+/* ===== 工具行控件统一规格（#6 尺寸审计对齐）：高 32 / 字 12.5 / 圆角 8 ===== */
+.cc-tabs-row select,
+.cc-preview-bar select,
+.cc-dyn-controls select {
+    box-sizing: border-box;
+    height: 32px;
+    padding: 0 8px;
+    font-size: 12.5px;
+    border-radius: 8px;
+    border: 1px solid var(--app-border);
+    background: var(--app-bg-secondary);
+    color: var(--app-text);
+}
+.cc-tabs-row .button.sm { height: 32px; font-size: 12.5px; padding: 0 12px; }
+.cc-tabs-row .cc-iconbtn input[type="checkbox"] { width: 14px; height: 14px; margin: 0; accent-color: var(--cc-accent, #3d8bff); }
+.cc-tabs-row .cc-iconbtn { box-sizing: border-box;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    background: var(--app-bg-secondary);
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    padding: 0 9px;
+    cursor: pointer;
+    color: var(--app-text-muted);
+}
+.cc-freq-chord, .cc-freq-tool { height: 36px; font-size: 14px; }
+.cc-key-stepper button { width: 30px; height: 28px; font-size: 13.5px; }
+.cc-legend-label small { margin-left: 6px; color: var(--app-text-soft); font-weight: 400; font-size: 10.5px; }
+
+/* 和弦配图图例：一个和弦一张指法图 */
+.cc-legend { margin-top: 18px; }
+.cc-legend-title {
+    display: flex; align-items: baseline; gap: 8px;
+    font-size: 12.5px; font-weight: 700; color: var(--app-text);
+    margin-bottom: 8px;
+}
+.cc-legend-title small { font-weight: 400; color: var(--app-text-soft); font-size: 11px; }
+.cc-legend-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.cc-legend-item {
+    width: 118px;
+    border: 1px dashed var(--app-border-strong);
+    border-radius: 10px;
+    padding: 6px 6px 8px;
+    text-align: center;
+    background: var(--app-panel-soft);
+}
+.cc-legend-item.has { border-style: solid; border-color: var(--app-border); background: var(--app-panel); }
+.cc-legend-label { font-size: 13.5px; font-weight: 700; color: var(--app-text); margin-bottom: 4px; }
+.cc-legend-img { min-height: 64px; display: flex; align-items: center; justify-content: center; }
+.cc-legend-img svg { max-width: 100%; height: auto; }
+.cc-legend-add { font-size: 22px; color: var(--app-text-soft); opacity: 0.6; }
+.cc-legend-item:not(.has) { cursor: pointer; }
+.cc-legend-item:not(.has):hover { border-color: var(--cc-accent, #3d8bff); }
+/* 弹层配图按钮 */
+.cc-cp-attach {
+    margin-left: auto;
+    background: var(--app-bg-secondary);
+    border: 1px solid var(--app-border);
+    border-radius: 7px;
+    color: var(--app-text-muted);
+    font-size: 12px;
+    padding: 4px 10px;
+    cursor: pointer;
+}
+.cc-cp-attach.has { color: var(--cc-accent-text, #2f7ae8); border-color: var(--cc-accent, #3d8bff); }
+.cc-cp-attach:disabled { opacity: 0.4; cursor: default; }
+.cc-modal-sub { color: var(--app-text-soft); font-weight: 400; font-size: 12px; }
+
 /* 应用内对话框（替代原生 prompt/confirm/alert） */
 .cc-dialog { width: min(400px, calc(100vw - 48px)); }
 .cc-dialog .cc-modal-foot { gap: 10px; justify-content: flex-end; }
@@ -4601,6 +4731,9 @@ html[data-theme="light"] .button.sm.edit-enter { color: #fff; }
     gap: 10px;
 }
 .cc-preview-tabs { display: flex; gap: 4px; }
+/* 记谱形式切换（数字/罗马/音名）：比页签紧凑，与左侧页签留分隔 */
+.cc-display-seg { margin-left: 10px; padding-left: 12px; border-left: 1px solid var(--app-border-strong); }
+.cc-display-seg button { padding: 6px 12px; font-size: 12.5px; border-radius: 7px; }
 .cc-preview-tabs button {
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);

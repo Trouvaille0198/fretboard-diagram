@@ -110,7 +110,7 @@ export function diffFrames(prevState, nextState) {
 
 export const NOTE_NAMES = [
 	["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
-	["C", "Db", "D", "Eb", "E", "F", "Gb", "G#", "Ab", "A", "Bb", "B"]
+	["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
 ];
 export const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11];
 export const MINOR_STEPS = [0, 2, 3, 5, 7, 8, 10];

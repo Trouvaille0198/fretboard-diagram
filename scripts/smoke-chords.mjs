@@ -1,7 +1,7 @@
 // 和弦谱纯逻辑冒烟：chordLib（级数⇄音名/调内默认/音高）+ chordChartModel（模型/光标）+ voicing（按法不变量）
 // 纯 Node 直跑：node scripts/smoke-chords.mjs
 import {
-	CHORD_INTERVALS, degreePc, diatonicQuality, chordFromDegreeToken, formatDegree,
+	CHORD_INTERVALS, degreePc, diatonicQuality, chordFromDegreeToken, formatDegree, chordParts, formatInline,
 	formatName, chordFromNameToken, chordPcs, chordMidi, bassPc, sameChord
 } from "../src/utils/chordLib.js";
 import { createSong, createMeasure, resizeMeasure, moveCursor } from "../src/utils/chordChartModel.js";
@@ -46,6 +46,22 @@ A("G大调 5/7 → D/F#（调号记升）", formatName(chordFromDegreeToken("5/7
 A("F大调 4 → Bb（降号调）", formatName(chordFromDegreeToken("4"), F) === "Bb");
 A("a小调 1 → Am、5 → Em", formatName(chordFromDegreeToken("1"), Am) === "Am" && formatName(chordFromDegreeToken("5"), Am) === "Em");
 A("d小调 6 → Bb（等大调 F 记降）", formatName(chordFromDegreeToken("6"), Dm) === "Bb");
+A("c小调 5 → Gm（降表 pc7=G，曾错拼 G#）", formatName(chordFromDegreeToken("5"), { root: 0, minor: true }) === "Gm");
+A("c小调 调内名行 1..7 = Cm Ddim Eb Fm Gm Ab Bb", ["Cm","Ddim","Eb","Fm","Gm","Ab","Bb"].every((n, i) => formatName(chordFromDegreeToken(String(i + 1)), { root: 0, minor: true }) === n));
+
+console.log("== chordLib：罗马数字功能谱 ==");
+{
+	const P = (t, k) => chordParts(chordFromDegreeToken(t), "roman", k);
+	A("C大调 1→I 4→IV 6m→vi（副行空）", (() => { const a = P("1", C), b = P("4", C), c = P("6m", C); return a.main === "I" && !a.sub && b.main === "IV" && c.main === "vi" && !c.sub; })());
+	A("C大调 b7→bVII（变音前缀保留）", P("b7", C).main === "bVII");
+	A("C大调 2m7→ii+7、1maj7→I+maj7", P("2m7", C).main === "ii" && P("2m7", C).sub === "7" && P("1maj7", C).main === "I" && P("1maj7", C).sub === "maj7");
+	A("C大调 5/7→V+/vii（转位低音小写罗马）", P("5/7", C).main === "V" && P("5/7", C).sub === "/vii");
+	A("a小调 1→i 2→ii dim 3→III 7→VII（小调调内）", (() => { const k = Am; return P("1", k).main === "i" && P("2", k).main === "ii" && P("2", k).sub === "dim" && P("3", k).main === "III" && !P("3", k).sub && P("7", k).main === "VII"; })());
+	A("a小调 1maj7→I+maj7（显式质量不受调性影响）", P("1maj7", Am).main === "I" && P("1maj7", Am).sub === "maj7");
+	A("G大调 5→V（移调只换音高不改级数）", P("5", G).main === "V");
+	A("sus 族大写：5sus4→V+sus4", P("5sus4", C).main === "V" && P("5sus4", C).sub === "sus4");
+	A("减七：1dim7→1°7（数字）/ vii°7（罗马小写）/ pcs 减减七", (() => { const k = C; const c = { degree: 1, acc: 0, quality: "dim7", bass: null }; const r = { degree: 7, acc: 0, quality: "dim7", bass: null }; return formatInline(c, "degree", k) === "1°7" && formatInline(r, "roman", k) === "vii°7" && eq(chordPcs(c, k).pcs, [0, 3, 6, 9]) && formatName(c, k) === "Cdim7"; })());
+}
 
 console.log("== chordLib：音名 → 级数 ==");
 A("C大调 Am → 6m", eq(chordFromNameToken("Am", C), { degree: 6, acc: 0, quality: "m", bass: null }));

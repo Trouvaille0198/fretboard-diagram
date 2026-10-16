@@ -239,7 +239,21 @@ function Fretboard({ mode = 'normal' }) {
       const { loadCharts, saveChart } = await import('./utils/chordChartModel');
       const song = loadCharts().find(c => c.id === attachEdit.songId);
       if (!song) throw new Error('song missing');
-      saveChart({ ...song, image: frameOrClip });
+      // 一个和弦（拍格实例）一张图：回存到该槽位 unit.image
+      const t = attachEdit.target || {};
+      const measures = song.measures.map((m, mi) => {
+        if (mi !== t.mi) return m;
+        const slots = m.slots.map((sl, si) => {
+          if (si !== t.si) return sl;
+          if (sl.split && t.half != null) {
+            const split = sl.split.map((u, h) => (h === t.half ? { ...u, image: frameOrClip } : u));
+            return { ...sl, split };
+          }
+          return { ...sl, image: frameOrClip };
+        });
+        return { ...m, slots };
+      });
+      saveChart({ ...song, measures });
     } catch (e) { console.error('配图回存失败', e); }
     sessionStorage.removeItem('fretboard-attach-edit');
     window.location.hash = '#/chords';

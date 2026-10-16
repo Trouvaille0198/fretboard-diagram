@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../i18n";
 import { ScoreBoard } from "./ScorePieces";
-import { ChordPopup, PianoBar } from "./ChordPopup";
+import { ChordPopup } from "./ChordPopup";
 import { AttachPicker, AttachView } from "./AttachEditor";
 import { Toast } from "./Toast";
 import audioService from "../services/audioService";
-import { chordParts, formatName, chordFromNameToken } from "../utils/chordLib";
+import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken } from "../utils/chordLib";
 import {
 	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure
 } from "../utils/chordChartModel";
@@ -46,8 +46,13 @@ export function ChordChartView() {
 	const [speed, setSpeed] = useState(1);
 	const [menuOpen, setMenuOpen] = useState(false); // 工具行「更多」菜单
 	const [toolTab, setToolTab] = useState("chord"); // 工具栏页签：和弦 | 小节
-	const [stageOpen, setStageOpen] = useState(true); // 右下角指板预览悬浮卡
 	const [viewTab, setViewTab] = useState("text"); // 查看：文本谱 | 动态谱
+	// 预览记谱形式（编辑态恒为数字功能谱）：number=1-7 | roman=I/vi | name=Am/Dmaj7
+	const [previewDisplay, setPreviewDisplay] = useState(song.display === "name" ? "name" : "number");
+	// Q 复制模式：选相邻小节段 → Ctrl+C 复制 → Ctrl+V 整段插入到光标小节之后
+	const [copyMode, setCopyMode] = useState(false);
+	const [sel, setSel] = useState({ anchor: null, end: null }); // 选区（小节索引；end=null 表示还没成段）
+	const [copiedCount, setCopiedCount] = useState(0);
 	const [cpTab, setCpTab] = useState("chord"); // 弹层页签（C/B/R 切换）
 	const [cellMenu, setCellMenu] = useState(null); // 打开的小节菜单 mi
 	const [popupOpen, setPopupOpen] = useState(false); // 就地和弦面板
@@ -59,6 +64,7 @@ export function ChordChartView() {
 	const dialogInputRef = useRef(null);
 	const showToast = (msg) => setToast({ msg, key: Date.now() });
 	const clipRef = useRef(null); // Ctrl+C/V 剪贴板：{type:'chord',chord} | {type:'measure',slots}
+	const dragRef = useRef(false); // 复制模式拖选中
 	const typeRef = useRef({ t: 0, mode: null, sub: null }); // 键入状态：mode='degree'|'name'，sub='bass'
 
 	useEffect(() => {
@@ -89,6 +95,14 @@ export function ChordChartView() {
 		return () => cancelAnimationFrame(id);
 	}, [popupOpen, cursor, song]);
 
+	// 复制模式：松手结束拖选
+	useEffect(() => {
+		if (!copyMode) return;
+		const up = () => { dragRef.current = false; };
+		window.addEventListener("mouseup", up);
+		return () => window.removeEventListener("mouseup", up);
+	}, [copyMode]);
+
 	useEffect(() => {
 		if (cellMenu === null) return;
 		const close = (e) => { if (!e.target.closest(".cc-mmenu, .cc-cell-menu-btn")) setCellMenu(null); };
@@ -108,7 +122,7 @@ export function ChordChartView() {
 		lastPushAtRef.current = 0;
 	};
 	const fileRef = useRef(null);
-	const [attachOpen, setAttachOpen] = useState(false); // 配图编辑弹窗
+	const [attachTarget, setAttachTarget] = useState(null); // 配图目标：正在给哪个和弦配图（拍格 {mi,si,half}）
 	const typeTimerRef = useRef(null);
 	const scoreRef = useRef(null);
 	const popupRef = useRef(null);
@@ -261,8 +275,31 @@ export function ChordChartView() {
 	const patchUnitFromPanel = (patch) => {
 		if (patch && patch.kind === "chord" && patch.chord) {
 			typeRef.current = { t: Date.now(), mode: "degree", sub: null, lastKind: "mod" };
+			rememberQuality(patch.chord);
 		}
 		patchCurrentUnit(patch);
+	};
+
+	// 转调步进器：♭/♯ 相对升降半音 + 小调开关 + 清除（回原调）；mi 为空用光标小节
+	const keyStepper = (mi) => {
+		const target = mi != null ? mi : cursor.mi;
+		const m = song.measures[target] || {};
+		const cur = m.keyRoot ?? song.key.root;
+		const minor = m.keyRoot != null ? !!m.keyMinor : song.key.minor;
+		const setKey = (root, m2) => patchMeasure(target, x => ({ ...x, keyRoot: root, keyMinor: m2 }));
+		return (
+			<span className="cc-key-stepper">
+				<b>1 = {PC_KEY[cur]}{minor ? "m" : ""}</b>
+				<button title={ts.keyDownSemi ?? "降半音（降调）"} onClick={() => setKey((cur + 11) % 12, minor)}>♭</button>
+				<button title={ts.keyUpSemi ?? "升半音（升调）"} onClick={() => setKey((cur + 1) % 12, minor)}>♯</button>
+				{m.keyRoot != null ? (<>
+					<label className="cc-iconbtn" title={ts.keyMinorTip ?? "小调（调内和弦与音名随之改变）"}>
+						<input type="checkbox" checked={minor} onChange={e => setKey(cur, e.target.checked)} />m
+					</label>
+					<button className="cc-key-clear" title={ts.keyClear ?? "清除转调（回原调）"} onClick={() => patchMeasure(target, x => ({ ...x, keyRoot: null, keyMinor: undefined }))}>×</button>
+				</>) : null}
+			</span>
+		);
 	};
 
 	// 段落标记（应用内对话框，替代原生 prompt）
@@ -274,14 +311,67 @@ export function ChordChartView() {
 		onOk: (v) => patchMeasure(mi, x => ({ ...x, section: String(v ?? "").trim() || null }))
 	});
 
+	// ============ Q 复制模式（拖选小节段：复制 / 插入 / 删除） ============
+	// 选区：按下锚定 → 滑过扩展 → 松手定段；undo 缩短小节后按剩余长度钳制
+	const selRange = (() => {
+		if (!copyMode || sel.anchor == null) return null;
+		const last = song.measures.length - 1;
+		const a = Math.min(sel.anchor, sel.end ?? sel.anchor);
+		const b = Math.max(sel.anchor, sel.end ?? sel.anchor);
+		if (a > last) return null;
+		return [a, Math.min(b, last)];
+	})();
+	const enterCopyMode = () => { setPopupOpen(false); setCellMenu(null); setCopyMode(true); setCopiedCount(0); dragRef.current = false; setSel({ anchor: null, end: null }); };
+	const exitCopyMode = () => { setCopyMode(false); dragRef.current = false; setSel({ anchor: null, end: null }); };
+	const beginSelDrag = (mi) => { dragRef.current = true; setSel({ anchor: mi, end: null }); };
+	const extendSelDrag = (mi) => { if (dragRef.current) setSel(s => (s.anchor == null || s.end === mi) ? s : { ...s, end: mi }); };
+	// 删除选区（全删时留一个空小节保底；Ctrl+Z 一步撤销）
+	const deleteSelection = () => {
+		if (selRange == null) return;
+		const [a, b] = selRange;
+		const n = b - a + 1;
+		setSong(s => (n >= s.measures.length
+			? { ...s, measures: [createMeasure(s.timeSig)] }
+			: { ...s, measures: s.measures.filter((_, i) => i < a || i > b) }));
+		setSel({ anchor: null, end: null });
+		setCopiedCount(0);
+		setCursor(c => ({ mi: Math.max(0, Math.min(c.mi, song.measures.length - 1 - n)), si: c.si, half: null }));
+		showToast((ts.deletedToast ?? "已删除 {n} 小节（Ctrl+Z 可撤销）").replace("{n}", String(n)));
+	};
+	const copySelection = () => {
+		if (sel.anchor == null) return;
+		const a = Math.min(sel.anchor, sel.end ?? sel.anchor), b = Math.max(sel.anchor, sel.end ?? sel.anchor);
+		clipRef.current = { type: "measures", measures: JSON.parse(JSON.stringify(song.measures.slice(a, b + 1))) };
+		setCopiedCount(b - a + 1);
+		showToast((ts.copiedToast ?? "已复制 {n} 小节 —— 退出后 Ctrl+V 插入到光标小节之后").replace("{n}", String(b - a + 1)));
+	};
+	// 整段插入：复制的小节 splice 到光标小节之后（新 id；和弦剪贴板仍写入当前槽）
+	const pasteClip = () => {
+		const clip = clipRef.current;
+		if (!clip) return;
+		if (clip.type === "chord") { patchCurrentUnit({ kind: "chord", chord: JSON.parse(JSON.stringify(clip.chord)) }); return; }
+		const src = clip.type === "measures" ? clip.measures : [{ ...createMeasure(song.timeSig), slots: clip.slots || [] }];
+		const fresh = JSON.parse(JSON.stringify(src)).map(m => ({ ...m, id: createMeasure(song.timeSig).id }));
+		setSong(s => { const ms = s.measures.slice(); ms.splice(Math.max(0, cursor.mi) + 1, 0, ...fresh); return { ...s, measures: ms }; });
+		if (copyMode) setSel({ anchor: null, end: null }); // 不退出模式：可连续粘贴；清选区防索引漂移
+	};
+
 	// ============ 键盘直接键入 ============
 	// 度数模式：1-7 起手立即成和弦；900ms 内跟打 m/7/M/6/9/s/d/a 质量、b/# 变音、/低音
 	// 音名模式：Shift+A-G 起手，跟打小写/数字补全（如 Am、G7、Bb），超时或落键提交
 	const QUALITY_KEYS = { m: "m", 7: "7", M: "maj7", 6: "6", "9": "9", s: "sus4", d: "dim", a: "aug" };
 
+	// 级数默认质量：同度数上次用的质量优先（qualityMemory），否则调内七和弦（默认 7 和弦而非 3 和弦）
+	const defaultQualityFor = (degree, mi) => song.qualityMemory?.[String(degree)] ?? diatonicSeventh(degree, 0, keyAt(mi ?? cursor.mi));
+	const rememberQuality = (chord, mi) => {
+		if (!chord) return;
+		const q = chord.quality || resolvedQuality(chord, keyAt(mi ?? cursor.mi));
+		setSong(s => (s.qualityMemory?.[String(chord.degree)] === q ? s : { ...s, qualityMemory: { ...(s.qualityMemory || {}), [String(chord.degree)]: q } }));
+	};
 	const applyTyped = (chord) => {
 		if (!chord) return;
 		patchCurrentUnit({ kind: "chord", chord });
+		rememberQuality(chord);
 	};
 
 	const onChordKey = (e) => {
@@ -340,12 +430,12 @@ export function ChordChartView() {
 			return true;
 		}
 
-		// 度数起手（立即成和弦，可继续跟打修饰）
+		// 度数起手（立即成和弦，可继续跟打修饰）——默认带调内七和弦/上次记忆的质量
 		if (/^[1-7]$/.test(k)) {
 			e.preventDefault();
 			touch({ mode: "degree", sub: null, lastKind: "start" });
 			const degree = parseInt(k, 10);
-			applyTyped({ degree, acc: 0, quality: "", bass: null });
+			applyTyped({ degree, acc: 0, quality: defaultQualityFor(degree), bass: null });
 			return true;
 		}
 
@@ -494,7 +584,8 @@ export function ChordChartView() {
 	};
 
 	// fromMi：显式起始小节（Ctrl+Space 传 0 从头；调速重播传当前小节）；null = 从光标小节起
-	const startPlayback = async (fromMi = null) => {
+	// withLead：是否带一小节节拍器预备拍（调速重播不带，衔接不断拍）
+	const startPlayback = async (fromMi = null, withLead = true) => {
 		if (!song.measures.length) return;
 		stopPlayback();
 		try { await audioService.init(); } catch (e) { /* 静音也能走 */ }
@@ -503,7 +594,7 @@ export function ChordChartView() {
 			: (Number.isInteger(cursor.mi) && cursor.mi > 0 && song.measures[cursor.mi] ? cursor.mi : 0);
 		const plan = buildPlayPlan(song, keyAtFn, start);
 		if (!plan.items.length) return;
-		const leadBeats = metronome ? song.timeSig : 0; // 预备拍：一小节节拍器领起
+		const leadBeats = metronome && withLead ? song.timeSig : 0; // 预备拍：一小节节拍器领起
 		const t0 = 100 + leadBeats * plan.beatMs / speed;
 		if (metronome) {
 			const totalBeats = Math.floor(plan.beats + 0.01);
@@ -515,9 +606,15 @@ export function ChordChartView() {
 		}
 		plan.items.forEach(item => {
 			schedule(t0 + item.startMs / speed, () => {
-				try { document.querySelectorAll('.cc-beat.playing').forEach(function(el){ el.classList.remove('playing'); });
-				document.querySelectorAll('[data-mi="' + item.mi + '"][data-si="' + item.si + '"]').forEach(function(el){ el.classList.add('playing'); }); } catch(e) {}
-				setPlaying({ mi: item.mi, si: item.si, half: item.half });
+				{
+					const playingCls = 'playing';
+					document.querySelectorAll('.cc-beat.' + playingCls).forEach(function(el) { el.classList.remove(playingCls); });
+					document.querySelectorAll('.cc-beat').forEach(function(el) {
+						var dMi = el.getAttribute('data-mi');
+						var dSi = el.getAttribute('data-si');
+						if (String(dMi) === String(item.mi) && String(dSi) === String(item.si)) el.classList.add(playingCls);
+					});
+				}
 				if (item.chord && item.plan) {
 					item.plan.forEach(f => schedule(f.delayMs / speed, () => {
 						audioService.playFretNote(f.idx, f.string, f.durMs / 1000 / speed);
@@ -528,13 +625,13 @@ export function ChordChartView() {
 		schedule(t0 + plan.totalMs / speed + 150, () => stopPlayback());
 	};
 
-	// 播放中调速：定时器已按旧速度排死，从当前发声小节重排
+	// 播放中调速：定时器已按旧速度排死，从当前发声小节重排（跳过预备拍，不断拍）
 	const onSpeedChange = (v) => {
 		setSpeed(v);
 		if (playing) {
 			const mi = playing.mi;
 			stopPlayback();
-			startPlayback(mi);
+			startPlayback(mi, false);
 		}
 	};
 
@@ -545,7 +642,6 @@ export function ChordChartView() {
 			if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT" || e.target.isContentEditable) return;
 			if (dialog) { if (e.key === "Escape") { e.preventDefault(); setDialog(null); } return; }
 			if (!editing) {
-				if (e.key === " ") { e.preventDefault(); playing ? stopPlayback() : startPlayback(); }
 				if (e.key === "Escape" && playing) stopPlayback();
 				return;
 			}
@@ -554,8 +650,29 @@ export function ChordChartView() {
 				if (e.shiftKey) redo(); else undo();
 				return;
 			}
+			if (copyMode) {
+				// 模式内只认：Q/Esc 退出、拖选后的 ←/→ 微调、Ctrl+C 复制、Ctrl+V 插入、Backspace 删除、Ctrl+Z 撤销
+				if (e.key === "q" || e.key === "Q" || e.key === "Escape") { e.preventDefault(); exitCopyMode(); return; }
+				if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C")) { e.preventDefault(); copySelection(); return; }
+				if ((e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "V")) { e.preventDefault(); pasteClip(); return; }
+				if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+				if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); deleteSelection(); return; }
+				if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+					e.preventDefault();
+					setSel(st => st.anchor == null
+						? { anchor: cursor.mi, end: cursor.mi }
+						: { ...st, end: Math.max(0, Math.min(song.measures.length - 1, (st.end ?? st.anchor) + (e.key === "ArrowRight" ? 1 : -1))) });
+					return;
+				}
+				if (e.key === "Tab" || e.key === " " || e.key === "Enter" || /^[1-7]$/.test(e.key)) { e.preventDefault(); }
+				return;
+			}
+			if ((e.key === "q" || e.key === "Q") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+				e.preventDefault();
+				enterCopyMode();
+				return;
+			}
 			if (e.key === "Escape") { e.preventDefault(); if (popupOpen) setPopupOpen(false); else if (playing) stopPlayback(); return; }
-			if (playing && e.key === " ") { e.preventDefault(); stopPlayback(); return; }
 			if (popupOpen && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
 				const k2 = e.key.toLowerCase();
 				// 跟打进行中 b 优先当降号修饰（如 1 b = b1 / b7）；不跟打时才切弹层页签（8pu 的 C/B/R）
@@ -583,17 +700,18 @@ export function ChordChartView() {
 			if ((e.ctrlKey || e.metaKey) && e.key === " ") { e.preventDefault(); startPlayback(0); return; }
 			if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C")) {
 				e.preventDefault();
+				// 模式外：光标在和弦上 → 复制该和弦；否则复制光标所在小节（整节，含歌词/标色/小节线）
 				const u = unitOf(cursor.mi, cursor.si, cursor.half);
 				if (u && u.kind === "chord" && u.chord) clipRef.current = { type: "chord", chord: u.chord };
-				else clipRef.current = { type: "measure", slots: song.measures[cursor.mi]?.slots || [] };
+				else if (song.measures[cursor.mi]) {
+					clipRef.current = { type: "measures", measures: [JSON.parse(JSON.stringify(song.measures[cursor.mi]))] };
+					showToast(ts.copiedToast?.replace("{n}", "1") ?? "已复制 1 小节 —— Ctrl+V 插入到光标小节之后");
+				}
 				return;
 			}
 			if ((e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "V")) {
 				e.preventDefault();
-				const clip = clipRef.current;
-				if (!clip) return;
-				if (clip.type === "chord") patchCurrentUnit({ kind: "chord", chord: JSON.parse(JSON.stringify(clip.chord)) });
-				else if (clip.slots) patchMeasure(cursor.mi, m => ({ ...m, slots: JSON.parse(JSON.stringify(clip.slots)) }));
+				pasteClip();
 				return;
 			}
 			if (e.altKey && (e.key === "a" || e.key === "A")) {
@@ -616,12 +734,9 @@ export function ChordChartView() {
 				}
 				case "ArrowUp": e.preventDefault(); moveCursor(-1, 0); break;
 				case "ArrowDown": e.preventDefault(); moveCursor(1, 0); break;
-				case "0": e.preventDefault(); patchCurrentUnit({ kind: "rest" }); moveCursor(0, 1); break;
-				case "-": e.preventDefault(); patchCurrentUnit({ kind: "hold" }); moveCursor(0, 1); break;
 				case "b": e.preventDefault(); if (currentUnit?.kind === "chord" && currentUnit.chord) patchCurrentUnit({ chord: { ...currentUnit.chord, acc: -1 } }); break;
 				case "#": e.preventDefault(); if (currentUnit?.kind === "chord" && currentUnit.chord) patchCurrentUnit({ chord: { ...currentUnit.chord, acc: 1 } }); break;
 				case "Backspace": e.preventDefault(); patchCurrentUnit({ kind: "empty", chord: undefined, split: undefined }); break;
-				case " ": e.preventDefault(); if (playing) stopPlayback(); else startPlayback(); break;
 				default: break;
 			}
 		};
@@ -632,7 +747,7 @@ export function ChordChartView() {
 	// ============ 导入导出 / 动图 ============
 
 	const doExportXml = async () => {
-		const blob = new Blob([exportMusicXml(song)], { type: "application/xml;charset=utf-8" });
+		const blob = new Blob([exportMusicXml(song, keyAtFn)], { type: "application/xml;charset=utf-8" });
 		const name = `${song.name || "chord-chart"}.musicxml`;
 		const saved = rememberedDirSupported() ? await saveToRememberedDir(name, blob) : null;
 		if (!saved) {
@@ -686,6 +801,21 @@ export function ChordChartView() {
 	const onPanelSetKind = (kind) => patchCurrentUnit({ kind, chord: undefined, split: undefined });
 
 	// 常用和弦（8pu 式）：按本谱出现频率 top6；空歌给调内默认进行
+	// 配图体系：一个和弦（拍格实例）一张指法图——unit.image；复制/复制小节随槽位一起带走
+	const unitAt = (mi, si, half) => {
+		const slot = song.measures[mi]?.slots[si];
+		if (!slot) return null;
+		return slot.split ? (slot.split[half || 0] || null) : slot;
+	};
+	// 配图一览：谱内所有带图的和弦槽位（M 位置 + 和弦 + 图）
+	const attachedUnits = useMemo(() => {
+		const out = [];
+		song.measures.forEach((m, mi) => m.slots.forEach((sl, si) => (sl.split || [sl]).forEach((u, h) => {
+			if (u.kind === "chord" && u.chord && u.image) out.push({ mi, si, half: sl.split ? h : null, chord: u.chord, image: u.image });
+		})));
+		return out;
+	}, [song]);
+
 	const frequentChords = useMemo(() => {
 		const counter = new Map();
 		song.measures.forEach(m => m.slots.forEach(sl => (sl.split || [sl]).forEach(u => {
@@ -697,19 +827,12 @@ export function ChordChartView() {
 		})));
 		const sorted = [...counter.values()].sort((a, b) => b.n - a.n).slice(0, 6).map(x => x.chord);
 		if (sorted.length) return sorted;
-		const minor = !!song.key.minor;
-		return [
-			{ degree: 1, acc: 0, quality: minor ? "m" : "", bass: null },
-			{ degree: minor ? 4 : 6, acc: 0, quality: "m", bass: null },
-			{ degree: 4, acc: 0, quality: minor ? "m" : "", bass: null },
-			{ degree: 5, acc: 0, quality: minor ? "m" : "", bass: null }
-		];
+		// 空歌兜底：当前调的七个调内三和弦（裸级数，显示时按调性出 1M/6m 或 1m/5m）——
+		// 不再给固定 1645 进行，新歌不会被误认成上一首的残留历史
+		return [1, 2, 3, 4, 5, 6, 7].map(d => ({ degree: d, acc: 0, quality: "", bass: null }));
 	}, [song]);
 
-	const formatChordDyn = (chord, mi) => {
-		const p = chordParts(chord, song.display, keyAt(mi));
-		return p.main + (p.sub ? p.sub : "");
-	};
+	const formatChordDyn = (chord, mi) => formatInline(chord, previewDisplay, keyAt(mi));
 
 	// ============ 渲染（8pu 式格子谱） ============
 
@@ -725,19 +848,15 @@ export function ChordChartView() {
 		? `${chordParts(stageChord, "degree", keyAt(playing ? playing.mi : cursor.mi)).main.replace(/M$/, "")} · ${formatName(stageChord, keyAt(playing ? playing.mi : cursor.mi))}`
 		: "";
 
-	// 拍格内容（和弦竖排记号 / 休止 / 延音 / 空）
+	// 拍格内容（和弦竖排记号 / 休止 / 延音 / 空）——编辑恒数字级数，预览按三态选择
+	const scoreDisplay = editing ? "degree" : previewDisplay;
 	const beatContent = (u, compact, mi) => {
 		if (u.kind === "chord" && u.chord) {
-			const parts = chordParts(u.chord, song.display, keyAt(mi));
-			if (compact) {
-				return <span className="cc-chordsign-compact">{parts.main}<sub>{parts.sub}</sub></span>;
-			}
-			return (
-				<span className="cc-chordsign">
-					<span className="cc-chordsign-main">{parts.main}</span>
-					{parts.sub ? <span className="cc-chordsign-sub">{parts.sub}</span> : null}
-				</span>
-			);
+			// 8pu 式单行内联：1M / 6m / 4M7 / 57 / 5M/7
+			const label = formatInline(u.chord, scoreDisplay, keyAt(mi));
+			return compact
+				? <span className="cc-chordsign-compact">{label}</span>
+				: <span className="cc-chordsign">{label}</span>;
 		}
 		if (u.kind === "rest") return <span className="cc-glyph rest">0</span>;
 		if (u.kind === "hold") return <span className="cc-glyph hold">—</span>;
@@ -754,7 +873,7 @@ export function ChordChartView() {
 				className={`cc-beat ${isCur ? "cur" : ""} ${playing && playing.mi === mi && playing.si === si ? "playing" : ""}`}
 				data-mi={mi}
 				data-si={si}
-				onClick={e => { if (!editing) return; e.stopPropagation(); setCursor({ mi, si, half: null }); setPopupOpen(true); }}
+				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: null }); setPopupOpen(true); }}
 			>
 				{slot.split ? <span className="cc-beat-splitmark" title={ts.splitTip ?? "反拍拆分（Enter 合并）"}>╱</span> : null}
 				{editing && isCur && !slot.split && slot.kind === "chord" ? (
@@ -767,7 +886,7 @@ export function ChordChartView() {
 						return (
 							<div key={h}
 								className={`cc-beat-unit ${active ? "cur" : ""} ${playingHalf ? "playing" : ""}`}
-								onClick={e => { if (!editing) return; e.stopPropagation(); setCursor({ mi, si, half: slot.split ? h : null }); setPopupOpen(true); }}
+								onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: slot.split ? h : null }); setPopupOpen(true); }}
 							>
 								{beatContent(u, !!slot.split, mi)}
 								{u.rhythm ? <span className="cc-rhythm-mark">{u.rhythm === "ballad" ? "∼" : u.rhythm === "block" ? "▮" : u.rhythm === "waltz" ? "③" : ""}</span> : null}
@@ -780,10 +899,14 @@ export function ChordChartView() {
 	};
 
 	const cellView = (m, mi) => {
+		const inSel = selRange != null && mi >= selRange[0] && mi <= selRange[1];
 		return (
-			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${cursor.mi === mi ? "cur" : ""}`}
-				style={m.tint && TINTS[m.tint] ? { background: TINTS[m.tint].bg } : undefined}
+			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${cursor.mi === mi ? "cur" : ""} ${inSel ? "sel" : ""} ${selRange != null && mi === selRange[0] ? "sel-first" : ""} ${selRange != null && mi === selRange[1] ? "sel-last" : ""}`}
+				style={!copyMode && m.tint && TINTS[m.tint] ? { background: TINTS[m.tint].bg } : undefined}
+				onMouseDown={e => { if (copyMode) { e.preventDefault(); beginSelDrag(mi); } }}
+				onMouseOver={() => { if (copyMode) extendSelDrag(mi); }}
 				onClick={e => {
+					if (copyMode) return;
 					if (!editing) {
 						// 预览态点谱面：回到和弦页签编辑并定位到该小节
 						const firstEmpty = m.slots.findIndex(sl => (sl.split ? sl.split.every(u => u.kind !== "chord") : sl.kind !== "chord"));
@@ -804,6 +927,8 @@ export function ChordChartView() {
 						{m.section}
 					</span>
 				) : null}
+				{m.repeatStart ? <span className="cc-bardots start" /> : null}
+				{m.endBar === "repeatEnd" ? <span className="cc-bardots end" /> : null}
 				{m.keyRoot != null ? <span className="cc-keymark">1 = {PC_KEY[m.keyRoot]}{m.keyMinor ? "m" : ""}</span> : null}
 				{m.house ? <span className="cc-house">{m.house}.</span> : null}
 				<div className="cc-cell-slots">{m.slots.map((_, si) => slotView(mi, si))}</div>
@@ -841,6 +966,16 @@ export function ChordChartView() {
 						</div>
 						<div className="cc-menu-sep" />
 						<button onClick={() => { setCellMenu(null); promptSection(mi); }}>¶ {ts.sectionBtn ?? "段落标记"}</button>
+						<div className="cc-mmenu-label">{ts.keyChange ?? "转调"}（{ts.keyChangeFrom ?? "本小节起"}）</div>
+						<div className="cc-mmenu-row">{keyStepper(mi)}</div>
+						<div className="cc-mmenu-label">{ts.tintLabel ?? "小节标色"}</div>
+						<div className="cc-mmenu-row">
+							{Object.entries(TINTS).map(([k, v]) => (
+								<button key={k} className={`cc-tint ${k} ${(m.tint || "") === k ? "on" : ""}`}
+									title={v.name} onClick={() => patchMeasure(mi, x => ({ ...x, tint: k }))} />
+							))}
+							<button onClick={() => patchMeasure(mi, x => ({ ...x, tint: null }))}>{ts.tintClear ?? "清除"}</button>
+						</div>
 					</div>
 				) : null}
 			</div>
@@ -852,22 +987,18 @@ export function ChordChartView() {
 	for (let i = 0; i < song.measures.length; i += per) rows.push(song.measures.slice(i, i + per));
 
 	return (
-		<div className="cc-page">
+		<div className={`cc-page${copyMode ? " cc-copying" : ""}`}>
 			<header className="cc-toolbar">
 				<div className="cc-tabs-row">
 					<nav className="cc-tooltabs">
 						<button className={toolTab === "preview" ? "on" : ""} onClick={() => { stopPlayback(); setToolTab("preview"); }}>{ts.tabPreview ?? "预览"}</button>
 						<button className={toolTab === "chord" ? "on" : ""} onClick={() => setToolTab("chord")}>{ts.tabChord ?? "和弦"}</button>
 						<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure ?? "小节"}</button>
-						<button className={toolTab === "note" ? "on" : ""} onClick={() => setToolTab("note")}>{ts.tabNote ?? "音符"}</button>
-						<button className={toolTab === "melody" ? "on" : ""} onClick={() => setToolTab("melody")}>{ts.tabMelody ?? "旋律"}</button>
-						<button className={toolTab === "text" ? "on" : ""} onClick={() => setToolTab("text")}>{ts.tabText ?? "文本"}</button>
-						<button className={toolTab === "color" ? "on" : ""} onClick={() => setToolTab("color")}>{ts.tabColor ?? "着色"}</button>
 					</nav>
 					<span className="cc-flex" />
 					{editing ? (
 						<>
-							<button className={`button sm play ${playing ? "on" : ""}`} onClick={() => (playing ? stopPlayback() : startPlayback())} title={ts.playFromCursor ?? "播放（空格）· 从光标小节起；Ctrl+Space 从头"}>{playing ? "⏹" : "▶"}</button>
+							<button className={`button sm play ${playing ? "on" : ""}`} onClick={() => (playing ? stopPlayback() : startPlayback())} title={ts.playFromCursor ?? "播放 · 从光标小节起；Ctrl+Space 从头"}>{playing ? "⏹" : "▶"}</button>
 							<select value={speed} onChange={e => onSpeedChange(Number(e.target.value))} title={ts.speedLabel ?? "速度"}>
 								{[0.5, 0.75, 1, 1.25, 1.5].map(x => <option key={x} value={x}>{x}×</option>)}
 							</select>
@@ -913,9 +1044,6 @@ export function ChordChartView() {
 											});
 										}}>✕ {ts.delSong ?? "删除这首歌"}</button>
 										<div className="cc-menu-sep" />
-										<button className={`cc-menu-item ${song.display === "name" ? "on" : ""}`} onClick={() => setSong(s0 => ({ ...s0, display: s0.display === "degree" ? "name" : "degree" }))}>
-											{ts.displayToggle ?? "级数 ⇄ 音名"}：{song.display === "degree" ? "1/6m" : "C/Am"}
-										</button>
 										<label className="cc-menu-item">{ts.transpose ?? "移调看谱"}
 											<select value={transposeRoot ?? song.key.root} onClick={e => e.stopPropagation()}
 												onChange={e => setTransposeRoot(Number(e.target.value) === song.key.root ? null : Number(e.target.value))}>
@@ -938,20 +1066,17 @@ export function ChordChartView() {
 					{toolTab === "chord" ? (
 						<div className="cc-freqbar">
 							{frequentChords.map((c, i) => {
-								const parts = chordParts(c, "degree", viewKey);
+								const localKey = keyAt(cursor.mi); // 常用和弦音名提示跟随光标处生效调（谱中转调后不误导）
 								return (
-									<button key={i} className="cc-freq-chord" title={formatName(c, viewKey)} onClick={() => {
+									<button key={i} className="cc-freq-chord" title={formatName(c, localKey)} onClick={() => {
 										typeRef.current = { t: Date.now(), mode: "degree", sub: null, lastKind: "mod" };
 										patchCurrentUnit({ kind: "chord", chord: { ...c } });
+										rememberQuality(c);
 									}}>
-										<span>{parts.main}</span>
-										{parts.sub ? <small>{parts.sub}</small> : null}
+										<span>{formatInline(c, "degree", localKey)}</span>
 									</button>
 								);
 							})}
-							<button className="cc-freq-tool" title={ts.holdHint ?? "延音（-）"} onClick={() => { patchCurrentUnit({ kind: "hold" }); moveCursor(0, 1); }}>—</button>
-							<button className="cc-freq-tool" title={ts.restHint ?? "休止（0）"} onClick={() => { patchCurrentUnit({ kind: "rest" }); moveCursor(0, 1); }}>0</button>
-							<span className="cc-sep" />
 							<button className="cc-freq-tool" title={ts.addRow ?? "新增一行"} onClick={addRow}>＋<small>{ts.rowLabel ?? "一行"}</small></button>
 						</div>
 					) : toolTab === "measure" ? (
@@ -974,12 +1099,8 @@ export function ChordChartView() {
 							</select>
 							<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn ?? "段落"}</button>
 							<span className="cc-sep" />
-							<label className="cc-field">{ts.keyChange ?? "转调"}
-								<select value={song.measures[cursor.mi]?.keyRoot ?? ""} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, keyRoot: e.target.value === "" ? null : Number(e.target.value), keyMinor: e.target.value === "" ? undefined : song.key.minor }))} title={ts.keyChangeTip ?? "从该小节起转调（播放/音名/按法随之换调）"}>
-									<option value="">{ts.none ?? "无"}</option>
-									{PC_KEY.map((k, pc) => <option key={pc} value={pc}>1 = {k}</option>)}
-								</select>
-							</label>
+							<label className="cc-field">{ts.keyChange ?? "转调"}（{ts.keyChangeFrom ?? "本小节起"}）</label>
+							{keyStepper()}
 						</div>
 					) : toolTab === "text" ? (
 						<div className="cc-measuretools">
@@ -1012,9 +1133,14 @@ export function ChordChartView() {
 						<button className={viewTab === "text" ? "on" : ""} onClick={() => setViewTab("text")}>{ts.viewText ?? "文本谱"}</button>
 						<button className={viewTab === "dynamic" ? "on" : ""} onClick={() => setViewTab("dynamic")}>{ts.viewDynamic ?? "动态谱"}</button>
 					</nav>
+					<nav className="cc-preview-tabs cc-display-seg" title={ts.displayFormTip ?? "记谱形式（只在预览生效；编辑恒为数字级数）"}>
+						<button className={previewDisplay === "number" ? "on" : ""} onClick={() => setPreviewDisplay("number")}>{ts.dispNumber ?? "数字"}</button>
+						<button className={previewDisplay === "roman" ? "on" : ""} onClick={() => setPreviewDisplay("roman")}>{ts.dispRoman ?? "罗马"}</button>
+						<button className={previewDisplay === "name" ? "on" : ""} onClick={() => setPreviewDisplay("name")}>{ts.dispName ?? "音名"}</button>
+					</nav>
 					<span className="cc-flex" />
 						<button className="button sm" onClick={async () => {
-							try { await navigator.clipboard.writeText(exportMusicXml(song)); showToast(ts.shared ?? "乐谱 XML 已复制到剪贴板"); }
+							try { await navigator.clipboard.writeText(exportMusicXml(song, keyAtFn)); showToast(ts.shared ?? "乐谱 XML 已复制到剪贴板"); }
 							catch (e) { doExportXml(); }
 						}}>🔗 {ts.shareBtn ?? "分享"}</button>
 					<button className="button sm" onClick={doExportXml}>⇩ {ts.exportBtn ?? "导出"}</button>
@@ -1077,8 +1203,20 @@ export function ChordChartView() {
 						<input className="cc-score-title" value={song.name} readOnly={!editing} onChange={e => setSong(s => ({ ...s, name: e.target.value }))} />
 					</div>
 
-					{editing && song.measures.every(m => m.slots.every(sl => sl.kind !== "chord" || (sl.split && sl.split.every(u => u.kind !== "chord")))) ? (
-						<div className="cc-guide">{ts.guide ?? "点击任意拍格（虚线框）选中，再按 1-7 输入级数和弦（1=主 4=下属 5=属，6=小调感）；右侧面板可加 m/7/转位/节奏型"}</div>
+					{copyMode ? (
+						<div className="cc-copybar">
+							<b>⧉ {ts.copyTitle ?? "复制模式"}</b>
+							<span className="cc-copybar-state">
+								{selRange == null
+									? (ts.copyHint ?? "按住小节拖动选择，←/→ 微调选区")
+									: (copiedCount > 0
+										? (ts.copyDone ?? "已复制 {n} 小节 · 光标移到目标小节，Ctrl+V 插入其后").replace("{n}", String(copiedCount))
+										: (ts.copySel ?? "已选 M{a}–M{b}（{n} 小节）· Ctrl+C 复制 · Backspace 删除").replace("{a}", String(selRange[0] + 1)).replace("{b}", String(selRange[1] + 1)).replace("{n}", String(selRange[1] - selRange[0] + 1)))}
+							</span>
+							<span className="cc-flex" />
+							<button className="button sm accent" onClick={copySelection}>⧉ {ts.copyBtn ?? "复制"} <kbd>Ctrl+C</kbd></button>
+							<button className="button sm" onClick={exitCopyMode}>{ts.copyExit ?? "退出"} <kbd>Q</kbd></button>
+						</div>
 					) : null}
 
 					<div className="cc-lines">
@@ -1089,11 +1227,9 @@ export function ChordChartView() {
 									<div className="cc-line-head">
 										<span className="cc-line-no">{first + 1}</span>
 									</div>
-									<div className="cc-line-cells">
+									{/* 网格轨道按行内小节数固定：末行不满时列宽仍与他行像素级一致（加行入口在谱面底部按钮，不占格） */}
+									<div className="cc-line-cells" style={{ gridTemplateColumns: `repeat(${per}, 1fr)` }}>
 										{row.map((m, k) => cellView(m, first + k))}
-										{editing && ri === rows.length - 1 ? (
-											<button className="cc-add-cell" title={ts.addRow ?? "新增一行"} onClick={addRow}>＋</button>
-										) : null}
 									</div>
 								</div>
 							);
@@ -1103,78 +1239,62 @@ export function ChordChartView() {
 					{popupOpen && popupPos ? (
 						<div className="cc-cp-wrap" ref={popupRef} style={popupPos.bottom != null ? { left: popupPos.left, bottom: popupPos.bottom } : { left: popupPos.left, top: popupPos.top }}>
 							<ChordPopup song={song} viewKey={keyAt(cursor.mi)} unit={currentUnit} typedHint={typedHint}
+								defaultQuality={(d) => defaultQualityFor(d)}
+								hasAttach={!!(currentUnit?.kind === "chord" && currentUnit.image)}
+								onAttach={currentUnit?.kind === "chord" ? () => setAttachTarget({ mi: cursor.mi, si: cursor.si, half: cursor.half }) : null}
 								canSplit={canSplitCurrent} onPatchUnit={patchUnitFromPanel} onSetKind={onPanelSetKind}
 								onToggleSplit={toggleSplit} onClose={() => setPopupOpen(false)} t={t}
 								tab={cpTab} onTab={setCpTab} />
 						</div>
 					) : null}
 
+					{/* 配图一览：谱内带图的和弦槽位（一个和弦实例一张图）；编辑态点卡片可换图/移除 */}
+					{attachedUnits.length ? (
+						<div className="cc-legend">
+							<div className="cc-legend-title">🖼 {ts.legendTitle ?? "和弦配图"}<small>{ts.legendHint ?? "一个和弦一张指法图"}</small></div>
+							<div className="cc-legend-row">
+								{attachedUnits.map((a, idx) => (
+									<div key={`${a.mi}-${a.si}-${a.half}-${idx}`} className="cc-legend-item has"
+										onClick={() => { if (editing) setAttachTarget({ mi: a.mi, si: a.si, half: a.half }); }}>
+										<div className="cc-legend-label">{formatInline(a.chord, "degree", keyAt(a.mi))}<small>M{a.mi + 1}</small></div>
+										<div className="cc-legend-img"><AttachView data={a.image} /></div>
+									</div>
+								))}
+							</div>
+						</div>
+					) : null}
+
 					{editing ? (
 						<div className="cc-score-foot">
 							<button className="button sm" onClick={addRow}>＋ {ts.addRow ?? "新增一行"}</button>
-							<span className="cc-hint">{ts.kbdHint ?? "1-7 级数 · 0 休止 · - 延音 · Enter 反拍拆分 · ⌫ 清除 · 方向键移动 · 空格播放"}</span>
 						</div>
 					) : null}
 				</div>
 
 			</div>
 
-			<button className={`cc-stage-fab ${stageOpen ? "" : "collapsed"}`} onClick={() => setStageOpen(v => !v)}
-				title={stageOpen ? (ts.stageHide ?? "收起配图") : (ts.stageShow ?? "配图")}>
-				{stageOpen ? "▾" : "◂"} 🖼 {song.image ? (ts.imageLabel ?? "配图") : (ts.attachImage ?? "添加配图")}
-			</button>
-			{stageOpen ? (
-				<div className="cc-stage-float cc-attach-slot">
-					{song.image ? (
-						<>
-							<div className="cc-attach-view" onClick={() => { if (editing) setAttachOpen(true); }}>
-								<AttachView song={song} viewKey={viewKey} />
-							</div>
-							{editing ? (
-								<div className="cc-attach-tools">
-									<button className="button sm" onClick={() => setAttachOpen(true)}>{ts.changeImage ?? "编辑"}</button>
-									<button className="button sm danger" onClick={() => setSong(s0 => ({ ...s0, image: null }))}>{ts.removeImage ?? "移除"}</button>
-								</div>
-							) : null}
-						</>
-					) : (
-						editing ? (
-							<button className="cc-attach-add" onClick={() => setAttachOpen(true)}>
-								＋ {ts.attachImage ?? "添加配图"}
-								<small>{ts.imageHint ?? "静态和弦按法 / 指板堆动图"}</small>
-							</button>
-						) : (
-							<div className="cc-stage-empty">{ts.noImage ?? "未设置配图"}</div>
-						)
-					)}
-				</div>
-			) : null}
-
-			{attachOpen ? (
-				<AttachPicker value={song.image}
+			{attachTarget != null ? (
+				<AttachPicker value={unitAt(attachTarget.mi, attachTarget.si, attachTarget.half)?.image ?? null}
+					subtitle={(() => { const u = unitAt(attachTarget.mi, attachTarget.si, attachTarget.half); return u?.chord ? `M${attachTarget.mi + 1} · ${formatInline(u.chord, "degree", keyAt(attachTarget.mi))}` : null; })()}
 					onPickStatic={() => {
-						try { sessionStorage.setItem("fretboard-attach-edit", JSON.stringify({ songId: song.id, kind: "board", frame: song.image?.kind === "board" ? song.image.frame : null })); } catch (e) { /* 忽略 */ }
+						const prev = unitAt(attachTarget.mi, attachTarget.si, attachTarget.half)?.image;
+						try { sessionStorage.setItem("fretboard-attach-edit", JSON.stringify({ songId: song.id, target: attachTarget, kind: "board", frame: prev?.kind === "board" ? prev.frame : null })); } catch (e) { /* 忽略 */ }
 						window.location.hash = "#/";
 					}}
 					onPickClip={() => {
-						const cid = song.image?.kind === "clip" ? song.image.id : null;
-						try { sessionStorage.setItem("fretboard-attach-edit", JSON.stringify({ songId: song.id, kind: "clip", clipId: cid })); } catch (e) { /* 忽略 */ }
+						const prev = unitAt(attachTarget.mi, attachTarget.si, attachTarget.half)?.image;
+						const cid = prev?.kind === "clip" ? prev.id : null;
+						try { sessionStorage.setItem("fretboard-attach-edit", JSON.stringify({ songId: song.id, target: attachTarget, kind: "clip", clipId: cid })); } catch (e) { /* 忽略 */ }
 						window.location.hash = cid ? `#/dynamic?c=${cid}` : "#/dynamic";
 					}}
-					onRemove={() => { setSong(s0 => ({ ...s0, image: null })); setAttachOpen(false); }}
-					onClose={() => setAttachOpen(false)} t={t} />
+					onRemove={() => {
+						patchUnit(attachTarget.mi, attachTarget.si, attachTarget.half, { image: undefined });
+						setAttachTarget(null);
+					}}
+					onClose={() => setAttachTarget(null)} t={t} />
 			) : null}
 
 			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v22</div>
-
-			{editing ? <PianoBar onPickRoot={(name) => {
-				const chord = chordFromNameToken(name, viewKey);
-				if (chord) {
-					typeRef.current = { t: Date.now(), mode: "degree", sub: null, lastKind: "mod" };
-					setTypedHint("");
-					patchCurrentUnit({ kind: "chord", chord: { ...chord, quality: "", bass: null } });
-				}
-			}} t={t} /> : null}
 
 			{dialog ? (
 				<div className="cc-modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) setDialog(null); }}>
