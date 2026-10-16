@@ -48,19 +48,26 @@ const BARLINE_XML = {
 	final: `      <barline location="right"><bar-style>light-heavy</bar-style></barline>\n`
 };
 
-export function exportMusicXml(song) {
-	const key = song.key || { root: 0, minor: false };
-	const fifths = PC_TO_FIFTHS_MAJOR[key.minor ? (key.root + 3) % 12 : key.root] ?? 0;
+export function exportMusicXml(song, keyAtFn) {
+	// keyAtFn：按小节取生效调（谱中转调 + 全局移调都会体现在导出的调号与和弦音名上）
+	const keyOf = typeof keyAtFn === "function" ? keyAtFn : (() => song.key || { root: 0, minor: false });
+	const keyXml = (k) => `<key><fifths>${PC_TO_FIFTHS_MAJOR[k.minor ? (k.root + 3) % 12 : k.root] ?? 0}</fifths><mode>${k.minor ? "minor" : "major"}</mode></key>`;
 	let out = `<?xml version="1.0" encoding="UTF-8"?>\n<score-partwise version="4.0">\n`;
 	out += `  <work><work-title>${esc(song.name)}</work-title></work>\n`;
 	out += `  <part-list><score-part id="P1"><part-name>Chord Chart</part-name></score-part></part-list>\n  <part id="P1">\n`;
+	let lastKey = null;
 	(song.measures || []).forEach((m, i) => {
+		const key = keyOf(i);
 		out += `    <measure number="${i + 1}">\n`;
+		const keyChanged = !lastKey || key.root !== lastKey.root || !!key.minor !== !!lastKey.minor;
 		if (i === 0) {
-			out += `      <attributes>\n        <divisions>2</divisions>\n        <key><fifths>${fifths}</fifths><mode>${key.minor ? "minor" : "major"}</mode></key>\n`;
+			out += `      <attributes>\n        <divisions>2</divisions>\n        ${keyXml(key)}\n`;
 			out += `        <time><beats>${song.timeSig}</beats><beat-type>4</beat-type></time>\n      </attributes>\n`;
 			out += `      <sound tempo="${song.bpm || 72}"/>\n`;
+		} else if (keyChanged) {
+			out += `      <attributes>\n        ${keyXml(key)}\n      </attributes>\n`;
 		}
+		lastKey = key;
 		if (m.repeatStart) out += `      <barline location="left"><bar-style>heavy-light</bar-style><repeat direction="forward"/></barline>\n`;
 		if (m.section) out += `      <direction placement="above"><direction-type><words>${esc(m.section)}</words></direction-type></direction>\n`;
 		if (m.house) out += `      <direction placement="above"><direction-type><words>${m.house}.</words></direction-type></direction>\n`;
@@ -178,6 +185,20 @@ export function importMusicXml(text, fallbackName = "导入谱") {
 
 	measures.forEach((m) => {
 		const measure = createMeasure(song.timeSig);
+		// 谱中转调：小节带新 <key> → 该小节起记 keyRoot/keyMinor，后续和弦按新调落级数
+		const attrs2 = kid(m, "attributes");
+		const keyNode2 = attrs2 && kid(attrs2, "key");
+		if (keyNode2) {
+			const fifths2 = num(kid(keyNode2, "fifths") && kid(keyNode2, "fifths").text, 0);
+			const mode2 = (kid(keyNode2, "mode") && kid(keyNode2, "mode").text.trim()) || "major";
+			let pc2 = FIFTHS_TO_PC_MAJOR[fifths2] ?? 0;
+			if (mode2 === "minor") pc2 = (pc2 - 3 + 12) % 12;
+			if (pc2 !== key.root || (mode2 === "minor") !== key.minor) {
+				key = { root: pc2, minor: mode2 === "minor" };
+				measure.keyRoot = key.root;
+				measure.keyMinor = key.minor;
+			}
+		}
 		// 小节线
 		kids(m, "barline").forEach(b => {
 			const loc = (b.attrs && b.attrs.location) || "right";
