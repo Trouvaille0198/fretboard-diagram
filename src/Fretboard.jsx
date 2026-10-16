@@ -32,7 +32,7 @@ import { useLanguage } from './i18n';
 const COLOR_SCHEMES = ['navy', 'crimson', 'green', 'blue', 'red', 'brown'];
 
 function Fretboard({ mode = 'normal' }) {
-  const { lang, toggleLang, t } = useLanguage();
+  const { t } = useLanguage();
 
   // 使用自定义hooks
   const fretboardState = useFretboardState();
@@ -219,11 +219,56 @@ function Fretboard({ mode = 'normal' }) {
   const dynamic = useDynamicMode({ dataRef, setData, visibility, captureBoard, toast: showToast, onEnter: prepareFrame1, getVividColor: getVividColorValue, applyBoard: applyBoardStable, frameColorAt });
 
   // ===== 路由：动态编辑独立页 =====
-  // 普通页：Q 或菜单按钮 → 携当前板面跳 #/dynamic
+  // ===== 配图编辑会话（#/chords 的配图槽跳进来）：载入已有板 / 完成后回存 =====
+  const framesRef2 = useRef([]);
+  const [attachEdit, setAttachEdit] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('fretboard-attach-edit') || 'null'); } catch (e) { return null; }
+  });
+  framesRef2.current = dynamic.frames;
+
+  // 普通模式挂载：载入配图板面（一次性）
+  useEffect(() => {
+    if (mode !== 'normal' || !attachEdit || attachEdit.kind !== 'board') return;
+    if (attachEdit.frame) applyHistorySnapshot(attachEdit.frame);
+    sessionStorage.removeItem('fretboard-attach-entry-loaded');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const finishAttach = useCallback(async (frameOrClip) => {
+    try {
+      const { loadCharts, saveChart } = await import('./utils/chordChartModel');
+      const song = loadCharts().find(c => c.id === attachEdit.songId);
+      if (!song) throw new Error('song missing');
+      saveChart({ ...song, image: frameOrClip });
+    } catch (e) { console.error('配图回存失败', e); }
+    sessionStorage.removeItem('fretboard-attach-edit');
+    window.location.hash = '#/chords';
+  }, [attachEdit]);
+
+  // 动态模式挂载：attach 会话下新建 clip（无 ?c= 时）
+  useEffect(() => {
+    if (mode !== 'dynamic' || !attachEdit || attachEdit.kind !== 'clip') return;
+    if (attachEdit.clipId) return; // 续编：?c= 已处理
+    // 新建：把当前板面作为帧 1 交给动态会话（toggleQ 的 onEnter 路径在 Q 键；这里直接进入）
+    const entry = sessionStorage.getItem('fretboard-dynamic-entry');
+    if (entry === null) {
+      try { sessionStorage.setItem('fretboard-dynamic-entry', JSON.stringify(captureBoard())); } catch (e) { /* 忽略 */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 普通页：Q → 携当前板面跳 #/dynamic（入口统一走左侧模式栏 🎬，此事件即模式栏的转发）
   const gotoDynamic = useCallback(() => {
     try { sessionStorage.setItem('fretboard-dynamic-entry', JSON.stringify(captureBoard())); } catch (e) { /* 忽略 */ }
     window.location.hash = '#/dynamic';
   }, [captureBoard]);
+
+  useEffect(() => {
+    if (mode !== 'normal') return;
+    const onRailDynamic = () => gotoDynamic();
+    window.addEventListener('fretboard:goto-dynamic', onRailDynamic);
+    return () => window.removeEventListener('fretboard:goto-dynamic', onRailDynamic);
+  }, [mode, gotoDynamic]);
 
   // 动态页挂载：读取入口板面（或续编的动图）开 会话；URL ?c=<id> 优先（刷新/分享恢复到正在编辑的那张）
   useEffect(() => {
@@ -324,16 +369,7 @@ function Fretboard({ mode = 'normal' }) {
   const dynamicRef = useRef(dynamic);
   dynamicRef.current = dynamic;
   // 主题
-  const [theme, setTheme] = useState(() => localStorage.getItem('fretboard-theme') || 'dark');
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('fretboard-theme', theme);
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme(t => t === 'dark' ? 'light' : 'dark');
-  }, []);
+  // 主题切换已上移到全局 TopNav（localStorage 'fretboard-theme' + html[data-theme]）
 
   // Refs
   const svgElementRef = useRef(null);
@@ -1567,26 +1603,29 @@ function Fretboard({ mode = 'normal' }) {
 
   return (
     <>
-      <button
-        className={`theme-switch${theme === 'light' ? ' theme-switch--light' : ''}`}
-        onClick={toggleTheme}
-        title={theme === 'dark' ? t.fretboard.themeLight : t.fretboard.themeDark}
-        aria-label="Toggle theme"
-      >
-        <span className="theme-switch__track">
-          <span className="theme-switch__thumb">
-            <span className="theme-switch__icon">{theme === 'dark' ? '☾' : '☀'}</span>
-          </span>
-        </span>
-      </button>
-      <button
-        className="lang-switch"
-        onClick={toggleLang}
-        title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
-        aria-label="Toggle language"
-      >
-        {t.fretboard.langSwitch}
-      </button>
+      {attachEdit ? (
+        <div className="attach-bar">
+          <span className="attach-bar-label">🖼 {attachEdit.kind === 'board' ? '静态配图编辑中' : '动图配图编辑中'}</span>
+          <button className="button sm accent" onClick={async () => {
+            if (attachEdit.kind === 'board') {
+              await finishAttach({ kind: 'board', frame: captureBoard() });
+            } else {
+              // 动图：冲刷并落堆后回存引用
+              const flushed = dynamic.flushBoard ? dynamic.flushBoard() : null;
+              const frames = (flushed && flushed.frames) || framesRef2.current;
+              const clip = dynamic.sessionClip;
+              if (clip && frames && frames.length) {
+                dynamic.persistClip();
+                await finishAttach({ kind: 'clip', id: clip.id });
+              }
+            }
+          }}>✓ 完成配图</button>
+          <button className="button sm" onClick={() => {
+            sessionStorage.removeItem('fretboard-attach-edit');
+            window.location.hash = '#/chords';
+          }}>取消</button>
+        </div>
+      ) : null}
       <div className="title-header">
         <div className="title-header-inner">
           <h1>
@@ -1847,11 +1886,7 @@ function Fretboard({ mode = 'normal' }) {
         </div>
       )}
 
-      {mode === 'normal' ? (
-        <button className="button goto-dynamic" onClick={gotoDynamic} title="把当前指板带进动态编辑（Q）">
-          🎬 动态编辑
-        </button>
-      ) : (
+      {mode === 'dynamic' && (
       <DynamicToolbar
         dynamic={{ ...dynamic, newClip: handleNewClip }}
         scheme={schemeName}
