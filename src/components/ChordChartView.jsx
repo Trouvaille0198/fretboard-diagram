@@ -515,6 +515,8 @@ export function ChordChartView() {
 		}
 		plan.items.forEach(item => {
 			schedule(t0 + item.startMs / speed, () => {
+				try { document.querySelectorAll('.cc-beat.playing').forEach(function(el){ el.classList.remove('playing'); });
+				document.querySelectorAll('[data-mi="' + item.mi + '"][data-si="' + item.si + '"]').forEach(function(el){ el.classList.add('playing'); }); } catch(e) {}
 				setPlaying({ mi: item.mi, si: item.si, half: item.half });
 				if (item.chord && item.plan) {
 					item.plan.forEach(f => schedule(f.delayMs / speed, () => {
