@@ -4,13 +4,13 @@ import { loadClips } from "../utils/clipModel";
 
 // 配图选择弹窗：静态=进普通编辑器画一张板；动图=进动图编辑器（新建或续编）
 // value = song.image：{kind:'board',frame} | {kind:'clip',id} | null
-export function AttachPicker({ value, onPickStatic, onPickClip, onRemove, onClose, t }) {
+export function AttachPicker({ value, subtitle, onPickStatic, onPickClip, onRemove, onClose, t }) {
 	const ts = t?.chords ?? {};
 	return (
 		<div className="cc-modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
 			<div className="cc-modal">
 				<div className="cc-modal-head">
-					<span className="cc-modal-title">{value ? (ts.editAttach ?? "编辑配图") : (ts.attachImage ?? "添加配图")}</span>
+					<span className="cc-modal-title">{value ? (ts.editAttach ?? "编辑配图") : (ts.attachImage ?? "添加配图")}{subtitle ? <small className="cc-modal-sub"> · {subtitle}</small> : null}</span>
 					<button className="cc-modal-x" onClick={onClose}>✕</button>
 				</div>
 				<div className="cc-modal-body">
@@ -38,8 +38,7 @@ export function AttachPicker({ value, onPickStatic, onPickClip, onRemove, onClos
 }
 
 // 配图槽内容渲染：board=静态板快照；clip=指板堆动图帧步进循环
-export function AttachView({ song }) {
-	const data = song.image;
+export function AttachView({ data }) {
 	const clips = useMemo(() => (data?.kind === "clip" ? loadClips() : []), [data?.kind, data?.id]);
 	const clip = data?.kind === "clip" ? clips.find(c => c.id === data.id) : null;
 	const [fi, setFi] = useState(0);
