@@ -138,14 +138,16 @@ class AudioService {
         try {
             if (this.sampler && this.Tone) {
                 await this.Tone.start();
-                console.log('Triggering sampler');
                 this.sampler.triggerAttackRelease(noteName, duration);
             } else if (this.context) {
-                console.log('Using native audio');
                 this.playNativeNote(noteName, duration);
             }
         } catch (error) {
+            // 采样未就绪/音频未解锁时用三角波兜底，保证有反馈
             console.error('Failed to play note:', error);
+            try {
+                this.playNativeNote(noteName, duration);
+            } catch (e) { /* 彻底无音频环境，静默 */ }
         }
     }
 
@@ -153,6 +155,33 @@ class AudioService {
     async playFretNote(fret, string, duration = 0.5) {
         const noteWithOctave = this.getNoteWithOctave(fret, string);
         await this.playNote(noteWithOctave, duration);
+    }
+
+    // 停止播放：掐掉已拨响的采样尾音（releaseAll 只影响正在响的音）
+    stopAll() {
+        if (this.sampler && this.Tone) {
+            try { this.sampler.releaseAll(); } catch (error) { /* sampler 未就绪 */ }
+        }
+    }
+
+    // 节拍器点音（和弦谱播放用）：高频短促方波，不占吉他采样
+    click(accent = false) {
+        if (this.Tone && this.initialized) {
+            try {
+                if (!this.clicker) {
+                    this.clicker = new this.Tone.Synth({
+                        oscillator: { type: 'square' },
+                        envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.01 }
+                    }).toDestination();
+                    this.clicker.volume.value = -20;
+                }
+                this.clicker.triggerAttackRelease(accent ? 1568 : 1046, 0.02);
+            } catch (error) {
+                // 音频上下文未解锁时 currentTime 冻结，同刻重触发会被 Tone 断言拒绝——丢这一拍不报错
+            }
+        } else {
+            this.playNativeNote(accent ? 'G6' : 'C6', 0.03);
+        }
     }
 
     playNativeNote(noteName, duration) {
@@ -195,6 +224,10 @@ class AudioService {
     dispose() {
         if (this.sampler) {
             this.sampler.dispose();
+        }
+        if (this.clicker) {
+            this.clicker.dispose();
+            this.clicker = null;
         }
         if (this.context) {
             this.context.close();

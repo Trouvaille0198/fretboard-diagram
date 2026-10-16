@@ -108,13 +108,13 @@ export function diffFrames(prevState, nextState) {
 
 // ============ 和弦：级数 ⇄ 音名 ============
 
-const NOTE_NAMES = [
+export const NOTE_NAMES = [
 	["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
-	["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
+	["C", "Db", "D", "Eb", "E", "F", "Gb", "G#", "Ab", "A", "Bb", "B"]
 ];
-const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11];
-const MINOR_STEPS = [0, 2, 3, 5, 7, 8, 10];
-const LETTER_SEMITONES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+export const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11];
+export const MINOR_STEPS = [0, 2, 3, 5, 7, 8, 10];
+export const LETTER_SEMITONES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
 // 解析用户输入：级数（6m / b3 / 5）或音名（Am / F / G7）
 export function parseChordToken(token) {
