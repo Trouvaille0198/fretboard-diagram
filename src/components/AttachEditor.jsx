@@ -16,12 +16,12 @@ export function AttachPicker({ value, subtitle, onPickStatic, onPickClip, onRemo
 				<div className="cc-modal-body">
 					<div className="cc-ap-grid">
 						<button className="cc-ap-item" onClick={onPickStatic}>
-							<span className="cc-ap-icon">✏️</span>
+							<span className="cc-ap-icon">板</span>
 							<b>{ts.attachStatic ?? "静态配图"}</b>
 							<small>{(value?.kind === "board" ? ts.attachContinue : ts.attachStaticHint) ?? "用普通编辑器画一张指板"}</small>
 						</button>
 						<button className="cc-ap-item" onClick={onPickClip}>
-							<span className="cc-ap-icon">🎬</span>
+							<span className="cc-ap-icon">动</span>
 							<b>{ts.attachAnim ?? "动图配图"}</b>
 							<small>{(value?.kind === "clip" ? ts.attachContinue : ts.attachAnimHint) ?? "用动图编辑器做一段动画"}</small>
 						</button>

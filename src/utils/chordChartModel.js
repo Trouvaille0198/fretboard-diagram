@@ -102,6 +102,18 @@ export function firstEditableSlot(song) {
 	return { mi: 0, si: 0, half: null };
 }
 
+// 在 si 处插入一拍：从 si 起的拍整体右移，本小节末拍被挤出丢弃（小节长度按拍号固定，不增长）
+// 多出来的末拍内容随本次变换丢弃 —— 这正是不增长小节长度的代价，撤销可回退
+export function insertBeatAt(measure, si) {
+	const n = (measure.slots || []).length;
+	if (n < 2) return measure;
+	const at = Math.max(0, Math.min(n - 1, si));
+	const slots = measure.slots.slice(0, at);
+	slots.push({ kind: "empty" });
+	for (let i = at; i < n - 1; i++) slots.push(measure.slots[i]);
+	return { ...measure, slots };
+}
+
 // 槽位导航：上下左右在 (小节, 槽) 网格上移动；返回 null = 越界
 export function moveCursor(song, cur, dmi, dsi) {
 	if (!cur) return null;
