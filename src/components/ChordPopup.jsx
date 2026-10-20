@@ -1,28 +1,36 @@
 import React, { useState } from "react";
-import { formatName } from "../utils/chordLib";
+import { formatName, ALT_ORDER } from "../utils/chordLib";
+import { ChordSign } from "./ChordSign";
 
-// 质量按钮 —— 8pu 同款同序：M m 7 6 M7 m7 9（其余收进 ⋯）
-const QUALITIES_MAIN = [
-	{ q: "", label: "M" },
-	{ q: "m", label: "m" },
-	{ q: "7", label: "7" },
-	{ q: "6", label: "6" },
-	{ q: "maj7", label: "M7" },
-	{ q: "m7", label: "m7" },
-	{ q: "9", label: "9" }
-];
-const QUALITIES_MORE = [
-	{ q: "sus4", label: "sus4" },
-	{ q: "sus2", label: "sus2" },
-	{ q: "add9", label: "add9" },
-	{ q: "m6", label: "m6" },
-	{ q: "dim", label: "dim" },
-	{ q: "aug", label: "aug" }
+// 质量按钮：常用族在前，扩展族在后（一次全部平铺，17 种三行放得下）
+// 质量按族分组，一行一族（标签列 + 7 列对齐网格）：三 / 七 / 九 / 挂留
+const QUALITY_GROUPS = [
+	{ key: "qTriad", items: [
+		{ q: "", label: "M" }, { q: "m", label: "m" }, { q: "5", label: "5" }, { q: "dim", label: "dim" }, { q: "aug", label: "aug" }
+	] },
+	{ key: "qSeventh", items: [
+		{ q: "7", label: "7" }, { q: "m7", label: "m7" }, { q: "maj7", label: "maj7" },
+		{ q: "m7-5", label: "m7-5" }, { q: "dim7", label: "dim7" }, { q: "6", label: "6" }, { q: "m6", label: "m6" }
+	] },
+	{ key: "qNinth", items: [
+		{ q: "9", label: "9" }, { q: "m9", label: "m9" }, { q: "maj9", label: "maj9" }, { q: "add9", label: "add9" }
+	] },
+	{ key: "qSus", items: [
+		{ q: "sus4", label: "sus4" }, { q: "sus2", label: "sus2" }
+	] }
 ];
 const ACCS = [
 	{ v: 0, label: "♮" },
 	{ v: 1, label: "♯" },
 	{ v: -1, label: "♭" }
+];
+// 变化音（extension alterations）：可叠加，如 5 7 b9 b13 → 57b9b13
+// 变化音按音级分行（五音/九音/十一音/十三音 × 降/原/升），可跨行叠加
+const ALT_ROWS = [
+	{ key: "q5th", toks: [{ tok: "b5", label: "♭5" }, { tok: "#5", label: "♯5" }] },
+	{ key: "q9th", toks: [{ tok: "b9", label: "♭9" }, { tok: "9", label: "9" }, { tok: "#9", label: "♯9" }] },
+	{ key: "q11th", toks: [{ tok: "b11", label: "♭11" }, { tok: "11", label: "11" }, { tok: "#11", label: "♯11" }] },
+	{ key: "q13th", toks: [{ tok: "b13", label: "♭13" }, { tok: "13", label: "13" }, { tok: "#13", label: "♯13" }] }
 ];
 const RHYTHMS = [
 	{ id: null, label: "默认（扫弦）" },
@@ -42,7 +50,6 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 	const [tabLocal, setTabLocal] = useState("chord");
 	const tab = tabProp ?? tabLocal;
 	const setTab = onTab ?? setTabLocal; // 受控（C/B/R 快捷键切页签），否则自治
-	const [showMore, setShowMore] = useState(false);
 	const chord = unit && unit.kind === "chord" ? unit.chord : null;
 	const key = viewKey || song.key;
 	const hasChord = !!chord;
@@ -55,7 +62,7 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 			<div className="cc-cp-menu">
 				<button onClick={onToggleSplit} disabled={!canSplit} title={ts.splitHint ?? "拆分当前拍（Enter）"}><span>⇄</span></button>
 				<button className="danger" onClick={() => onSetKind("empty")} disabled={!unit || unit.kind === "empty"} title={ts.clearHint ?? "删（⌫）"}><span>✕</span></button>
-				<button onClick={onClose} title={ts.closePanel ?? "收起（Esc）"} className="cc-cp-back"><span>⌫</span></button>
+				<button onClick={onClose} title={ts.closePanel ?? "收起（Esc）"} className="cc-cp-back"><span>{ts.collapse ?? "收起"}</span></button>
 			</div>
 
 			{tab === "chord" ? (
@@ -66,7 +73,7 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 							const demo = { degree: d, acc: 0, quality: "", bass: null };
 							const on = hasChord && chord.degree === d;
 							return (
-								<button key={d} className={`cc-cp-deg ${on ? "on" : ""}`} onClick={() => setChord({ degree: d, acc: 0, quality: defaultQuality ? defaultQuality(d) : "", bass: null })}>
+								<button key={d} className={`cc-cp-deg ${on ? "on" : ""}`} onClick={() => setChord({ degree: d, acc: 0, quality: defaultQuality ? defaultQuality(d) : "", bass: null, alt: undefined })}>
 									<span>{d}</span>
 									<small>{formatName(demo, key)}</small>
 								</button>
@@ -74,31 +81,47 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 						})}
 					</div>
 
-					{/* 质量：M m 7 6 M7 m7 9 + ⋯ 更多 */}
-					<div className="cc-cp-quals">
-						{QUALITIES_MAIN.map(({ q, label }) => (
-							<button key={q || "M"} className={hasChord && (chord.quality || "") === q ? "on" : ""} disabled={!hasChord}
-								onClick={() => setChord({ quality: q })}>{label}</button>
+					{/* 质量表：一行一族，全部平铺（标签列 + 7 列对齐） */}
+					<div className="cc-cp-table">
+						{QUALITY_GROUPS.map(g => (
+							<div className="cc-cp-qgroup" key={g.key}>
+								<span className="cc-cp-qlabel">{ts[g.key] ?? g.key}</span>
+								{g.items.map(({ q, label }) => (
+									<button key={q || "M"} className={`cc-cp-q ${hasChord && (chord.quality || "") === q ? "on" : ""}`} disabled={!hasChord}
+										onClick={() => setChord({ quality: q })}>{label}</button>
+								))}
+							</div>
 						))}
-						<button className={`cc-cp-morebtn ${showMore ? "on" : ""}`} onClick={() => setShowMore(v => !v)} title={ts.more ?? "更多"}>⋯</button>
-					</div>
-					{showMore ? (
-						<div className="cc-cp-quals">
-							{QUALITIES_MORE.map(({ q, label }) => (
-								<button key={q} className={hasChord && (chord.quality || "") === q ? "on" : ""} disabled={!hasChord}
-									onClick={() => setChord({ quality: q })}>{label}</button>
-							))}
-						</div>
-					) : null}
 
-					{/* 变音 ♮♯♭（独立一行，8pu 同款） */}
-					<div className="cc-cp-accrow">
-						{ACCS.map(({ v, label }) => (
-							<button key={v} className={hasChord && (chord.acc || 0) === v ? "on" : ""} disabled={!hasChord}
-								onClick={() => setChord({ acc: v })}>{label}</button>
-						))}
-						{typedHint ? <span className="cc-cp-typing">{typedHint}_</span> : null}
-						{!hasChord && !typedHint ? <span className="cc-cp-hint">{ts.emptySlot ?? "按 1-7 或点上方数字"}</span> : null}
+						{/* 变音级：改变级数本身的升降（b3/#4 这类） */}
+						<div className="cc-cp-qgroup">
+							<span className="cc-cp-qlabel">{ts.qAcc ?? "变音级"}</span>
+							{ACCS.map(({ v, label }) => (
+								<button key={v} className={`cc-cp-q ${hasChord && (chord.acc || 0) === v ? "on" : ""}`} disabled={!hasChord}
+									onClick={() => setChord({ acc: v })}>{label}</button>
+							))}
+							<span className="cc-cp-hint">
+								{typedHint ? <span className="cc-cp-typing">{typedHint}_</span>
+									: !hasChord ? (ts.emptySlot ?? "按 1-7 或点上方数字")
+									: null}
+							</span>
+						</div>
+					{/* 变化音按音级分行：跨行叠加（九音 ♭9 + 十三音 ♭13 = 7♭9♭13）；点数字格换级数会重置 */}
+					{ALT_ROWS.map(row => (
+						<div className="cc-cp-qgroup" key={row.key}>
+							<span className="cc-cp-qlabel">{ts[row.key] ?? row.key}</span>
+							{row.toks.map(({ tok, label }) => (
+								<button key={tok} className={`cc-cp-q ${hasChord && (chord.alt || []).includes(tok) ? "on" : ""}`} disabled={!hasChord}
+									title={ts.altTip ?? "变化音可叠加，如 7♭9♭13；再点一次取消"}
+									onClick={() => {
+										const cur = chord.alt || [];
+										const next = cur.includes(tok) ? cur.filter(x => x !== tok) : [...cur, tok];
+										setChord({ alt: ALT_ORDER.filter(t => next.includes(t)) });
+									}}>{label}</button>
+							))}
+							{row.key === "q13th" && hasChord && (chord.alt || []).length ? <span className="cc-cp-typing cc-cp-alive"><ChordSign chord={chord} display="degree" viewKey={key} /></span> : null}
+						</div>
+					))}
 					</div>
 				</>
 			) : tab === "bass" ? (
@@ -131,10 +154,10 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 					{onAttach ? (
 						<button className={`cc-cp-attach ${hasAttach ? "has" : ""}`} disabled={!hasChord}
 							title={hasAttach ? (ts.attachViewTip ?? "查看/更换该和弦的指法图") : (ts.attachTip ?? "给该和弦配一张指法图（静态/动图）")}
-							onClick={onAttach}>🖼{hasAttach ? "✓" : ""}</button>
+							onClick={onAttach}>{ts.attachTab ?? "配图"}{hasAttach ? " ✓" : ""}</button>
 					) : null}
 				<button className={tab === "chord" ? "on" : ""} onClick={() => setTab("chord")}>{ts.tabChord ?? "和弦"} <kbd>C</kbd></button>
-				<button className={tab === "bass" ? "on" : ""} onClick={() => setTab("bass")}>{ts.bassLabel ?? "低音"} <kbd>B</kbd></button>
+				<button className={tab === "bass" ? "on" : ""} title={ts.bassTip ?? "低音（转位）"} onClick={() => setTab("bass")}>{ts.bassLabel ?? "低音"} <kbd>B</kbd></button>
 				<button className={tab === "rhythm" ? "on" : ""} onClick={() => setTab("rhythm")}>{ts.rhythmLabel ?? "节奏型"} <kbd>R</kbd></button>
 			</div>
 		</div>

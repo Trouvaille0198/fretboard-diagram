@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Fretboard from './Fretboard';
 import { ChordChartView } from './components/ChordChartView';
+import { ChartListPage } from './components/ChartListPage';
 import { TopNav } from './components/TopNav';
 import { LanguageProvider } from './i18n';
 
@@ -15,12 +16,17 @@ function App() {
   }, []);
   const dynamic = route.startsWith('#/dynamic');
   const chords = route.startsWith('#/chords');
+  // #/chords 本身 = 曲目列表（库）；#/chords?id=xxx = 某首曲子的编辑页（可刷新/可深链）
+  const chordId = chords ? (new URLSearchParams((route.split('?')[1] || '')).get('id') || null) : null;
   const mode = chords ? 'chords' : (dynamic ? 'dynamic' : 'normal');
   return (
     <LanguageProvider>
       <TopNav mode={mode} />
       <main className="app-main">
-        {chords ? <ChordChartView key="chords" /> : (
+        {chords ? (chordId
+          ? <ChordChartView key={'chords-' + chordId} songId={chordId} />
+          : <ChartListPage key="chords-list" />
+        ) : (
           <Fretboard key={dynamic ? 'dynamic' : 'normal'} mode={dynamic ? 'dynamic' : 'normal'} />
         )}
       </main>
