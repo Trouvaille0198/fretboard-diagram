@@ -37,9 +37,19 @@ function harmonyXml(chord, key) {
 			xml += `        </bass>\n`;
 		}
 	}
+	// 变化音（b9/#9/b11/#11/b13/#13）→ MusicXML degree（可叠加，7b9b13 原样表达）
+	for (const tok of chord.alt || []) {
+		const d = ALT_TO_DEGREE[tok];
+		if (!d) continue;
+		xml += `        <degree><degree-value>${d[0]}</degree-value><degree-alter>${d[1]}</degree-alter><degree-type>add</degree-type></degree>\n`;
+	}
 	xml += `      </harmony>\n`;
 	return xml;
 }
+
+// 变化音记号 → MusicXML degree（度数, 变化量）
+const ALT_TO_DEGREE = { b5: [5, -1], "#5": [5, 1], b9: [9, -1], "9": [9, 0], "#9": [9, 1], b11: [11, -1], "11": [11, 0], "#11": [11, 1], b13: [13, -1], "13": [13, 0], "#13": [13, 1] };
+const DEGREE_TO_ALT = Object.fromEntries(Object.entries(ALT_TO_DEGREE).map(([k, v]) => [v.join(":"), k]));
 
 const BARLINE_XML = {
 	single: null,
@@ -144,7 +154,19 @@ function harmonyToChord(h, key) {
 		const bassAlter = kid(kid(h, "bass"), "bass-alter");
 		token += "/" + bassStep.text.trim() + ((bassAlter && num(bassAlter.text, 0)) > 0 ? "#" : (bassAlter && num(bassAlter.text, 0)) < 0 ? "b" : "");
 	}
-	return chordFromNameToken(token, key);
+	const chord = chordFromNameToken(token, key);
+	if (chord) {
+		// 变化音 degree → alt（只认 9/11/13 的升降；其余 degree 忽略）
+		const alts = [];
+		for (const deg of kids(h, "degree")) {
+			const val = num(kid(deg, "degree-value") && kid(deg, "degree-value").text, 0);
+			const alter = num(kid(deg, "degree-alter") && kid(deg, "degree-alter").text, 0);
+			const tok = DEGREE_TO_ALT[`${val}:${alter}`];
+			if (tok && !alts.includes(tok)) alts.push(tok);
+		}
+		if (alts.length) chord.alt = alts;
+	}
+	return chord;
 }
 
 // MusicXML 文本 → song（null=解析不出和弦骨架）

@@ -130,7 +130,6 @@ export const ScoreBoard = React.memo(function ScoreBoard({ snapshot, options }) 
       setData={noOp}
       setConnectionToolbarVisible={noOp}
       setSelectedConnection={noOp}
-      showNotes={s.showNotes}
     />
   );
 }, (prev, next) => prev.snapshot?.state === next.snapshot?.state

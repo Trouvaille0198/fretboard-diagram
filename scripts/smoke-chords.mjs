@@ -182,5 +182,258 @@ import { expandSong, buildEvents, buildPlayPlan } from "../src/utils/chartPlayba
 	A("帧内音符带 noteId 品窗一致", clip.frames.every(f => Object.keys(f.data).every(id => /^(o-s\d|f\d+-s\d)$/.test(id))));
 }
 
+// ===== 变化音（alt）与新质量：maj9/m9/m7-5/dim7 + 7b9b13 这类叠加 =====
+console.log("== chordLib：变化音与新质量 ==");
+{
+	const { chordPcs, chordMidi, formatDegree, formatInline, formatName, formatChord, sameChord, chordFromDegreeToken, ALT_ORDER } =
+		await import("../src/utils/chordLib.js");
+	const c7b9b13 = { degree: 5, acc: 0, quality: "7", alt: ["b9", "b13"], bass: null };
+	const pcs = chordPcs(c7b9b13, C);
+	A("7b9b13 的 pcs（G=B D F Ab Eb，含 b9=8、b13=3）", eq(pcs.pcs, [2, 3, 5, 7, 8, 11]), JSON.stringify(pcs.pcs));
+	A("midi 含变化音（b9=+13、b13=+20）", (() => { const m = chordMidi(c7b9b13, C); return m.includes(68) && m.includes(75) && m.length === 6; })());
+	A("formatDegree 带变化音", formatDegree(c7b9b13) === "57b9b13");
+	A("行内记号 57b9b13", formatInline(c7b9b13, "degree", C) === "57b9b13");
+	A("音名记号 G7b9b13", formatName(c7b9b13, C) === "G7b9b13");
+	A("罗马数字副行带变化音", formatChord(c7b9b13, "roman", C).includes("b9b13"));
+	A("alt 规范序（乱序输入按 ALT_ORDER 输出）", formatDegree({ ...c7b9b13, alt: ["b13", "b9"] }) === "57b9b13");
+	A("sameChord 区分变化音", sameChord({ degree: 5, quality: "7" }, { degree: 5, quality: "7", alt: ["b9"] }) === false
+		&& sameChord(c7b9b13, { degree: 5, acc: 0, quality: "7", alt: ["b9", "b13"], bass: null }));
+	A("maj9/m9/m7-5/dim7 的 pcs", eq(chordPcs({ degree: 1, quality: "maj9" }, C).pcs, [0, 2, 4, 7, 11])
+		&& eq(chordPcs({ degree: 2, quality: "m9" }, C).pcs, [0, 2, 4, 5, 9])
+		&& eq(chordPcs({ degree: 2, quality: "m7-5" }, C).pcs, [0, 2, 5, 8])
+		&& eq(chordPcs({ degree: 7, quality: "dim7" }, C).pcs, [2, 5, 8, 11]));
+	A("行内记号 2m9 / 1maj9 / 2m7-5", formatInline({ degree: 2, quality: "m9" }, "degree", C) === "2m9"
+		&& formatInline({ degree: 1, quality: "maj9" }, "degree", C) === "1maj9"
+		&& formatInline({ degree: 2, quality: "m7-5" }, "degree", C) === "2m7-5");
+	A("token 解析认 m7-5", eq(chordFromDegreeToken("2m7-5"), { degree: 2, acc: 0, quality: "m7-5", bass: null }));
+	A("ALT_ORDER 覆盖 11 种（5/9/11/13 × 降原升）", eq(ALT_ORDER, ["b5", "#5", "b9", "9", "#9", "b11", "11", "#11", "b13", "13", "#13"]));
+	// 记号结构化分解（UI 把级数装框用）：级数 / 质量后缀 / 转位 三段互不粘连
+	const { chordSignParts } = await import("../src/utils/chordLib.js");
+	A("signParts：57b9b13 分层", eq(chordSignParts(c7b9b13, "degree", C), { degree: "5", suffix: "7b9b13", bass: "" }));
+	A("signParts：转位低音单列", eq(chordSignParts({ degree: 5, acc: 0, quality: "7", bass: { degree: 7, acc: 0 } }, "degree", C),
+		{ degree: "5", suffix: "7", bass: "/7" }));
+	A("signParts：三和弦/纯级数/变音级", chordSignParts({ degree: 6, acc: 0, quality: "m", bass: null }, "degree", C).suffix === "m"
+		&& chordSignParts({ degree: 1, acc: 0, quality: "", bass: null }, "degree", C).suffix === ""
+		&& chordSignParts({ degree: 3, acc: -1, quality: "", bass: null }, "degree", C).degree === "b3");
+	A("signParts：maj7 用全称后缀、罗马/音名模式", chordSignParts({ degree: 4, acc: 0, quality: "maj7", bass: null }, "degree", C).suffix === "maj7"
+		&& chordSignParts({ degree: 5, acc: 0, quality: "7", bass: null }, "roman", C).degree === "V"
+		&& chordSignParts({ degree: 5, acc: 0, quality: "7", bass: null }, "name", C).flat === "G7");
+		A("自然变化音 pcs：C7(9,13)", eq(chordPcs({ degree: 1, quality: "7", alt: ["9", "13"] }, C).pcs, [0, 2, 4, 7, 9, 10]));
+		A("b5/#5 pcs：C7b5 / C7#5", eq(chordPcs({ degree: 1, quality: "7", alt: ["b5"] }, C).pcs, [0, 4, 6, 10])
+			&& eq(chordPcs({ degree: 1, quality: "7", alt: ["#5"] }, C).pcs, [0, 4, 8, 10]));
+		A("显示规则：全变音连写、含自然音括号", formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["b9", "b13"] }) === "57b9b13"
+			&& formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["9", "13"] }) === "57(9,13)"
+			&& formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["b9", "13"] }) === "57(b9,13)");
+		A("强力和弦 5：pcs 与记号", eq(chordPcs({ degree: 1, quality: "5" }, C).pcs, [0, 7])
+			&& formatInline({ degree: 1, acc: 0, quality: "5", bass: null }, "degree", C) === "15");
+}
+
+// 工程文件（.fbchart）往返：MusicXML 装不下的应用私有状态必须一个不丢
+console.log("== chartPack：工程文件往返 ==");
+{
+	const { packChart, unpackChart, unpackChartBundle, chartShareCode, isChartPack, compactChart } = await import("../src/utils/chartPack.js");
+	// 造一首把应用里所有字段都用上的谱子（含配图/标色/节奏型/反复/跳房子/谱中转调/质量记忆）
+	const s = createSong("往返测试");
+	s.key = { root: 9, minor: true };
+	s.timeSig = 3; s.bpm = 88; s.display = "name"; s.enharmonic = -1; s.rowsPerLine = 3; s.colorScheme = "crimson";
+	s.qualityMemory = { "1": "M7", "4": "m7" };
+	s.measures = [];
+	const qs = ["", "M", "m", "7", "M7", "m7", "maj7", "sus4", "dim", "aug", "m7b5"];
+	for (let i = 0; i < 24; i++) {
+		const m = createMeasure(3);
+		m.section = i === 0 ? "主歌1" : i === 8 ? "副歌" : null;
+		m.lyrics = i < 4 ? `歌词${i}` : "";
+		m.repeatStart = i === 8;
+		m.endBar = i === 23 ? "final" : i === 15 ? "repeatEnd" : i === 5 ? "double" : "single";
+		m.house = i === 16 ? 1 : null;
+		if (i === 12) { m.keyRoot = 2; m.keyMinor = false; }
+		m.tint = i % 3 === 0 ? "blue" : null;
+		m.slots = m.slots.map((_, si) => {
+			if (i === 20 && si === 0) return { kind: "rest" };
+			if (i === 20 && si === 1) return { kind: "hold" };
+			if (i === 18 && si === 0) {
+				const d = { kind: "chord", chord: { degree: 1, acc: 0, quality: "M7", bass: null } };
+				return { ...d, split: [{ ...d }, { kind: "chord", chord: { degree: 5, acc: 0, quality: "7", bass: { degree: 3, acc: 0 } } }] };
+			}
+			if (i === 19 && si === 0) return { kind: "chord", chord: { degree: 2, acc: 0, quality: "m7", bass: null }, split: [{ kind: "chord", chord: { degree: 2, acc: 0, quality: "m7", bass: null } }, { kind: "empty" }] };
+			const u = { kind: "chord", chord: { degree: (si + i) % 7 + 1, acc: i % 5 === 0 ? -1 : 0, quality: qs[(si * 3 + i) % qs.length], bass: si === 2 ? { degree: 4, acc: -1 } : null } };
+			if (i % 6 === 1 && si === 1) u.rhythm = "ballad";
+			if (i < 2) u.image = { kind: "board", frame: { startFret: 1, endFret: 6, notes: [{ noteId: "o-s0", s: 0, f: 1 }], visibility: [true, false] } };
+			if (i === 2) u.image = { kind: "clip", id: "clip-xyz" };
+			return u;
+		});
+		s.measures.push(m);
+	}
+	// 归一化：可选键取 null 与不存在在应用里等价（如清除标色留下的 tint:null），比较时统一抹平
+	const norm = (v) => {
+		if (Array.isArray(v)) return v.map(norm);
+		if (v && typeof v === "object") {
+			const o = {};
+			for (const k of Object.keys(v)) {
+				if (v[k] === null || v[k] === undefined) continue;
+				o[k] = norm(v[k]);
+			}
+			return o;
+		}
+		return v;
+	};
+	const deepDiff = (a, b, path = "", out = []) => {
+		if (JSON.stringify(norm(a)) === JSON.stringify(norm(b))) return out;
+		if (out.length > 8) return out;
+		const both = a && b && typeof a === "object" && typeof b === "object";
+		if (!both) { out.push(path || "(根)"); return out; }
+		const ka = Object.keys(a), kb = Object.keys(b);
+		for (const k of ka) if (!kb.includes(k)) out.push(`${path}.${k} 往返后消失`);
+		for (const k of kb) if (!ka.includes(k)) out.push(`${path}.${k} 往返后多出`);
+		for (const k of ka) if (kb.includes(k)) deepDiff(a[k], b[k], `${path}.${k}`, out);
+		return out;
+	};
+
+	const packed = packChart(s);
+	const back = unpackChart(packed);
+	// updatedAt 按设计取导入时刻，不参与比较
+	const dropTs = (o) => { delete o.updatedAt; return o; };
+	delete s.updatedAt; delete back.updatedAt;
+	const diffs = deepDiff(s, back);
+	A("工程文件往返无差异", diffs.length === 0, diffs.join(" / "));
+	A("分享码往返无差异", deepDiff(s, dropTs(unpackChart(chartShareCode(s)))).length === 0);
+	A("裸紧凑 JSON 往返无差异", deepDiff(s, dropTs(unpackChart(JSON.stringify(compactChart(s))))).length === 0);
+	A("配图被带上（board）", back.measures[0].slots[0].image?.kind === "board" && !!back.measures[0].slots[0].image.frame);
+	A("配图被带上（clip）", back.measures[2].slots[0].image?.id === "clip-xyz");
+	A("小节标色被带上", back.measures[0].tint === "blue");
+	A("休止/延音不被压成空拍", back.measures[20].slots[0].kind === "rest" && back.measures[20].slots[1].kind === "hold");
+	A("节奏型被带上", back.measures[7].slots[1].rhythm === "ballad");
+	A("质量记忆被带上", back.qualityMemory?.["1"] === "M7");
+	A("谱中转调被带上", back.measures[12].keyRoot === 2 && back.measures[12].keyMinor === false);
+	A("反拍拆分带低音往返", eq(back.measures[18].slots[0].split[1].chord.bass, { degree: 3, acc: 0 }));
+	A("显示设置（记谱/等音/每行/色系）", back.display === "name" && back.enharmonic === -1 && back.rowsPerLine === 3 && back.colorScheme === "crimson");
+	A("小节 id 保持（React key 稳定）", back.measures.every((m, i) => m.id === s.measures[i].id));
+	const size = Buffer.byteLength(packed, "utf8");
+	A("工程文件体积 < 6KB（24 小节满谱）", size < 6144, `${size} B`);
+	A("isChartPack 认工程文件与分享码", isChartPack(packed) && isChartPack(chartShareCode(s)));
+	A("isChartPack 不误认 MusicXML", !isChartPack('<?xml version="1.0"?><score-partwise><part/></score-partwise>'));
+
+	// ===== 动图配图内嵌：只存 id 的话换台机器就是悬空引用 =====
+	console.log("== chartPack：动图配图内嵌 ==");
+	const { buildSongClip } = await import("../src/utils/chartFrames.js");
+	const chT2 = (t) => chordFromDegreeToken(t);
+	const M2 = (slots) => ({ id: "m-" + Math.random().toString(36).slice(2, 6), section: null, lyrics: "", repeatStart: false, endBar: "single", house: null, slots });
+	const clipSong = { name: "动图源", key: C, timeSig: 4, bpm: 80, enharmonic: 1, colorScheme: "navy",
+		measures: [M2([{ kind: "chord", chord: chT2("1") }, { kind: "chord", chord: chT2("4") }, { kind: "chord", chord: chT2("5") }, { kind: "chord", chord: chT2("6m") }]),
+			M2([{ kind: "chord", chord: chT2("2m") }, { kind: "chord", chord: chT2("5") }, { kind: "chord", chord: chT2("1") }, { kind: "chord", chord: chT2("4") }])] };
+	const realClip = buildSongClip(clipSong, C).clip; // 8 帧 + 过渡，真实形状
+	// 给谱子挂上：一个真 clip 引用 + 一个 board 帧（字段带全：frameTint/displayMode/rootNote/visibility）
+	const withMedia = JSON.parse(JSON.stringify(s));
+	withMedia.measures[0].slots[0].image = { kind: "clip", id: realClip.id };
+	withMedia.measures[0].slots[1].image = { kind: "clip", id: "clip-xyz" }; // 本机没有的引用：保持原样不崩
+	withMedia.measures[0].slots[2].image = { kind: "board", frame: {
+		data: { "f1-s3": { type: "note", color: { name: "navy", custom: "rgb(204, 224, 250)" }, color2: null, visibility: "visible" },
+			"o-s0": { type: "note", color: { name: "gold", custom: "rgb(243, 186, 98)" }, color2: { name: "blue", custom: "rgb(61, 139, 255)" }, visibility: "transparent" } },
+		startFret: 0, endFret: 12, enharmonic: 1, displayMode: "note", rootNote: 0, visibility: "transparent",
+		frameTint: { name: "navy", custom: "rgb(204, 224, 250)" } } };
+	const mediaPacked = packChart(withMedia, { clips: [realClip] });
+	const bundle = unpackChartBundle(mediaPacked);
+	const clipBack = bundle.clips.find(c => c.id === realClip.id);
+	A("内嵌 clip 随文件带回", !!clipBack);
+	A("clip 深比较一致（帧/过渡/名字/时间戳）", clipBack && deepDiff(realClip, clipBack).length === 0,
+		clipBack ? deepDiff(realClip, clipBack).join(" / ") : "missing");
+	A("帧数与过渡数不缩水", clipBack && clipBack.frames.length === realClip.frames.length && clipBack.transitions.length === realClip.transitions.length);
+	A("音符颜色逐字段还原", (() => {
+		const f0 = clipBack.frames[0], r0 = realClip.frames[0];
+		const id0 = Object.keys(r0.data)[0];
+		return JSON.stringify(f0.data[id0]) === JSON.stringify(r0.data[id0]);
+	})());
+	A("board 帧整帧还原（含 frameTint/color2/各元数据）", (() => {
+		const orig = withMedia.measures[0].slots[2].image.frame;
+		const back = unpackChartBundle(packChart(withMedia, { clips: [realClip] })).song.measures[0].slots[2].image.frame;
+		return JSON.stringify(back) === JSON.stringify(orig);
+	})());
+	A("本机没有的 clip 引用原样保留（不虚构数据）", bundle.song.measures[0].slots[1].image?.id === "clip-xyz");
+	A("谱体本身往返仍一致（含新配图字段）", (() => {
+		const b2 = unpackChartBundle(packChart(withMedia, { clips: [realClip] })).song;
+		delete withMedia.updatedAt; delete b2.updatedAt;
+		return deepDiff(withMedia, b2).length === 0;
+	})());
+	// raw 兜底：clip 带未知顶层键 / 帧带未知字段 → 原样保存，不丢
+	const weirdClip = { ...JSON.parse(JSON.stringify(realClip)), futureField: { a: 1 } };
+	const weirdBack = unpackChartBundle(packChart(withMedia, { clips: [weirdClip] })).clips.find(c => c.id === realClip.id);
+	A("未知字段的 clip 原样带回（raw 兜底）", weirdBack && JSON.stringify(weirdBack.futureField) === '{"a":1}' && deepDiff(weirdClip, weirdBack).length === 0);
+	// 尺寸：内嵌 8 帧动图 + board 帧之后的真实增量
+	const noMediaSize = Buffer.byteLength(packed, "utf8");
+	const mediaSize = Buffer.byteLength(mediaPacked, "utf8");
+	console.log(`   尺寸：纯谱 ${noMediaSize} B → +8帧动图×1 +board×1 +悬空引用 = ${mediaSize} B（内嵌增量 ${(mediaSize - noMediaSize)} B）`);
+	A("版本过新时报错而不是静默出错谱", (() => {
+		const bad = JSON.stringify({ ...compactChart(s), v: 99 });
+		try { unpackChart(bad); return false; } catch (e) { return /版本/.test(e.message); }
+	})());
+	A("空/垃圾输入报错", (() => {
+		let ok = 0;
+		for (const bad of ["", "   ", "这不是工程文件"]) { try { unpackChart(bad); } catch (e) { ok++; } }
+		return ok === 3;
+	})());
+
+	// 变化音随工程文件往返（extras 追加式编码，与旧文件互相兼容）
+	const altSong = JSON.parse(JSON.stringify(s));
+	altSong.measures[0].slots[1] = { kind: "chord", chord: { degree: 5, acc: 0, quality: "7", bass: null, alt: ["b9", "b13"] } };
+	altSong.measures[0].slots[2] = { kind: "chord", chord: { degree: 2, acc: 0, quality: "m7-5", bass: null } };
+	const altBack = unpackChart(packChart(altSong, { clips: [realClip] }));
+	A("变化音随工程文件往返", eq(altBack.measures[0].slots[1].chord.alt, ["b9", "b13"]));
+	A("新质量 m7-5 随工程文件往返", altBack.measures[0].slots[2].chord.quality === "m7-5");
+	// MusicXML <degree> 往返：7b9b13 进出一致；新质量 kind 映射往返
+	const { exportMusicXml, importMusicXml } = await import("../src/utils/musicxmlChart.js");
+	const altXmlSong = { ...altSong, key: C, measures: altSong.measures.map((m, i) => i === 0 ? { ...m, slots: m.slots.slice(0, 3) } : m) };
+	const altXml = exportMusicXml(altXmlSong, () => C);
+	A("导出 XML 带 <degree>", altXml.includes("<degree-value>9</degree-value>") && altXml.includes("<degree-alter>-1</degree-alter>"));
+	const altXmlBack = importMusicXml(altXml, "x");
+	A("MusicXML degree 往返还原 alt", eq(altXmlBack.measures[0].slots[1]?.chord?.alt, ["b9", "b13"]), JSON.stringify(altXmlBack.measures[0].slots[1]?.chord));
+	const natXmlSong = { ...altXmlSong, measures: altXmlSong.measures.map((m, i) => i === 0
+		? { ...m, slots: [{ kind: "chord", chord: { degree: 5, acc: 0, quality: "7", bass: null, alt: ["9", "13"] } }, { kind: "chord", chord: { degree: 5, acc: 0, quality: "7", bass: null, alt: ["b5", "#9"] } }, { kind: "empty" }, { kind: "empty" }] } : m) };
+	const natXmlBack = importMusicXml(exportMusicXml(natXmlSong, () => C), "x");
+	A("自然音级/五音层经 MusicXML 往返", eq(natXmlBack.measures[0].slots[0]?.chord?.alt, ["9", "13"])
+		&& eq(natXmlBack.measures[0].slots[1]?.chord?.alt, ["b5", "#9"]),
+		JSON.stringify([natXmlBack.measures[0].slots[0]?.chord?.alt, natXmlBack.measures[0].slots[1]?.chord?.alt]));
+	const qOnlySong = { ...altXmlSong, measures: altXmlSong.measures.map((m, i) => i === 0
+		? { ...m, slots: [{ kind: "chord", chord: { degree: 1, acc: 0, quality: "maj9", bass: null } }, { kind: "chord", chord: { degree: 2, acc: 0, quality: "m7-5", bass: null } }, { kind: "chord", chord: { degree: 7, acc: 0, quality: "dim7", bass: null } }, { kind: "empty" }] } : m) };
+	const qXmlBack = importMusicXml(exportMusicXml(qOnlySong, () => C), "x");
+	A("maj9/m7-5/dim7 经 MusicXML kind 往返",
+		qXmlBack.measures[0].slots[0]?.chord?.quality === "maj9"
+		&& qXmlBack.measures[0].slots[1]?.chord?.quality === "m7-5"
+		&& qXmlBack.measures[0].slots[2]?.chord?.quality === "dim7",
+		JSON.stringify(qXmlBack.measures[0].slots.slice(0, 3).map(x => x?.chord?.quality)));
+}
+
+console.log("== chordChartModel：插入一拍 ==");
+{
+	const { insertBeatAt } = await import("../src/utils/chordChartModel.js");
+	const chT = (t) => chordFromDegreeToken(t);
+	const withChords = () => ({ ...createMeasure(4), slots: [
+		{ kind: "chord", chord: chT("1") }, { kind: "chord", chord: chT("4") },
+		{ kind: "rest" }, { kind: "chord", chord: chT("5") }
+	] });
+	const m1 = insertBeatAt(withChords(), 1);
+	A("长度不变（不增长小节）", m1.slots.length === 4);
+	A("光标处变成空拍", m1.slots[1].kind === "empty");
+	A("原光标起的拍右移", eq(m1.slots.slice(2).map(s => s.kind), ["chord", "rest"]));
+	A("末拍被挤出丢弃（5 消失）", m1.slots.every(s => !(s.kind === "chord" && s.chord.degree === 5)));
+	A("插入不改变原 measure（纯函数）", withChords().slots[1].chord.degree === 4);
+
+	const m0 = insertBeatAt(withChords(), 0);
+	A("插在首拍：1/4 依次右移", eq(m0.slots.map(s => s.kind), ["empty", "chord", "chord", "rest"]));
+
+	const mEnd = insertBeatAt(withChords(), 99);
+	A("越界钳到末拍", mEnd.slots.length === 4 && mEnd.slots[3].kind === "empty" && mEnd.slots[2].kind === "rest");
+
+	// 连续插入两拍：内容整体再右移一格
+	const twice = insertBeatAt(insertBeatAt(withChords(), 1), 1);
+	A("连插两拍累计右移", eq(twice.slots.map(s => s.kind), ["chord", "empty", "empty", "chord"]));
+
+	A("拍号 3/4 也按 3 拍处理", insertBeatAt(createMeasure(3), 1).slots.length === 3);
+	A("单拍小节不动（防御）", insertBeatAt({ ...createMeasure(2), slots: [{ kind: "empty" }] }, 0).slots.length === 1);
+
+	// 与右移语义配套：resizeMeasure 缩拍号后插入仍安全
+	const shrunk = resizeMeasure(withChords(), 2);
+	A("缩到 2 拍后插入仍 2 拍", insertBeatAt(shrunk, 1).slots.length === 2);
+}
+
 console.log(fail ? `\n✗ ${fail}/${n} 断言失败` : `\n✓ 全部 ${n} 项断言通过`);
 process.exit(fail ? 1 : 0);

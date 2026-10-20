@@ -9,6 +9,10 @@ import { MAJOR_STEPS, MINOR_STEPS, NOTE_NAMES, LETTER_SEMITONES } from "./songSt
 export const CHORD_INTERVALS = {
 	"": [0, 4, 7],
 	m: [0, 3, 7],
+	"5": [0, 7],
+	maj9: [0, 4, 7, 11, 14],
+	m9: [0, 3, 7, 10, 14],
+	"m7-5": [0, 3, 6, 10],
 	7: [0, 4, 7, 10],
 	m7: [0, 3, 7, 10],
 	maj7: [0, 4, 7, 11],
@@ -21,6 +25,17 @@ export const CHORD_INTERVALS = {
 	dim: [0, 3, 6],
 	aug: [0, 4, 8],
 	dim7: [0, 3, 6, 9]
+};
+
+// 变化音（extension alterations）：叠在质量之上，可多个共存 —— 57b9b13、1M7#11 这类
+// 体系 = 音级 5/9/11/13 × 降/原/升；记法用 ASCII（b/#），与级数变音一致
+// 5 音层的 b5/#5 与 11 层的 #11/b13 在 pitch class 上等音（+6/+8），但记法与八度落位不同
+export const ALT_ORDER = ["b5", "#5", "b9", "9", "#9", "b11", "11", "#11", "b13", "13", "#13"];
+export const ALT_INTERVALS = {
+	b5: 6, "#5": 8,
+	b9: 13, "9": 14, "#9": 15,
+	b11: 16, "11": 17, "#11": 18,
+	b13: 20, "13": 21, "#13": 22
 };
 
 export const QUALITIES = Object.keys(CHORD_INTERVALS);
@@ -82,7 +97,7 @@ export function chordFromDegreeToken(token) {
 
 export function formatDegree(chord) {
 	if (!chord) return "";
-	let out = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}${chord.quality || ""}`;
+	let out = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}${chord.quality || ""}${altText(chord)}`;
 	if (chord.bass) out += `/${ACC_SIGN[String(chord.bass.acc || 0)]}${chord.bass.degree}`;
 	return out;
 }
@@ -111,7 +126,7 @@ export function formatName(chord, viewKey) {
 	if (!chord) return "";
 	const accPref = (a) => (a < 0 ? "flat" : a > 0 ? "sharp" : null);
 	const root = nameOfPc(degreePc(chord.degree, chord.acc, viewKey), viewKey, accPref(chord.acc || 0));
-	let out = root + resolvedQuality(chord, viewKey);
+	let out = root + resolvedQuality(chord, viewKey) + altText(chord);
 	if (chord.bass) {
 		out += "/" + nameOfPc(degreePc(chord.bass.degree, chord.bass.acc, viewKey), viewKey, accPref(chord.bass.acc || 0));
 	}
@@ -194,11 +209,43 @@ export function formatRomanParts(chord, viewKey) {
 	const main = lowerTriad ? head.toLowerCase() : head;
 	let sub = "";
 	if (q !== "" && q !== "m") {
-		const extMap = { maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
+		const extMap = { "5": "5", maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", m9: "9", maj9: "maj9", "m7-5": "7-5", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
 		sub = extMap[q] ?? (chord.quality || "");
 	}
+	sub += altText(chord);
 	if (chord.bass) sub = (sub ? sub + " " : "") + "/" + roman(chord.bass.degree, chord.bass.acc).toLowerCase();
 	return { main, sub };
+}
+
+// 记号的结构化分解（给 UI 把级数装进圆角框用）：
+//   degree = 级数（含变音记号，罗马模式=罗马数字大小写）→ 装框
+//   suffix = 质量后缀 + 变化音（小字跟在框外）
+//   bass   = "/n" 转位低音（再小一号）
+// 音名模式不分层，返回 flat = 整个音名（音名本身自分隔）
+export function chordSignParts(chord, display, viewKey) {
+	if (!chord) return null;
+	if (display === "name") return { degree: "", suffix: "", bass: "", flat: formatName(chord, viewKey) };
+	if (display === "roman") {
+		const p = formatRomanParts(chord, viewKey);
+		const toks = p.sub ? p.sub.split(" ") : [];
+		return {
+			degree: p.main,
+			suffix: toks.filter(t => !t.startsWith("/")).join(""),
+			bass: toks.find(t => t.startsWith("/")) || ""
+		};
+	}
+	const q = resolvedQuality(chord, viewKey);
+	const head = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}`;
+	const triadMap = { "": "", m: "m" };
+	const triadOf = { m7: "m", m6: "m", m9: "m", "m7-5": "m" };
+	const extMap = { maj7: "maj7", "7": "7", m7: "7", "9": "9", m9: "9", maj9: "maj9", "m7-5": "7-5", add9: "add9", "6": "6", m6: "6", sus4: "sus4", sus2: "sus2", dim: "°", dim7: "°7", aug: "+", "5": "5" };
+	let suffix;
+	if (triadMap[q] !== undefined) suffix = triadMap[q];
+	else if (extMap[q] !== undefined) suffix = (triadOf[q] || "") + extMap[q];
+	else suffix = chord.quality || "";
+	suffix += altText(chord);
+	const bass = chord.bass ? "/" + `${ACC_SIGN[String(chord.bass.acc || 0)]}${chord.bass.degree}` : "";
+	return { degree: head, suffix, bass };
 }
 
 // 单行内联记号（8pu 式）：4M7 / 57（属七省 M）/ 6m / 5M/7 / 4sus4 / 7° —— 主行+副行串成一行
@@ -218,17 +265,19 @@ export function chordParts(chord, display, viewKey) {
 	const head = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}`;
 	let main = head, sub = "";
 	const triadMap = { "": "", m: "m" }; // 大三和弦省字母（1 不写 1M），小三写 m
-	const extMap = { maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
+	const extMap = { "5": "5", maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", m9: "9", maj9: "maj9", "m7-5": "7-5", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
 	if (triadMap[q] !== undefined) {
 		main = head + triadMap[q];
+		sub = altText(chord);
 	} else if (extMap[q] !== undefined) {
 		// 七/六/九族：主行只带小三质量（属七/六/九默认大三省字母），maj7 全写；
 		// dim/aug/sus 无三和弦质量可言，主行只写级数
-		const triadOf = { m7: "m", m6: "m" }[q] || "";
+		const triadOf = { m7: "m", m6: "m", "m9": "m", "m7-5": "m" }[q] || "";
 		main = head + triadOf;
-		sub = extMap[q];
+		sub = extMap[q] + altText(chord);
 	} else {
 		main = head + (chord.quality || "");
+		sub = altText(chord);
 	}
 	if (chord.bass) sub = (sub ? sub + " " : "") + "/" + `${ACC_SIGN[String(chord.bass.acc || 0)]}${chord.bass.degree}`;
 	return { main, sub };
@@ -239,7 +288,7 @@ export function chordParts(chord, display, viewKey) {
 // 和弦音 pitch class 集（含转位低音；返回 { root, pcs }，pcs 去重升序）
 export function chordPcs(chord, key) {
 	const root = degreePc(chord.degree, chord.acc, key);
-	const intervals = CHORD_INTERVALS[resolvedQuality(chord, key)] || CHORD_INTERVALS[""];
+	const intervals = chordIntervals(chord, key);
 	const pcs = new Set([root, ...intervals.map(i => (root + i) % 12)]);
 	if (chord.bass) pcs.add(degreePc(chord.bass.degree, chord.bass.acc, key));
 	return { root, pcs: [...pcs].sort((a, b) => a - b) };
@@ -249,8 +298,29 @@ export function chordPcs(chord, key) {
 export function chordMidi(chord, key, octave = 3) {
 	const root = degreePc(chord.degree, chord.acc, key);
 	const base = 12 * (octave + 1) + root;
-	const intervals = CHORD_INTERVALS[resolvedQuality(chord, key)] || CHORD_INTERVALS[""];
-	return intervals.map(i => base + i);
+	return chordIntervals(chord, key).map(i => base + i);
+}
+
+// 质量音程 + 变化音音程
+// 语义按音级分两类：9/11/13 是「叠加」（add），b5/#5 是「替换」——7b5 不含自然五音
+function chordIntervals(chord, key) {
+	const base = CHORD_INTERVALS[resolvedQuality(chord, key)] || CHORD_INTERVALS[""];
+	const alts = chord.alt || [];
+	const has = t => alts.includes(t);
+	let out = base;
+	if (has("b5") || has("#5")) out = out.filter(i => i !== 7);
+	const added = alts.map(t => ALT_INTERVALS[t]).filter(v => v != null);
+	return added.length ? [...out, ...added] : out;
+}
+
+// 变化音文本（规范序）；无则空串。
+// 全带变音记号时直接连写（7b9b13，通行记法）；含自然音级时括号+逗号（7(9,13)），避免 7913 歧义
+export function altText(chord) {
+	if (!chord || !Array.isArray(chord.alt) || !chord.alt.length) return "";
+	const toks = ALT_ORDER.filter(t => chord.alt.includes(t));
+	if (!toks.length) return "";
+	const allAccidental = toks.every(t => t.startsWith("b") || t.startsWith("#"));
+	return allAccidental ? toks.join("") : `(${toks.join(",")})`;
 }
 
 // 转位低音 pitch class（无 bass 即根音）
@@ -260,7 +330,7 @@ export function bassPc(chord, key) {
 
 export function sameChord(a, b) {
 	if (!a || !b) return false;
-	const keyOf = (c) => `${c.acc || 0}|${c.degree}|${c.quality || ""}|${c.bass ? `${c.bass.acc || 0}|${c.bass.degree}` : ""}`;
+	const keyOf = (c) => `${c.acc || 0}|${c.degree}|${c.quality || ""}|${(c.alt || []).join(",")}|${c.bass ? `${c.bass.acc || 0}|${c.bass.degree}` : ""}`;
 	return keyOf(a) === keyOf(b);
 }
 
@@ -277,7 +347,10 @@ export const QUALITY_TO_KIND = {
 	aug: "augmented",
 	sus4: "suspended-fourth",
 	sus2: "suspended-second",
-	dim7: "diminished-seventh"
+	dim7: "diminished-seventh",
+	maj9: "major-ninth",
+	m9: "minor-ninth",
+	"m7-5": "half-diminished"
 };
 
 export const KIND_TO_QUALITY = Object.fromEntries(

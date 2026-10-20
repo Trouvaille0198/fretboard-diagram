@@ -6,12 +6,14 @@ import { AttachPicker, AttachView } from "./AttachEditor";
 import { Toast } from "./Toast";
 import audioService from "../services/audioService";
 import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken } from "../utils/chordLib";
+import { ChordSign } from "./ChordSign";
 import {
-	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure
+	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatAt
 } from "../utils/chordChartModel";
 import { buildPlayPlan } from "../utils/chartPlayback";
 import { buildSongClip, stageFrame } from "../utils/chartFrames";
 import { exportMusicXml, importMusicXml } from "../utils/musicxmlChart";
+import { packChart, unpackChartBundle, chartShareCode, isChartPack } from "../utils/chartPack";
 import { saveClip } from "../utils/clipModel";
 import { saveToRememberedDir, rememberedDirSupported } from "../utils/saveFile";
 
@@ -32,13 +34,21 @@ const END_BARS = [
 ];
 
 // 和弦谱页（8pu 式和弦谱复刻）：格子谱面 + 键盘编辑 + 播放 + 移调 + MusicXML + 一键动图
-export function ChordChartView() {
+export function ChordChartView({ songId }) {
 	const { t } = useLanguage();
 	const ts = t?.chords ?? {};
 
+	const routedId = songId || null;
 	const [charts, setCharts] = useState(() => loadCharts());
-	const [currentId, setCurrentId] = useState(() => (loadCharts()[0] || {}).id ?? null);
-	const [song, setSong] = useState(() => loadCharts()[0] || createSong("第一首歌"));
+	const [currentId, setCurrentId] = useState(() => routedId ?? (loadCharts()[0] || {}).id ?? null);
+	const [song, setSong] = useState(() => {
+		const list = loadCharts();
+		return (routedId && list.find(c => c.id === routedId)) || list[0] || createSong(ts.firstSong ?? "第一首歌");
+	});
+	// 路由 id 不存在（被删/链错）：退回曲目列表页
+	useEffect(() => {
+		if (routedId && !loadCharts().some(c => c.id === routedId)) window.location.replace('#/chords');
+	}, [routedId]);
 	const [cursor, setCursor] = useState({ mi: 0, si: 0, half: null });
 	const [transposeRoot, setTransposeRoot] = useState(null); // null = 原调；数字 = 移调后 root pc
 	const [playing, setPlaying] = useState(null); // { mi, si, half } 当前发声槽
@@ -61,20 +71,23 @@ export function ChordChartView() {
 	const [toast, setToast] = useState(null); // { msg, key } 应用内轻提示（替代 alert）
 	// 应用内对话框（替代原生 prompt/confirm/alert）：{ type:'prompt'|'confirm'|'alert', title, label?, value?, text?, onOk }
 	const [dialog, setDialog] = useState(null);
+	
 	const dialogInputRef = useRef(null);
 	const showToast = (msg) => setToast({ msg, key: Date.now() });
 	const clipRef = useRef(null); // Ctrl+C/V 剪贴板：{type:'chord',chord} | {type:'measure',slots}
 	const dragRef = useRef(false); // 复制模式拖选中
+	const hoverBeatRef = useRef(null); // 鼠标悬停的拍子：hover + Backspace 直接清那个拍，不必先点选它
 	const typeRef = useRef({ t: 0, mode: null, sub: null }); // 键入状态：mode='degree'|'name'，sub='bass'
 
 	useEffect(() => {
 		if (!popupOpen) return;
-		const close = (e) => { if (!e.target.closest(".cc-cp, .cc-beat, .cc-cell-menu-btn, .cc-mmenu")) setPopupOpen(false); };
+		const close = (e) => { if (!e.target.closest(".cc-cp, .cc-beat, .cc-mmenu")) setPopupOpen(false); };
 		document.addEventListener("mousedown", close);
 		return () => document.removeEventListener("mousedown", close);
 	}, [popupOpen]);
 
-	// 就地面板定位（absolute 相对谱面；面板矮，下方不足翻上方）
+	// 就地面板定位：以视口为准先算弹层顶边，再换算回谱面坐标（弹层 absolute 于谱面，随内容滚动）。
+	// 下方放得下朝下，上方放得下才朝上；两边都放不下选空间大的一边并贴边钳制——绝不开出屏幕。
 	useEffect(() => {
 		const place = () => {
 			if (!popupOpen) { setPopupPos(null); return; }
@@ -83,17 +96,24 @@ export function ChordChartView() {
 			if (!score || !el) { setPopupPos(null); return; }
 			const sr = score.getBoundingClientRect();
 			const r = el.getBoundingClientRect();
-			const ph = popupRef.current ? popupRef.current.offsetHeight : 216;
-			const openUp = window.innerHeight - 74 - r.bottom < ph + 14;
-			const left = Math.max(4, Math.min(r.left - sr.left, sr.width - 340));
-			const top = openUp ? null : r.bottom - sr.top + 8;
-			const bottom = openUp ? sr.height - (r.top - sr.top) + 8 : null;
-			setPopupPos(prev => (prev && prev.left === left && prev.top === top && prev.bottom === bottom) ? prev : { left, top, bottom });
+			const ph = popupRef.current ? popupRef.current.offsetHeight : 320;
+			const pw = popupRef.current ? popupRef.current.offsetWidth : 404;
+			const topInset = 60; // 应用顶栏高度：弹层不许钻到它底下
+			const gap = 8;
+			const spaceBelow = window.innerHeight - gap - r.bottom;
+			const spaceAbove = r.top - topInset - gap;
+			const openUp = spaceBelow >= ph ? false : (spaceAbove >= ph ? true : spaceAbove > spaceBelow);
+			const left = Math.max(4, Math.min(r.left - sr.left, sr.width - pw - 8));
+			let vpTop = openUp ? Math.max(topInset + gap, r.top - gap - ph)
+				: Math.min(r.bottom + gap, window.innerHeight - gap - ph);
+			vpTop = Math.max(topInset + gap, Math.min(vpTop, window.innerHeight - gap - ph));
+			const top = Math.round(vpTop - sr.top);
+			setPopupPos(prev => (prev && prev.left === left && prev.top === top) ? prev : { left, top });
 		};
 		place();
 		const id = requestAnimationFrame(place);
 		return () => cancelAnimationFrame(id);
-	}, [popupOpen, cursor, song]);
+	}, [popupOpen, cursor]); // 故意不依赖 song：编辑内容时菜单位置冻结，点了什么都不要动
 
 	// 复制模式：松手结束拖选
 	useEffect(() => {
@@ -105,7 +125,7 @@ export function ChordChartView() {
 
 	useEffect(() => {
 		if (cellMenu === null) return;
-		const close = (e) => { if (!e.target.closest(".cc-mmenu, .cc-cell-menu-btn")) setCellMenu(null); };
+		const close = (e) => { if (!e.target.closest(".cc-mmenu")) setCellMenu(null); };
 		document.addEventListener("mousedown", close);
 		return () => document.removeEventListener("mousedown", close);
 	}, [cellMenu]);
@@ -281,12 +301,16 @@ export function ChordChartView() {
 	};
 
 	// 转调步进器：♭/♯ 相对升降半音 + 小调开关 + 清除（回原调）；mi 为空用光标小节
+	// 调回到与歌曲原调相同时自动清掉标记，不留"1 = C"这种冗余的同调转调
 	const keyStepper = (mi) => {
 		const target = mi != null ? mi : cursor.mi;
 		const m = song.measures[target] || {};
 		const cur = m.keyRoot ?? song.key.root;
 		const minor = m.keyRoot != null ? !!m.keyMinor : song.key.minor;
-		const setKey = (root, m2) => patchMeasure(target, x => ({ ...x, keyRoot: root, keyMinor: m2 }));
+		const setKey = (root, m2) => patchMeasure(target, x => {
+			const sameAsSong = root === song.key.root && !!m2 === !!song.key.minor;
+			return { ...x, keyRoot: sameAsSong ? null : root, keyMinor: sameAsSong ? undefined : m2 };
+		});
 		return (
 			<span className="cc-key-stepper">
 				<b>1 = {PC_KEY[cur]}{minor ? "m" : ""}</b>
@@ -501,6 +525,17 @@ export function ChordChartView() {
 		for (let i = 0; i < pad + per; i++) measures.push(createMeasure(s.timeSig));
 		return { ...s, measures };
 	});
+
+	// 插入一拍：光标处插入空拍并停在那里，后面的拍整体右移，本小节末拍被挤出丢弃
+	const insertBeat = (mi = cursor.mi, si = cursor.si) => {
+		const n = song.measures[mi]?.slots.length || 0;
+		if (n < 2) return;
+		const at = Math.min(si, n - 1);
+		commitTyped();
+		patchMeasure(mi, m => insertBeatAt(m, at));
+		setCursor({ mi, si: at, half: null });
+		showToast(ts.insertBeatToast ?? "已插入一拍，本小节末拍被挤出");
+	};
 
 	const removeMeasure = (mi) => {
 		if (song.measures.length <= 1) return;
@@ -719,6 +754,12 @@ export function ChordChartView() {
 				promptSection(cursor.mi);
 				return;
 			}
+			if (e.key === "Insert" || (e.key === "Enter" && e.shiftKey)) {
+				// 插入一拍：与 Enter（拆分当前拍）成对；Shift+Enter 是给没有 Insert 键的笔记本用的
+				e.preventDefault();
+				insertBeat(cursor.mi, cursor.si);
+				return;
+			}
 			if (e.key === "Enter") { e.preventDefault(); commitTyped(); toggleSplit(); return; }
 			switch (e.key) {
 				case "ArrowLeft": e.preventDefault();
@@ -736,7 +777,23 @@ export function ChordChartView() {
 				case "ArrowDown": e.preventDefault(); moveCursor(1, 0); break;
 				case "b": e.preventDefault(); if (currentUnit?.kind === "chord" && currentUnit.chord) patchCurrentUnit({ chord: { ...currentUnit.chord, acc: -1 } }); break;
 				case "#": e.preventDefault(); if (currentUnit?.kind === "chord" && currentUnit.chord) patchCurrentUnit({ chord: { ...currentUnit.chord, acc: 1 } }); break;
-				case "Backspace": e.preventDefault(); patchCurrentUnit({ kind: "empty", chord: undefined, split: undefined }); break;
+				case "Backspace": {
+					e.preventDefault();
+					const h = hoverBeatRef.current;
+					if (h && h !== null && !(h.mi === cursor.mi && h.si === cursor.si && h.half == null)) {
+						// 悬停清除：光标原地不动，直接清悬停的那个拍（整拍，含拆分）
+						const target = h;
+						patchMeasure(target.mi, m => {
+							if (target.si < 0 || target.si >= m.slots.length) return m;
+							const slots = m.slots.slice();
+							slots[target.si] = { kind: "empty" };
+							return { ...m, slots };
+						});
+						break;
+					}
+					patchCurrentUnit({ kind: "empty", chord: undefined, split: undefined });
+					break;
+				}
 				default: break;
 			}
 		};
@@ -746,9 +803,9 @@ export function ChordChartView() {
 
 	// ============ 导入导出 / 动图 ============
 
-	const doExportXml = async () => {
-		const blob = new Blob([exportMusicXml(song, keyAtFn)], { type: "application/xml;charset=utf-8" });
-		const name = `${song.name || "chord-chart"}.musicxml`;
+	// 落盘：优先写记忆目录，否则浏览器下载
+	const downloadText = async (text, name, mime) => {
+		const blob = new Blob([text], { type: mime });
 		const saved = rememberedDirSupported() ? await saveToRememberedDir(name, blob) : null;
 		if (!saved) {
 			const a = document.createElement("a");
@@ -759,31 +816,169 @@ export function ChordChartView() {
 		}
 	};
 
-	const doImportXml = (e) => {
+	// 工程文件（.fbchart）：无损、体积约 MusicXML 的 1/18 —— 主导出通道
+	const doExportChart = async () => {
+		await downloadText(packChart(song), `${song.name || "chord-chart"}.fbchart`, "text/plain;charset=utf-8");
+		showToast(ts.exportedPack ?? "已导出工程文件（含配图、标色等全部内容）");
+	};
+
+	// MusicXML：给 MuseScore 这类通用记谱软件用的交换格式，
+	// 记谱形式/等音/每行小节数/动图色系/标色/休止延音/节奏型/配图 它装不下，会丢——导出后提示用户
+	const doExportXml = async () => {
+		await downloadText(exportMusicXml(song, keyAtFn), `${song.name || "chord-chart"}.musicxml`, "application/xml;charset=utf-8");
+		showToast(ts.xmlLossy ?? "已导出 MusicXML：配图/标色/节奏型等应用私有内容不会包含");
+	};
+
+	const shareChart = async () => {
+		try {
+			await navigator.clipboard.writeText(chartShareCode(song));
+			showToast(ts.sharedCode ?? "分享码已复制（对方在打谱页「从分享码导入」即可 100% 还原）");
+		} catch (e) {
+			showToast(ts.shareFail ?? "复制失败，请改用「导出工程文件」");
+		}
+	};
+
+	// 换上一首导入的谱子
+	const adoptImported = (imported) => {
+		clearHistory();
+		setSong(imported);
+		setTransposeRoot(null);
+		setCursor({ mi: 0, si: 0, half: null });
+		const saved = saveChart(imported);
+		setCharts(loadCharts());
+		setCurrentId(saved.id);
+		if (window.location.hash !== '#/chords?id=' + saved.id) {
+			window.location.hash = '#/chords?id=' + saved.id; // 深链直达这首
+		}
+	};
+
+	// 工程文件载入：谱里带的 id 若已存在，让用户决定覆盖还是另存（不静默改掉现有曲目）
+	// clips = 文件里内嵌的动图（含帧数据）：先落回本机，谱里的 clip 引用才能解析
+	const handlePackImport = (imported, clips) => {
+		const restoreClips = () => (clips || []).forEach(c => saveClip(c));
+		const clash = charts.find(c => c.id === imported.id);
+		if (!clash) { restoreClips(); adoptImported(imported); showToast(ts.importedPack ?? "已导入工程文件"); return; }
+		setDialog({
+			type: "choose",
+			title: ts.importConflict ?? "同名曲目已存在",
+			text: (ts.importConflictText ?? "工程文件里的曲目「{n}」在这台机器上已存在。").replace("{n}", clash.name || imported.name),
+			options: [
+				{ label: ts.overwrite ?? "覆盖现有曲目", danger: true, onPick: () => { restoreClips(); saveChart({ ...imported, id: clash.id }); adoptImported({ ...imported, id: clash.id }); showToast(ts.overwrote ?? "已覆盖"); } },
+				{ label: ts.importAsNew ?? "作为新曲目导入", onPick: () => { restoreClips(); adoptImported(imported); showToast(ts.importedPack ?? "已导入工程文件"); } }
+			]
+		});
+	};
+
+	// 一个入口吃两种格式：本应用工程文件 / MusicXML（按内容自动分流）
+	const doImportFile = (e) => {
 		const file = e.target.files && e.target.files[0];
 		e.target.value = "";
 		if (!file) return;
 		const reader = new FileReader();
 		reader.onload = () => {
+			const text = String(reader.result);
 			try {
-				const imported = importMusicXml(String(reader.result), file.name.replace(/\.musicxml$|\.xml$/i, ""));
+				if (isChartPack(text)) { const { song: packed, clips } = unpackChartBundle(text); handlePackImport(packed, clips); return; }
+				const imported = importMusicXml(text, file.name.replace(/\.musicxml$|\.xml$/i, ""));
 				if (!imported) {
-					setDialog({ type: "alert", title: ts.importXml ?? "导入 XML", text: ts.importFail ?? "没解析出和弦骨架（需要带 harmony 的 MusicXML）" });
+					setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importFail ?? "没解析出和弦骨架（工程文件或带 harmony 的 MusicXML）" });
 					return;
 				}
-				clearHistory();
-				setSong(imported);
-				setTransposeRoot(null);
-				setCursor({ mi: 0, si: 0, half: null });
-				const saved = saveChart(imported);
-				setCharts(loadCharts());
-				setCurrentId(saved.id);
+				adoptImported(imported);
+				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importXmlWarn ?? "已导入 MusicXML。注意：配图、小节标色、节奏型、记谱形式等应用私有内容 MusicXML 装不下，需要它们请改用工程文件（.fbchart）。" });
 			} catch (err) {
 				console.error(err);
-				setDialog({ type: "alert", title: ts.importXml ?? "导入 XML", text: (ts.importFail ?? "导入失败") + "：" + err.message });
+				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: (ts.importFailShort ?? "导入失败") + "：" + err.message });
 			}
 		};
 		reader.readAsText(file);
+	};
+
+	// 从分享码导入（贴一段码即可）
+	const promptImportCode = () => setDialog({
+		type: "prompt", multiline: true,
+		title: ts.importCode ?? "从分享码导入",
+		label: ts.importCodePh ?? "粘贴分享码（fg… 或 fretboard-chart:1:…）",
+		value: "",
+		onOk: (v) => {
+			const code = String(v || "").trim();
+			if (!code) return;
+			try { const { song: packed, clips } = unpackChartBundle(code); handlePackImport(packed, clips); }
+			catch (err) { setDialog({ type: "alert", title: ts.importCode ?? "从分享码导入", text: err.message }); }
+		}
+	});
+
+	// ============ 曲目管理（曲目面板 + 菜单共用） ============
+
+	const switchTo = (next) => {
+		clearHistory();
+		setSong(next);
+		setCurrentId(next.id);
+		setTransposeRoot(null);
+		setCursor({ mi: 0, si: 0, half: null });
+	};
+
+	// 回曲目列表页：先冲刷防抖中的保存，列表那边看到的就是最新内容
+	const goSongList = () => {
+		clearTimeout(saveTimerRef.current);
+		saveChart(songRef.current);
+		window.location.hash = '#/chords';
+	};
+
+	const newSong = () => {
+		const base = ts.newSong ?? "新歌";
+		const used = charts.filter(c => (c.name || "").startsWith(base)).length;
+		const sn = createSong(used ? `${base} ${used + 1}` : base);
+		saveChart(sn);
+		window.location.hash = '#/chords?id=' + sn.id; // 进新歌的编辑页
+	};
+
+	const duplicateChart = (id) => {
+		const src = charts.find(c => c.id === id);
+		if (!src) return;
+		const copy = { ...JSON.parse(JSON.stringify(src)), id: undefined };
+		const sn = createSong(`${src.name || "未命名"} ${ts.copySuffix ?? "副本"}`);
+		const saved = saveChart({ ...copy, id: sn.id, createdAt: Date.now() });
+		setCharts(loadCharts());
+		showToast((ts.duplicated ?? "已复制为「{n}」").replace("{n}", saved.name));
+	};
+
+	const renameChart = (id, name) => {
+		const src = charts.find(c => c.id === id);
+		if (!src) return;
+		const saved = saveChart({ ...src, name });
+		setCharts(loadCharts());
+		if (saved.id === currentId) setSong(s => ({ ...s, name }));
+	};
+
+	// 删除任意曲目（当前正在编辑的那首删掉后，落到剩下的第一首）
+	const removeChartById = (id, skipConfirm) => {
+		const target = charts.find(c => c.id === id);
+		if (!target) return;
+		const doDelete = () => {
+			clearHistory();
+			deleteChart(id);
+			const rest = loadCharts();
+			setCharts(rest);
+			if (id === currentId) { window.location.hash = '#/chords'; return; } // 删的就是这首 → 回列表
+			setCharts(loadCharts());
+			showToast((ts.deleted ?? "已删除「{n}」").replace("{n}", target.name || ""));
+		};
+		if (skipConfirm) { doDelete(); return; }
+		setDialog({
+			type: "confirm",
+			title: ts.delSong ?? "删除这首歌",
+			text: (ts.delConfirmOne ?? "删除「{n}」？（不可撤销）").replace("{n}", target.name || ""),
+			onOk: doDelete
+		});
+	};
+
+	// 导出指定曲目（不切歌也能导出）
+	const exportChartById = async (id) => {
+		const target = charts.find(c => c.id === id);
+		if (!target) return;
+		await downloadText(packChart(target), `${target.name || "chord-chart"}.fbchart`, "text/plain;charset=utf-8");
+		showToast((ts.exportedOne ?? "已导出「{n}」").replace("{n}", target.name || ""));
 	};
 
 	const makeClip = () => {
@@ -832,7 +1027,6 @@ export function ChordChartView() {
 		return [1, 2, 3, 4, 5, 6, 7].map(d => ({ degree: d, acc: 0, quality: "", bass: null }));
 	}, [song]);
 
-	const formatChordDyn = (chord, mi) => formatInline(chord, previewDisplay, keyAt(mi));
 
 	// ============ 渲染（8pu 式格子谱） ============
 
@@ -853,10 +1047,7 @@ export function ChordChartView() {
 	const beatContent = (u, compact, mi) => {
 		if (u.kind === "chord" && u.chord) {
 			// 8pu 式单行内联：1M / 6m / 4M7 / 57 / 5M/7
-			const label = formatInline(u.chord, scoreDisplay, keyAt(mi));
-			return compact
-				? <span className="cc-chordsign-compact">{label}</span>
-				: <span className="cc-chordsign">{label}</span>;
+			return <ChordSign chord={u.chord} display={scoreDisplay} viewKey={keyAt(mi)} compact={compact} />;
 		}
 		if (u.kind === "rest") return <span className="cc-glyph rest">0</span>;
 		if (u.kind === "hold") return <span className="cc-glyph hold">—</span>;
@@ -866,13 +1057,16 @@ export function ChordChartView() {
 	const slotView = (mi, si) => {
 		const slot = song.measures[mi].slots[si];
 		const units = slot.split ? slot.split : [slot];
-		const isCur = cursor.mi === mi && cursor.si === si;
+		// 光标高亮只在编辑态出现：预览是拿出来给人看的，不该带编辑光标
+		const isCur = editing && cursor.mi === mi && cursor.si === si;
 		return (
 			<div
 				key={si}
 				className={`cc-beat ${isCur ? "cur" : ""} ${playing && playing.mi === mi && playing.si === si ? "playing" : ""}`}
 				data-mi={mi}
 				data-si={si}
+				onMouseEnter={() => { hoverBeatRef.current = { mi, si, half: null }; }}
+				onMouseLeave={() => { const h = hoverBeatRef.current; if (h && h.mi === mi && h.si === si) hoverBeatRef.current = null; }}
 				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: null }); setPopupOpen(true); }}
 			>
 				{slot.split ? <span className="cc-beat-splitmark" title={ts.splitTip ?? "反拍拆分（Enter 合并）"}>╱</span> : null}
@@ -901,10 +1095,20 @@ export function ChordChartView() {
 	const cellView = (m, mi) => {
 		const inSel = selRange != null && mi >= selRange[0] && mi <= selRange[1];
 		return (
-			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${cursor.mi === mi ? "cur" : ""} ${inSel ? "sel" : ""} ${selRange != null && mi === selRange[0] ? "sel-first" : ""} ${selRange != null && mi === selRange[1] ? "sel-last" : ""}`}
+			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${editing && cursor.mi === mi ? "cur" : ""} ${inSel ? "sel" : ""} ${selRange != null && mi === selRange[0] ? "sel-first" : ""} ${selRange != null && mi === selRange[1] ? "sel-last" : ""}`}
 				style={!copyMode && m.tint && TINTS[m.tint] ? { background: TINTS[m.tint].bg } : undefined}
 				onMouseDown={e => { if (copyMode) { e.preventDefault(); beginSelDrag(mi); } }}
 				onMouseOver={() => { if (copyMode) extendSelDrag(mi); }}
+				onContextMenu={e => {
+					// 右键小节 = 打开小节设置（替代原来那个悬浮 ⋯ 小按钮）；菜单内右键不劫持
+					if (!editing || copyMode) return;
+					if (e.target.closest(".cc-mmenu")) return;
+					e.preventDefault();
+					const firstEmpty = m.slots.findIndex(sl => (sl.split ? sl.split.every(u => u.kind !== "chord") : sl.kind !== "chord"));
+					setCursor({ mi, si: cursor.mi === mi ? Math.min(cursor.si, m.slots.length - 1) : (firstEmpty === -1 ? 0 : firstEmpty), half: null });
+					setPopupOpen(false);
+					setCellMenu(cellMenu === mi ? null : mi);
+				}}
 				onClick={e => {
 					if (copyMode) return;
 					if (!editing) {
@@ -914,31 +1118,37 @@ export function ChordChartView() {
 						setToolTab("chord");
 						return;
 					}
-					if (e.target.closest(".cc-beat, .cc-cell-lyrics, .cc-cell-menu-btn, .cc-mmenu")) return;
+					if (e.target.closest(".cc-beat, .cc-cell-lyrics, .cc-mmenu")) return;
 					const firstEmpty = m.slots.findIndex(sl => (sl.split ? sl.split.every(u => u.kind !== "chord") : sl.kind !== "chord"));
 					const si = firstEmpty === -1 ? 0 : firstEmpty;
 					setCursor({ mi, si, half: null });
 					setPopupOpen(true);
-				}}>
-				{m.section ? (
-					<span className="cc-sectionmark"
-						title={ts.sectionDel ?? "双击删除段落标记"}
-						onDoubleClick={() => patchMeasure(mi, x => ({ ...x, section: null }))}>
-						{m.section}
-					</span>
+				}}
+				title={editing ? (ts.cellRightClickTip ?? "右键小节：插入 / 复制 / 删除 / 转调 / 标色") : undefined}>
+				{/* 小节级角标（8pu 式，一律在本小节开头）：跳房子 / 段落标记 / 转调 */}
+				{(m.house || m.section || m.keyRoot != null) ? (
+					<div className="cc-cell-tags">
+						{m.house ? <span className="cc-house">{m.house}.</span> : null}
+						{m.section ? (
+							<span className="cc-sectionmark"
+								title={ts.sectionDel ?? "双击删除段落标记"}
+								onDoubleClick={() => patchMeasure(mi, x => ({ ...x, section: null }))}>
+								{m.section}
+							</span>
+						) : null}
+						{m.keyRoot != null ? <span className="cc-keymark">1 = {PC_KEY[m.keyRoot]}{m.keyMinor ? "m" : ""}</span> : null}
+					</div>
 				) : null}
 				{m.repeatStart ? <span className="cc-bardots start" /> : null}
 				{m.endBar === "repeatEnd" ? <span className="cc-bardots end" /> : null}
-				{m.keyRoot != null ? <span className="cc-keymark">1 = {PC_KEY[m.keyRoot]}{m.keyMinor ? "m" : ""}</span> : null}
-				{m.house ? <span className="cc-house">{m.house}.</span> : null}
 				<div className="cc-cell-slots">{m.slots.map((_, si) => slotView(mi, si))}</div>
 				<input key={`cl-${m.id}-${m.lyrics || ""}`} className={`cc-cell-lyrics ${m.lyrics ? "has" : ""}`} defaultValue={m.lyrics || ""}
 					readOnly={!editing} placeholder={editing ? "" : (ts.lyricsFor ?? "当前小节歌词")}
 					onBlur={e => patchMeasure(mi, x => ({ ...x, lyrics: e.target.value }))} />
-				{editing ? <button className="cc-cell-menu-btn" title={ts.measureMenu ?? "小节操作"} onClick={e => { e.stopPropagation(); setCellMenu(cellMenu === mi ? null : mi); }}>⋯</button> : null}
 				{cellMenu === mi ? (
 					<div className="cc-mmenu" onClick={e => e.stopPropagation()}>
 						<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure ?? "后插小节"}</button>
+						<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体右移，本小节末拍被挤出（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
 						<button onClick={() => { duplicateMeasure(mi); setCellMenu(null); }}>⧉ {ts.dupMeasure ?? "复制小节"}</button>
 						<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure ?? "删除小节"}</button>
 						<div className="cc-menu-sep" />
@@ -995,6 +1205,10 @@ export function ChordChartView() {
 						<button className={toolTab === "chord" ? "on" : ""} onClick={() => setToolTab("chord")}>{ts.tabChord ?? "和弦"}</button>
 						<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure ?? "小节"}</button>
 					</nav>
+					{/* 曲目入口常驻（编辑/预览都在）：曲目列表不该藏在「⋯」里 */}
+					<button className="cc-songs-btn" onClick={goSongList} title={ts.songsTip ?? "回曲目列表"}>
+						← {ts.songsTitle ?? "曲目"}
+					</button>
 					<span className="cc-flex" />
 					{editing ? (
 						<>
@@ -1002,61 +1216,29 @@ export function ChordChartView() {
 							<select value={speed} onChange={e => onSpeedChange(Number(e.target.value))} title={ts.speedLabel ?? "速度"}>
 								{[0.5, 0.75, 1, 1.25, 1.5].map(x => <option key={x} value={x}>{x}×</option>)}
 							</select>
-							<label className="cc-iconbtn" title={ts.metronome ?? "节拍器"}><input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} />🔔</label>
+							<label className="cc-iconbtn" title={ts.metronome ?? "节拍器"}><input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} />{ts.metronome ?? "节拍器"}</label>
 							<span className="cc-sep" />
 							<button className="button sm" onClick={undo} title={ts.undo ?? "撤销 (Ctrl+Z)"}>↩</button>
 							<button className="button sm" onClick={redo} title={ts.redo ?? "重做 (Ctrl+Shift+Z)"}>↪</button>
-							<button className="button sm accent" onClick={makeClip} title={ts.makeClipTitle ?? "整曲生成指板动图"}>🎬 {ts.makeClip ?? "生成动图"}</button>
+							<button className="button sm accent" onClick={makeClip} title={ts.makeClipTitle ?? "整曲生成指板动图"}>{ts.makeClip ?? "生成动图"}</button>
 							<span className="cc-more-wrap">
 								<button className="button sm" onClick={() => setMenuOpen(v => !v)} title={ts.more ?? "更多"}>⋯</button>
 								{menuOpen ? (
 									<div className="cc-menu" onClick={() => setMenuOpen(false)}>
-										<label className="cc-menu-item">{ts.songList ?? "歌曲"}
-											<select value={currentId || ""} onClick={e => e.stopPropagation()} onChange={e => { openChart(e.target.value); }}>
-												{charts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-											</select>
-										</label>
-										<button className="cc-menu-item" onClick={() => {
-											const base = ts.newSong ?? "新歌";
-											const used = charts.filter(c => (c.name || "").startsWith(base)).length;
-											const sn = createSong(used ? `${base} ${used + 1}` : base);
-											const saved = saveChart(sn);
-											clearHistory();
-											setCharts(loadCharts());
-											setSong(sn);
-											setCurrentId(saved.id);
-											setToolTab("chord");
-										}}>＋ {ts.newSong ?? "新歌"}</button>
-										<button className="cc-menu-item danger" onClick={() => {
-											setMenuOpen(false);
-											setDialog({
-												type: "confirm",
-												title: ts.delSong ?? "删除这首歌",
-												text: ts.delConfirm ?? "删除这首歌？（不可撤销）",
-												onOk: () => {
-													clearHistory();
-													deleteChart(song.id);
-													const rest = loadCharts();
-													setCharts(rest);
-													setSong(rest[0] || createSong("第一首歌"));
-													setCurrentId(rest[0]?.id ?? null);
-												}
-											});
-										}}>✕ {ts.delSong ?? "删除这首歌"}</button>
+										<button className="cc-menu-item" onClick={goSongList}>{ts.songsTitle ?? "曲目"}…</button>
+										<button className="cc-menu-item" onClick={newSong}>＋ {ts.newSong ?? "新歌"}</button>
+										<button className="cc-menu-item danger" onClick={() => { setMenuOpen(false); removeChartById(song.id); }}>✕ {ts.delSong ?? "删除这首歌"}</button>
 										<div className="cc-menu-sep" />
-										<label className="cc-menu-item">{ts.transpose ?? "移调看谱"}
-											<select value={transposeRoot ?? song.key.root} onClick={e => e.stopPropagation()}
-												onChange={e => setTransposeRoot(Number(e.target.value) === song.key.root ? null : Number(e.target.value))}>
-												{PC_KEY.map((k, pc) => <option key={pc} value={pc}>{k}</option>)}
-											</select>
-										</label>
+										<button className="cc-menu-item" onClick={doExportChart}>⇩ {ts.exportPack ?? "导出工程文件"}<small>.fbchart</small></button>
+										<button className="cc-menu-item" onClick={() => fileRef.current?.click()}>⇪ {ts.importBtn ?? "导入文件"}<small>.fbchart / .musicxml</small></button>
+										<button className="cc-menu-item" onClick={promptImportCode}>{ts.importCode ?? "从分享码导入"}</button>
 										<div className="cc-menu-sep" />
-										<button className="cc-menu-item" onClick={() => fileRef.current?.click()}>⇪ XML {ts.importXml ?? "导入"}</button>
-										<button className="cc-menu-item" onClick={doExportXml}>⇩ XML {ts.export ?? "导出"}</button>
+										<button className="cc-menu-item" onClick={shareChart}>{ts.copyCode ?? "复制分享码"}</button>
+										<button className="cc-menu-item" onClick={doExportXml}>⇩ {ts.exportXml ?? "导出 MusicXML"}<small className="cc-menu-warn">{ts.lossyWarn ?? "配图/标色不带"}</small></button>
 									</div>
 								) : null}
 							</span>
-							<input ref={fileRef} type="file" accept=".musicxml,.xml" style={{ display: "none" }} onChange={doImportXml} />
+							<input ref={fileRef} type="file" accept=".fbchart,.musicxml,.xml,.txt" style={{ display: "none" }} onChange={doImportFile} />
 						</>
 					) : null}
 				</div>
@@ -1073,7 +1255,7 @@ export function ChordChartView() {
 										patchCurrentUnit({ kind: "chord", chord: { ...c } });
 										rememberQuality(c);
 									}}>
-										<span>{formatInline(c, "degree", localKey)}</span>
+										<ChordSign chord={c} display="degree" viewKey={localKey} />
 									</button>
 								);
 							})}
@@ -1085,6 +1267,10 @@ export function ChordChartView() {
 							<button className="button sm" onClick={() => addMeasure(cursor.mi)}>＋ {ts.addMeasure ?? "后插小节"}</button>
 							<button className="button sm" onClick={() => duplicateMeasure(cursor.mi)}>⧉ {ts.dupMeasure ?? "复制"}</button>
 							<button className="button sm danger" onClick={() => removeMeasure(cursor.mi)} disabled={song.measures.length <= 1}>✕ {ts.delMeasure ?? "删除"}</button>
+							<button className="button sm" onClick={() => insertBeat(cursor.mi, cursor.si)}
+								title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体右移，本小节末拍被挤出（Insert / Shift+Enter）"}>
+								⇥ {ts.insertBeat ?? "插入一拍"} <kbd>Ins</kbd>
+							</button>
 							<span className="cc-sep" />
 							<select value={song.measures[cursor.mi]?.endBar || "single"} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, endBar: e.target.value }))} title={ts.barlineLabel ?? "小节线"}>
 								{END_BARS.map(b => <option key={b.v} value={b.v}>{b.name}</option>)}
@@ -1138,14 +1324,11 @@ export function ChordChartView() {
 						<button className={previewDisplay === "roman" ? "on" : ""} onClick={() => setPreviewDisplay("roman")}>{ts.dispRoman ?? "罗马"}</button>
 						<button className={previewDisplay === "name" ? "on" : ""} onClick={() => setPreviewDisplay("name")}>{ts.dispName ?? "音名"}</button>
 					</nav>
-					<span className="cc-flex" />
-						<button className="button sm" onClick={async () => {
-							try { await navigator.clipboard.writeText(exportMusicXml(song, keyAtFn)); showToast(ts.shared ?? "乐谱 XML 已复制到剪贴板"); }
-							catch (e) { doExportXml(); }
-						}}>🔗 {ts.shareBtn ?? "分享"}</button>
-					<button className="button sm" onClick={doExportXml}>⇩ {ts.exportBtn ?? "导出"}</button>
-				</div>
-			) : null}
+<span className="cc-flex" />
+						<button className="button sm" onClick={shareChart} title={ts.shareCodeTip ?? "复制分享码：对方粘贴即可 100% 还原整首谱"} >{ts.shareBtn ?? "分享"}</button>
+						<button className="button sm accent" onClick={doExportChart} title={ts.exportPackTip ?? "工程文件：体积最小且 100% 还原（含配图/标色/节奏型）"}>⇩ {ts.exportBtn ?? "导出"}</button>
+					</div>
+				) : null}
 
 			{!editing && viewTab === "dynamic" ? (
 				<div className="cc-dynview">
@@ -1164,7 +1347,7 @@ export function ChordChartView() {
 						<select value={speed} onChange={e => onSpeedChange(Number(e.target.value))} title={ts.speedLabel ?? "速度"}>
 							{[0.5, 0.75, 1, 1.25, 1.5].map(x => <option key={x} value={x}>{x}×</option>)}
 						</select>
-						<label className="cc-iconbtn" title={ts.metronome ?? "节拍器"}><input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} />🔔</label>
+						<label className="cc-iconbtn" title={ts.metronome ?? "节拍器"}><input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} />{ts.metronome ?? "节拍器"}</label>
 					</div>
 					<div className="cc-dyn-strip">
 						{song.measures.map((m, mi) => (m.slots || []).map((sl, si) => (sl.split || [sl]).map((u, h) => {
@@ -1173,7 +1356,7 @@ export function ChordChartView() {
 							return (
 								<button key={`${mi}-${si}-${h}`} className={`cc-dyn-chord ${isCur ? "cur" : ""}`}
 									onClick={() => { setCursor({ mi, si, half: sl.split ? h : null }); }}>
-									{formatChordDyn(u.chord, mi)}
+									<ChordSign chord={u.chord} display={previewDisplay} viewKey={keyAt(mi)} compact={!!sl.split} />
 								</button>
 							);
 						})))}
@@ -1199,6 +1382,29 @@ export function ChordChartView() {
 							<label className="cc-meta">♩=
 								<input type="number" min="30" max="240" value={song.bpm} disabled={!editing} onChange={e => setSong(s => ({ ...s, bpm: Math.max(30, Math.min(240, Number(e.target.value) || 72)) }))} />
 							</label>
+							{/* 整曲移调（看谱/播放用，不改写谱面）—— 从「⋯」菜单提到谱头，预览态也能用 */}
+							<label className={`cc-meta cc-transpose ${transposeRoot != null ? "on" : ""}`} title={ts.transposeTip ?? "移调整曲：只改看谱/播放的调，谱面级数不动"}>
+								{ts.transpose ?? "移调"}
+								<select value={transposeRoot ?? song.key.root} onChange={e => setTransposeRoot(Number(e.target.value) === song.key.root ? null : Number(e.target.value))}>
+									<option value={song.key.root}>{ts.origKey ?? "原调"} {PC_KEY[song.key.root]}</option>
+									{PC_KEY.map((k, pc) => pc === song.key.root ? null : <option key={pc} value={pc}>{k}</option>)}
+								</select>
+								{transposeRoot != null ? <button className="cc-key-clear" title={ts.transposeClear ?? "回到原调"} onClick={() => setTransposeRoot(null)}>×</button> : null}
+							</label>
+							{/* 谱中转调（局内转调）：从光标小节起换调，写进谱面本身 */}
+							{editing ? (
+								<span className="cc-meta cc-keyhere" title={ts.keyChangeTip ?? "从该小节起转调（播放/音名/按法随之换调）"}>
+									{ts.keyChange ?? "转调"}
+									{keyStepper()}
+								</span>
+							) : null}
+							{/* 生效调：移调或谱中转调真正起作用时才出现，避免"改了却看不出" */}
+							{(() => {
+								const ek = keyAt(cursor.mi);
+								const deviates = ek.root !== song.key.root || !!ek.minor !== !!song.key.minor;
+								if (!deviates) return null;
+								return <span className="cc-effective" title={ts.effectiveTip ?? "当前光标处实际生效的调"}>⇒ 1 = {PC_KEY[ek.root]}{ek.minor ? "m" : ""}</span>;
+							})()}
 						</div>
 						<input className="cc-score-title" value={song.name} readOnly={!editing} onChange={e => setSong(s => ({ ...s, name: e.target.value }))} />
 					</div>
@@ -1237,7 +1443,7 @@ export function ChordChartView() {
 					</div>
 
 					{popupOpen && popupPos ? (
-						<div className="cc-cp-wrap" ref={popupRef} style={popupPos.bottom != null ? { left: popupPos.left, bottom: popupPos.bottom } : { left: popupPos.left, top: popupPos.top }}>
+						<div className="cc-cp-wrap" ref={popupRef} style={{ left: popupPos.left, top: popupPos.top }}>
 							<ChordPopup song={song} viewKey={keyAt(cursor.mi)} unit={currentUnit} typedHint={typedHint}
 								defaultQuality={(d) => defaultQualityFor(d)}
 								hasAttach={!!(currentUnit?.kind === "chord" && currentUnit.image)}
@@ -1251,7 +1457,7 @@ export function ChordChartView() {
 					{/* 配图一览：谱内带图的和弦槽位（一个和弦实例一张图）；编辑态点卡片可换图/移除 */}
 					{attachedUnits.length ? (
 						<div className="cc-legend">
-							<div className="cc-legend-title">🖼 {ts.legendTitle ?? "和弦配图"}<small>{ts.legendHint ?? "一个和弦一张指法图"}</small></div>
+							<div className="cc-legend-title">{ts.legendTitle ?? "和弦配图"}<small>{ts.legendHint ?? "一个和弦一张指法图"}</small></div>
 							<div className="cc-legend-row">
 								{attachedUnits.map((a, idx) => (
 									<div key={`${a.mi}-${a.si}-${a.half}-${idx}`} className="cc-legend-item has"
@@ -1294,7 +1500,8 @@ export function ChordChartView() {
 					onClose={() => setAttachTarget(null)} t={t} />
 			) : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v22</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v25</div>
+
 
 			{dialog ? (
 				<div className="cc-modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) setDialog(null); }}>
@@ -1305,27 +1512,44 @@ export function ChordChartView() {
 						</div>
 						<div className="cc-modal-body">
 							{dialog.type === "prompt" ? (
-								<input ref={dialogInputRef} autoFocus className="cc-dialog-input" defaultValue={dialog.value || ""}
-									placeholder={dialog.label}
-									onKeyDown={e => {
-										if (e.key === "Enter") {
-											e.preventDefault(); e.stopPropagation();
-											dialog.onOk?.(e.target.value);
-											setDialog(null);
-										}
-										if (e.key === "Escape") { e.stopPropagation(); setDialog(null); }
-									}} />
+								dialog.multiline ? (
+									<textarea ref={dialogInputRef} autoFocus className="cc-dialog-input cc-dialog-area" defaultValue={dialog.value || ""}
+										rows={4} placeholder={dialog.label}
+										onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); setDialog(null); } }} />
+								) : (
+									<input ref={dialogInputRef} autoFocus className="cc-dialog-input" defaultValue={dialog.value || ""}
+										placeholder={dialog.label}
+										onKeyDown={e => {
+											if (e.key === "Enter") {
+												e.preventDefault(); e.stopPropagation();
+												dialog.onOk?.(e.target.value);
+												setDialog(null);
+											}
+											if (e.key === "Escape") { e.stopPropagation(); setDialog(null); }
+										}} />
+								)
+							) : dialog.type === "choose" ? (
+								<div className="cc-dialog-choices">
+									{(dialog.options || []).map((o, i) => (
+										<button key={i} className={`button ${o.danger ? "danger" : "accent"}`}
+											onClick={() => { setDialog(null); o.onPick?.(); }}>{o.label}</button>
+									))}
+								</div>
 							) : <div className="cc-dialog-text">{dialog.text}</div>}
 						</div>
 						<div className="cc-modal-foot">
 							{dialog.type !== "alert" ? <button className="button sm" onClick={() => setDialog(null)}>{ts.cancel ?? "取消"}</button> : null}
-							<button className={`button sm ${dialog.type === "confirm" ? "danger" : "accent"}`}
-								onClick={() => {
-									dialog.onOk?.(dialog.type === "prompt" ? (dialogInputRef.current ? dialogInputRef.current.value : "") : undefined);
-									setDialog(null);
-								}}>
-								{ts.ok ?? "确定"}
-							</button>
+							{dialog.type === "choose" ? null : (
+								<button className={`button sm ${dialog.type === "confirm" ? "danger" : "accent"}`}
+									onClick={() => {
+										const d = dialog;
+										d.onOk?.(d.type === "prompt" ? (dialogInputRef.current ? dialogInputRef.current.value : "") : undefined);
+										// onOk 里可能开了新弹层（如导入冲突选择、错误提示），那种情况不能顺手关掉
+										setDialog(cur => (cur === d ? null : cur));
+									}}>
+									{ts.ok ?? "确定"}
+								</button>
+							)}
 						</div>
 					</div>
 				</div>
