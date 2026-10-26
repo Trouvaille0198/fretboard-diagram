@@ -32,7 +32,8 @@ export function createKeyboardHandler(params) {
         copyGif,
         copyUnionSnapshot,
         selectedColorLevel,
-        selectConnectionPreset
+        selectConnectionPreset,
+        stitchAdd
     } = params;
 
     return (event) => {
@@ -96,11 +97,17 @@ export function createKeyboardHandler(params) {
             return;
         }
 
-        // Ctrl+S 只在动态编辑模式生效：整图保存/更新到动图堆
+        // Ctrl+S：动态编辑=整图保存到动图堆；普通模式=当前板面加入拼接区
         if (event.ctrlKey && event.code === 'KeyS') {
             event.preventDefault();
-            if (dynamic?.isDynamic && dynamic.viewMode === 'edit' && dynamic.persistClip) {
-                dynamic.persistClip();
+            if (dynamic?.isDynamic) {
+                if (dynamic.viewMode === 'edit' && dynamic.persistClip) {
+                    dynamic.persistClip();
+                }
+                return;
+            }
+            if (stitchAdd) {
+                stitchAdd();
             }
             return;
         }

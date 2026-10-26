@@ -476,4 +476,26 @@ export const zh = {
         exportSvg: "导出整首 SVG",
         exportPng: "导出整首 PNG",
     },
+
+    // 拼接区（StitchDock，普通图片模式右上角悬浮舱）
+    stitch: {
+        label: "拼接区",
+        fabTitle: "拼接区：Ctrl+S 把当前板面加进来，横向拼接成一张长图",
+        count: (n) => `${n} 张`,
+        copy: "复制拼接图",
+        downloadTitle: "下载 PNG",
+        clear: "清空",
+        clearTitle: "移除全部",
+        clearConfirm: "清空拼接区？",
+        removeTitle: "移除这张",
+        working: "生成中…",
+        empty: "拼接区还是空的",
+        hint: "画好一张图后按 Ctrl+S 加入；多张会从左到右横向拼接，指板上下对齐",
+        toastCopied: (n) => `已复制拼接图（${n} 张）`,
+        toastFallback: "剪贴板不可用（非安全上下文），已改为下载 PNG",
+        toastCopyFail: "复制拼接图失败",
+        toastSaved: "已保存到",
+        toastDownloaded: "已下载 PNG",
+        toastSaveFail: "下载拼接图失败",
+    },
 };

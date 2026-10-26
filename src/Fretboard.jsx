@@ -20,6 +20,8 @@ import { TransitionFx, ScoreBoard, boardGeometry, renderBoardImage, buildNotes }
 import { DynamicToolbar } from './components/DynamicToolbar';
 import { useDynamicMode } from './hooks/useDynamicMode';
 import { TECHNIQUES, loadClips, pullClips, deleteClip, renameClip } from './utils/clipModel';
+import { loadStitch, persistStitch, newStitchId } from './utils/stitchModel';
+import { StitchDock } from './components/StitchDock';
 import { isLoggedIn } from './utils/api';
 import { exportGifAnimation, exportWebmAnimation } from './utils/animatedExport';
 import { Toast } from './components/Toast';
@@ -146,6 +148,14 @@ function Fretboard({ mode = 'normal' }) {
   const [clips, setClips] = useState(() => loadClips());
   const refreshClips = useCallback(() => setClips(loadClips()), []);
 
+  // 拼接区（普通模式）：Ctrl+S 逐张加入；多标签间经 storage 事件同步
+  const [stitchItems, setStitchItems] = useState(() => loadStitch());
+  useEffect(() => {
+    const onStorage = (e) => { if (e.key === 'fretboard-stitch') setStitchItems(loadStitch()); };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   // 动态编辑模式
   const captureBoard = useCallback((dataOverride) => ({
     data: dataOverride !== undefined ? dataOverride : dataRef.current,
@@ -161,6 +171,20 @@ function Fretboard({ mode = 'normal' }) {
     setToastMessage(message);
     setToastType(type || 'success');
   }, [setToastMessage, setToastType]);
+
+  // Ctrl+S（普通模式）：当前板面 + 展示设置（截断等）快照加入拼接区
+  const addToStitch = useCallback(() => {
+    const item = {
+      id: newStitchId(),
+      createdAt: Date.now(),
+      state: captureBoard(),
+      opts: { includeMarkers, showNotes, horizontalCrop, verticalCrop },
+    };
+    const next = [...loadStitch(), item]; // 以 localStorage 为准，避免旧闭话覆盖
+    persistStitch(next);
+    setStitchItems(next);
+    showToast(`已加入拼接区（第 ${next.length} 张）— 悬停右上角查看`, 'success');
+  }, [captureBoard, includeMarkers, showNotes, horizontalCrop, verticalCrop, showToast]);
 
   // 会话色系（动态页专用）：色系制，默认蓝；切换时整体重刷所有帧的着色音
   const [schemeName, setSchemeName] = useState('navy');
@@ -1592,7 +1616,8 @@ function Fretboard({ mode = 'normal' }) {
 	      undoStep: dynamic.undoStep, redoStep: dynamic.redoStep,
 	      extinguishNote: dynamic.extinguishNote
     },
-    deleteHoveredPair
+    deleteHoveredPair,
+    stitchAdd: addToStitch
   };
 
   useEffect(() => {
@@ -2012,6 +2037,23 @@ function Fretboard({ mode = 'normal' }) {
         onFretWindowChange={setFretWindowMemo}
         t={t}
       />
+      )}
+
+      {mode === 'normal' && (
+        <StitchDock
+          items={stitchItems}
+          showToast={showToast}
+          t={t}
+          onRemove={(id) => {
+            const next = loadStitch().filter(it => it.id !== id);
+            persistStitch(next);
+            setStitchItems(next);
+          }}
+          onClear={() => {
+            persistStitch([]);
+            setStitchItems([]);
+          }}
+        />
       )}
 
       <FretboardDock

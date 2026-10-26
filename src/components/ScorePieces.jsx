@@ -1,7 +1,6 @@
 import React, { useMemo, useRef, useCallback, useState, useEffect } from 'react';
-import { CONSTS } from '../constants';
 import { FretboardSVG } from './FretboardSVG';
-import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, generateMarkers, getNotePosition } from '../utils/fretboardCalculations';
+import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, generateMarkers, getNotePosition, boardGeometry } from '../utils/fretboardCalculations';
 import { inlineCSS, noteToSolfege } from '../utils';
 import { resolveNoteVisualStyle } from '../colorConfig';
 import { chordDisplay } from '../utils/songStructure';
@@ -11,22 +10,8 @@ import { createPortal } from 'react-dom';
 
 const noOp = () => {};
 
-// 与编辑区一致的指板几何
-export function boardGeometry(startFret, endFret) {
-  const numFrets = endFret - startFret;
-  const fretboardWidth = CONSTS.fretWidth * numFrets;
-  const leftOffset = CONSTS.offsetX + CONSTS.fretWidth / 2;
-  const svgWidth = fretboardWidth + leftOffset + CONSTS.offsetX;
-  const zeroFretLeftEdge = CONSTS.offsetX - CONSTS.fretWidth / 2 - CONSTS.circleRadius;
-  const svgViewBoxX = zeroFretLeftEdge - 5;
-  const svgViewBoxWidth = svgWidth - svgViewBoxX;
-  const bottomMarkerY = CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7;
-  const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5;
-  const svgHeight = bottomMarkerY + 20;
-  const svgViewBoxY = topMarkerY - 20;
-  const svgViewBoxHeight = svgHeight - svgViewBoxY;
-  return { fretboardWidth, svgWidth, svgHeight, svgViewBoxX, svgViewBoxY, svgViewBoxWidth, svgViewBoxHeight };
-}
+// 几何已下沉到纯 JS 模块（拼接区等非组件代码共用）；此处转发保持既有引用不变
+export { boardGeometry };
 
 export function buildNotes(state) {
   return generateNotes(

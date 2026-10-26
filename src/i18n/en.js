@@ -466,4 +466,26 @@ export const en = {
         exportSvg: "Export song SVG",
         exportPng: "Export song PNG",
     },
+
+    // Stitch dock (StitchDock, floating hub of the normal image mode)
+    stitch: {
+        label: "Stitch",
+        fabTitle: "Stitch area: press Ctrl+S to add the current board; images are joined left to right",
+        count: (n) => `${n} ${n === 1 ? "image" : "images"}`,
+        copy: "Copy stitched",
+        downloadTitle: "Download PNG",
+        clear: "Clear",
+        clearTitle: "Remove all",
+        clearConfirm: "Clear the stitch area?",
+        removeTitle: "Remove this image",
+        working: "Rendering…",
+        empty: "The stitch area is empty",
+        hint: "Finish a diagram and press Ctrl+S to add it; images join left to right, aligned by fretboard",
+        toastCopied: (n) => `Copied stitched image (${n})`,
+        toastFallback: "Clipboard unavailable (insecure context) — downloaded PNG instead",
+        toastCopyFail: "Copy failed",
+        toastSaved: "Saved to",
+        toastDownloaded: "PNG downloaded",
+        toastSaveFail: "Download failed",
+    },
 };

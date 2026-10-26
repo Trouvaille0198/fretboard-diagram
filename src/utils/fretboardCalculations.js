@@ -1,5 +1,22 @@
 import { CONSTS } from "../constants.js";
 
+// 与编辑区一致的指板几何（Y 向恒定：不随品窗变化——拼接区按此上下对齐）
+export function boardGeometry(startFret, endFret) {
+	const numFrets = endFret - startFret;
+	const fretboardWidth = CONSTS.fretWidth * numFrets;
+	const leftOffset = CONSTS.offsetX + CONSTS.fretWidth / 2;
+	const svgWidth = fretboardWidth + leftOffset + CONSTS.offsetX;
+	const zeroFretLeftEdge = CONSTS.offsetX - CONSTS.fretWidth / 2 - CONSTS.circleRadius;
+	const svgViewBoxX = zeroFretLeftEdge - 5;
+	const svgViewBoxWidth = svgWidth - svgViewBoxX;
+	const bottomMarkerY = CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7;
+	const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5;
+	const svgHeight = bottomMarkerY + 20;
+	const svgViewBoxY = topMarkerY - 20;
+	const svgViewBoxHeight = svgHeight - svgViewBoxY;
+	return { fretboardWidth, svgWidth, svgHeight, svgViewBoxX, svgViewBoxY, svgViewBoxWidth, svgViewBoxHeight };
+}
+
 export function computeNoteIndex(fret, string) {
 	const interval = CONSTS.stringIntervals[string] + fret + 1;
 	return interval % 12;
