@@ -5148,3 +5148,252 @@ html[data-theme="light"] .cc-page .cc-cell-tools { box-shadow: none; }
 
 /* 常用和弦栏/动态条：按钮本身就是容器，记号芯片去框融入 */
 .cc-freq-chord .csign, .cc-dyn-chord .csign { border: none; background: none; padding: 0; }
+
+/* ============ 拼接区（StitchDock，普通图片模式右上角） ============ */
+
+/* 悬浮按钮 + 面板共用定位壳：不占文档流，永远不挤压舞台 */
+.stitch-dock {
+    position: fixed;
+    top: 58px;
+    right: 14px;
+    z-index: 1180;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    pointer-events: none; /* 壳本身透点，子元素各自恢复，避免右侧一条隐形条挡住指板点击 */
+}
+.stitch-fab,
+.stitch-panel {
+    pointer-events: auto;
+}
+
+/* 悬浮按钮（icon + 文字 + 计数徽标） */
+.stitch-fab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 34px;
+    padding: 0 12px 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--app-border-strong);
+    background: var(--app-panel-strong);
+    color: var(--app-text);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(14px);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    position: relative;
+}
+.stitch-fab svg { display: block; fill: var(--app-accent); }
+.stitch-fab:hover,
+.stitch-fab.pinned {
+    border-color: var(--app-accent);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(243, 186, 98, 0.2);
+    transform: translateY(-1px);
+}
+.stitch-fab.empty { opacity: 0.72; }
+.stitch-fab.empty svg { fill: var(--app-text-muted); }
+.stitch-fab-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: linear-gradient(145deg, rgba(243, 186, 98, 0.95), rgba(222, 157, 66, 0.95));
+    color: #241a08;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    animation: stitch-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes stitch-pop {
+    0% { transform: scale(0.4); }
+    100% { transform: scale(1); }
+}
+
+/* hover 展开面板：直接锚定视口（不从 dock 流式排布——100vw 会被滚动条撑爆），
+   宽窄屏都不出视口，超高内部滚动；% 相对视口客户区，天然避开滚动条宽度 */
+.stitch-panel {
+    position: fixed;
+    top: 96px;
+    right: 14px;
+    width: min(372px, calc(100% - 28px));
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 14px;
+    border: 1px solid var(--app-border-strong);
+    background: var(--app-panel-strong);
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(18px);
+    padding: 12px 12px 10px;
+    animation: stitch-slide-in 0.18s ease;
+}
+@keyframes stitch-slide-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stitch-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 0 2px 10px;
+}
+.stitch-panel-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--app-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+.stitch-panel-title em {
+    font-style: normal;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--app-accent-text);
+    background: rgba(243, 186, 98, 0.12);
+    border: 1px solid rgba(243, 186, 98, 0.3);
+    padding: 1px 8px;
+    border-radius: 999px;
+}
+.stitch-panel-actions { display: inline-flex; gap: 6px; }
+
+.stitch-btn {
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--app-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--app-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    white-space: nowrap;
+}
+.stitch-btn:hover:not(:disabled) {
+    color: var(--app-text);
+    border-color: rgba(243, 186, 98, 0.4);
+    background: rgba(243, 186, 98, 0.1);
+}
+.stitch-btn:disabled { opacity: 0.45; cursor: default; }
+.stitch-btn.primary {
+    background: linear-gradient(145deg, rgba(243, 186, 98, 0.92), rgba(222, 157, 66, 0.95));
+    border-color: rgba(243, 186, 98, 0.6);
+    color: #241a08;
+}
+.stitch-btn.primary:hover:not(:disabled) {
+    filter: brightness(1.06);
+    color: #241a08;
+    box-shadow: 0 4px 14px rgba(243, 186, 98, 0.25);
+}
+.stitch-btn.danger:hover:not(:disabled) {
+    color: #ff8f8f;
+    border-color: rgba(255, 120, 120, 0.4);
+    background: rgba(255, 100, 100, 0.08);
+}
+html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) { color: #c0392b; }
+
+/* 拼接预览：横向可滚（段多时保最小可读宽度），纵向按比例 */
+.stitch-preview {
+    border: 1px solid var(--app-border);
+    border-radius: 10px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    background: var(--app-bg-secondary);
+}
+.stitch-canvas {
+    position: relative;
+    min-width: min(300px, 100%);
+    width: 100%;
+    border-radius: 9px;
+    overflow: hidden;
+}
+.stitch-seg:hover .stitch-seg-x { opacity: 1; pointer-events: auto; }
+
+/* 单段：外框即该图的可见窗口（含截断），内层整板 svg 负偏移露出该窗口 */
+.stitch-seg {
+    position: absolute;
+    border-radius: 2px;
+}
+.stitch-seg:hover { outline: 1.5px dashed rgba(243, 186, 98, 0.55); outline-offset: -1.5px; }
+.stitch-seg-clip {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+.stitch-seg-svg { position: absolute; }
+.stitch-seg-svg svg { width: 100%; height: 100%; display: block; }
+.stitch-seg-x {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    z-index: 2;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid rgba(243, 186, 98, 0.5);
+    background: rgba(10, 14, 20, 0.72);
+    color: #ffd489;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, background 0.15s ease;
+    padding: 0;
+}
+.stitch-seg-x:hover { background: rgba(160, 60, 40, 0.85); color: #fff; }
+
+/* 段间分割竖线：主题文字色半透明，与画布同高 */
+.stitch-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    transform: translateX(-50%);
+    background: color-mix(in srgb, var(--app-text) 48%, transparent);
+    pointer-events: none;
+}
+@supports not (color-mix(in srgb, red 50%, transparent)) {
+    .stitch-divider { background: rgba(160, 175, 190, 0.5); }
+}
+
+.stitch-panel-foot {
+    padding: 8px 2px 2px;
+    font-size: 11px;
+    color: var(--app-text-soft);
+    text-align: center;
+}
+
+.stitch-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 26px 18px 22px;
+    text-align: center;
+}
+.stitch-empty svg { fill: var(--app-text-muted); opacity: 0.7; }
+.stitch-empty p { margin: 0; font-size: 13px; font-weight: 600; color: var(--app-text-muted); }
+.stitch-empty-sub { font-size: 11.5px !important; font-weight: 400 !important; color: var(--app-text-soft) !important; line-height: 1.6; }
+
+/* 窄屏：FAB 收成纯图标，面板贴满右侧（% 相对视口，不受滚动条影响） */
+@media (max-width: 640px) {
+    .stitch-dock { top: 54px; right: 10px; }
+    .stitch-fab-label { display: none; }
+    .stitch-fab { padding: 0 10px; }
+    .stitch-panel { top: 92px; right: 10px; width: calc(100% - 20px); max-height: calc(100vh - 108px); }
+}
