@@ -27,6 +27,7 @@ import { exportGifAnimation, exportWebmAnimation } from './utils/animatedExport'
 import { Toast } from './components/Toast';
 import { createPortal } from 'react-dom';
 import { expandTimeline, stateClock, END_PAUSE_MS, accumulateStates, chainLinksOf } from './utils/timeline';
+import { stageWindowOf, cropBoxOfNotes } from './utils/animStage';
 import { buildActionOverlay } from './utils/staticSummary';
 import { FretboardSVG } from './components/FretboardSVG';
 import { useLanguage } from './i18n';
@@ -433,19 +434,26 @@ function Fretboard({ mode = 'normal' }) {
   useEffect(() => {
     try { localStorage.setItem('fretboard-cumulative', cumulativeView ? '1' : '0'); } catch (e) { /* 忽略 */ }
   }, [cumulativeView]);
+  // 展开时间轴 + 统一舞台（与导出同源）：所有状态重映射到跨帧联合品窗（同坐标系，
+  // 跨品窗帧的板面/fx 不再错位跳动），再按显示设置算统一裁剪框。
+  // 预览播放/静查与 GIF/WebM/SMIL 导出共用 stageWindowOf 这套取景器，两边画面按构造一致；
+  // 编辑态不受影响（编辑器继续用自己的品窗）。
   const playSteps = useMemo(() => {
     const hold = Number(animSettings.holdMs) > 0 ? Number(animSettings.holdMs) : 300;
     const trans = Number(animSettings.transMs) > 0 ? Number(animSettings.transMs) : 200;
     const tl = expandTimeline(dynamic.frames, dynamic.transitions, hold, trans, { leadBlank: !!animSettings.leadBlank });
-    if (!cumulativeView) return tl;
-    return { ...tl, states: accumulateStates(tl.states) }; // 结构/时钟不变，仅板面态累积
-  }, [dynamic.frames, dynamic.transitions, animSettings.holdMs, animSettings.transMs, animSettings.leadBlank, cumulativeView]);
+    const stage = stageWindowOf(dynamic.frames, tl.states, { horizontalCrop, verticalCrop, includeMarkers });
+    const states = cumulativeView ? accumulateStates(stage.windowed) : stage.windowed; // 结构/时钟不变，仅板面态累积
+    return { ...tl, states, stage };
+  }, [dynamic.frames, dynamic.transitions, animSettings.holdMs, animSettings.transMs, animSettings.leadBlank, cumulativeView, horizontalCrop, verticalCrop, includeMarkers]);
   const playStepsRef = useRef(playSteps);
   playStepsRef.current = playSteps;
 
-  // 播放中：主指板展示动图的帧，而不是编辑器草稿
+  // 播放中：主指板展示动图的帧，而不是编辑器草稿；静查帧也映射到联合品窗（与播放同视野）
   const playingBoard = playingIdx !== null && playSteps.states[playingIdx] ? playSteps.states[playingIdx]
-    : (dynamic.viewMode === 'preview' && previewFrame !== null && dynamic.frames[previewFrame] ? dynamic.frames[previewFrame] : null);
+    : (dynamic.viewMode === 'preview' && previewFrame !== null && dynamic.frames[previewFrame]
+      ? { ...dynamic.frames[previewFrame], startFret: playSteps.stage.window.wStart, endFret: playSteps.stage.window.wEnd }
+      : null);
   const view = playingBoard
     ? {
       data: playingBoard.data,
@@ -458,20 +466,21 @@ function Fretboard({ mode = 'normal' }) {
     }
     : { data, startFret, endFret, enharmonic, displayMode, rootNote, visibility };
 
-  // 计算值
-  const numFrets = view.endFret - view.startFret;
-  const fretboardWidth = CONSTS.fretWidth * numFrets;
-  const leftOffset = CONSTS.offsetX + CONSTS.fretWidth / 2;
-  const svgWidth = fretboardWidth + leftOffset + CONSTS.offsetX;
-  const zeroFretX = CONSTS.offsetX - CONSTS.fretWidth / 2;
-  const zeroFretLeftEdge = zeroFretX - CONSTS.circleRadius;
-  const svgViewBoxX = zeroFretLeftEdge - 5;
-  const svgViewBoxWidth = svgWidth - svgViewBoxX;
-  const bottomMarkerY = CONSTS.offsetY + CONSTS.fretHeight + CONSTS.stringSpacing * 0.7;
-  const topMarkerY = CONSTS.offsetY - CONSTS.stringSpacing * 0.5;
-  const svgHeight = bottomMarkerY + 20;
-  const svgViewBoxY = topMarkerY - 20;
-  const svgViewBoxHeight = svgHeight - svgViewBoxY;
+  // 舞台几何（与 boardGeometry 同源）：编辑态 = 当前品窗整框；
+  // 播放/静查 = 与导出同视野（联合品窗整框，开截断时用统一裁剪框）。
+  // 裁剪只动 viewBox：弦/品仍画满整窗，视野外自然裁掉（与导出 renderBoardImage 同口径）
+  const geoView = boardGeometry(view.startFret, view.endFret);
+  const playVB = playingBoard
+    ? (playSteps.stage.cropBox || { x: geoView.svgViewBoxX, y: geoView.svgViewBoxY, w: geoView.svgViewBoxWidth, h: geoView.svgViewBoxHeight })
+    : null;
+  const baseScale = geoView.svgWidth / geoView.svgViewBoxWidth; // 板面固有缩放（宽 attr / viewBox 宽），裁剪前后视觉密度一致
+  const svgWidth = playVB ? Math.round(playVB.w * baseScale) : geoView.svgWidth;
+  const svgHeight = playVB ? Math.round(playVB.h * baseScale) : geoView.svgHeight;
+  const svgViewBoxX = playVB ? playVB.x : geoView.svgViewBoxX;
+  const svgViewBoxY = playVB ? playVB.y : geoView.svgViewBoxY;
+  const svgViewBoxWidth = playVB ? playVB.w : geoView.svgViewBoxWidth;
+  const svgViewBoxHeight = playVB ? playVB.h : geoView.svgViewBoxHeight;
+  const fretboardWidth = geoView.fretboardWidth;
 
   // 主板 SVG 宽度内联钉死：帧切换（含空板帧）时 CSS 内在尺寸计算会塌 0 或撑爆，
   // 导致整板消失/缩放跳动；宽度必须只由品窗决定
@@ -490,7 +499,11 @@ function Fretboard({ mode = 'normal' }) {
     generateNotes(view.startFret, view.endFret, view.data, view.displayMode, view.rootNote, view.enharmonic, view.visibility, computeNoteNameMemo, computeNoteIndexMemo, noteToSolfege),
     [view.startFret, view.endFret, view.data, view.displayMode, view.rootNote, view.enharmonic, view.visibility, computeNoteNameMemo, computeNoteIndexMemo]
   );
-  const markers = useMemo(() => generateMarkers(view.startFret, view.endFret), [view.startFret, view.endFret]);
+  // 品数标记：编辑态永远显示；播放/静查跟随导出显示设置（与导出画面同视野）
+  const markers = useMemo(
+    () => (playingBoard && includeMarkers === false ? [] : generateMarkers(view.startFret, view.endFret)),
+    [playingBoard, includeMarkers, view.startFret, view.endFret]
+  );
   const fretPath = useMemo(() => generateFretPath(view.startFret, view.endFret), [view.startFret, view.endFret]);
   const connections = useMemo(() => (view.data && view.data.connections) ? view.data.connections : {}, [view.data]);
 
@@ -1256,7 +1269,17 @@ function Fretboard({ mode = 'normal' }) {
     dynamicRef.current.newClip();
   }, [stopPlaying]);
 
+  // Q 切视图先停播放：playing 态给 svg 挂 pointer-events:none，切回编辑若仍在播，
+  // 板面看着在动却点不动任何东西（直到下一次按下板面才停）
+  const handleToggleQ = useCallback(() => {
+    stopPlaying();
+    dynamicRef.current.toggleQ();
+  }, [stopPlaying]);
+
   // fx 轨道时钟：播放中周期 tick，驱动绝对时间光点层
+  // 回环涟漪：循环从末帧跳回首帧也是一次"前后帧变化"（复色/重新出现的音），
+  // 该有过渡涟漪——每回环一轮记一次计数，驱动 TransitionFx 重播（首轮首帧不涟漪：它天生就在）
+  const [loopWrap, setLoopWrap] = useState(0);
   const [fxTick, setFxTick] = useState(0);
   useEffect(() => {
     if (playingIdx === null) return undefined;
@@ -1268,6 +1291,7 @@ function Fretboard({ mode = 'normal' }) {
   const startPlaying = useCallback(() => {
     const ps = playStepsRef.current;
     if (ps.states.length < 2 && !(ps.fx || []).length) return; // 单帧纯前置划弦也可播（fx 驱动）
+    setLoopWrap(0); // 新一轮播放从首帧起：首帧出现不算回环，不出涟漪
     setPlayingIdx(0);
   }, []);
 
@@ -1290,12 +1314,11 @@ function Fretboard({ mode = 'normal' }) {
     const endPause = atEnd && loopRef.current ? END_PAUSE_MS : 0;
     const wait = Math.max(0, tAbs + hold + trans + endPause - elapsed);
     const timer = setTimeout(() => {
-      setPlayingIdx(prev => {
-        if (prev === null) return null;
-        const next = prev + 1;
-        if (next < steps.length) return next;
-        return loopRef.current ? 0 : null;
-      });
+      // effect 以 playingIdx 为依赖，闭包内必新鲜；直接算 next 并标记回环（回环涟漪的触发信号）
+      const next = playingIdx + 1;
+      if (next < steps.length) { setPlayingIdx(next); return; }
+      if (loopRef.current) { setLoopWrap(w => w + 1); setPlayingIdx(0); return; }
+      setPlayingIdx(null);
     }, wait);
     return () => clearTimeout(timer);
   }, [playingIdx, playSteps]);
@@ -1308,48 +1331,15 @@ function Fretboard({ mode = 'normal' }) {
     const preCheck = expandTimeline(frames, specs, 300, 200);
     if (preCheck.states.length < 2 && !(preCheck.fx || []).length) throw new Error('需要至少 2 帧，或单帧内含技法/前置划弦标注');
     const settings = animSettingsRef.current;
-    let wStart = Infinity, wEnd = -Infinity;
-    frames.forEach(f => {
-      wStart = Math.min(wStart, f.startFret);
-      wEnd = Math.max(wEnd, f.endFret);
-    });
-    if (wEnd - wStart > 16) wEnd = wStart + 16;
     const tl = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200, { leadBlank: !!settings.leadBlank });
-    const exStates = opts.cumulative ? accumulateStates(tl.states) : tl.states;
+    // 统一舞台（与预览播放同源）：联合品窗 + 统一裁剪框，GIF/WebM/SMIL/预览四者同视野
+    const stage = stageWindowOf(frames, tl.states, { horizontalCrop, verticalCrop, includeMarkers });
+    const exStates = opts.cumulative ? accumulateStates(stage.windowed) : stage.windowed;
     const { specs: exSpecs, fx: exFx, frameOf: exFrameOf, sub: exSub } = tl;
-    const windowed = exStates.map(f => ({ ...f, startFret: wStart, endFret: wEnd }));
-    const geo = boardGeometry(wStart, wEnd);
-    const fullVB = { x: geo.svgViewBoxX, y: geo.svgViewBoxY, w: geo.svgViewBoxWidth, h: geo.svgViewBoxHeight };
-    // 截断：跨全部（展开后）状态的可见音符联合范围 → 统一裁剪框，各帧同视野不跳动
-    let cropBox = null;
-    if (horizontalCrop || verticalCrop) {
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      windowed.forEach(st => {
-        const notes = buildNotes(st);
-        Object.entries(st.data || {}).forEach(([id, n]) => {
-          if (!n || (n.visibility !== 'visible' && n.visibility !== 'selected')) return;
-          const p = getNotePosition(id, notes);
-          if (!p) return;
-          minX = Math.min(minX, p.x - CONSTS.circleRadius); maxX = Math.max(maxX, p.x + CONSTS.circleRadius);
-          minY = Math.min(minY, p.y - CONSTS.circleRadius); maxY = Math.max(maxY, p.y + CONSTS.circleRadius);
-        });
-      });
-      if (minX !== Infinity) {
-        const padX = 14, padY = includeMarkers === false ? 8 : 30; // 上下品位标尺空间
-        let cx = fullVB.x, cy = fullVB.y, cw = fullVB.w, ch = fullVB.h;
-        if (horizontalCrop) {
-          const x1 = Math.max(fullVB.x, minX - padX), x2 = Math.min(fullVB.x + fullVB.w, maxX + padX);
-          cx = x1; cw = Math.max(120, x2 - x1);
-        }
-        if (verticalCrop) {
-          const y1 = Math.max(fullVB.y, minY - padY), y2 = Math.min(fullVB.y + fullVB.h, maxY + padY);
-          cy = y1; ch = Math.max(80, y2 - y1);
-        }
-        cropBox = { x: cx, y: cy, w: cw, h: ch };
-      }
-    }
-    const viewBox = cropBox ? `${cropBox.x} ${cropBox.y} ${cropBox.w} ${cropBox.h}` : `${fullVB.x} ${fullVB.y} ${fullVB.w} ${fullVB.h}`;
-    const displayOpts = { includeMarkers, showNotes, horizontalCrop, verticalCrop, cropBox };
+    const viewBox = stage.cropBox
+      ? `${stage.cropBox.x} ${stage.cropBox.y} ${stage.cropBox.w} ${stage.cropBox.h}`
+      : `${stage.full.x} ${stage.full.y} ${stage.full.w} ${stage.full.h}`;
+    const displayOpts = { includeMarkers, showNotes, horizontalCrop, verticalCrop, cropBox: stage.cropBox };
     const encOpts = {
       holdMs: Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300,
       transMs: Number(settings.transMs) > 0 ? Number(settings.transMs) : 200,
@@ -1364,24 +1354,26 @@ function Fretboard({ mode = 'normal' }) {
       return outMp4;
     }
     if (format === 'svganim') {
-      // 动画 SVG（SMIL）：矢量自包含动图——无限清晰、体积极小；与播放器同源时钟
+      // 动画 SVG（SMIL）：矢量自包含动图——无限清晰、体积极小；与播放器同源时钟/同视野
       // 只要 buildAnimatedSvg 内对联合板面的一次矢量渲染，不需要逐状态光栅帧
       const { buildAnimatedSvg } = await import('./utils/animatedSvg');
       const svgStr = await buildAnimatedSvg({
         states: exStates, fx: exFx || [], frameOf: exFrameOf, sub: exSub,
         labelColor: encOpts.labelColor,
-        renderSvg: async (state) => renderBoardImage({ ...state, startFret: wStart, endFret: wEnd }, Number(settings.width) || 720, { ...displayOpts, svgOnly: true }),
+        noteStyle: encOpts.noteStyle,
+        holdMs: encOpts.holdMs, transMs: encOpts.transMs,
+        renderSvg: async (state) => renderBoardImage(state, Number(settings.width) || 720, { ...displayOpts, svgOnly: true }),
       });
       return new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
     }
     // GIF/WebM 才需要逐状态光栅帧（每帧一次离屏渲染；svganim 跳过——Ctrl+C 导出慢的元凶）
     const boardImages = [];
-    for (const frame of windowed) {
+    for (const frame of exStates) {
         boardImages.push(await renderBoardImage(frame, Number(settings.width) || 720, displayOpts));
     }
     const out = format === 'gif'
-      ? await exportGifAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...encOpts, fx: exFx || [], frameOf: exFrameOf, sub: exSub }, onProgress: opts.onProgress })
-      : await exportWebmAnimation({ states: windowed, specs: exSpecs, boardImages, viewBox, opts: { ...encOpts, fx: exFx || [], frameOf: exFrameOf, sub: exSub, preferMp4: format === 'webm-mp4' }, onProgress: opts.onProgress });
+      ? await exportGifAnimation({ states: exStates, specs: exSpecs, boardImages, viewBox, opts: { ...encOpts, fx: exFx || [], frameOf: exFrameOf, sub: exSub }, onProgress: opts.onProgress })
+      : await exportWebmAnimation({ states: exStates, specs: exSpecs, boardImages, viewBox, opts: { ...encOpts, fx: exFx || [], frameOf: exFrameOf, sub: exSub, preferMp4: format === 'webm-mp4' }, onProgress: opts.onProgress });
     return out;
   }, [includeMarkers, showNotes, horizontalCrop, verticalCrop]);
 
@@ -1402,7 +1394,9 @@ function Fretboard({ mode = 'normal' }) {
         }, null, 2)], { type: 'application/json;charset=utf-8' });
       } else {
         let lastPct = -1;
+        // 累积式（"迹"开关）与预览/Ctrl+C 同权：开着 = 导出"激活过的音不熄灭"样式
         blob = await buildExportBlob(format, {
+          cumulative: cumulativeView,
           onProgress: (i, n) => {
             const pct = Math.floor(i / n * 100);
             if (pct >= lastPct + 10 || i === n) { lastPct = pct; showToast(`编码中 ${i}/${n} 帧`, 'info'); }
@@ -1434,7 +1428,7 @@ function Fretboard({ mode = 'normal' }) {
     } finally {
       setExporting(null);
     }
-  }, [showToast, buildExportBlob]);
+  }, [showToast, buildExportBlob, cumulativeView]);
 
   // 动画 SVG 落盘共用（Ctrl+C / Ctrl+Shift+C）：记忆目录优先，回落普通下载
   const saveSvgBlobToDisk = useCallback(async (buildFn) => {
@@ -1491,34 +1485,10 @@ function Fretboard({ mode = 'normal' }) {
       });
       if (wEnd - wStart > 16) wEnd = wStart + 16;
       union = { ...union, startFret: wStart, endFret: wEnd };
-      // 截断框：对并集板面算一次（全部出现过的音都在，天然覆盖动画全程范围）
+      // 截断框：对并集板面算一次（全部出现过的音都在，天然覆盖动画全程范围；与导出同式）
       const geo = boardGeometry(wStart, wEnd);
       const fullVB = { x: geo.svgViewBoxX, y: geo.svgViewBoxY, w: geo.svgViewBoxWidth, h: geo.svgViewBoxHeight };
-      let cropBox = null;
-      if (horizontalCrop || verticalCrop) {
-        const unionNotes = buildNotes(union);
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        Object.entries(union.data || {}).forEach(([id, n]) => {
-          if (!n || (n.visibility !== 'visible' && n.visibility !== 'selected')) return;
-          const p = getNotePosition(id, unionNotes);
-          if (!p) return;
-          minX = Math.min(minX, p.x - CONSTS.circleRadius); maxX = Math.max(maxX, p.x + CONSTS.circleRadius);
-          minY = Math.min(minY, p.y - CONSTS.circleRadius); maxY = Math.max(maxY, p.y + CONSTS.circleRadius);
-        });
-        if (minX !== Infinity) {
-          const padX = 14, padY = includeMarkers === false ? 8 : 30;
-          let cx = fullVB.x, cy = fullVB.y, cw = fullVB.w, ch = fullVB.h;
-          if (horizontalCrop) {
-            const x1 = Math.max(fullVB.x, minX - padX), x2 = Math.min(fullVB.x + fullVB.w, maxX + padX);
-            cx = x1; cw = Math.max(120, x2 - x1);
-          }
-          if (verticalCrop) {
-            const y1 = Math.max(fullVB.y, minY - padY), y2 = Math.min(fullVB.y + fullVB.h, maxY + padY);
-            cy = y1; ch = Math.max(80, y2 - y1);
-          }
-          cropBox = { x: cx, y: cy, w: cw, h: ch };
-        }
-      }
+      const cropBox = cropBoxOfNotes([union], fullVB, { horizontalCrop, verticalCrop, includeMarkers });
       // 末帧仍在响的音（其余在并集里亮着的=离场音，快照里降透明区分"还在响 vs 已离开"）
       const lastState = tl.states[tl.states.length - 1];
       const finalActiveIds = new Set(Object.entries(lastState?.data || {}).filter(([, n]) => n && (n.visibility === 'visible' || n.visibility === 'selected')).map(([id]) => id));
@@ -1610,7 +1580,7 @@ function Fretboard({ mode = 'normal' }) {
       revertToPrevFrame: dynamic.revertToPrevFrame,
       viewMode: dynamic.viewMode,
       persistClip: dynamic.persistClip,
-      toggleQ: mode === 'dynamic' ? dynamic.toggleQ : gotoDynamic,
+      toggleQ: mode === 'dynamic' ? handleToggleQ : gotoDynamic,
       commitFrame: dynamic.commitFrame,
       cancelMarking: dynamic.cancelMarking,
 	      undoStep: dynamic.undoStep, redoStep: dynamic.redoStep,
@@ -1769,7 +1739,8 @@ function Fretboard({ mode = 'normal' }) {
           setData={setData}
           setConnectionToolbarVisible={setConnectionToolbarVisible}
           setSelectedConnection={setSelectedConnection}
-          showNotes={showNotes}
+          /* 播放/静查与导出同视野："显示音符"关 = 只带激活音（ScoreBoard 导出同款） */
+          hideInactiveNotes={playingBoard ? !showNotes : undefined}
         />
         {playingIdx !== null && (playSteps.fx || []).map((fxi, k) => {
           const el = performance.now() - playStartRef.current;
@@ -1787,13 +1758,29 @@ function Fretboard({ mode = 'normal' }) {
             />
           );
         })}
+        {playingIdx === 0 && loopWrap > 0 && playSteps.states.length > 1 && playSteps.states[playSteps.states.length - 1] && (
+          // 回环涟漪：末态→首态的差分/复色（deep→pale 这类回环变色不再瞬跳裸切）。
+          // 过渡窗与普通切换同款（transMs 设置）；leadBlank 时首态为空白板，desc 自然无涟漪
+          <TransitionFx
+            key={'loopwrap-' + loopWrap}
+            prevState={playSteps.states[playSteps.states.length - 1]}
+            nextState={playSteps.states[0]}
+            spec={{ technique: null, pairs: [] }}
+            durationMs={Number(animSettings.transMs) > 0 ? Number(animSettings.transMs) : 200}
+            portalTo={svgElementRef.current}
+          />
+        )}
         {playingIdx !== null && playingIdx > 0 && playSteps.states[playingIdx - 1] && playSteps.states[playingIdx] && !playSteps.sub?.[playingIdx] && (
           <TransitionFx
             key={playingIdx}
             prevState={playSteps.states[playingIdx - 1]}
             nextState={playSteps.states[playingIdx]}
             spec={playSteps.specs[playingIdx - 1] || { technique: null, pairs: [] }}
-            durationMs={playSteps.states[playingIdx - 1]?.transMs || (Number(animSettings.transMs) > 0 ? Number(animSettings.transMs) : 200)}
+            durationMs={(() => {
+              // 0 是合法瞬切（DOT 到达边等），不能被默认值吞掉——导出侧 enterOf 同值跳过 fx
+              const tm = playSteps.states[playingIdx - 1]?.transMs;
+              return Number.isFinite(tm) ? tm : (Number(animSettings.transMs) > 0 ? Number(animSettings.transMs) : 200);
+            })()}
             portalTo={svgElementRef.current}
           />
         )}
@@ -1927,7 +1914,7 @@ function Fretboard({ mode = 'normal' }) {
 
       {mode === 'dynamic' && (
       <DynamicToolbar
-        dynamic={{ ...dynamic, newClip: handleNewClip }}
+        dynamic={{ ...dynamic, newClip: handleNewClip, toggleQ: handleToggleQ }}
         scheme={schemeName}
         schemes={COLOR_SCHEMES}
         onSchemeChange={switchScheme}

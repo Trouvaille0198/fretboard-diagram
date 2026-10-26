@@ -111,7 +111,6 @@ export const FretboardSVG = React.memo(function FretboardSVG({
   setData,
   setConnectionToolbarVisible,
   setSelectedConnection,
-  showNotes,
   hideInactiveNotes
 }) {
   const { t } = useLanguage();

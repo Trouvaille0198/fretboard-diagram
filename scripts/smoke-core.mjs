@@ -3,6 +3,7 @@
 //       fx 轨道对齐 / 瞬时目标音不提前亮 / 时钟单调性 / 多技法同帧并发同步
 import { expandTimeline, stateClock, BEND_OUT, BEND_HOLD, BEND_BACK, BEND_TOTAL } from "../src/utils/timeline.js";
 import { describeTransition, sampleTransition } from "../src/utils/transitionAnimator.js";
+import { linearTrack } from "../src/utils/animStage.js";
 
 const T = ["rgb(204, 224, 250)", "rgb(78, 149, 247)", "rgb(8, 70, 165)", "rgb(9, 46, 103)"];
 let fail = 0, n = 0;
@@ -172,6 +173,102 @@ console.log("== 时钟不变量 ==");
 	A("total ≥ 最后起点", clock.total >= clock.starts[clock.starts.length - 1]);
 	A("frameOf 覆盖全部状态", r.frameOf.length === r.states.length && r.frameOf.every(f => f >= 0 && f < F.length));
 	A("fx 轨道数 = 技法数", r.fx.length === 2, String(r.fx.length));
+}
+
+
+console.log("== 复色涟漪（前后帧都亮、颜色变了→出环；不变→不出）==");
+{
+	const p = mk({ "f5-s2": { c: T[0], b: 0 } });
+	const nChanged = mk({ "f5-s2": { c: T[1], b: 0 } });
+	const nSame = mk({ "f5-s2": { c: T[0], b: 0 } });
+	const d1 = describeTransition(p, nChanged, { technique: null, pairs: [] });
+	A("复色：颜色变了 → 出涟漪（环色=新色）", d1.entering.some(e => e.id === "f5-s2" && e.color === T[1]), JSON.stringify(d1.entering));
+	const d2 = describeTransition(p, nSame, { technique: null, pairs: [] });
+	A("同色：不出涟漪", !d2.entering.some(e => e.id === "f5-s2"), JSON.stringify(d2.entering));
+	A("复色涟漪被渲染为 ring", sampleTransition(d1, 0.3, 300).some(e => e.kind === "ring" && e.color === T[1]));
+	const nMuted = { ...mk({ "f5-s2": { c: T[1], b: 0 } }), muteEnter: ["f5-s2"] };
+	const d3 = describeTransition(p, nMuted, { technique: null, pairs: [] });
+	A("复色遇 muteEnter 让位（技法参与音不出环）", !d3.entering.some(e => e.id === "f5-s2"));
+	const d4 = describeTransition(mk({ "f5-s2": "off" }), nChanged, { technique: null, pairs: [] });
+	A("灭→亮仍是进入（非复色，原语义不变）", d4.entering.some(e => e.id === "f5-s2"));
+}
+
+console.log("== 回环涟漪（循环重开 = 末态→首态的一次前后帧变化）==");
+{
+	// 内核：末帧(deep)→首帧(pale) 的复色判定——循环边界就是普通的 describeTransition 调用
+	const first = mk({ "f5-s2": { c: T[0], b: 0 } });
+	const last = mk({ "f5-s2": { c: T[2], b: 0 } });
+	const d = describeTransition(last, first, { technique: null, pairs: [] });
+	A("回环复色：末帧深色→首帧浅色 → 出环（环色=首帧色）", d.entering.some(e => e.id === "f5-s2" && e.color === T[0]), JSON.stringify(d.entering));
+	// 重新出现的音（末帧删、首帧有）→ 回环时也算进入；末帧独有音 = 回环时消失（exiting 无环）
+	const gone = mk({ "f5-s2": "off", "f7-s1": { c: T[1], b: 0 } });
+	const d2 = describeTransition(gone, first, { technique: null, pairs: [] });
+	A("回环重新出现：末帧没有的音 → 出进入环", d2.entering.some(e => e.id === "f5-s2"), JSON.stringify(d2.entering));
+	A("回环消失：末帧独有音不出环（exiting 无涟漪，与普通边界一致）", !d2.entering.some(e => e.id === "f7-s1"));
+	// 轨道：w0=0 的涟漪在 t=0 直接峰值开场（linearTrack 相邻点合并取后值）
+	const t0 = linearTrack([{ t: 0, v: 0 }, { t: -1, v: 0 }, { t: 0, v: 0.95 }, { t: 200, v: 0 }], 2100);
+	A("回环涟漪轨道：t=0 峰值开场且首尾合法", t0.values.split(";")[0] === "0.95" && t0.keyTimes.split(";")[0] === "0" && t0.keyTimes.split(";").pop() === "1", JSON.stringify(t0));
+}
+
+console.log("== animStage：统一舞台（预览=导出的取景器） ==");
+{
+	const { unionFretWindow, cropBoxOfNotes, stageWindowOf, discreteTrack, linearTrack, fadeTrack } = await import("../src/utils/animStage.js");
+	const { boardGeometry } = await import("../src/utils/fretboardCalculations.js");
+
+	// 联合品窗：跨帧并集 + 跨度上限 + 空防御
+	const w1 = unionFretWindow([{ startFret: 3, endFret: 7 }, { startFret: 0, endFret: 5 }]);
+	A("unionFretWindow 跨帧并集", w1.wStart === 0 && w1.wEnd === 7, JSON.stringify(w1));
+	const w2 = unionFretWindow([{ startFret: 20, endFret: 40 }]);
+	A("unionFretWindow 跨度上限 16", w2.wStart === 20 && w2.wEnd === 36, JSON.stringify(w2));
+	const w3 = unionFretWindow([]);
+	A("unionFretWindow 空表防御", w3.wStart === 0 && w3.wEnd === 16, JSON.stringify(w3));
+
+	// 统一裁剪框：与拼接区同式（无开关 null / 空板 null / 钳制在整框内 / 关标尺 pad 更紧）
+	const geo = boardGeometry(0, 4);
+	const full = { x: geo.svgViewBoxX, y: geo.svgViewBoxY, w: geo.svgViewBoxWidth, h: geo.svgViewBoxHeight };
+	const st = (lit) => ({
+		startFret: 0, endFret: 4, enharmonic: 1, displayMode: "note", rootNote: null, visibility: "transparent",
+		data: Object.fromEntries(lit.map((id) => [id, { type: "note", color: "blue", visibility: "visible" }])),
+	});
+	A("crop 无截断开关 → null", cropBoxOfNotes([st(["f1-s2"])], full, {}) === null);
+	A("crop 空板 → null", cropBoxOfNotes([st([])], full, { horizontalCrop: true, verticalCrop: true }) === null);
+	const box = cropBoxOfNotes([st(["f1-s2", "f2-s3"])], full, { horizontalCrop: false, verticalCrop: true, includeMarkers: true });
+	A("crop 垂直截断裁掉上下留白", box && box.y > full.y && box.y + box.h < full.y + full.h && box.x === full.x && box.w === full.w, JSON.stringify(box));
+	const boxNoMk = cropBoxOfNotes([st(["f1-s2", "f2-s3"])], full, { horizontalCrop: false, verticalCrop: true, includeMarkers: false });
+	A("crop 关品数标尺 → 更紧", boxNoMk && boxNoMk.h < box.h, `${box?.h} → ${boxNoMk?.h}`);
+	const boxEdge = cropBoxOfNotes([st(["f1-s0", "f2-s5"])], full, { horizontalCrop: true, verticalCrop: true });
+	A("crop 始终钳制在整框内", boxEdge.x >= full.x - 1e-6 && boxEdge.y >= full.y - 1e-6 && boxEdge.x + boxEdge.w <= full.x + full.w + 1e-6 && boxEdge.y + boxEdge.h <= full.y + full.h + 1e-6, JSON.stringify(boxEdge));
+
+	// stageWindowOf：windowed 同品窗（坐标系统一，跨品窗 fx 不再错位）
+	const frames = [{ startFret: 0, endFret: 4 }, { startFret: 4, endFret: 8 }];
+	const states = [st(["f1-s1"]), { ...st(["f5-s1"]), startFret: 4, endFret: 8 }];
+	const sw = stageWindowOf(frames, states, { horizontalCrop: false, verticalCrop: false });
+	A("stageWindowOf 全部状态统一到联合品窗", sw.windowed.every(s => s.startFret === 0 && s.endFret === 8));
+	A("stageWindowOf 无截断 → cropBox null", sw.cropBox === null);
+	A("stageWindowOf full 与联合品窗几何一致", Math.abs(sw.full.w - boardGeometry(0, 8).svgViewBoxWidth) < 1e-9);
+
+	// SMIL 轨道：keyTimes 必须首 0 尾 1 且严格递增（否则浏览器丢弃整段动画）
+	const okTrack = (tr) => {
+		if (!tr) return false;
+		const kt = tr.keyTimes.split(";").map(Number);
+		const vs = tr.values.split(";");
+		return kt[0] === 0 && kt[kt.length - 1] === 1 && kt.length === vs.length && kt.every((v, i) => i === 0 || v > kt[i - 1]);
+	};
+	A("linearTrack 相近时刻撞点后仍严格递增", okTrack(linearTrack([{ t: 0, v: 0 }, { t: 100, v: 1 }, { t: 100.2, v: 1 }, { t: 300, v: 0.5 }], 500)));
+	A("linearTrack 首点>0 前值填充", okTrack(linearTrack([{ t: 200, v: 3 }], 500)));
+	A("linearTrack 超界钳制", okTrack(linearTrack([{ t: -50, v: 1 }, { t: 600, v: 2 }], 500)));
+	A("linearTrack 空表 → null", linearTrack([], 500) === null);
+	A("discreteTrack 尾点=total 不与结尾撞 keyTime", okTrack(discreteTrack([{ t: 0, v: 1 }, { t: 500, v: 0 }], 500)));
+	A("discreteTrack 相邻同值去重", discreteTrack([{ t: 0, v: 1 }, { t: 100, v: 1 }, { t: 300, v: 0 }], 500).values.split(";").length === 3);
+	// 字符串值（颜色）必须原样透传——曾在此被数字 fmt 洗成 NaN，SMIL fill 动画整条失效（"音符一直一个颜色"的根因）
+	A("discreteTrack 颜色字符串不损坏", discreteTrack([{ t: 0, v: "rgb(204, 224, 250)" }, { t: 200, v: "rgb(78, 149, 247)" }, { t: 400, v: "rgb(8, 70, 165)" }], 500).values === "rgb(204, 224, 250);rgb(78, 149, 247);rgb(8, 70, 165);rgb(8, 70, 165)");
+	A("discreteTrack 值中无 NaN", !discreteTrack([{ t: 0, v: "#f3ba62" }, { t: 300, v: "white" }], 500).values.includes("NaN"));
+	const f = fadeTrack([{ t: 0, v: 1 }, { t: 300, v: 0 }], 1000);
+	const fkt = f.keyTimes.split(";").map(Number);
+	const fvs = f.values.split(";").map(Number);
+	A("fadeTrack 跳变点保持旧值", fvs[1] === 1, f.values);
+	A("fadeTrack 渐变到新值", fvs[2] === 0 && Math.abs(fkt[2] - 0.4) < 1e-3, `${fkt[2]}`);
+	A("fadeTrack 相邻跳变<渐变窗 → 近似瞬切", okTrack(fadeTrack([{ t: 0, v: 1 }, { t: 300, v: 0 }, { t: 310, v: 1 }], 1000)));
 }
 
 console.log(fail === 0 ? `===== 冒烟全部通过（${n} 项）=====` : `===== ${fail}/${n} 项失败 =====`);

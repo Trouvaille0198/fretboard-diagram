@@ -20,6 +20,12 @@ function svgToImage(svgString) {
 
 // 子帧计划：绝对时间网格（fps 网格中点采样）。状态定位/fx 窗口全部由 stateClock 的唯一时刻表决定，
 // 与页面播放共用同一时钟——导出画面 = 预览在该时刻的画面，按构造一致（不另起炉灶）。
+// 板面亮灭的柔和感与预览同源：预览 CSS 在播放态给音符 0.1s opacity 渐变（.playing .note），
+// 导出在进入新板的窗口内做"上一板 + 当前板按进度叠加"的交叉淡化（windowed 后两板同坐标系，
+// 只有变化的音符可见地渐变，未变化像素叠加不变），时长同样取 min(enter, 100ms)。
+const BOARD_FADE_MS = 100;
+const easeFade = u => u * u * (3 - 2 * u); // smoothstep ≈ CSS ease
+
 function buildPlan(states, opts) {
 	const holdMs = opts.holdMs ?? 500;
 	const transMs = opts.transMs ?? 200;
@@ -66,21 +72,44 @@ async function renderSubframes({ states, specs, boardImages, viewBox, opts, onPr
 	});
 	// 与播放器同源的进入切换窗口：状态 k 显示的前 enterOf(k) 毫秒内渲染 desc[k-1] 采样
 	const clock = stateClock(states, opts.holdMs ?? 500, opts.transMs ?? 200);
+	// 回环涟漪：循环从末帧跳回首帧也是一次"前后帧变化"（复色/重新出现的音）——
+	// 首帧显示的前 loopEnter 毫秒叠加 末态→首态 的涟漪采样（与播放器 loopWrap 同语义）
+	const loopEnter = Math.max(1, opts.transMs ?? 200);
+	const loopDesc = states.length > 1
+		? describeTransition(states[states.length - 1], states[0], { technique: null, pairs: [] })
+		: null;
 
 	const subframes = [];
 	for (let p = 0; p < plan.length; p++) {
 		const item = plan[p];
 		ctx.fillStyle = bg;
 		ctx.fillRect(0, 0, width, height);
-		ctx.drawImage(boardImages[item.board], 0, 0, width, height);
 		const k = item.board;
+		// 进入新板的前 enter 毫秒：交叉淡化重现预览的 CSS 渐变（未开窗/出窗即直接画当前板）
 		const enter = clock.enterOf(k - 1);
+		const tIn = k > 0 && enter > 0 ? item.t - clock.starts[k] : -1;
+		const fade = enter > 0 ? Math.min(enter, BOARD_FADE_MS) : 0;
+		if (tIn >= 0 && tIn < fade) {
+			ctx.drawImage(boardImages[k - 1], 0, 0, width, height);
+			ctx.globalAlpha = easeFade(tIn / fade);
+			ctx.drawImage(boardImages[k], 0, 0, width, height);
+			ctx.globalAlpha = 1;
+		} else {
+			ctx.drawImage(boardImages[k], 0, 0, width, height);
+		}
 		if (k > 0 && enter > 0 && !(statesOptsSub && statesOptsSub[k])) { // 技法边状态不渲染涟漪（与播放器统一）
-			const tIn = item.t - clock.starts[k];
 			if (tIn >= 0 && tIn < enter) {
 				const fxSvg = elsToSvgString(sampleTransition(descs[k - 1], Math.min(1, tIn / enter), enter), viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle });
 				const fxImg = await svgToImage(fxSvg);
 				ctx.drawImage(fxImg, 0, 0, width, height);
+			}
+		}
+		// 回环涟漪（GIF 循环重开处 = 末帧→首帧的过渡；leadBlank 首态空白时采样为空自动跳过）
+		if (k === 0 && loopDesc && item.t < loopEnter) {
+			const loopEls = sampleTransition(loopDesc, item.t / loopEnter, loopEnter);
+			if (loopEls.length) {
+				const loopImg = await svgToImage(elsToSvgString(loopEls, viewBox, { labelColor: opts.labelColor, noteStyle: opts.noteStyle }));
+				ctx.drawImage(loopImg, 0, 0, width, height);
 			}
 		}
 		// 并发 fx 轨道：绝对时间在窗口内的轨迹叠加
@@ -182,5 +211,6 @@ export async function exportWebmAnimation({ states, specs, boardImages, viewBox,
 	recorder.stop();
 	await done;
 	canvas.remove();
-	return new Blob(chunks, { type: 'video/webm' });
+	// MIME 跟随实际编码容器（preferMp4 时是 video/mp4——写错成 webm 会让部分播放器拒开 .mp4 文件）
+	return new Blob(chunks, { type: mime.split(';')[0] });
 }
