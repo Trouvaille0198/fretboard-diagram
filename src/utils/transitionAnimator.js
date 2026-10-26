@@ -1,7 +1,8 @@
 // 帧间过渡动画内核：页面播放与导出动图共用同一套描述符 + 插值，保证所见即所得
 // 数据来源 = TransitionSpec（技法 + 显式 pairs）+ 帧差分兜底（未标注的亮灭）
 // 规则：
-//   退出音 → 淡出消隐；进入音 → 扩散环（可琶音错开）
+//   退出音 → 淡出消隐；进入音 → 扩散环（可琶音错开）；
+//   复色音（前后帧都亮、颜色变了）→ 同款扩散环（颜色不变不出）
 //   pairs：sl 滑线+匀速光点；h/p 急促缓动+字母；mv 光点平移无字母；hp A→B→A 往返+双字母，B 为瞬时音
 
 import { CONSTS } from "../constants.js";
@@ -49,8 +50,9 @@ const FX_COLORS = {
 	dotFill: "rgba(243, 186, 98, 0.95)"
 };
 
-// 从帧数据取音符颜色（跟随动图色系）：{name,custom} 取 custom，色名取基础填充
-function noteColorOf(state, id) {
+// 从帧数据取音符颜色（跟随动图色系）：{name,custom} 取 custom，色名取基础填充。
+// SMIL 导出的涟漪层同口径复用（复色涟漪的判定必须与内核一致）
+export function noteColorOf(state, id) {
 	const c = state?.data?.[id]?.color;
 	if (!c) return null;
 	if (typeof c === "object" && c.custom) return c.custom;
@@ -59,6 +61,63 @@ function noteColorOf(state, id) {
 		if (fill && fill !== "white") return fill;
 	}
 	return null;
+}
+
+// ============ 涟漪环可视性 ============
+// 涟漪是纯描边环（无填充托底），数据色直接当环色时，深档色画在深背景上会隐身
+// （如 deep 蓝 rgb(8,70,165) vs 背景 #10161c 亮度差仅 ~65，环不可见）。
+// 保障：环色与背景亮度差不足 RING_MIN_DIFF 时，向远离背景的一端（白或黑）线性混合，
+// 色相保持——观感是"同色的更亮/更深一档"，而不是换成别的颜色。
+
+const RING_MIN_DIFF = 110;
+
+export function parseColorValue(c) {
+	if (typeof c !== "string") return null;
+	const hex = c.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+	if (hex) {
+		const h = hex[1].length === 3 ? hex[1].split("").map(x => x + x).join("") : hex[1];
+		const n = parseInt(h, 16);
+		return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255, a: 1 };
+	}
+	const rgx = c.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+)\s*)?\)$/i);
+	if (rgx) return { r: +rgx[1], g: +rgx[2], b: +rgx[3], a: rgx[4] === undefined ? 1 : +rgx[4] };
+	return null;
+}
+
+const luma = ({ r, g, b }) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+// 环色/背景任一解析失败 → 原样返回（var() 等运行时色、node 冒烟无背景）
+export function ensureRingVisible(color, background) {
+	const fg = parseColorValue(color);
+	const bg = parseColorValue(background);
+	if (!fg || !bg) return color;
+	const yFg = luma(fg), yBg = luma(bg);
+	if (yBg < 128) {
+		if (yFg - yBg >= RING_MIN_DIFF) return color;
+		const t = Math.min(1, (RING_MIN_DIFF + yBg - yFg) / (255 - yFg)); // 向白混合
+		const mix = c => Math.round(c + t * (255 - c));
+		return fg.a >= 1 ? `rgb(${mix(fg.r)}, ${mix(fg.g)}, ${mix(fg.b)})` : `rgba(${mix(fg.r)}, ${mix(fg.g)}, ${mix(fg.b)}, ${fg.a})`;
+	}
+	if (yBg - yFg >= RING_MIN_DIFF) return color;
+	const t = Math.min(1, (yFg - (yBg - RING_MIN_DIFF)) / yFg); // 向黑压暗
+	const mix = c => Math.round(c * (1 - t));
+	return fg.a >= 1 ? `rgb(${mix(fg.r)}, ${mix(fg.g)}, ${mix(fg.b)})` : `rgba(${mix(fg.r)}, ${mix(fg.g)}, ${mix(fg.b)}, ${fg.a})`;
+}
+
+// 应用背景色（页面运行时读主题变量；node/SSR 无 DOM → null → 不调整，保持冒烟确定性）
+function appBackgroundColor() {
+	if (typeof document === "undefined") return null;
+	try {
+		const v = getComputedStyle(document.documentElement).getPropertyValue("--background-color").trim();
+		return v || null;
+	} catch (e) {
+		return null;
+	}
+}
+
+// 涟漪环色：数据色 → 金色兜底 → 可视性保障（与背景对比不足时提亮/压暗）
+export function rippleColorOf(state, id) {
+	return ensureRingVisible(noteColorOf(state, id) || FX_COLORS.ringStroke, appBackgroundColor());
 }
 
 // 过渡静态描述：显式 pairs（spec）+ 差分兜底（未标注的进/出音），一次算好
@@ -88,6 +147,18 @@ export function describeTransition(prevState, nextState, spec = {}) {
 		.map(n => ({ id: n.id, x: n.x, y: n.y, color: noteColorOf(prevState, n.id) }));
 	const entering = nextNotes
 		.filter(n => nextActive.has(n.id) && !prevActive.has(n.id) && !pairToIds.has(n.id) && !muteEnter.has(n.id))
+		.map(n => ({ id: n.id, x: n.x, y: n.y }));
+
+	// 复色涟漪：前后帧都亮着、但颜色变了的音 → 也出扩散环（颜色不变则不出，用户定稿）。
+	// 环色 = 新色（涟漪宣告"变成了这个颜色"）；技法参与音同样让位（muteEnter）
+	const recolored = nextNotes
+		.filter(n => nextActive.has(n.id) && prevActive.has(n.id)
+			&& !pairToIds.has(n.id) && !pairFromIds.has(n.id) && !muteEnter.has(n.id))
+		.filter(n => {
+			const a = noteColorOf(prevState, n.id);
+			const b = noteColorOf(nextState, n.id);
+			return a && b && a !== b;
+		})
 		.map(n => ({ id: n.id, x: n.x, y: n.y }));
 
 	// 琶音：进入音按音高次序错开延迟（pairs 始终同步，保证"整体移动"观感）
@@ -127,9 +198,11 @@ export function describeTransition(prevState, nextState, spec = {}) {
 		})
 		.filter(p => p.from && p.to);
 
-	const enteringColored = enteringStaggered.map(n => ({
+	// 复色不参与琶音错开（它不是"出现"，只是"变色"），随进入音一起渲染；
+	// 环色统一走 rippleColorOf（数据色→金色兜底→可视性保障：深色环在深背景上要提亮到可见）
+	const enteringColored = [...enteringStaggered, ...recolored.map(n => ({ ...n, delayMs: 0 }))].map(n => ({
 		...n,
-		color: noteColorOf(nextState, n.id) || FX_COLORS.ringStroke
+		color: rippleColorOf(nextState, n.id)
 	}));
 
 	return { technique, exiting, entering: enteringColored, pairs: resolvedPairs };

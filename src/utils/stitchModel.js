@@ -4,10 +4,10 @@
 // 垂直截断只裁掉上下留白，剩余部分按其所在位置参与对齐。
 // 本模块保持纯 JS（可被 node 冒烟测试），渲染相关能力在 StitchDock.jsx。
 
-import { boardGeometry, generateNotes, computeNoteName, computeNoteIndex } from "./fretboardCalculations.js";
+import { boardGeometry } from "./fretboardCalculations.js";
+import { cropBoxOfNotes } from "./animStage.js";
 
 const KEY = "fretboard-stitch";
-const NOTES = { noteToSolfege: () => "" }; // 唱名仅影响文字内容，不影响几何；拼接裁剪计算不需要真值
 
 // ============ 本地存储（localStorage + 滚动备份 ×3，与动图堆同款规矩） ============
 
@@ -40,48 +40,11 @@ export function newStitchId() {
 	return `st-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// ============ 单图裁剪框（与动图导出的截断逻辑同式） ============
-
-function stateNotes(state) {
-	return generateNotes(
-		state.startFret,
-		state.endFret,
-		state.data,
-		state.displayMode,
-		state.rootNote,
-		state.enharmonic,
-		state.visibility,
-		(fret, string) => computeNoteName(fret, string, state.enharmonic),
-		computeNoteIndex,
-		NOTES.noteToSolfege
-	);
-}
+// ============ 单图裁剪框（与动图导出的截断逻辑同式，共用 animStage.cropBoxOfNotes） ============
 
 // 可见音符（含选中态）联合范围 → 统一裁剪框；无可见音符时返回 null（整框）
 export function stitchCropBox(state, opts, full) {
-	if (!opts.horizontalCrop && !opts.verticalCrop) return null;
-	const notes = stateNotes(state);
-	let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-	const R = 20; // CONSTS.circleRadius（音圆半径）
-	Object.entries(state.data || {}).forEach(([id, n]) => {
-		if (!n || (n.visibility !== "visible" && n.visibility !== "selected")) return;
-		const note = notes.find(p => p.id === id);
-		if (!note) return;
-		minX = Math.min(minX, note.x - R); maxX = Math.max(maxX, note.x + R);
-		minY = Math.min(minY, note.y - R); maxY = Math.max(maxY, note.y + R);
-	});
-	if (minX === Infinity) return null;
-	const padX = 14, padY = opts.includeMarkers === false ? 8 : 30; // 上下品位标尺空间
-	let cx = full.x, cy = full.y, cw = full.w, ch = full.h;
-	if (opts.horizontalCrop) {
-		const x1 = Math.max(full.x, minX - padX), x2 = Math.min(full.x + full.w, maxX + padX);
-		cx = x1; cw = Math.max(120, x2 - x1);
-	}
-	if (opts.verticalCrop) {
-		const y1 = Math.max(full.y, minY - padY), y2 = Math.min(full.y + full.h, maxY + padY);
-		cy = y1; ch = Math.max(80, y2 - y1);
-	}
-	return { x: cx, y: cy, w: cw, h: ch };
+	return cropBoxOfNotes([state], full, opts);
 }
 
 // 单条目 → 渲染框：full=整板框，vb=实际输出框（含截断）。y 方向锚定指板坐标。

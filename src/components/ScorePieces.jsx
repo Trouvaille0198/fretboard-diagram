@@ -69,7 +69,6 @@ export const ScoreBoard = React.memo(function ScoreBoard({ snapshot, options }) 
       generateStringPathMemo={generateStringPathMemo}
       notes={notes}
       notesElementRef={notesRef}
-      showNotes={showNotes}
       hideInactiveNotes={!showNotes} /* "显示音符"=导出/复制开关：关(默认)=只带激活音；开=带暗圆网格。网页查看/编辑永远全显 */
       data={s.data}
       visibility={s.visibility}
