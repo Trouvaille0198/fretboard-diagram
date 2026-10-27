@@ -4,7 +4,6 @@ import PianoKeyboard from '../PianoKeyboard';
 import { ColorPalette } from './ColorPalette';
 import { ConnectionPresetIcon } from './ConnectionPresetIcon';
 import { CONNECTION_PRESETS } from '../hooks/useConnectionState';
-import { FretRangeSlider } from './FretRangeSlider';
 import { ScaleDisplay } from './ScaleDisplay';
 import { getLevel1FillColor, getLevel2Color, generateTintVariants } from '../colorConfig';
 
@@ -28,9 +27,6 @@ export function FretboardMenu({
   onRootNoteSelect,
   displayMode,
   setDisplayMode,
-  startFret,
-  endFret,
-  onFretWindowChange,
   includeMarkers,
   setIncludeMarkers,
   copyOnly,
@@ -256,11 +252,6 @@ export function FretboardMenu({
             }}
           />
         </div>
-        <FretRangeSlider
-          startFret={startFret}
-          endFret={endFret}
-          onFretWindowChange={onFretWindowChange}
-        />
       </div>
 
       <div className="menu-scale-bottom">
