@@ -679,18 +679,19 @@ function Fretboard({ mode = 'normal' }) {
       brushPaintStateRef.current.lastPaintedNoteId = null;
       return;
     }
-    if (connectionMode || selectedColorLevel === null || selectedColor === null) {
+    if (selectedColorLevel === null || selectedColor === null) {
       brushPaintStateRef.current.armed = false;
       brushPaintStateRef.current.dragged = false;
       brushPaintStateRef.current.lastPaintedNoteId = null;
       return;
     }
 
+    // 连线模式不再整体拒绝：音符上的按下不武装（拖连线领地），空白处按下可拖染
     brushPaintStateRef.current.armed = true;
     brushPaintStateRef.current.dragged = false;
     brushPaintStateRef.current.lastPaintedNoteId = null;
     beginBatch();
-  }, [connectionMode, selectedColorLevel, selectedColor, beginBatch]);
+  }, [selectedColorLevel, selectedColor, beginBatch]);
 
   const shouldBrushPaint = useCallback((event) => {
     return brushPaintStateRef.current.armed && (event.buttons & 1) === 1 && selectedColorLevel !== null && selectedColor !== null;
@@ -1092,10 +1093,11 @@ function Fretboard({ mode = 'normal' }) {
     connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level, selected, setSelected,
     data, setData, connectionToolbarVisible, setConnectionToolbarVisible, setToolbarDropdown,
+    consumePendingBrushClick,
     updateNote: updateNote
   }), [connectionMode, connectionStartNote, setConnectionStartNote, setConnectionStartPosition,
     setMousePosition, setPreviewHoverNote, setUseColor2Level, selected, setSelected,
-    data, setData, connectionToolbarVisible, setConnectionToolbarVisible, setToolbarDropdown]);
+    data, setData, connectionToolbarVisible, setConnectionToolbarVisible, setToolbarDropdown, consumePendingBrushClick]);
 
   const handleSvgContextMenu = useCallback(createSvgContextMenuHandler({
     connectionMode, setConnectionMode, setConnectionStartNote, setConnectionStartPosition,
