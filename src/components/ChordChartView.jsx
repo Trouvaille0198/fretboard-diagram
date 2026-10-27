@@ -74,7 +74,7 @@ export function ChordChartView({ songId }) {
 	const [toast, setToast] = useState(null); // { msg, key } 应用内轻提示（替代 alert）
 	// 应用内对话框（替代原生 prompt/confirm/alert）：{ type:'prompt'|'confirm'|'alert', title, label?, value?, text?, onOk }
 	const [dialog, setDialog] = useState(null);
-	
+
 	const dialogInputRef = useRef(null);
 	const showToast = (msg) => setToast({ msg, key: Date.now() });
 	const clipRef = useRef(null); // Ctrl+C/V 剪贴板：{type:'chord',chord} | {type:'measure',slots}
@@ -153,10 +153,11 @@ export function ChordChartView({ songId }) {
 			const v = JSON.parse(localStorage.getItem("fretboard-figopts") || "null");
 			if (v && v.orientation) {
 				if (!FIG_SIZES.includes(v.size)) v.size = v.size <= 88 ? FIG_SIZES[0] : (v.size <= 104 ? FIG_SIZES[1] : FIG_SIZES[2]);
+				if (v.mode !== "hover") v.mode = "inline";
 				return v;
 			}
 		} catch (e) { /* 忽略 */ }
-		return { orientation: "v", degMode: "chord", size: 144 };
+		return { orientation: "v", degMode: "chord", size: 144, mode: "inline" };
 	});
 	useEffect(() => { try { localStorage.setItem("fretboard-figopts", JSON.stringify(figOpts)); } catch (e) { /* 忽略 */ } }, [figOpts]);
 
@@ -657,8 +658,8 @@ export function ChordChartView({ songId }) {
 			schedule(t0 + item.startMs / speed, () => {
 				{
 					const playingCls = 'playing';
-					document.querySelectorAll('.cc-beat.' + playingCls).forEach(function(el) { el.classList.remove(playingCls); });
-					document.querySelectorAll('.cc-beat').forEach(function(el) {
+					document.querySelectorAll('.cc-beat.' + playingCls).forEach(function (el) { el.classList.remove(playingCls); });
+					document.querySelectorAll('.cc-beat').forEach(function (el) {
 						var dMi = el.getAttribute('data-mi');
 						var dSi = el.getAttribute('data-si');
 						if (String(dMi) === String(item.mi) && String(dSi) === String(item.si)) el.classList.add(playingCls);
@@ -846,7 +847,7 @@ export function ChordChartView({ songId }) {
 	const shareChart = async () => {
 		try {
 			await navigator.clipboard.writeText(chartShareCode(song));
-			showToast(ts.sharedCode ?? "分享码已复制（对方在打谱页「从分享码导入」即可 100% 还原）");
+			showToast(ts.sharedCode ?? "分享码已复制（对方在和弦谱页「从分享码导入」即可 100% 还原）");
 		} catch (e) {
 			showToast(ts.shareFail ?? "复制失败，请改用「导出工程文件」");
 		}
@@ -1223,7 +1224,7 @@ export function ChordChartView({ songId }) {
 	for (let i = 0; i < song.measures.length; i += per) rows.push(song.measures.slice(i, i + per));
 
 	return (
-		<div className={`cc-page${copyMode ? " cc-copying" : ""}`}>
+		<div className={`cc-page${copyMode ? " cc-copying" : ""}${figOpts.mode === "hover" ? " figmode-hover" : ""}`}>
 			<header className="cc-toolbar">
 				<div className="cc-tabs-row">
 					<nav className="cc-tooltabs">
@@ -1270,72 +1271,72 @@ export function ChordChartView({ songId }) {
 				</div>
 
 				{editing ? (
-				<div className="cc-tools-row">
-					{toolTab === "chord" ? (
-						<div className="cc-freqbar">
-							{frequentChords.map((c, i) => {
-								const localKey = keyAt(cursor.mi); // 常用和弦音名提示跟随光标处生效调（谱中转调后不误导）
-								return (
-									<button key={i} className="cc-freq-chord" title={formatName(c, localKey)} onClick={() => {
-										typeRef.current = { t: Date.now(), mode: "degree", sub: null, lastKind: "mod" };
-										patchCurrentUnit({ kind: "chord", chord: { ...c } });
-										rememberQuality(c);
-									}}>
-										<ChordSign chord={c} display="degree" viewKey={localKey} />
-									</button>
-								);
-							})}
-							<button className="cc-freq-tool" title={ts.addRow ?? "新增一行"} onClick={addRow}>＋<small>{ts.rowLabel ?? "一行"}</small></button>
-						</div>
-					) : toolTab === "measure" ? (
-						<div className="cc-measuretools">
-							<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
-							<button className="button sm" onClick={() => addMeasure(cursor.mi)}>＋ {ts.addMeasure ?? "后插小节"}</button>
-							<button className="button sm" onClick={() => duplicateMeasure(cursor.mi)}>⧉ {ts.dupMeasure ?? "复制"}</button>
-							<button className="button sm danger" onClick={() => removeMeasure(cursor.mi)} disabled={song.measures.length <= 1}>✕ {ts.delMeasure ?? "删除"}</button>
-							<button className="button sm" onClick={() => insertBeat(cursor.mi, cursor.si)}
-								title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体右移，本小节末拍被挤出（Insert / Shift+Enter）"}>
-								⇥ {ts.insertBeat ?? "插入一拍"} <kbd>Ins</kbd>
-							</button>
-							<span className="cc-sep" />
-							<select value={song.measures[cursor.mi]?.endBar || "single"} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, endBar: e.target.value }))} title={ts.barlineLabel ?? "小节线"}>
-								{END_BARS.map(b => <option key={b.v} value={b.v}>{b.name}</option>)}
-							</select>
-							<label className="cc-iconbtn" title={ts.repeatStart ?? "反复开始"}>
-								<input type="checkbox" checked={!!song.measures[cursor.mi]?.repeatStart} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, repeatStart: e.target.checked }))} />‖:
-							</label>
-							<select value={song.measures[cursor.mi]?.house || "0"} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, house: e.target.value === "0" ? null : Number(e.target.value) }))} title={ts.houseLabel ?? "跳房子"}>
-								<option value="0">{ts.houseNone ?? "无房子"}</option>
-								<option value="1">1.</option>
-								<option value="2">2.</option>
-							</select>
-							<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn ?? "段落"}</button>
-							<span className="cc-sep" />
-							<label className="cc-field">{ts.keyChange ?? "转调"}（{ts.keyChangeFrom ?? "本小节起"}）</label>
-							{keyStepper()}
-						</div>
-					) : toolTab === "text" ? (
-						<div className="cc-measuretools">
-							<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
-							<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn ?? "段落标记"}</button>
-							<input className="cc-tools-lyrics" value={song.measures[cursor.mi]?.lyrics || ""} key={`ly-${cursor.mi}`}
-								placeholder={ts.lyricsPh ?? "歌词（空格对齐）"} title={ts.lyricsFor ?? "当前小节歌词"}
-								onChange={e => patchMeasure(cursor.mi, x => ({ ...x, lyrics: e.target.value }))} />
-						</div>
-					) : toolTab === "color" ? (
-						<div className="cc-measuretools">
-							<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
-							<span className="cc-tools-label2">{ts.tintLabel ?? "小节标色"}</span>
-							{Object.entries(TINTS).map(([k, v]) => (
-								<button key={k} className={`cc-tint ${k} ${(song.measures[cursor.mi]?.tint || "") === k ? "on" : ""}`}
-									title={v.name} onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: k }))} />
-							))}
-							<button className="button sm" onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: null }))}>{ts.tintClear ?? "清除"}</button>
-						</div>
-					) : (
-						<div className="cc-tools-na">{ts.tabNA ?? "和弦谱无此类工具（8pu 的简谱/旋律功能页）"}</div>
-					)}
-				</div>
+					<div className="cc-tools-row">
+						{toolTab === "chord" ? (
+							<div className="cc-freqbar">
+								{frequentChords.map((c, i) => {
+									const localKey = keyAt(cursor.mi); // 常用和弦音名提示跟随光标处生效调（谱中转调后不误导）
+									return (
+										<button key={i} className="cc-freq-chord" title={formatName(c, localKey)} onClick={() => {
+											typeRef.current = { t: Date.now(), mode: "degree", sub: null, lastKind: "mod" };
+											patchCurrentUnit({ kind: "chord", chord: { ...c } });
+											rememberQuality(c);
+										}}>
+											<ChordSign chord={c} display="degree" viewKey={localKey} />
+										</button>
+									);
+								})}
+								<button className="cc-freq-tool" title={ts.addRow ?? "新增一行"} onClick={addRow}>＋<small>{ts.rowLabel ?? "一行"}</small></button>
+							</div>
+						) : toolTab === "measure" ? (
+							<div className="cc-measuretools">
+								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
+								<button className="button sm" onClick={() => addMeasure(cursor.mi)}>＋ {ts.addMeasure ?? "后插小节"}</button>
+								<button className="button sm" onClick={() => duplicateMeasure(cursor.mi)}>⧉ {ts.dupMeasure ?? "复制"}</button>
+								<button className="button sm danger" onClick={() => removeMeasure(cursor.mi)} disabled={song.measures.length <= 1}>✕ {ts.delMeasure ?? "删除"}</button>
+								<button className="button sm" onClick={() => insertBeat(cursor.mi, cursor.si)}
+									title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体右移，本小节末拍被挤出（Insert / Shift+Enter）"}>
+									⇥ {ts.insertBeat ?? "插入一拍"} <kbd>Ins</kbd>
+								</button>
+								<span className="cc-sep" />
+								<select value={song.measures[cursor.mi]?.endBar || "single"} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, endBar: e.target.value }))} title={ts.barlineLabel ?? "小节线"}>
+									{END_BARS.map(b => <option key={b.v} value={b.v}>{b.name}</option>)}
+								</select>
+								<label className="cc-iconbtn" title={ts.repeatStart ?? "反复开始"}>
+									<input type="checkbox" checked={!!song.measures[cursor.mi]?.repeatStart} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, repeatStart: e.target.checked }))} />‖:
+								</label>
+								<select value={song.measures[cursor.mi]?.house || "0"} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, house: e.target.value === "0" ? null : Number(e.target.value) }))} title={ts.houseLabel ?? "跳房子"}>
+									<option value="0">{ts.houseNone ?? "无房子"}</option>
+									<option value="1">1.</option>
+									<option value="2">2.</option>
+								</select>
+								<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn ?? "段落"}</button>
+								<span className="cc-sep" />
+								<label className="cc-field">{ts.keyChange ?? "转调"}（{ts.keyChangeFrom ?? "本小节起"}）</label>
+								{keyStepper()}
+							</div>
+						) : toolTab === "text" ? (
+							<div className="cc-measuretools">
+								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
+								<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn ?? "段落标记"}</button>
+								<input className="cc-tools-lyrics" value={song.measures[cursor.mi]?.lyrics || ""} key={`ly-${cursor.mi}`}
+									placeholder={ts.lyricsPh ?? "歌词（空格对齐）"} title={ts.lyricsFor ?? "当前小节歌词"}
+									onChange={e => patchMeasure(cursor.mi, x => ({ ...x, lyrics: e.target.value }))} />
+							</div>
+						) : toolTab === "color" ? (
+							<div className="cc-measuretools">
+								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
+								<span className="cc-tools-label2">{ts.tintLabel ?? "小节标色"}</span>
+								{Object.entries(TINTS).map(([k, v]) => (
+									<button key={k} className={`cc-tint ${k} ${(song.measures[cursor.mi]?.tint || "") === k ? "on" : ""}`}
+										title={v.name} onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: k }))} />
+								))}
+								<button className="button sm" onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: null }))}>{ts.tintClear ?? "清除"}</button>
+							</div>
+						) : (
+							<div className="cc-tools-na">{ts.tabNA ?? "和弦谱无此类工具（8pu 的简谱/旋律功能页）"}</div>
+						)}
+					</div>
 				) : null}
 			</header>
 
@@ -1350,11 +1351,11 @@ export function ChordChartView({ songId }) {
 						<button className={previewDisplay === "roman" ? "on" : ""} onClick={() => setPreviewDisplay("roman")}>{ts.dispRoman ?? "罗马"}</button>
 						<button className={previewDisplay === "name" ? "on" : ""} onClick={() => setPreviewDisplay("name")}>{ts.dispName ?? "音名"}</button>
 					</nav>
-<span className="cc-flex" />
-						<button className="button sm" onClick={shareChart} title={ts.shareCodeTip ?? "复制分享码：对方粘贴即可 100% 还原整首谱"} >{ts.shareBtn ?? "分享"}</button>
-						<button className="button sm accent" onClick={doExportChart} title={ts.exportPackTip ?? "工程文件：体积最小且 100% 还原（含配图/标色/节奏型）"}>⇩ {ts.exportBtn ?? "导出"}</button>
-					</div>
-				) : null}
+					<span className="cc-flex" />
+					<button className="button sm" onClick={shareChart} title={ts.shareCodeTip ?? "复制分享码：对方粘贴即可 100% 还原整首谱"} >{ts.shareBtn ?? "分享"}</button>
+					<button className="button sm accent" onClick={doExportChart} title={ts.exportPackTip ?? "工程文件：体积最小且 100% 还原（含配图/标色/节奏型）"}>⇩ {ts.exportBtn ?? "导出"}</button>
+				</div>
+			) : null}
 
 			{!editing && viewTab === "dynamic" ? (
 				<div className="cc-dynview">
@@ -1475,6 +1476,7 @@ export function ChordChartView({ songId }) {
 									<button title="小图方向" onClick={() => setFigOpts(o => ({ ...o, orientation: o.orientation === "v" ? "h" : "v" }))}>{figOpts.orientation === "v" ? "↕" : "↔"}</button>
 									<button title="度数标注" onClick={() => setFigOpts(o => ({ ...o, degMode: o.degMode === "chord" ? "scale" : (o.degMode === "scale" ? "none" : "chord") }))}>{figOpts.degMode === "chord" ? "级数" : (figOpts.degMode === "scale" ? "调内" : "无标注")}</button>
 									<button title="小图尺寸" onClick={() => setFigOpts(o => ({ ...o, size: o.size >= FIG_SIZES[2] ? FIG_SIZES[0] : (o.size >= FIG_SIZES[1] ? FIG_SIZES[2] : FIG_SIZES[1]) }))}>{figOpts.size}px</button>
+									<button title="和弦图展示：内嵌（记号上方单独一行）/ 悬浮（默认隐藏，悬停该拍才显示大图）" onClick={() => setFigOpts(o => ({ ...o, mode: o.mode === "hover" ? "inline" : "hover" }))}>{figOpts.mode === "hover" ? "悬浮" : "内嵌"}</button>
 								</span>
 							</div>
 							<div className="cc-legend-row">
@@ -1498,7 +1500,7 @@ export function ChordChartView({ songId }) {
 
 			</div>
 
-			
+
 
 			{figTarget != null ? (() => {
 				const u = unitAt(figTarget.mi, figTarget.si, figTarget.half);
@@ -1518,7 +1520,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v47</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v48</div>
 
 
 			{dialog ? (

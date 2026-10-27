@@ -10,13 +10,13 @@ import { figSvg } from '../utils/chordFig';
 import { candidatesForChord, candidateToData, shapeFromBoard, builtinShapes, loadShapes, persistShapes } from '../utils/chordShapes';
 import { QUALITIES } from '../utils/chordLib';
 
-const noOp = () => {};
+const noOp = () => { };
 
 // 唱名（首调,相对当前调根音）:全半音表——小调自然音级(b3/b6/b7)自动落对,与小图"调内级数"体系同口径
 const SOLFEGE_REL = { 0: '1', 1: '#1', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7' };
 const solfegeRelKey = (noteIndex, rootNote) => SOLFEGE_REL[((noteIndex - rootNote) % 12 + 12) % 12];
 
-// 指法小图编辑器——打谱页内大弹窗里的"裁剪版普通编辑器"：
+// 指法小图编辑器——和弦谱页内大弹窗里的"裁剪版普通编辑器"：
 // 交互与普通编辑完全同源(点音亮灭/连线拖拽/长按刷染),但按小图场景裁剪：
 // 音符恒为 mono 单色点(无色板)、工具区只有连线预设(无钢琴/下载/异色)。
 // 编辑实时自动保存(数据变化即落盘到该拍 unit.fig,无需手动确认)；

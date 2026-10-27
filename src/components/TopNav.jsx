@@ -16,7 +16,7 @@ export function TopNav({ mode }) {
 	const items = [
 		{ id: "normal", label: tr.normal ?? "普通编辑", route: "#/" },
 		{ id: "dynamic", label: tr.dynamic ?? "动图", route: "#/dynamic" },
-		{ id: "chords", label: tr.chords ?? "打谱", route: "#/chords" }
+		{ id: "chords", label: tr.chords ?? "和弦谱", route: "#/chords" }
 	];
 
 	const go = (item) => {
@@ -48,7 +48,7 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v47">v47</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v48">v48</span>
 				<button className="top-nav-icon" onClick={toggleLang} title={lang === "zh" ? "Switch to English" : "切换为中文"}>
 					{lang === "zh" ? "En" : "中"}
 				</button>
