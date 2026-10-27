@@ -4366,9 +4366,9 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 /* 拍格 */
-.cc-cell-figs { display: flex; align-items: flex-start; gap: 4px; margin-bottom: 4px; min-height: 0; }
+.cc-cell-figs { display: flex; align-items: flex-start; justify-content: center; gap: 6px; margin-bottom: 4px; min-height: 0; }
 .cc-cell-figs:empty { display: none; }
-.cc-cell-figs .cc-figview svg { height: 72px; width: auto; max-width: 100%; display: block; }
+.cc-cell-figs .cc-figview svg { height: 92px; width: auto; max-width: 100%; display: block; }
 
 .cc-cell-slots {
     display: flex;
