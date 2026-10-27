@@ -4393,7 +4393,8 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cell-figs.pad { min-height: 112px; }
 .cc-cell-figslot { flex: 1; display: flex; gap: 2px; min-width: 0; position: relative; }
 /* 占位带空槽：极淡虚线框（同行有图才出现），双击开编辑配图——空隙变功能槽 */
-.cc-figslot-ph { align-self: stretch; flex: 1; min-height: 84px; margin: 0 22%; border: 1px dashed rgba(230, 237, 242, 0.14); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: rgba(230, 237, 242, 0.2); font-size: 20px; cursor: pointer; user-select: none; transition: border-color 0.15s, color 0.15s; }
+/* 每小节一个占位框（整节无图且同行有图才出现）：居中横跨小节，双击配图 */
+.cc-figslot-ph { align-self: stretch; flex: 1 1 100%; min-height: 84px; margin: 0 12%; border: 1px dashed rgba(230, 237, 242, 0.13); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: rgba(230, 237, 242, 0.18); font-size: 22px; cursor: pointer; user-select: none; transition: border-color 0.15s, color 0.15s; }
 .cc-figslot-ph:hover { border-color: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #6fb0ff); }
 .cc-cell-figslot .cc-figview { flex: 1; display: flex; justify-content: center; min-width: 0; }
 .cc-cell-figs svg { height: 108px; width: auto; max-width: 100%; display: block; }
