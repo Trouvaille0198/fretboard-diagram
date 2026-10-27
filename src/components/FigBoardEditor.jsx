@@ -42,6 +42,11 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   const brushRef = useRef({ armed: false, dragged: false, lastPaintedNoteId: null });
 
   const geo = useMemo(() => boardGeometry(fretWin.start, fretWin.end), [fretWin]);
+  // 收窄 viewBox 裁掉板左右的大片空白(offsetX 边距区):品窗含 0 品时左侧留出开放弦音符,否则裁到第一品音符旁;右侧裁到末品音符旁
+  const vbTrimL = fretWin.start === 0 ? 18 : 78;
+  const vbTrimR = 68;
+  const vbX = geo.svgViewBoxX + vbTrimL;
+  const vbW = Math.max(200, geo.svgViewBoxWidth - vbTrimL - vbTrimR);
   // 音符标签 = 当前调唱名（do-re-mi 相对调根音），与小图"调内级数"同口径
   const keyRoot = viewKey?.root ?? 0;
   const notes = useMemo(() => generateNotes(
@@ -200,9 +205,9 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
             svgElementRef={svgElementRef}
             svgWidth={geo.svgWidth}
             svgHeight={geo.svgHeight}
-            svgViewBoxX={geo.svgViewBoxX}
+            svgViewBoxX={vbX}
             svgViewBoxY={geo.svgViewBoxY}
-            svgViewBoxWidth={geo.svgViewBoxWidth}
+            svgViewBoxWidth={vbW}
             svgViewBoxHeight={geo.svgViewBoxHeight}
             handleSvgClick={handleSvgClick}
             handleSvgMouseMove={handleSvgMove}
