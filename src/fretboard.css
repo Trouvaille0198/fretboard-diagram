@@ -4455,9 +4455,9 @@ html[data-theme="light"] .cc-page {
     flex: 1;
     display: flex;
     flex-direction: column;
-    /* 指法小图(figview)在记号(csign)上方；记号贴底=所有拍的和弦记号同一条水平线 */
+    /* 记号垂直居中于拍格：拍格等高（同行 stretch+固定行高），居中即所有记号中心同一条水平线 */
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 1px;
     border-radius: 5px;
     position: relative;
