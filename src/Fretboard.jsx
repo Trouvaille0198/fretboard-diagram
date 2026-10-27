@@ -187,6 +187,17 @@ function Fretboard({ mode = 'normal' }) {
     showToast(`已加入拼接区（第 ${next.length} 张）— 悬停右上角查看`, 'success');
   }, [captureBoard, includeMarkers, showNotes, horizontalCrop, verticalCrop, showToast]);
 
+  // 拼接区拖动换位：把 from 段插到 to 段的位置（同样以 localStorage 为准，多标签不互踩）
+  const reorderStitch = useCallback((from, to) => {
+    const cur = loadStitch();
+    if (from === to || from < 0 || to < 0 || from >= cur.length || to >= cur.length) return;
+    const next = cur.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    persistStitch(next);
+    setStitchItems(next);
+  }, []);
+
   // 会话色系（动态页专用）：色系制，默认蓝；切换时整体重刷所有帧的着色音
   const [schemeName, setSchemeName] = useState('navy');
 
@@ -2031,6 +2042,7 @@ function Fretboard({ mode = 'normal' }) {
           items={stitchItems}
           showToast={showToast}
           t={t}
+          onReorder={reorderStitch}
           onRemove={(id) => {
             const next = loadStitch().filter(it => it.id !== id);
             persistStitch(next);

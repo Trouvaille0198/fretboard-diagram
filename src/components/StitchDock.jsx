@@ -55,14 +55,22 @@ function downloadBlob(blob, name) {
 }
 
 // 单段预览：外框=裁剪后的窗口（vb），内嵌整板 svg 按偏移推移——
-// CSS 宽高与 viewBox 严格同比，映射 1:1，无 letterbox，多段间像素级对齐
-function StitchSegment({ item, seg, onRemove, removeTitle }) {
+// CSS 宽高与 viewBox 严格同比，映射 1:1，无 letterbox，多段间像素级对齐。
+// draggable：整段可拖到另一段上换位（HTML5 DnD，onReorder 由外部落库）
+function StitchSegment({ item, seg, onRemove, removeTitle, dnd }) {
   const { vb, full } = seg;
   const pct = (a, b) => `${(a / b * 100).toFixed(4)}%`;
   return (
     <div
-      className="stitch-seg"
+      className={`stitch-seg${dnd.dragging ? ' dragging' : ''}${dnd.dragOver ? ' drag-over' : ''}`}
       style={{ left: pct(seg.x, seg.w0), top: pct(seg.y, seg.h0), width: pct(seg.w, seg.w0), height: pct(seg.h, seg.h0) }}
+      draggable
+      onDragStart={dnd.onDragStart}
+      onDragEnd={dnd.onDragEnd}
+      onDragOver={dnd.onDragOver}
+      onDragLeave={dnd.onDragLeave}
+      onDrop={dnd.onDrop}
+      title={dnd.title}
     >
       <div className="stitch-seg-clip">
         {/* 偏移用 top/left 百分比（各按包含块高/宽解析）；不能用 margin 百分比——
@@ -84,7 +92,7 @@ function StitchSegment({ item, seg, onRemove, removeTitle }) {
   );
 }
 
-export function StitchDock({ items, onRemove, onClear, showToast, t }) {
+export function StitchDock({ items, onRemove, onClear, onReorder, showToast, t }) {
   const ts = t?.stitch ?? {};
   // 词条支持函数式（带参）：L('count', n => `${n} 张`, items.length)
   const L = (key, fallback, ...args) => {
@@ -95,6 +103,8 @@ export function StitchDock({ items, onRemove, onClear, showToast, t }) {
   const [open, setOpen] = useState(false);        // hover 展开
   const [pinned, setPinned] = useState(false);    // 点击 FAB 钉住（触屏/精细操作）
   const [busy, setBusy] = useState(null);         // 'copy' | 'download'
+  const [dragIdx, setDragIdx] = useState(null);   // 拖动换位：源段下标
+  const [overIdx, setOverIdx] = useState(null);   // 拖动换位：悬停目标段下标
   const closeTimer = useRef(null);
   const rootRef = useRef(null);
 
@@ -256,7 +266,33 @@ export function StitchDock({ items, onRemove, onClear, showToast, t }) {
               >
                 {items.map((item, i) => {
                   const seg = { ...layout.segs[i], w0: layout.w, h0: layout.h };
-                  return <StitchSegment key={item.id} item={item} seg={seg} onRemove={onRemove} removeTitle={L('removeTitle', '移除这张')} />;
+                  const clearDnd = () => { setDragIdx(null); setOverIdx(null); };
+                  const dnd = {
+                    dragging: dragIdx === i,
+                    dragOver: overIdx === i && dragIdx !== null && dragIdx !== i,
+                    title: L('dragTitle', '拖动可调换拼接顺序'),
+                    onDragStart: e => {
+                      setDragIdx(i);
+                      if (e.dataTransfer) {
+                        e.dataTransfer.effectAllowed = 'move';
+                        try { e.dataTransfer.setData('text/plain', item.id); } catch (err) { /* dataTransfer 只读环境忽略 */ }
+                      }
+                    },
+                    onDragEnd: clearDnd,
+                    onDragOver: e => {
+                      if (dragIdx === null || dragIdx === i) return;
+                      e.preventDefault(); // 允许 drop
+                      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                      setOverIdx(oi => (oi === i ? oi : i));
+                    },
+                    onDragLeave: () => setOverIdx(oi => (oi === i ? null : oi)),
+                    onDrop: e => {
+                      e.preventDefault();
+                      if (dragIdx !== null && dragIdx !== i && onReorder) onReorder(dragIdx, i);
+                      clearDnd();
+                    },
+                  };
+                  return <StitchSegment key={item.id} item={item} seg={seg} onRemove={onRemove} removeTitle={L('removeTitle', '移除这张')} dnd={dnd} />;
                 })}
                 {layout.dividers.map((dx, i) => (
                   <div key={'div' + i} className="stitch-divider" style={{ left: `${(dx / layout.w * 100).toFixed(4)}%` }} />

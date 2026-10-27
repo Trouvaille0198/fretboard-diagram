@@ -5326,6 +5326,15 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) { color: #c0392
     border-radius: 2px;
 }
 .stitch-seg:hover { outline: 1.5px dashed rgba(243, 186, 98, 0.55); outline-offset: -1.5px; }
+
+/* 拖动换位：源段半透明跟手，目标段金色实线框示意落点；cursor grab 提示可拖 */
+.stitch-seg[draggable] { cursor: grab; }
+.stitch-seg.dragging { opacity: 0.3; }
+.stitch-seg.drag-over {
+    outline: 2px solid var(--app-accent, #f3ba62);
+    outline-offset: 1px;
+    z-index: 2;
+}
 .stitch-seg-clip {
     position: absolute;
     inset: 0;
