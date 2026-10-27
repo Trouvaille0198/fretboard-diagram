@@ -146,18 +146,21 @@ export function ChordChartView({ songId }) {
 	};
 	const fileRef = useRef(null);
 
-	// 指法小图(黑点格)全局展示设置:方向/度数/尺寸;localStorage 持久化
+	// 指法小图(黑点格)全局展示设置:方向/度数/尺寸/模式;localStorage 持久化
 	// 尺寸档位 112/144/176；旧档(88/104/128)读入时升级到最近的新档
+	// 模式默认"悬浮"（谱面紧凑，hover 拍看大图；内嵌会把整行谱面撑高）。
+	// figV 2：一次性把 v48 时代默认的 inline 迁到 hover，之后用户自己选的 inline 不再覆盖
 	const [figOpts, setFigOpts] = useState(() => {
 		try {
 			const v = JSON.parse(localStorage.getItem("fretboard-figopts") || "null");
 			if (v && v.orientation) {
 				if (!FIG_SIZES.includes(v.size)) v.size = v.size <= 88 ? FIG_SIZES[0] : (v.size <= 104 ? FIG_SIZES[1] : FIG_SIZES[2]);
-				if (v.mode !== "hover") v.mode = "inline";
+				if (v.figV !== 2) { v.mode = "hover"; v.figV = 2; }
+				else if (v.mode !== "inline" && v.mode !== "hover") v.mode = "hover";
 				return v;
 			}
 		} catch (e) { /* 忽略 */ }
-		return { orientation: "v", degMode: "chord", size: 144, mode: "inline" };
+		return { orientation: "v", degMode: "chord", size: 144, mode: "hover", figV: 2 };
 	});
 	useEffect(() => { try { localStorage.setItem("fretboard-figopts", JSON.stringify(figOpts)); } catch (e) { /* 忽略 */ } }, [figOpts]);
 
@@ -1520,7 +1523,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v48</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v49</div>
 
 
 			{dialog ? (
