@@ -1,3 +1,5 @@
+import { cloudSaveChart, cloudDeleteChart } from "./authModel.js";
+
 // 和弦谱（8pu 式功能谱）歌曲模型与本地存储
 // song = { id, name, createdAt, updatedAt,
 //   key: { root: 0-11(C基), minor }, timeSig: 拍数(2|3|4|6，单位四分), bpm,
@@ -90,11 +92,13 @@ export function saveChart(song) {
 	if (existing !== -1) charts[existing] = stamped;
 	else charts.unshift(stamped);
 	persistCharts(charts);
+	cloudSaveChart(stamped); // 登录用户镜像到云端（游客时为 no-op）
 	return stamped;
 }
 
 export function deleteChart(id) {
 	persistCharts(loadCharts().filter(c => c.id !== id));
+	cloudDeleteChart(id);
 }
 
 // 选中槽位（编辑光标）：{ mi: 小节序, si: 槽序, half: 0|1(反拍拆分后) | null }

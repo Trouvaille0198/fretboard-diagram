@@ -207,6 +207,12 @@ export function ChordChartView({ songId }) {
 
 	// 多标签页同步：其他标签页保存了更新的谱子 → 采纳，避免本页用旧内存覆盖丢数据
 	useEffect(() => {
+		const onSynced = () => setCharts(loadCharts());
+		window.addEventListener("fretboard:charts-synced", onSynced);
+		return () => window.removeEventListener("fretboard:charts-synced", onSynced);
+	}, []);
+
+	useEffect(() => {
 		const onStorage = (e) => {
 			if (e.key !== "fretboard-chordcharts") return;
 			try {
@@ -1562,7 +1568,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v65</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v66</div>
 
 
 			{dialog ? (

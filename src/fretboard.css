@@ -3350,6 +3350,9 @@ g.drag-fx-layer circle[stroke-dasharray] {
     gap: 4px;
 }
 
+.top-nav-user { display: inline-flex; align-items: center; gap: 4px; }
+.top-nav-user-name { font-size: 12.5px; color: var(--app-accent-text, #6fb0ff); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .top-nav-ver {
     font-size: 10px;
     color: var(--app-text-soft);

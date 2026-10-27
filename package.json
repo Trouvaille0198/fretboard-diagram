@@ -4,9 +4,11 @@
     "type": "module",
     "scripts": {
         "dev": "vite dev",
+        "server": "node server/index.js",
         "build": "vite build",
         "preview": "vite preview",
         "smoke:core": "node scripts/smoke-core.mjs",
+        "smoke:auth": "node scripts/smoke-auth.mjs",
         "smoke:stitch": "node scripts/smoke-stitch.mjs",
         "smoke:ui": "node scripts/smoke-ui.mjs",
         "sample:master": "node scripts/sample-master.mjs",
