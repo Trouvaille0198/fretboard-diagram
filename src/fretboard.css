@@ -4367,8 +4367,10 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 /* 拍格 */
 /* 图行按拍分格：每格与正下方拍格同宽对齐（gap 与 slots 一致），图在自己拍的格内居中 */
+/* pad：同行有图时全行占位（空小节也留同高带），记号才同线；整行无图(:empty 无 pad)不占高 */
 .cc-cell-figs { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 4px; min-height: 0; }
-.cc-cell-figs:empty { display: none; }
+.cc-cell-figs:empty:not(.pad) { display: none; }
+.cc-cell-figs.pad { min-height: 96px; }
 .cc-cell-figslot { flex: 1; display: flex; gap: 2px; min-width: 0; }
 .cc-cell-figslot .cc-figview { flex: 1; display: flex; justify-content: center; min-width: 0; }
 .cc-cell-figs svg { height: 92px; width: auto; max-width: 100%; display: block; }

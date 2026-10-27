@@ -1123,7 +1123,7 @@ export function ChordChartView({ songId }) {
 		);
 	};
 
-	const cellView = (m, mi) => {
+	const cellView = (m, mi, rowHasFig) => {
 		const inSel = selRange != null && mi >= selRange[0] && mi <= selRange[1];
 		return (
 			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${editing && cursor.mi === mi ? "cur" : ""} ${inSel ? "sel" : ""} ${selRange != null && mi === selRange[0] ? "sel-first" : ""} ${selRange != null && mi === selRange[1] ? "sel-last" : ""}`}
@@ -1174,7 +1174,7 @@ export function ChordChartView({ songId }) {
 				{m.endBar === "repeatEnd" ? <span className="cc-bardots end" /> : null}
 				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格上方，拍格自身不受图影响，记号永远同线） */}
 				{figOpts.mode === "inline" ? (
-					<div className="cc-cell-figs">
+					<div className={`cc-cell-figs${rowHasFig ? " pad" : ""}`}>
 						{m.slots.map((sl, si) => {
 							const us = sl.split || [sl];
 							return (
@@ -1461,6 +1461,8 @@ export function ChordChartView({ songId }) {
 					<div className="cc-lines">
 						{rows.map((row, ri) => {
 							const first = ri * per;
+							// 同行任一小节有图：全行图行占位（无图小节空占位带），保证全行记号同一条线
+							const rowHasFig = row.some(mm => mm.slots.some(sl => (sl.split || [sl]).some(u => u && u.fig)));
 							return (
 								<div className="cc-line" key={ri}>
 									<div className="cc-line-head">
@@ -1468,7 +1470,7 @@ export function ChordChartView({ songId }) {
 									</div>
 									{/* 网格轨道按行内小节数固定：末行不满时列宽仍与他行像素级一致（加行入口在谱面底部按钮，不占格） */}
 									<div className="cc-line-cells" style={{ gridTemplateColumns: `repeat(${per}, 1fr)` }}>
-										{row.map((m, k) => cellView(m, first + k))}
+										{row.map((m, k) => cellView(m, first + k, rowHasFig))}
 									</div>
 								</div>
 							);
@@ -1540,7 +1542,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v54</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v55</div>
 
 
 			{dialog ? (
