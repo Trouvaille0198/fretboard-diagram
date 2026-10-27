@@ -4088,6 +4088,23 @@ g.drag-fx-layer circle[stroke-dasharray] {
     min-width: 0;
 }
 
+/* ⚙ 设置面板：谱头摘要按钮 + 下拉面板（曲谱/和弦图两组，行式控件） */
+.cc-settings-btn { border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); background: var(--cc-panel-soft, rgba(230,237,242,0.05)); color: var(--cc-text, #dfe7ee); border-radius: var(--cc-radius, 8px); padding: 3px 10px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.cc-settings-btn:hover, .cc-settings-btn.on { border-color: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #6fb0ff); }
+.cc-settings { position: absolute; top: calc(100% + 6px); left: 0; z-index: 70; background: var(--cc-panel, #10161c); border: 1px solid var(--cc-line, rgba(230,237,242,0.16)); border-radius: 12px; padding: 10px 12px; min-width: 300px; max-width: min(420px, 92vw); box-shadow: 0 14px 40px rgba(0,0,0,0.45); display: flex; flex-direction: column; gap: 10px; }
+.cc-settings-group { display: flex; flex-direction: column; gap: 6px; }
+.cc-settings-group + .cc-settings-group { border-top: 1px solid var(--cc-line, rgba(230,237,242,0.12)); padding-top: 10px; }
+.cc-settings-label { font-size: 11px; color: var(--cc-muted, #9fb2c0); letter-spacing: 0.5px; }
+.cc-settings-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--cc-text, #dfe7ee); }
+.cc-settings-row select, .cc-settings-row input[type="number"] { background: var(--cc-input, #0d1319); border: 1px solid var(--cc-line, rgba(230,237,242,0.2)); color: var(--cc-text, #dfe7ee); border-radius: 6px; padding: 2px 6px; font-size: 13px; }
+.cc-settings-row input[type="number"] { width: 64px; }
+.cc-settings-seg { display: inline-flex; border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); border-radius: 7px; overflow: hidden; }
+.cc-settings-seg button { border: none; background: transparent; color: var(--cc-muted, #9fb2c0); padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
+.cc-settings-seg button + button { border-left: 1px solid var(--cc-line, rgba(230,237,242,0.14)); }
+.cc-settings-seg button.on { background: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #fff); }
+.cc-settings-rowbtn { border: 1px dashed var(--cc-line, rgba(230,237,242,0.25)); background: transparent; color: var(--cc-text, #dfe7ee); border-radius: 7px; padding: 4px 8px; font-size: 12.5px; cursor: pointer; align-self: flex-start; }
+.cc-settings-rowbtn:hover { border-color: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #6fb0ff); }
+
 .cc-score-head {
     display: flex;
     flex-direction: column;
@@ -4098,7 +4115,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     margin-bottom: 16px;
 }
 
-.cc-score-head .cc-score-meta {
+.cc-score-head .cc-score-meta { position: relative; /* ⚙ 设置面板的定位基准 */
     justify-content: flex-start;
 }
 
