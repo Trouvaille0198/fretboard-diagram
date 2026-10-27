@@ -20,7 +20,7 @@ import { TransitionFx, ScoreBoard, boardGeometry, renderBoardImage, buildNotes }
 import { DynamicToolbar } from './components/DynamicToolbar';
 import { useDynamicMode } from './hooks/useDynamicMode';
 import { TECHNIQUES, loadClips, pullClips, deleteClip, renameClip } from './utils/clipModel';
-import { loadStitch, persistStitch, newStitchId } from './utils/stitchModel';
+import { loadStitch, persistStitch, newStitchId, unifySchemeOf } from './utils/stitchModel';
 import { StitchDock } from './components/StitchDock';
 import { isLoggedIn } from './utils/api';
 import { exportGifAnimation, exportWebmAnimation } from './utils/animatedExport';
@@ -151,8 +151,20 @@ function Fretboard({ mode = 'normal' }) {
 
   // 拼接区（普通模式）：Ctrl+S 逐张加入；多标签间经 storage 事件同步
   const [stitchItems, setStitchItems] = useState(() => loadStitch());
+  // 统一色系（仅拼接渲染）：勾选后每张图按第一张的色系统一涂色、逐张加深；随拼接区一起跨标签同步
+  const [stitchUnify, setStitchUnify] = useState(() => {
+    try { return localStorage.getItem('fretboard-stitch-unify') === '1'; } catch (e) { return false; }
+  });
   useEffect(() => {
-    const onStorage = (e) => { if (e.key === 'fretboard-stitch') setStitchItems(loadStitch()); };
+    try { localStorage.setItem('fretboard-stitch-unify', stitchUnify ? '1' : '0'); } catch (e) { /* 忽略 */ }
+  }, [stitchUnify]);
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === 'fretboard-stitch') setStitchItems(loadStitch());
+      else if (e.key === 'fretboard-stitch-unify') {
+        try { setStitchUnify(localStorage.getItem('fretboard-stitch-unify') === '1'); } catch (err) { /* 忽略 */ }
+      }
+    };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
@@ -197,6 +209,14 @@ function Fretboard({ mode = 'normal' }) {
     persistStitch(next);
     setStitchItems(next);
   }, []);
+
+  // 勾选"统一色系"：第一张图含多种色系（白/透明不算色系色）时设置无效，提示一次
+  const toggleStitchUnify = useCallback((v) => {
+    setStitchUnify(v);
+    if (v && stitchItems.length && !unifySchemeOf(stitchItems)) {
+      showToast('第一张图包含多种色系（透明色不算），「统一色系」暂不生效', 'info');
+    }
+  }, [stitchItems, showToast]);
 
   // 会话色系（动态页专用）：色系制，默认蓝；切换时整体重刷所有帧的着色音
   const [schemeName, setSchemeName] = useState('navy');
@@ -2025,6 +2045,9 @@ function Fretboard({ mode = 'normal' }) {
         setHorizontalCrop={setHorizontalCrop}
         verticalCrop={verticalCrop}
         setVerticalCrop={setVerticalCrop}
+        stitchUnify={stitchUnify}
+        setStitchUnify={toggleStitchUnify}
+        stitchUnifyVisible={mode === 'normal'}
         onReset={resetMemo}
         rootNote={rootNote}
         onRootNoteSelect={setRootNote}
@@ -2040,6 +2063,7 @@ function Fretboard({ mode = 'normal' }) {
       {mode === 'normal' && (
         <StitchDock
           items={stitchItems}
+          unify={stitchUnify}
           showToast={showToast}
           t={t}
           onReorder={reorderStitch}

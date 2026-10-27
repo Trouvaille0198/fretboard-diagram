@@ -41,6 +41,9 @@ export function FretboardMenu({
   setHorizontalCrop,
   verticalCrop,
   setVerticalCrop,
+  stitchUnify,
+  setStitchUnify,
+  stitchUnifyVisible,
   setHideDock,
   onReplaceAllTintNotes,
   t,
@@ -214,6 +217,16 @@ export function FretboardMenu({
                 />
                 <span>{tm.copyOnly ?? 'Copy only'}</span>
               </label>
+              {stitchUnifyVisible && (
+                <label className="menu-checkbox" title={tm.stitchUnifyHint ?? '仅对拼接图有效：每张图按第一张图的色系统一涂色，第 1 张最浅、往后逐张加深；第一张图含多种色系（透明色不算）时不生效'}>
+                  <input
+                    type="checkbox"
+                    checked={!!stitchUnify}
+                    onChange={(e) => setStitchUnify?.(e.target.checked)}
+                  />
+                  <span>{tm.stitchUnify ?? '统一色系'}</span>
+                </label>
+              )}
               <label className="menu-checkbox">
                 <input
                   type="checkbox"

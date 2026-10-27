@@ -22,6 +22,8 @@ export const en = {
         scoreView: "Score",
         scoreViewTitle: "Open the song score view",
         copyOnly: "Copy only",
+        stitchUnify: "Unify scheme",
+        stitchUnifyHint: "Stitch only: recolor every image to the first image's color scheme, lightest first and deepening per image; ignored if the first image mixes schemes (transparent notes excluded)",
         minor: "Minor",
         tintVariantTitle: (n) => `Tint variant ${n}`,
     },
