@@ -258,7 +258,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onDone, onCancel, 
         </div>
 
         <div className="figbe-side">
-          <div className="figbe-side-block">
+          <div className="figbe-side-block figbe-tools">
             <div className="figbe-side-title">连线</div>
             <div className="figbe-presets">
               {CONNECTION_PRESETS.map(p => (
@@ -269,9 +269,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onDone, onCancel, 
               ))}
               {conn.connectionMode ? <button className="button" onClick={() => conn.setConnectionMode(false)} title="退出连线（右键同）">✕</button> : null}
             </div>
-          </div>
-          <div className="figbe-side-block">
-            <div className="figbe-side-title">品窗 <em>{fretWin.start + 1}–{fretWin.end} 品</em></div>
+            <div className="figbe-side-title figbe-tools-gap">品窗 <em>{fretWin.start + 1}–{fretWin.end} 品</em></div>
             <FretRangeSlider startFret={fretWin.start} endFret={fretWin.end}
               onFretWindowChange={(w) => setFretWin(prev => ({ start: w.start ?? prev.start, end: w.end ?? prev.end }))} />
           </div>

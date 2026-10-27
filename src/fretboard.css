@@ -5488,6 +5488,9 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) { color: #c0392
 .figbe-board svg { max-width: 100%; max-height: 100%; width: auto; height: auto; }
 .figbe-side { display: flex; flex-direction: row; gap: 14px; flex: 0 0 auto; flex-wrap: wrap; align-items: stretch; }
 .figbe-side-block { flex: 1 1 180px; border: 1px solid rgba(230,237,242,0.12); border-radius: 10px; padding: 10px 12px; }
+/* 连线+品窗合一块上下摆放（连线行在上、品窗滑块在下），预览独立一块 */
+.figbe-tools { flex: 2.2 1 340px; }
+.figbe-tools-gap { margin-top: 12px; }
 .figbe-side-title { font-size: 12px; color: #9fb2c0; margin-bottom: 8px; }
 .figbe-side-title em { font-style: normal; color: #f3ba62; }
 .figbe-presets { display: flex; gap: 6px; flex-wrap: wrap; }
