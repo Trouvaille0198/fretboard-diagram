@@ -251,3 +251,17 @@
     color: var(--app-text);
     transform: rotate(90deg) scale(1.10);
 }
+/* ===== 账号密码版（v66）===== */
+.login-modal .login-tabs { display: flex; gap: 6px; margin: 10px 0 14px; }
+.login-modal .login-tabs button { flex: 1; padding: 7px 0; border-radius: 8px; border: 1px solid rgba(230, 237, 242, 0.2); background: transparent; color: inherit; cursor: pointer; font-size: 14px; }
+.login-modal .login-tabs button.on { background: var(--app-accent, #3d8bff); color: #fff; border-color: transparent; }
+.login-modal .login-form { display: flex; flex-direction: column; gap: 10px; }
+.login-modal .login-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #9fb2c0; }
+.login-modal .login-form input { border-radius: 8px; border: 1px solid rgba(230, 237, 242, 0.24); background: rgba(255, 255, 255, 0.04); color: inherit; padding: 8px 10px; font-size: 14px; }
+.login-modal .login-form input:focus { outline: none; border-color: var(--app-accent, #3d8bff); }
+.login-modal .login-error { color: #ff8a80; font-size: 12.5px; }
+.login-modal .btn-primary { margin-top: 4px; }
+.login-modal .login-alt { margin-top: 12px; text-align: center; }
+.login-modal .btn-ghost { border: none; background: transparent; color: #9fb2c0; cursor: pointer; font-size: 12.5px; text-decoration: underline dotted; }
+.login-modal .btn-ghost:hover { color: #dfe7ee; }
+.login-modal .login-note { margin-top: 10px; font-size: 11.5px; color: #7d93a3; line-height: 1.5; }

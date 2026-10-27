@@ -4,4 +4,4 @@ dist
 *.log
 .qoder/quests
 .codex
-__pycache__/
+__pycache__/server/data/

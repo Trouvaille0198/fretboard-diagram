@@ -23,6 +23,13 @@ export function ChartListPage() {
 	const enter = (id) => { window.location.hash = '#/chords?id=' + id; };
 	const refresh = () => setCharts(loadCharts());
 
+	// 登录后云端并入完成（fretboard:charts-synced）→ 刷新列表
+	useEffect(() => {
+		const onSync = () => refresh();
+		window.addEventListener("fretboard:charts-synced", onSync);
+		return () => window.removeEventListener("fretboard:charts-synced", onSync);
+	}, []);
+
 	const newSong = () => {
 		const base = ts.newSong ?? "新歌";
 		const used = charts.filter(c => (c.name || "").startsWith(base)).length;

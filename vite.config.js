@@ -17,6 +17,8 @@ export default defineConfig({
 	server: {
 		host: true,
 		allowedHosts: ["g7-pt-wsl.tigon-bebop.ts.net", "localhost", ".localhost"],
+		// 账号服务（node server/index.js）：/api 走本地 8787
+		proxy: { "/api": "http://127.0.0.1:8787" },
 		// dev 模块禁缓存：WSL 文件监视偶发失效时 ETag 停在旧值，304 会让浏览器拿旧模块（"改了没生效"的元凶）
 		headers: {
 			"Cache-Control": "no-store",

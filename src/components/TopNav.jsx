@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useLanguage } from "../i18n";
+import { LoginModal } from "./LoginModal";
+import { authUser, logout, onAuthChange, syncChartsFromServer } from "../utils/authModel";
+import { loadCharts, persistCharts } from "../utils/chordChartModel";
 
 // 顶部导航（8pu 式）：logo + 三模式文字 tab + 右侧主题/语言，常驻所有页面
 // mode: 'normal' | 'dynamic' | 'chords'
@@ -7,6 +10,19 @@ export function TopNav({ mode }) {
 	const { t, lang, toggleLang } = useLanguage();
 	const tr = t?.rail ?? {};
 	const [theme, setTheme] = useState(() => localStorage.getItem("fretboard-theme") || "dark");
+	const [user, setUser] = useState(() => authUser()?.user ?? null);
+	const [loginOpen, setLoginOpen] = useState(false);
+
+	// 登录态变化：刷新顶栏用户名；登录成功时把本地(游客期)曲目并入云端再拉回（updatedAt 新者胜）
+	useEffect(() => onAuthChange(() => {
+		const au = authUser();
+		setUser(au?.user ?? null);
+		if (au) {
+			syncChartsFromServer(loadCharts())
+				.then(merged => { persistCharts(merged); window.dispatchEvent(new CustomEvent("fretboard:charts-synced")); })
+				.catch(() => { /* 服务端不可达时保持本地，下次登录再并 */ });
+		}
+	}), []);
 
 	useEffect(() => {
 		document.documentElement.setAttribute("data-theme", theme);
@@ -48,7 +64,18 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v65">v65</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v66">v66</span>
+				{user ? (
+					<span className="top-nav-user" title={user}>
+						<span className="top-nav-user-name">{user}</span>
+						<button className="top-nav-icon" onClick={() => { logout(); }} title="退出登录（回到游客，本地数据保留）">⎋</button>
+					</span>
+				) : (
+					<button className="top-nav-icon" onClick={() => setLoginOpen(true)} title="登录 / 注册（数据云端同步）">👤</button>
+				)}
+				{loginOpen ? (
+					<LoginModal onLoggedIn={() => setLoginOpen(false)} onGuest={() => {}} onClose={() => setLoginOpen(false)} />
+				) : null}
 				<button className="top-nav-icon" onClick={toggleLang} title={lang === "zh" ? "Switch to English" : "切换为中文"}>
 					{lang === "zh" ? "En" : "中"}
 				</button>
