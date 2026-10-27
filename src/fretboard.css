@@ -4095,7 +4095,10 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-settings-group { display: flex; flex-direction: column; gap: 6px; }
 .cc-settings-group + .cc-settings-group { border-top: 1px solid var(--cc-line, rgba(230,237,242,0.12)); padding-top: 10px; }
 .cc-settings-label { font-size: 11px; color: var(--cc-muted, #9fb2c0); letter-spacing: 0.5px; }
-.cc-settings-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--cc-text, #dfe7ee); }
+/* 两列网格：标签列固定宽，所有行控件起点同一条线 */
+.cc-settings-row { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 8px; font-size: 13px; color: var(--cc-text, #dfe7ee); }
+.cc-settings-k { color: var(--cc-muted, #9fb2c0); }
+.cc-settings-v { display: inline-flex; align-items: center; gap: 6px; }
 .cc-settings-row select, .cc-settings-row input[type="number"] { background: var(--cc-input, #0d1319); border: 1px solid var(--cc-line, rgba(230,237,242,0.2)); color: var(--cc-text, #dfe7ee); border-radius: 6px; padding: 2px 6px; font-size: 13px; }
 .cc-settings-row input[type="number"] { width: 64px; }
 .cc-settings-seg { display: inline-flex; border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); border-radius: 7px; overflow: hidden; }
