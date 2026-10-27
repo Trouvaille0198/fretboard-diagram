@@ -435,5 +435,44 @@ console.log("== chordChartModel：插入一拍 ==");
 	A("缩到 2 拍后插入仍 2 拍", insertBeatAt(shrunk, 1).slots.length === 2);
 }
 
+
+// ===== 和弦形状库(相对根音模板 + 平移候选 + 收集推断) =====
+{
+	const { builtinShapes, candidatesForChord, inferQuality, shapeFromBoard, candidateToData } = await import("../src/utils/chordShapes.js");
+	const KEY = { root: 0, minor: false };
+	const ch = (degree, quality) => ({ degree, quality });
+	const SP = [4, 11, 7, 2, 9, 4];
+	const pcName = (s, f) => ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"][(SP[s] + f) % 12];
+
+	const shapes = builtinShapes();
+	A("内置形状: 开放20+可移动16", shapes.length === 36 && shapes.filter(x => x.open).length === 20);
+	A("内置形状: rel 相对根音(开放C根品3)", (() => { const c = shapes.find(x => x.id === "bi-open-0_"); return c && c.rootFret === 3 && c.rel[4] === 0; })());
+
+	const f = candidatesForChord(ch(4, "maj7"), KEY, shapes); // C大调 4maj7 = Fmaj7
+	const e1 = f.find(c => c.rootFret === 1 && c.shape.rootString === 5);
+	const a8 = f.find(c => c.rootFret === 8 && c.shape.rootString === 4);
+	A("Fmaj7 候选含 E型@根品1 与 A型@根品8", !!e1 && !!a8);
+	A("Fmaj7 E型@1 音集 = F A C E", [...new Set(e1.points.map(p => pcName(p.string, p.fret)))].sort().join("") === "ACEF");
+	A("候选平移不超品窗(≤15)", f.every(c => c.points.every(p => p.fret >= 0 && p.fret <= 15)));
+	A("候选排序: 把位低在前", f[0].rootFret <= f[f.length - 1].rootFret || f[f.length - 1].rootFret === 0);
+
+	const c0 = candidatesForChord(ch(1, ""), KEY, shapes); // C 大三
+	A("C 和弦候选 3 个(开放原把位/E型8/A型3)", c0.length === 3 && c0.some(c => c.shape.open && c.rootFret === 3));
+	const g0 = candidatesForChord(ch(5, ""), KEY, shapes); // G
+	A("开放形状只在同根音时出现(G 不带开放C)", g0.every(c => !c.shape.open || c.shape.rootPc === 7));
+
+	A("推断: 大三", inferQuality([0, 4, 7]) === "");
+	A("推断: m7", inferQuality([0, 3, 7, 10]) === "m7");
+	A("推断: maj7", inferQuality([0, 4, 7, 11]) === "maj7");
+	A("推断: 省略5音仍归大三", inferQuality([0, 4]) === "");
+
+	const data = candidateToData(e1);
+	const back = shapeFromBoard(data);
+	A("候选→data→收集往返: 质量 maj7 保持", back.quality === "maj7");
+	A("候选→data: noteId 体系可读", Object.keys(data).some(k => /^f0-s1$/.test(k)) || Object.keys(data).some(k => k.startsWith("f")));
+	const linked = candidateToData({ ...e1, links: [{ a: { s: 1, f: 1 }, b: { s: 2, f: 2 } }] });
+	A("候选连线进 data.connections", linked.connections && Object.values(linked.connections)[0].startNoteId === "f0-s1");
+}
+
 console.log(fail ? `\n✗ ${fail}/${n} 断言失败` : `\n✓ 全部 ${n} 项断言通过`);
 process.exit(fail ? 1 : 0);

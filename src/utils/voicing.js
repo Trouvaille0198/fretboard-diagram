@@ -21,7 +21,7 @@ export function noteIdPc(id) {
 // ============ 开放和弦表 ============
 // key = `${rootPc}:${quality}`；frets 为物理品 s0..s5（null=闷音）
 // 最低发声弦的 pc 都等于根音（表内已核对）
-const OPEN_SHAPES = {
+export const OPEN_SHAPES = {
 	"0:": { frets: [0, 1, 0, 2, 3, null] },      // C  x32010
 	"0:7": { frets: [0, 1, 3, 2, 3, null] },     // C7 x32310
 	"0:maj7": { frets: [0, 0, 0, 2, 3, null] },  // Cmaj7 x32000
@@ -47,7 +47,7 @@ const OPEN_SHAPES = {
 // ============ 可移动把位 ============
 // 偏移相对根音品（物理品）；null=闷音
 // E 型：根音在 6 弦（s5）
-const E_SHAPES = {
+export const E_SHAPES = {
 	"": [0, 0, 1, 2, 2, 0],
 	m: [0, 0, 0, 2, 2, 0],
 	7: [0, 0, 1, 0, 2, 0],
@@ -59,7 +59,7 @@ const E_SHAPES = {
 };
 
 // A 型：根音在 5 弦（s4），6 弦闷
-const A_SHAPES = {
+export const A_SHAPES = {
 	"": [0, 2, 2, 2, 0, null],
 	m: [0, 1, 2, 2, 0, null],
 	7: [0, 2, 0, 2, 0, null],
