@@ -1028,14 +1028,6 @@ export function ChordChartView({ songId }) {
 	};
 
 	// 指法图一览：谱内所有带小图的和弦槽位（M 位置 + 和弦 + 图）；编辑态点卡片可改
-	const attachedUnits = useMemo(() => {
-		const out = [];
-		song.measures.forEach((m, mi) => m.slots.forEach((sl, si) => (sl.split || [sl]).forEach((u, h) => {
-			if (u.kind === "chord" && u.chord && u.fig) out.push({ mi, si, half: sl.split ? h : null, chord: u.chord, fig: u.fig });
-		})));
-		return out;
-	}, [song]);
-
 	const frequentChords = useMemo(() => {
 		const counter = new Map();
 		song.measures.forEach(m => m.slots.forEach(sl => (sl.split || [sl]).forEach(u => {
@@ -1490,34 +1482,17 @@ export function ChordChartView({ songId }) {
 						</div>
 					) : null}
 
-					{/* 配图一览：谱内带图的和弦槽位（一个和弦实例一张图）；编辑态点卡片可换图/移除 */}
-					{attachedUnits.length ? (
-						<div className="cc-legend">
-							<div className="cc-legend-title">{ts.legendTitle ?? "和弦配图"}<small>{ts.legendHint ?? "一个和弦一张指法图"}</small>
-								<span className="cc-figopts">
-									<button title="小图方向" onClick={() => setFigOpts(o => ({ ...o, orientation: o.orientation === "v" ? "h" : "v" }))}>{figOpts.orientation === "v" ? "↕" : "↔"}</button>
-									<button title="度数标注" onClick={() => setFigOpts(o => ({ ...o, degMode: o.degMode === "chord" ? "scale" : (o.degMode === "scale" ? "none" : "chord") }))}>{figOpts.degMode === "chord" ? "级数" : (figOpts.degMode === "scale" ? "调内" : "无标注")}</button>
-									<button title="小图尺寸" onClick={() => setFigOpts(o => ({ ...o, size: o.size >= FIG_SIZES[2] ? FIG_SIZES[0] : (o.size >= FIG_SIZES[1] ? FIG_SIZES[2] : FIG_SIZES[1]) }))}>{figOpts.size}px</button>
-									<button title="和弦图展示：内嵌（记号上方单独一行）/ 悬浮（默认隐藏，悬停该拍才显示大图）" onClick={() => setFigOpts(o => ({ ...o, mode: o.mode === "hover" ? "inline" : "hover" }))}>{figOpts.mode === "hover" ? "悬浮" : "内嵌"}</button>
-								</span>
-							</div>
-							<div className="cc-legend-row">
-								{attachedUnits.map((a, idx) => (
-									<div key={`${a.mi}-${a.si}-${a.half}-${idx}`} className="cc-legend-item has"
-										onClick={() => { if (editing) editFig(a.mi, a.si, a.half); }}>
-										<div className="cc-legend-label">{formatInline(a.chord, "degree", keyAt(a.mi))}<small>M{a.mi + 1}</small></div>
-										<div className="cc-legend-img"><FigView data={a.fig} chord={a.chord} viewKey={keyAt(a.mi)} opts={figOpts} /></div>
-									</div>
-								))}
-							</div>
-						</div>
-					) : null}
 
-					{editing ? (
-						<div className="cc-score-foot">
-							<button className="button sm" onClick={addRow}>＋ {ts.addRow ?? "新增一行"}</button>
-						</div>
-					) : null}
+
+					<div className="cc-score-foot">
+							<span className="cc-figopts" title="和弦图设置">
+								<button title="小图方向" onClick={() => setFigOpts(o => ({ ...o, orientation: o.orientation === "v" ? "h" : "v" }))}>{figOpts.orientation === "v" ? "↕" : "↔"}</button>
+								<button title="度数标注" onClick={() => setFigOpts(o => ({ ...o, degMode: o.degMode === "chord" ? "scale" : (o.degMode === "scale" ? "none" : "chord") }))}>{figOpts.degMode === "chord" ? "级数" : (figOpts.degMode === "scale" ? "调内" : "无标注")}</button>
+								<button title="小图尺寸" onClick={() => setFigOpts(o => ({ ...o, size: o.size >= FIG_SIZES[2] ? FIG_SIZES[0] : (o.size >= FIG_SIZES[1] ? FIG_SIZES[2] : FIG_SIZES[1]) }))}>{figOpts.size}px</button>
+								<button title="和弦图展示：内嵌（图行在拍格上方）/ 悬浮（默认隐藏，悬停该拍才显示大图）" onClick={() => setFigOpts(o => ({ ...o, mode: o.mode === "hover" ? "inline" : "hover" }))}>{figOpts.mode === "hover" ? "悬浮" : "内嵌"}</button>
+							</span>
+							{editing ? <button className="button sm" onClick={addRow}>＋ {ts.addRow ?? "新增一行"}</button> : null}
+					</div>
 				</div>
 
 			</div>
@@ -1542,7 +1517,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v55</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v56</div>
 
 
 			{dialog ? (

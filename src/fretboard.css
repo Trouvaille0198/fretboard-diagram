@@ -7219,6 +7219,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 /* 汇总行的小图设置开关 */
+.cc-score-foot { display: flex; align-items: center; gap: 10px; padding: 6px 2px 2px; }
 .cc-figopts {
     display: inline-flex;
     gap: 4px;
