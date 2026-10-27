@@ -5473,3 +5473,29 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) { color: #c0392
 .attach-shape small { font-size: 10px; color: #8ba0b0; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attach-saveform-row { display: flex; gap: 6px; align-items: center; }
 .attach-saveform-row select { background: #0d1319; border: 1px solid rgba(230,237,242,0.2); color: #dfe7ee; border-radius: 5px; padding: 2px 6px; }
+
+/* ============ 指法小图编辑大弹窗(打谱页内,裁剪版普通编辑器) ============ */
+.figbe-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 90; display: flex; align-items: center; justify-content: center; }
+.figbe-box { background: var(--cc-panel, #10161c); border: 1px solid rgba(230,237,242,0.16); border-radius: 14px; padding: 14px 18px; width: min(1080px, 94vw); max-height: 92vh; overflow: auto; box-shadow: 0 18px 50px rgba(0,0,0,.5); }
+.figbe { display: flex; flex-direction: column; gap: 10px; }
+.figbe-top { display: flex; align-items: center; gap: 8px; }
+.figbe-title { font-size: 13px; color: #dfe7ee; margin-right: auto; }
+.figbe-body { display: flex; gap: 18px; align-items: flex-start; }
+.figbe-board { flex: 0 0 auto; max-width: 72vw; overflow-x: auto; }
+.figbe-board svg { height: auto; }
+.figbe-side { display: flex; flex-direction: column; gap: 14px; min-width: 210px; flex: 1; }
+.figbe-side-block { border: 1px solid rgba(230,237,242,0.12); border-radius: 10px; padding: 10px 12px; }
+.figbe-side-title { font-size: 12px; color: #9fb2c0; margin-bottom: 8px; }
+.figbe-side-title em { font-style: normal; color: #f3ba62; }
+.figbe-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.figbe-presets .button { padding: 4px 8px; }
+.figbe-preview { display: flex; justify-content: center; padding: 6px 0; }
+.figbe-shapes { border-top: 1px solid rgba(230,237,242,0.12); padding-top: 8px; }
+.figbe-shapes-title { font-size: 12px; color: #9fb2c0; margin-bottom: 6px; }
+.figbe-shapes-list { display: flex; gap: 8px; flex-wrap: wrap; }
+.figbe-shape { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 1px solid rgba(230,237,242,0.16); background: transparent; border-radius: 8px; padding: 5px 7px; cursor: pointer; color: inherit; }
+.figbe-shape:hover { border-color: #f3ba62; }
+.figbe-shape em { font-style: normal; font-size: 10px; color: #f3ba62; }
+.figbe-shape small { font-size: 10px; color: #8ba0b0; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.figbe-saveform-row { display: flex; gap: 6px; align-items: center; }
+.figbe-saveform-row select { background: #0d1319; border: 1px solid rgba(230,237,242,0.2); color: #dfe7ee; border-radius: 5px; padding: 2px 6px; }
