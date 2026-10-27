@@ -1075,7 +1075,14 @@ export function ChordChartView({ songId }) {
 			);
 		}
 		if (u.kind === "rest") return <span className="cc-glyph rest">0</span>;
-		if (u.kind === "hold") return <span className="cc-glyph hold">—</span>;
+		if (u.kind === "hold") return (
+			<>
+				{/* 延音拍也可配指法图（同 chord 拍：图上记号下） */}
+				{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={u.chord || null} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
+					onDoubleClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} /> : null}
+				<span className="cc-glyph hold">—</span>
+			</>
+		);
 		return null; // 空拍留白（8pu 同款）：任何占位符都会破坏拍格对齐
 	};
 
@@ -1179,7 +1186,7 @@ export function ChordChartView({ songId }) {
 							const us = sl.split || [sl];
 							return (
 								<div className="cc-cell-figslot" key={si}>
-									{us.map((u, h) => (u.kind === "chord" && u.chord && u.fig ? (
+									{us.map((u, h) => (((u.kind === "chord" && u.chord) || u.kind === "hold") && u.fig ? (
 										<FigView key={h} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
 											opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }}
 											onDoubleClick={() => { if (editing) editFig(mi, si, sl.split ? h : null); }} />
@@ -1527,7 +1534,7 @@ export function ChordChartView({ songId }) {
 							<ChordPopup song={song} viewKey={keyAt(cursor.mi)} unit={currentUnit} typedHint={typedHint}
 								defaultQuality={(d) => defaultQualityFor(d)}
 								hasAttach={!!(currentUnit?.kind === "chord" && currentUnit.fig)}
-								onAttach={currentUnit?.kind === "chord" ? () => editFig(cursor.mi, cursor.si, cursor.half) : null}
+								onAttach={(currentUnit?.kind === "chord" || currentUnit?.kind === "hold") ? () => editFig(cursor.mi, cursor.si, cursor.half) : null}
 								canSplit={canSplitCurrent} onPatchUnit={patchUnitFromPanel} onSetKind={onPanelSetKind}
 								onToggleSplit={toggleSplit} onClose={() => setPopupOpen(false)} t={t}
 								keyHere={editing ? keyStepper(cursor.mi) : null}
@@ -1561,7 +1568,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v63</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v64</div>
 
 
 			{dialog ? (
