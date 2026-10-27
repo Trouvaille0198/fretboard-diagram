@@ -8,7 +8,7 @@ import { saveClip } from "../utils/clipModel";
 import { saveToRememberedDir, rememberedDirSupported } from "../utils/saveFile";
 import { Toast } from "./Toast";
 
-// 曲目列表页（#/chords）：顶上「打谱 · 和弦谱」tab 的落地面——先看库，点进某首才进编辑页。
+// 曲目列表页（#/chords）：顶上「和弦谱 · 和弦谱」tab 的落地面——先看库，点进某首才进编辑页。
 // 与编辑页的约定：进入某首 = location.hash = '#/chords?id=<id>'。
 export function ChartListPage() {
 	const { t } = useLanguage();
@@ -147,7 +147,7 @@ export function ChartListPage() {
 						value: "",
 						onOk: (v) => { const code = String(v || "").trim(); if (code) importCode(code); }
 					})}
-					onClose={() => {}} />
+					onClose={() => { }} />
 			</div>
 			<input ref={fileRef} type="file" accept=".fbchart,.musicxml,.xml,.txt" style={{ display: "none" }} onChange={importFile} />
 			{dialog ? (
