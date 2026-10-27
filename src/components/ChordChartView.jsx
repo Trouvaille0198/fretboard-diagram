@@ -58,6 +58,7 @@ export function ChordChartView({ songId }) {
 	const [metronome, setMetronome] = useState(true);
 	const [speed, setSpeed] = useState(1);
 	const [menuOpen, setMenuOpen] = useState(false); // 工具行「更多」菜单
+	const [settingsOpen, setSettingsOpen] = useState(false); // 谱头「设置」面板（曲谱+和弦图设置统一收纳）
 	const [toolTab, setToolTab] = useState("chord"); // 工具栏页签：和弦 | 小节
 	const [viewTab, setViewTab] = useState("text"); // 查看：文本谱 | 动态谱
 	// 预览记谱形式（编辑态恒为数字功能谱）：number=1-7 | roman=I/vi | name=Am/Dmaj7
@@ -1407,22 +1408,11 @@ export function ChordChartView({ songId }) {
 				<div className="cc-score" ref={scoreRef}>
 					<div className="cc-score-head">
 						<div className="cc-score-meta">
-							<label className="cc-meta">1 =
-								<select value={song.key.root} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { ...s.key, root: Number(e.target.value) } }))}>
-									{PC_KEY.map((k, pc) => <option key={pc} value={pc}>{k}</option>)}
-								</select>
-								<input type="checkbox" checked={song.key.minor} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { ...s.key, minor: e.target.checked } }))} title={ts.minor ?? "小调"} />m
-							</label>
-							<label className="cc-meta">
-								<select value={song.timeSig} disabled={!editing} onChange={e => setTimeSig(Number(e.target.value))}>
-									{[2, 3, 4, 6].map(b => <option key={b} value={b}>{b}/4</option>)}
-								</select>
-							</label>
-							<label className="cc-meta">♩=
-								<input type="number" min="30" max="240" value={song.bpm} disabled={!editing} onChange={e => setSong(s => ({ ...s, bpm: Math.max(30, Math.min(240, Number(e.target.value) || 72)) }))} />
-							</label>
-							{/* 调只有一个：上方 "1=" 即全局调，改它全谱（唱名/和弦图/播放）一起换。
-							    谱中转调入口在拍的菜单（该拍起生效，直到下一个转调/曲末），不在谱头 */}
+							{/* 所有设置统一收纳：⚙ 按钮开面板（曲谱:调/拍号/BPM + 和弦图:方向/度数/尺寸/展示） */}
+							<button className={`cc-settings-btn${settingsOpen ? " on" : ""}`} title={ts.settingsTip ?? "设置：调 / 拍号 / 速度 / 和弦图"}
+								onClick={() => setSettingsOpen(v => !v)}>
+								⚙ 1 = {PC_KEY[song.key.root]}{song.key.minor ? "m" : ""} · {song.timeSig}/4 · ♩={song.bpm}
+							</button>
 							{/* 生效调：谱中转调真正起作用时才出现，避免"改了却看不出" */}
 							{(() => {
 								const ek = keyAt(cursor.mi);
@@ -1430,6 +1420,55 @@ export function ChordChartView({ songId }) {
 								if (!deviates) return null;
 								return <span className="cc-effective" title={ts.effectiveTip ?? "当前光标处实际生效的调（谱中转调后）"}>⇒ 1 = {PC_KEY[ek.root]}{ek.minor ? "m" : ""}</span>;
 							})()}
+							{settingsOpen ? (
+								<div className="cc-settings" onClick={e => e.stopPropagation()}>
+									<div className="cc-settings-group">
+										<div className="cc-settings-label">{ts.gSong ?? "曲谱"}</div>
+										<label className="cc-settings-row">{ts.keyLabel ?? "调"} 1 =
+											<select value={song.key.root} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { ...s.key, root: Number(e.target.value) } }))}>
+												{PC_KEY.map((k, pc) => <option key={pc} value={pc}>{k}</option>)}
+											</select>
+											<label className="cc-iconbtn" title={ts.minor ?? "小调"}><input type="checkbox" checked={song.key.minor} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { ...s.key, minor: e.target.checked } }))} />m</label>
+										</label>
+										<label className="cc-settings-row">{ts.timeSigLabel ?? "拍号"}
+											<select value={song.timeSig} disabled={!editing} onChange={e => setTimeSig(Number(e.target.value))}>
+												{[2, 3, 4, 6].map(b => <option key={b} value={b}>{b}/4</option>)}
+											</select>
+										</label>
+										<label className="cc-settings-row">{ts.bpmLabel ?? "速度"} ♩=
+											<input type="number" min="30" max="240" value={song.bpm} disabled={!editing} onChange={e => setSong(s => ({ ...s, bpm: Math.max(30, Math.min(240, Number(e.target.value) || 72)) }))} />
+										</label>
+										{editing ? <button className="cc-settings-rowbtn" onClick={() => { addRow(); setSettingsOpen(false); }}>＋ {ts.addRow ?? "新增一行"}</button> : null}
+									</div>
+									<div className="cc-settings-group">
+										<div className="cc-settings-label">{ts.gFigures ?? "和弦图"}</div>
+										<div className="cc-settings-row">{ts.figDir ?? "方向"}
+											<span className="cc-settings-seg">
+												<button className={figOpts.orientation === "v" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "v" }))}>↕ 竖</button>
+												<button className={figOpts.orientation === "h" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "h" }))}>↔ 横</button>
+											</span>
+										</div>
+										<div className="cc-settings-row">{ts.figDeg ?? "度数标注"}
+											<span className="cc-settings-seg">
+												<button className={figOpts.degMode === "chord" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "chord" }))}>{ts.degChord ?? "和弦内"}</button>
+												<button className={figOpts.degMode === "scale" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "scale" }))}>{ts.degScale ?? "调内"}</button>
+												<button className={figOpts.degMode === "none" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "none" }))}>{ts.degNone ?? "无"}</button>
+											</span>
+										</div>
+										<div className="cc-settings-row">{ts.figSize ?? "尺寸"}
+											<span className="cc-settings-seg">
+												{FIG_SIZES.map(s2 => <button key={s2} className={figOpts.size === s2 ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, size: s2 }))}>{s2}</button>)}
+											</span>
+										</div>
+										<div className="cc-settings-row">{ts.figMode ?? "展示"}
+											<span className="cc-settings-seg">
+												<button className={figOpts.mode === "inline" ? "on" : ""} title={ts.inlineTip ?? "图行显示在拍格上方（同行占位，记号同线）"} onClick={() => setFigOpts(o => ({ ...o, mode: "inline" }))}>{ts.modeInline ?? "内嵌"}</button>
+												<button className={figOpts.mode === "hover" ? "on" : ""} title={ts.hoverTip ?? "默认隐藏，悬停该拍浮出大图（谱面紧凑）"} onClick={() => setFigOpts(o => ({ ...o, mode: "hover" }))}>{ts.modeHover ?? "悬浮"}</button>
+											</span>
+										</div>
+									</div>
+								</div>
+							) : null}
 						</div>
 						<input className="cc-score-title" value={song.name} readOnly={!editing} onChange={e => setSong(s => ({ ...s, name: e.target.value }))} />
 					</div>
@@ -1484,15 +1523,6 @@ export function ChordChartView({ songId }) {
 
 
 
-					<div className="cc-score-foot">
-							<span className="cc-figopts" title="和弦图设置">
-								<button title="小图方向" onClick={() => setFigOpts(o => ({ ...o, orientation: o.orientation === "v" ? "h" : "v" }))}>{figOpts.orientation === "v" ? "↕" : "↔"}</button>
-								<button title="度数标注" onClick={() => setFigOpts(o => ({ ...o, degMode: o.degMode === "chord" ? "scale" : (o.degMode === "scale" ? "none" : "chord") }))}>{figOpts.degMode === "chord" ? "级数" : (figOpts.degMode === "scale" ? "调内" : "无标注")}</button>
-								<button title="小图尺寸" onClick={() => setFigOpts(o => ({ ...o, size: o.size >= FIG_SIZES[2] ? FIG_SIZES[0] : (o.size >= FIG_SIZES[1] ? FIG_SIZES[2] : FIG_SIZES[1]) }))}>{figOpts.size}px</button>
-								<button title="和弦图展示：内嵌（图行在拍格上方）/ 悬浮（默认隐藏，悬停该拍才显示大图）" onClick={() => setFigOpts(o => ({ ...o, mode: o.mode === "hover" ? "inline" : "hover" }))}>{figOpts.mode === "hover" ? "悬浮" : "内嵌"}</button>
-							</span>
-							{editing ? <button className="button sm" onClick={addRow}>＋ {ts.addRow ?? "新增一行"}</button> : null}
-					</div>
 				</div>
 
 			</div>
@@ -1517,7 +1547,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v56</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v57</div>
 
 
 			{dialog ? (
