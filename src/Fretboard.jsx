@@ -1223,6 +1223,16 @@ function Fretboard({ mode = 'normal' }) {
 
   // 指板堆 → 续编
   applyClipBoardRef.current = applyClipBoard;
+
+  // 双击拼接段：把该条目快照还原到当前编辑板面（快照数据/品窗/显示模式等一并回来；
+  // 走 applyClipBoard，撤销历史照常记录，Ctrl+Z 可回到还原前）
+  const restoreStitch = useCallback((id) => {
+    const cur = loadStitch();
+    const idx = cur.findIndex(it => it.id === id);
+    if (idx < 0) return;
+    applyClipBoard(cur[idx].state);
+    showToast(`已还原第 ${idx + 1} 张到编辑板面`, 'success');
+  }, [applyClipBoard, showToast]);
   const handleLoadClipRef = useRef(null);
 
   const handleLoadClip = useCallback((clip) => {
@@ -2064,6 +2074,7 @@ function Fretboard({ mode = 'normal' }) {
         <StitchDock
           items={stitchItems}
           unify={stitchUnify}
+          onRestore={restoreStitch}
           showToast={showToast}
           t={t}
           onReorder={reorderStitch}

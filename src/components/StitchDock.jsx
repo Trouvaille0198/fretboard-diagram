@@ -59,7 +59,7 @@ function downloadBlob(blob, name) {
 // 单段预览：外框=裁剪后的窗口（vb），内嵌整板 svg 按偏移推移——
 // CSS 宽高与 viewBox 严格同比，映射 1:1，无 letterbox，多段间像素级对齐。
 // draggable：整段可拖到另一段上换位（HTML5 DnD，onReorder 由外部落库）
-function StitchSegment({ state, opts, seg, onRemove, removeTitle, dnd, removeId }) {
+function StitchSegment({ state, opts, seg, onRemove, removeTitle, dnd, removeId, onDoubleClick }) {
   const { vb, full } = seg;
   const pct = (a, b) => `${(a / b * 100).toFixed(4)}%`;
   return (
@@ -72,6 +72,7 @@ function StitchSegment({ state, opts, seg, onRemove, removeTitle, dnd, removeId 
       onDragOver={dnd.onDragOver}
       onDragLeave={dnd.onDragLeave}
       onDrop={dnd.onDrop}
+      onDoubleClick={onDoubleClick}
       title={dnd.title}
     >
       <div className="stitch-seg-clip">
@@ -89,12 +90,12 @@ function StitchSegment({ state, opts, seg, onRemove, removeTitle, dnd, removeId 
           <ScoreBoard snapshot={{ state }} options={{ includeMarkers: opts?.includeMarkers, showNotes: opts?.showNotes }} />
         </div>
       </div>
-      <button className="stitch-seg-x" title={removeTitle} onClick={e => { e.stopPropagation(); onRemove(removeId); }}>×</button>
+      <button className="stitch-seg-x" title={removeTitle} onClick={e => { e.stopPropagation(); onRemove(removeId); }} onDoubleClick={e => e.stopPropagation()}>×</button>
     </div>
   );
 }
 
-export function StitchDock({ items, onRemove, onClear, onReorder, unify, showToast, t }) {
+export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, unify, showToast, t }) {
   const ts = t?.stitch ?? {};
   // 词条支持函数式（带参）：L('count', n => `${n} 张`, items.length)
   const L = (key, fallback, ...args) => {
@@ -277,7 +278,7 @@ export function StitchDock({ items, onRemove, onClear, onReorder, unify, showToa
                   const dnd = {
                     dragging: dragIdx === i,
                     dragOver: overIdx === i && dragIdx !== null && dragIdx !== i,
-                    title: L('dragTitle', '拖动可调换拼接顺序'),
+                    title: `${L('dragTitle', '拖动可调换拼接顺序')}；${L('restoreTitle', '双击还原到编辑板面')}`,
                     onDragStart: e => {
                       setDragIdx(i);
                       if (e.dataTransfer) {
@@ -299,7 +300,7 @@ export function StitchDock({ items, onRemove, onClear, onReorder, unify, showToa
                       clearDnd();
                     },
                   };
-                  return <StitchSegment key={item.id} state={renderStates[i]} opts={item.opts} seg={seg} onRemove={onRemove} removeTitle={L('removeTitle', '移除这张')} dnd={dnd} removeId={item.id} />;
+                  return <StitchSegment key={item.id} state={renderStates[i]} opts={item.opts} seg={seg} onRemove={onRemove} removeTitle={L('removeTitle', '移除这张')} dnd={dnd} removeId={item.id} onDoubleClick={() => onRestore?.(item.id)} />;
                 })}
                 {layout.dividers.map((dx, i) => (
                   <div key={'div' + i} className="stitch-divider" style={{ left: `${(dx / layout.w * 100).toFixed(4)}%` }} />
