@@ -1,7 +1,7 @@
 import React from 'react';
 import { CONSTS } from '../constants';
 import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, getPointOnNoteEdge, getColorName, getNoteSplitMode, resolveNoteColorValue } from '../utils';
-import { buildConnectionPath } from '../utils/connectionUtils';
+import { buildConnectionPath, adaptiveArcCurvature } from '../utils/connectionUtils';
 import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from '../colorConfig';
 import { CONNECTION_PRESETS, matchConnectionPreset } from '../hooks/useConnectionState';
 import { ConnectionPresetIcon } from './ConnectionPresetIcon';
@@ -149,7 +149,11 @@ export const FretboardSVG = React.memo(function FretboardSVG({
 
       // 保留用户调过的弧度（含反向弧线），直线预设不动它，切回来还在
       if (preset.type === 'arc' && !(conn.type === 'arc' && conn.arcCurvature)) {
-        nextConnection.arcCurvature = preset.arcCurvature;
+        nextConnection.arcCurvature = adaptiveArcCurvature(
+          getNotePositionMemo(conn.startNoteId),
+          getNotePositionMemo(conn.endNoteId),
+          preset.arcCurvature
+        );
       }
 
       // "无方向"预设同时去掉虚线，保证点一下就是实线
@@ -716,7 +720,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
               { x: endX, y: endY },
               {
                 type: previewType,
-                curvature: connectionPreset?.arcCurvature ?? 0.7,
+                curvature: adaptiveArcCurvature(connectionStartPosition, mousePosition, connectionPreset?.arcCurvature ?? 0.7),
                 arrowDirection: previewArrowDirection,
                 arrowLength: previewArrowLength,
                 strokeWidth: 3,

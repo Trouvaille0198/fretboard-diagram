@@ -1,4 +1,5 @@
 import { updateNote, getNoteSplitMode, getSplitTargetFromPoint, getColorName, detectNoteAtPosition, calculateConnectionColor } from '../utils';
+import { adaptiveArcCurvature } from '../utils/connectionUtils';
 import { CONSTS } from '../constants';
 import { LEVEL1_COLORS } from '../colorConfig';
 
@@ -63,6 +64,17 @@ export function createConnectionBetweenNotes({
     });
 
     const connectionId = existingConnectionId || `conn-${Date.now()}`;
+
+    // 弧线默认凸向随位置自适应：上半指板朝上凸、下半指板朝下凸（背离指板中心）
+    const centerOf = (id) => {
+        const el = document.getElementById(id);
+        if (!el) return null;
+        const x = parseFloat(el.getAttribute('data-x')), y = parseFloat(el.getAttribute('data-y'));
+        return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+    };
+    const arcCurvature = connectionPreset.type === 'arc'
+        ? adaptiveArcCurvature(centerOf(startNoteId), centerOf(endNoteId), connectionPreset.arcCurvature)
+        : connectionPreset.arcCurvature;
     const connectionColor = calculateConnectionColor(startNoteData, endNoteData, connectionId);
 
     // 处理自定义颜色对象，保存完整的颜色信息
@@ -89,7 +101,7 @@ export function createConnectionBetweenNotes({
         arrowDirection: connectionPreset.arrowDirection,
         strokeWidth: useDashedStyle ? 2 : connectionPreset.strokeWidth,
         strokeDasharray: useDashedStyle ? '8,4' : undefined,
-        arcCurvature: connectionPreset.arcCurvature,
+        arcCurvature,
         color: connectionColor,
         gradientColors: gradientColors
     };
