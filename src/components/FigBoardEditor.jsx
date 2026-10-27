@@ -9,9 +9,12 @@ import { createSvgClickHandler, createSvgMouseMoveHandler, createSvgMouseDownHan
 import { figSvg } from '../utils/chordFig';
 import { candidatesForChord, candidateToData, shapeFromBoard, builtinShapes, loadShapes, persistShapes } from '../utils/chordShapes';
 import { QUALITIES } from '../utils/chordLib';
-import { noteToSolfege } from '../utils';
 
 const noOp = () => {};
+
+// 唱名（首调,相对当前调根音）:全半音表——小调自然音级(b3/b6/b7)自动落对,与小图"调内级数"体系同口径
+const SOLFEGE_REL = { 0: '1', 1: '#1', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7' };
+const solfegeRelKey = (noteIndex, rootNote) => SOLFEGE_REL[((noteIndex - rootNote) % 12 + 12) % 12];
 
 // 指法小图编辑器——打谱页内大弹窗里的"裁剪版普通编辑器"：
 // 交互与普通编辑完全同源(点音亮灭/连线拖拽/长按刷染),但按小图场景裁剪：
@@ -38,10 +41,12 @@ export function FigBoardEditor({ initialData, chord, viewKey, onDone, onCancel, 
   const brushRef = useRef({ armed: false, dragged: false, lastPaintedNoteId: null });
 
   const geo = useMemo(() => boardGeometry(fretWin.start, fretWin.end), [fretWin]);
+  // 音符标签 = 当前调唱名（do-re-mi 相对调根音），与小图"调内级数"同口径
+  const keyRoot = viewKey?.root ?? 0;
   const notes = useMemo(() => generateNotes(
-    fretWin.start, fretWin.end, data, 'note', null, 1, 'transparent',
-    (f, s) => computeNoteName(f, s, 1), computeNoteIndex, noteToSolfege
-  ), [fretWin, data]);
+    fretWin.start, fretWin.end, data, 'solfege', keyRoot, 1, 'transparent',
+    (f, s) => computeNoteName(f, s, 1), computeNoteIndex, solfegeRelKey
+  ), [fretWin, data, keyRoot]);
   const getNotePositionMemo = useCallback((id) => getNotePosition(id, notes), [notes]);
 
   // —— 与普通编辑同款 handler 工厂,只是选中色恒为 mono(点亮即单色点) ——

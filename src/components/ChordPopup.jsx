@@ -62,7 +62,12 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 			<div className="cc-cp-menu">
 				<button onClick={onToggleSplit} disabled={!canSplit} title={ts.splitHint ?? "拆分当前拍（Enter）"}><span>⇄</span></button>
 				<button className="danger" onClick={() => onSetKind("empty")} disabled={!unit || unit.kind === "empty"} title={ts.clearHint ?? "删（⌫）"}><span>✕</span></button>
-				<button onClick={onClose} title={ts.closePanel ?? "收起（Esc）"} className="cc-cp-back"><span>{ts.collapse ?? "收起"}</span></button>
+				{onAttach ? (
+					<button className={`cc-cp-attach cc-cp-back ${hasAttach ? "has" : ""}`} disabled={!hasChord}
+						title={hasAttach ? (ts.attachViewTip ?? "查看/编辑该拍的黑点指法小图") : (ts.attachTip ?? "给该拍画一张黑点指法小图（可挑选形状/手捏/存形状库）")}
+						onClick={onAttach}>{ts.attachTab ?? "指法图"}{hasAttach ? " ✓" : ""}</button>
+				) : null}
+				<button onClick={onClose} title={ts.closePanel ?? "收起（Esc）"}><span>{ts.collapse ?? "收起"}</span></button>
 			</div>
 
 			{tab === "chord" ? (
@@ -149,13 +154,8 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 				</div>
 			)}
 
-			{/* 底部页签：和弦(C) / 低音(B) / 节奏型(R) —— 8pu 同款 */}
+			{/* 底部页签：和弦(C) / 低音(B) / 节奏型(R) —— 8pu 同款（指法图入口在顶部动作条"收起"旁） */}
 			<div className="cc-cp-tabs">
-					{onAttach ? (
-						<button className={`cc-cp-attach ${hasAttach ? "has" : ""}`} disabled={!hasChord}
-							title={hasAttach ? (ts.attachViewTip ?? "查看/编辑该拍的黑点指法小图") : (ts.attachTip ?? "给该拍画一张黑点指法小图（可挑选形状/手捏/存形状库）")}
-							onClick={onAttach}>{ts.attachTab ?? "指法图"}{hasAttach ? " ✓" : ""}</button>
-					) : null}
 				<button className={tab === "chord" ? "on" : ""} onClick={() => setTab("chord")}>{ts.tabChord ?? "和弦"} <kbd>C</kbd></button>
 				<button className={tab === "bass" ? "on" : ""} title={ts.bassTip ?? "低音（转位）"} onClick={() => setTab("bass")}>{ts.bassLabel ?? "低音"} <kbd>B</kbd></button>
 				<button className={tab === "rhythm" ? "on" : ""} onClick={() => setTab("rhythm")}>{ts.rhythmLabel ?? "节奏型"} <kbd>R</kbd></button>

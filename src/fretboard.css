@@ -3959,8 +3959,10 @@ html[data-theme="light"] .cc-page { --cc-grid-ink: rgba(44, 76, 109, 0.15); }
 .cc-beat-unit {
     flex: 1;
     display: flex;
+    flex-direction: column; /* 指法小图(figview)在记号(csign)上方 */
     align-items: center;
     justify-content: center;
+    gap: 1px;
     border-radius: 5px;
     position: relative;
     min-height: 24px;
@@ -5476,21 +5478,22 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) { color: #c0392
 
 /* ============ 指法小图编辑大弹窗(打谱页内,裁剪版普通编辑器) ============ */
 .figbe-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 90; display: flex; align-items: center; justify-content: center; }
-.figbe-box { background: var(--cc-panel, #10161c); border: 1px solid rgba(230,237,242,0.16); border-radius: 14px; padding: 14px 18px; width: min(1080px, 94vw); max-height: 92vh; overflow: auto; box-shadow: 0 18px 50px rgba(0,0,0,.5); }
-.figbe { display: flex; flex-direction: column; gap: 10px; }
-.figbe-top { display: flex; align-items: center; gap: 8px; }
+/* 上下结构：板在上自适应缩放（绝不撑出滚动条），工具行在下；overflow:hidden 硬保无滚动条 */
+.figbe-box { background: var(--cc-panel, #10161c); border: 1px solid rgba(230,237,242,0.16); border-radius: 14px; padding: 14px 18px; width: min(1080px, 94vw); max-height: 92vh; overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.5); display: flex; }
+.figbe { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+.figbe-top { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .figbe-title { font-size: 13px; color: #dfe7ee; margin-right: auto; }
-.figbe-body { display: flex; gap: 18px; align-items: flex-start; }
-.figbe-board { flex: 0 0 auto; max-width: 72vw; overflow-x: auto; }
-.figbe-board svg { height: auto; }
-.figbe-side { display: flex; flex-direction: column; gap: 14px; min-width: 210px; flex: 1; }
-.figbe-side-block { border: 1px solid rgba(230,237,242,0.12); border-radius: 10px; padding: 10px 12px; }
+.figbe-body { display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; min-height: 0; }
+.figbe-board { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.figbe-board svg { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.figbe-side { display: flex; flex-direction: row; gap: 14px; flex: 0 0 auto; flex-wrap: wrap; align-items: stretch; }
+.figbe-side-block { flex: 1 1 180px; border: 1px solid rgba(230,237,242,0.12); border-radius: 10px; padding: 10px 12px; }
 .figbe-side-title { font-size: 12px; color: #9fb2c0; margin-bottom: 8px; }
 .figbe-side-title em { font-style: normal; color: #f3ba62; }
 .figbe-presets { display: flex; gap: 6px; flex-wrap: wrap; }
 .figbe-presets .button { padding: 4px 8px; }
-.figbe-preview { display: flex; justify-content: center; padding: 6px 0; }
-.figbe-shapes { border-top: 1px solid rgba(230,237,242,0.12); padding-top: 8px; }
+.figbe-preview { display: flex; justify-content: center; align-items: center; padding: 6px 0; min-height: 64px; }
+.figbe-shapes { border-top: 1px solid rgba(230,237,242,0.12); padding-top: 8px; flex: 0 1 auto; overflow-y: auto; min-height: 0; }
 .figbe-shapes-title { font-size: 12px; color: #9fb2c0; margin-bottom: 6px; }
 .figbe-shapes-list { display: flex; gap: 8px; flex-wrap: wrap; }
 .figbe-shape { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 1px solid rgba(230,237,242,0.16); background: transparent; border-radius: 8px; padding: 5px 7px; cursor: pointer; color: inherit; }
