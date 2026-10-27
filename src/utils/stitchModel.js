@@ -6,6 +6,7 @@
 
 import { boardGeometry } from "./fretboardCalculations.js";
 import { cropBoxOfNotes } from "./animStage.js";
+import { LEVEL1_COLORS, tintAt } from "../colorConfig.js";
 
 const KEY = "fretboard-stitch";
 
@@ -100,4 +101,41 @@ export function withAlpha(color, alpha) {
 		return `rgba(${parts[0]}, ${parts[1] ?? 0}, ${parts[2] ?? 0}, ${alpha})`;
 	}
 	return color;
+}
+
+// ============ 统一色系（仅拼接渲染，不改写条目数据） ============
+
+// 第一张图的色系名：全部非透明色系音符的颜色名恰为一个时有效；
+// 白色/透明色不算色系色，零种或多种都视为无效（设置不生效）
+export function unifySchemeOf(items) {
+	if (!Array.isArray(items) || !items.length) return null;
+	const names = new Set();
+	Object.entries(items[0].state?.data || {}).forEach(([, n]) => {
+		if (!n || typeof n !== "object") return;
+		const c = n.color;
+		const cname = c && typeof c === "object" ? c.name : c;
+		if (cname && cname !== "white" && cname !== "trans" && cname in LEVEL1_COLORS) names.add(cname);
+	});
+	return names.size === 1 ? [...names][0] : null;
+}
+
+// 勾选后第 k 张的重涂态：全部色系音符统一成第一张的色系，深浅按 k/(N-1) 线性分布
+//（与动图帧位档同式——第 1 张最浅，往后逐张加深，任意张数单调）；
+// 透明音（幽灵音）与白色不动；无效（多色系/无色系）时原样返回。
+export function unifyStitchState(items, k) {
+	if (!Array.isArray(items) || !items[k]) return null;
+	const name = unifySchemeOf(items);
+	if (!name) return items[k].state;
+	const total = items.length;
+	const custom = tintAt(name, total > 1 ? k / (total - 1) : 0);
+	const data = { ...items[k].state.data };
+	Object.entries(data).forEach(([id, n]) => {
+		if (!n || typeof n !== "object") return;
+		const c = n.color;
+		const cname = c && typeof c === "object" ? c.name : c;
+		if (cname && cname !== "white" && cname !== "trans" && cname in LEVEL1_COLORS) {
+			data[id] = { ...n, color: { name, custom } };
+		}
+	});
+	return { ...items[k].state, data };
 }

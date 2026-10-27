@@ -22,6 +22,8 @@ export const zh = {
         scoreView: "序列谱",
         scoreViewTitle: "查看整首歌的小节序列谱",
         copyOnly: "仅复制",
+        stitchUnify: "统一色系",
+        stitchUnifyHint: "仅对拼接图有效：每张图按第一张图的色系统一涂色，第 1 张最浅、往后逐张加深；第一张图含多种色系（透明色不算）时不生效",
         minor: "小调",
         tintVariantTitle: (n) => `异色版本 ${n}`,
     },

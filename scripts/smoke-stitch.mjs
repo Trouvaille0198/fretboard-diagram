@@ -9,7 +9,10 @@ import {
 	stitchLayout,
 	stitchScale,
 	withAlpha,
+	unifySchemeOf,
+	unifyStitchState,
 } from "../src/utils/stitchModel.js";
+import { tintAt } from "../src/colorConfig.js";
 import { boardGeometry } from "../src/utils/fretboardCalculations.js";
 import { CONSTS } from "../src/constants.js";
 
@@ -134,7 +137,42 @@ console.log("拼接区 stitchModel 冒烟");
 	A("withAlpha：不认识的格式原样返回", withAlpha("var(--x)", 0.5) === "var(--x)");
 }
 
-// 6. stitchFrame：full/vb 关系
+// 6. 统一色系（仅拼接渲染）：判定 + 重涂
+{
+	const item = (lit) => ({ id: "x", state: mkState(0, 4, Object.keys(lit)), opts: {} });
+	// 用真实 data 结构构造
+	const mkIt = (entries) => ({
+		id: "x",
+		state: { startFret: 0, endFret: 4, enharmonic: 1, displayMode: "note", rootNote: null, visibility: "transparent", data: entries },
+		opts: {},
+	});
+	const note = (name, custom) => ({ type: "note", color: { name, custom }, color2: null, visibility: "visible" });
+	A("统一色系：单色系第一张 → 有效", unifySchemeOf([mkIt({ a: note("navy", "#111"), b: note("navy", "#222") })]) === "navy");
+	A("统一色系：多色系 → null", unifySchemeOf([mkIt({ a: note("navy", "#111"), b: note("crimson", "#222") })]) === null);
+	A("统一色系：全透明/白 → null", unifySchemeOf([mkIt({ a: { type: "note", color: "trans", color2: null, visibility: "visible" }, b: { type: "note", color: "white", color2: null, visibility: "transparent" } })]) === null);
+	A("统一色系：透明色不算色系色", unifySchemeOf([mkIt({ a: note("navy", "#111"), t: { type: "note", color: "trans", color2: null, visibility: "visible" } })]) === "navy");
+	A("统一色系：空列表 → null", unifySchemeOf([]) === null);
+
+	const items = [
+		mkIt({ a: note("navy", "旧1"), t: { type: "note", color: "trans", color2: null, visibility: "visible" } }),
+		mkIt({ b: note("crimson", "旧2"), w: { type: "note", color: "white", color2: null, visibility: "transparent" } }),
+		mkIt({ c: note("green", "旧3") }),
+	];
+	const s0 = unifyStitchState(items, 0), s1 = unifyStitchState(items, 1), s2 = unifyStitchState(items, 2);
+	A("重涂：第 0 张 = 色系最浅档", s0.data.a.color.name === "navy" && s0.data.a.color.custom === tintAt("navy", 0), JSON.stringify(s0.data.a.color));
+	A("重涂：第 1 张 = 中间档(线性)", s1.data.b.color.custom === tintAt("navy", 0.5) && s1.data.b.color.name === "navy");
+	A("重涂：第 2 张 = 最深档", s2.data.c.color.custom === tintAt("navy", 1));
+	A("重涂：透明音不动", s0.data.t.color === "trans");
+	A("重涂：白色不动", s1.data.w.color === "white");
+	A("重涂：其他色系名也统一为第一张的色系", s1.data.b.color.name === "navy" && s2.data.c.color.name === "navy");
+	A("重涂：不改写条目快照", items[0].state.data.a.color.custom === "旧1");
+	const bad = [mkIt({ a: note("navy", "#111"), b: note("crimson", "#222") })];
+	A("重涂：多色系时原样返回", unifyStitchState(bad, 0) === bad[0].state);
+	const one = [mkIt({ a: note("navy", "#111") })];
+	A("重涂：单张 = 最浅档", unifyStitchState(one, 0).data.a.color.custom === tintAt("navy", 0));
+}
+
+// 7. stitchFrame：full/vb 关系
 {
 	const it = { state: mkState(0, 4, ["f1-s1"]), opts: { horizontalCrop: false, verticalCrop: false } };
 	const f = stitchFrame(it);

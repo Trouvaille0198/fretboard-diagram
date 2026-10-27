@@ -1,10 +1,11 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { ScoreBoard, renderBoardImage } from './ScorePieces';
-import { stitchLayout, stitchScale, withAlpha } from '../utils/stitchModel';
+import { stitchLayout, stitchScale, withAlpha, unifyStitchState } from '../utils/stitchModel';
 
 // 拼接区悬浮舱（普通图片模式）：右上角 FAB，hover 展开实时拼接预览
 // 预览 = DOM 版拼接画布（各段按指板坐标上下对齐、段间分割线），
 // 复制/下载 = 离屏逐段 renderBoardImage → canvas 合成 PNG（与预览同一套布局数据，所见即所得）
+// unify（统一色系）= 渲染期重涂（unifyStitchState），条目快照数据不动，勾/取消即时切换
 
 const cssVar = (name, fallback) => {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -12,7 +13,7 @@ const cssVar = (name, fallback) => {
 };
 
 // 拼接布局 → 一张 PNG canvas（k = 像素/SVG单位；段顺序=条目顺序，从左到右）
-async function composeStitchCanvas(items, layout) {
+async function composeStitchCanvas(items, layout, unify) {
   const k = stitchScale(layout);
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(layout.w * k));
@@ -23,7 +24,8 @@ async function composeStitchCanvas(items, layout) {
   for (let i = 0; i < items.length; i++) {
     const seg = layout.segs[i];
     const opts = items[i].opts || {};
-    const img = await renderBoardImage(items[i].state, Math.max(1, Math.round(seg.vb.w * k)), {
+    const state = unify ? unifyStitchState(items, i) : items[i].state;
+    const img = await renderBoardImage(state, Math.max(1, Math.round(seg.vb.w * k)), {
       includeMarkers: opts.includeMarkers,
       showNotes: opts.showNotes,
       cropBox: seg.vb,
@@ -57,7 +59,7 @@ function downloadBlob(blob, name) {
 // 单段预览：外框=裁剪后的窗口（vb），内嵌整板 svg 按偏移推移——
 // CSS 宽高与 viewBox 严格同比，映射 1:1，无 letterbox，多段间像素级对齐。
 // draggable：整段可拖到另一段上换位（HTML5 DnD，onReorder 由外部落库）
-function StitchSegment({ item, seg, onRemove, removeTitle, dnd }) {
+function StitchSegment({ state, opts, seg, onRemove, removeTitle, dnd, removeId }) {
   const { vb, full } = seg;
   const pct = (a, b) => `${(a / b * 100).toFixed(4)}%`;
   return (
@@ -84,15 +86,15 @@ function StitchSegment({ item, seg, onRemove, removeTitle, dnd }) {
             height: pct(full.h, vb.h),
           }}
         >
-          <ScoreBoard snapshot={{ state: item.state }} options={{ includeMarkers: item.opts?.includeMarkers, showNotes: item.opts?.showNotes }} />
+          <ScoreBoard snapshot={{ state }} options={{ includeMarkers: opts?.includeMarkers, showNotes: opts?.showNotes }} />
         </div>
       </div>
-      <button className="stitch-seg-x" title={removeTitle} onClick={e => { e.stopPropagation(); onRemove(item.id); }}>×</button>
+      <button className="stitch-seg-x" title={removeTitle} onClick={e => { e.stopPropagation(); onRemove(removeId); }}>×</button>
     </div>
   );
 }
 
-export function StitchDock({ items, onRemove, onClear, onReorder, showToast, t }) {
+export function StitchDock({ items, onRemove, onClear, onReorder, unify, showToast, t }) {
   const ts = t?.stitch ?? {};
   // 词条支持函数式（带参）：L('count', n => `${n} 张`, items.length)
   const L = (key, fallback, ...args) => {
@@ -109,6 +111,11 @@ export function StitchDock({ items, onRemove, onClear, onReorder, showToast, t }
   const rootRef = useRef(null);
 
   const layout = useMemo(() => stitchLayout(items), [items]);
+  // 统一色系的重涂态（勾选时预览用；memo 缓存防 hover/拖拽重渲时反复重涂丢 ScoreBoard 缓存）
+  const renderStates = useMemo(
+    () => items.map((_, i) => (unify ? unifyStitchState(items, i) : items[i].state)),
+    [items, unify]
+  );
 
   const scheduleClose = useCallback(() => {
     clearTimeout(closeTimer.current);
@@ -162,7 +169,7 @@ export function StitchDock({ items, onRemove, onClear, onReorder, showToast, t }
     if (!items.length || busy) return;
     setBusy('copy');
     try {
-      const canvas = await composeStitchCanvas(items, layout);
+      const canvas = await composeStitchCanvas(items, layout, unify);
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
       if (!blob) throw new Error('PNG 编码失败');
       if (navigator.clipboard && window.ClipboardItem) {
@@ -183,7 +190,7 @@ export function StitchDock({ items, onRemove, onClear, onReorder, showToast, t }
     if (!items.length || busy) return;
     setBusy('download');
     try {
-      const canvas = await composeStitchCanvas(items, layout);
+      const canvas = await composeStitchCanvas(items, layout, unify);
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
       if (!blob) throw new Error('PNG 编码失败');
       const name = `fretboard-stitch-${Date.now()}.png`;
@@ -292,7 +299,7 @@ export function StitchDock({ items, onRemove, onClear, onReorder, showToast, t }
                       clearDnd();
                     },
                   };
-                  return <StitchSegment key={item.id} item={item} seg={seg} onRemove={onRemove} removeTitle={L('removeTitle', '移除这张')} dnd={dnd} />;
+                  return <StitchSegment key={item.id} state={renderStates[i]} opts={item.opts} seg={seg} onRemove={onRemove} removeTitle={L('removeTitle', '移除这张')} dnd={dnd} removeId={item.id} />;
                 })}
                 {layout.dividers.map((dx, i) => (
                   <div key={'div' + i} className="stitch-divider" style={{ left: `${(dx / layout.w * 100).toFixed(4)}%` }} />
