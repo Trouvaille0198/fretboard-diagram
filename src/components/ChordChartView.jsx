@@ -1525,7 +1525,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v41</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v42</div>
 
 
 			{dialog ? (
