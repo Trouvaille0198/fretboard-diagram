@@ -5390,13 +5390,15 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) { color: #c0392
 /* ============ 指法小图编辑大弹窗(打谱页内,裁剪版普通编辑器) ============ */
 .figbe-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 90; display: flex; align-items: center; justify-content: center; }
 /* 上下结构：板在上自适应缩放（绝不撑出滚动条），工具行在下；overflow:hidden 硬保无滚动条 */
-.figbe-box { background: var(--cc-panel, #10161c); border: 1px solid rgba(230,237,242,0.16); border-radius: 14px; padding: 14px 18px; width: min(1080px, 94vw); max-height: 92vh; overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.5); display: flex; }
-.figbe { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+/* 宽度随板内容自适应：品窗短弹窗就窄，不留大空挡；上限防溢屏 */
+.figbe-box { background: var(--cc-panel, #10161c); border: 1px solid rgba(230,237,242,0.16); border-radius: 14px; padding: 14px 18px; width: fit-content; min-width: 480px; max-width: min(1080px, 94vw); max-height: 92vh; overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.5); display: flex; }
+.figbe { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; min-width: 0; }
 .figbe-top { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.figbe-title { font-size: 13px; color: #dfe7ee; margin-right: auto; }
+.figbe-title { font-size: 13px; color: #dfe7ee; margin-right: auto; min-width: 0; max-width: 220px; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .figbe-body { display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; min-height: 0; }
-.figbe-board { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 6px; }
-.figbe-board svg { max-width: calc(100% - 28px); max-height: 100%; width: auto; height: auto; flex: 0 1 auto; }
+.figbe-board { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 6px; }
+/* fit-content 容器下百分比 max 会循环失效，用绝对上限：宽不超弹窗上限、高不超 92vh 减工具区 */
+.figbe-board svg { max-width: calc(min(1080px, 94vw) - 76px); max-height: calc(92vh - 250px); width: auto; height: auto; flex: 0 0 auto; }
 .figbe-side { display: flex; flex-direction: row; gap: 14px; flex: 0 0 auto; flex-wrap: wrap; align-items: stretch; }
 .figbe-side-block { flex: 1 1 180px; border: 1px solid rgba(230,237,242,0.12); border-radius: 10px; padding: 10px 12px; }
 .figbe-side-title { font-size: 12px; color: #9fb2c0; margin-bottom: 8px; }
