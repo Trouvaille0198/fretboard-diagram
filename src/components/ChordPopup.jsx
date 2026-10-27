@@ -153,8 +153,8 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 			<div className="cc-cp-tabs">
 					{onAttach ? (
 						<button className={`cc-cp-attach ${hasAttach ? "has" : ""}`} disabled={!hasChord}
-							title={hasAttach ? (ts.attachViewTip ?? "查看/更换该和弦的指法图") : (ts.attachTip ?? "给该和弦配一张指法图（静态/动图）")}
-							onClick={onAttach}>{ts.attachTab ?? "配图"}{hasAttach ? " ✓" : ""}</button>
+							title={hasAttach ? (ts.attachViewTip ?? "查看/编辑该拍的黑点指法小图") : (ts.attachTip ?? "给该拍画一张黑点指法小图（可挑选形状/手捏/存形状库）")}
+							onClick={onAttach}>{ts.attachTab ?? "指法图"}{hasAttach ? " ✓" : ""}</button>
 					) : null}
 				<button className={tab === "chord" ? "on" : ""} onClick={() => setTab("chord")}>{ts.tabChord ?? "和弦"} <kbd>C</kbd></button>
 				<button className={tab === "bass" ? "on" : ""} title={ts.bassTip ?? "低音（转位）"} onClick={() => setTab("bass")}>{ts.bassLabel ?? "低音"} <kbd>B</kbd></button>

@@ -67,6 +67,38 @@ export function boardFigData(data, chord, viewKey) {
 
 // ============ 渲染 ============
 
+// 小图几何(与 figSvg 同源):cell/网格矩形/坐标映射,编辑器点击交互用
+export function figGeometry(fig, opts = {}) {
+	const compact = !!opts.compact;
+	const horizontal = opts.orientation === "h";
+	const nFrets = fig.window || 4;
+	const size = opts.size ?? (compact ? 40 : 56);
+	const padLc = horizontal ? 0.88 : 1.0, padRc = 0.5;
+	const padTc = horizontal ? 0.5 : 0.88, padBc = horizontal ? 0.6 : 0.5;
+	const cell = size / (5 + (horizontal ? padTc + padBc : padLc + padRc));
+	const spanS = 5 * cell, spanF = nFrets * cell;
+	const gridW = horizontal ? spanF : spanS;
+	const gridH = horizontal ? spanS : spanF;
+	const W = Math.round(horizontal ? spanF + (padLc + padRc) * cell : size);
+	const H = Math.round(horizontal ? size : spanF + (padTc + padBc) * cell);
+	const L = padLc * cell, T = padTc * cell;
+	const pt = (fo, so) => horizontal ? { x: L + fo, y: T + so } : { x: L + so, y: T + fo };
+	return { horizontal, nFrets, cell, spanS, spanF, W, H, L, T, pt, startFret: fig.startFret };
+}
+
+// 点击命中:svg 内像素坐标(px,py,已按 viewBox 换算) → { string, fret }(品窗格位,含空弦列) | null
+export function figHitTest(geom, px, py) {
+	const rel = geom.horizontal ? { fo: px - geom.L, so: py - geom.T } : { fo: py - geom.T, so: px - geom.L };
+	if (rel.so < -0.3 * geom.cell || rel.so > geom.spanS + 0.3 * geom.cell) return null;
+	const string = Math.round(rel.so / geom.spanS * 5);
+	// 品轴:-0.35c 处为空弦列;[0, spanF] 每格一档
+	if (rel.fo >= -0.7 * geom.cell && rel.fo < 0.2 * geom.cell) return { string, fret: 0 };
+	const inGrid = rel.fo - 0.2 * geom.cell;
+	if (inGrid < 0 || inGrid > geom.spanF) return null;
+	const col = Math.floor(inGrid / geom.spanF * geom.nFrets);
+	return { string, fret: geom.startFret + col };
+}
+
 // fig(boardFigData) → SVG 字符串。
 // opts: { orientation 'v'(默认,琴头在上)| 'h'(普通图方向,琴头在左、品窗横向拉开),
 //         size 主轴px(默认 v:宽56 / h:高64), compact 半拍简版, degMode 'chord'|'scale'|'none',
@@ -86,25 +118,14 @@ export function figSvg(fig, opts = {}) {
 	//   弦轴:6 弦 = 5 格距;品轴:nFrets 格。
 	//   v(琴头在上):弦轴=x、品轴=y;h(琴头在左):弦轴=y、品轴=x —— 网格矩形随方向转置。
 	// pad(×cell):v = 左(品数)+顶(×/○ 与琴枕);h = 左(×/○ 与琴枕)+底(品数)。
-	const size = opts.size ?? (compact ? 40 : 56);
-	// pad(×cell)——四侧均 ≥0.5c(边缘弦上的黑点半径 0.48c 需要画布容纳):
-	// v=左 1.0(品数列)+顶 0.72(×/○、琴枕、弧)+右/底 0.5;h 镜像(左 0.72、底 0.6 品数)
-	// 品轴起点侧(琴枕外)容纳空弦点:0.35c 位置 + 0.48c 半径 → 0.88c
-	const padLc = horizontal ? 0.88 : 1.0, padRc = 0.5;
-	const padTc = horizontal ? 0.5 : 0.88, padBc = horizontal ? 0.6 : 0.5;
-	const cell = size / (5 + (horizontal ? padTc + padBc : padLc + padRc));
-	const spanS = 5 * cell;        // 弦轴长
-	const spanF = nFrets * cell;   // 品轴长
-	const gridW = horizontal ? spanF : spanS;
-	const gridH = horizontal ? spanS : spanF;
-	const W = Math.round(horizontal ? spanF + (padLc + padRc) * cell : size);
-	const H = Math.round(horizontal ? size : spanF + (padTc + padBc) * cell);
-	const L = padLc * cell, R = L + gridW, T = padTc * cell, B = T + gridH;
-
-	// 弦轴/品轴上的一维偏移(0 基);分配到 x/y 由方向决定
-	const offS = (i) => spanS * i / 5;                 // 第 i 弦
-	const offF = (i) => spanF * i / nFrets;            // 品轴第 i 格线(均分 spanF)
-	const pt = (fo, so) => horizontal ? { x: L + fo, y: T + so } : { x: L + so, y: T + fo };
+	// 几何与 hitTest 同源(figGeometry),编辑器点击反算才与渲染完全一致
+	const G = figGeometry(fig, opts);
+	const cell = G.cell, spanS = G.spanS, spanF = G.spanF;
+	const W = G.W, H = G.H, L = G.L, R = L + (horizontal ? spanF : spanS);
+	const T = G.T, B = T + (horizontal ? spanS : spanF);
+	const offS = (i) => spanS * i / 5;
+	const offF = (i) => spanF * i / nFrets;
+	const pt = G.pt;
 	const X1 = (o) => o.x.toFixed(2), Y1 = (o) => o.y.toFixed(2);
 
 	let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" class="chord-fig">`;

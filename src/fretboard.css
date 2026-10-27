@@ -5406,3 +5406,49 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) { color: #c0392
     .stitch-fab { padding: 0 10px; }
     .stitch-panel { top: 92px; right: 10px; width: calc(100% - 20px); max-height: calc(100vh - 108px); }
 }
+
+/* ============ 和弦谱指法小图（黑点格）============ */
+.cc-beat-unit { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.cc-figview svg { display: block; }
+.cc-beat-unit .cc-figview svg { max-width: 100%; }
+
+/* 汇总行的小图设置开关 */
+.cc-figopts { display: inline-flex; gap: 4px; margin-left: 10px; }
+.cc-figopts button {
+  border: 1px solid var(--cc-border, rgba(230,237,242,0.18)); background: transparent; color: var(--cc-text, #c4d1db);
+  font-size: 11px; border-radius: 5px; padding: 1px 7px; cursor: pointer;
+}
+.cc-figopts button:hover { border-color: var(--cc-accent, #f3ba62); color: var(--cc-accent, #f3ba62); }
+
+/* 编辑弹层 */
+.cc-figmodal { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 90; display: flex; align-items: center; justify-content: center; }
+.cc-figmodal-box { background: var(--cc-panel, #10161c); border: 1px solid rgba(230,237,242,0.16); border-radius: 12px; padding: 12px 14px; max-width: 92vw; max-height: 90vh; overflow: auto; }
+.cc-figmodal-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #dfe7ee; margin-bottom: 8px; }
+.cc-figeditor { min-width: 420px; }
+.cc-figeditor-main { display: flex; gap: 14px; align-items: flex-start; }
+.cc-figeditor-stage { cursor: pointer; user-select: none; line-height: 0; }
+.cc-figeditor-stage svg { border-radius: 8px; background: rgba(255,255,255,0.02); }
+.cc-figeditor-side { display: flex; flex-direction: column; gap: 8px; min-width: 170px; }
+.cc-figeditor-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.cc-figeditor-row.hint { font-size: 11px; color: #8ba0b0; max-width: 180px; }
+.cc-figbtn { border: 1px solid rgba(230,237,242,0.2); background: transparent; color: #c4d1db; font-size: 12px; border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+.cc-figbtn:hover { border-color: #f3ba62; color: #f3ba62; }
+.cc-figbtn.on { background: rgba(243,186,98,0.18); border-color: #f3ba62; color: #f3ba62; }
+.cc-figbtn.primary { background: rgba(243,186,98,0.85); border-color: transparent; color: #1a1206; font-weight: 600; }
+.cc-figstart { font-size: 11px; color: #8ba0b0; min-width: 40px; text-align: center; }
+.cc-figeditor-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+/* 挑选面板(形状候选) */
+.cc-figpicker { margin-top: 10px; border-top: 1px solid rgba(230,237,242,0.12); padding-top: 8px; }
+.cc-figpicker-title { font-size: 11.5px; color: #8ba0b0; margin-bottom: 6px; }
+.cc-figpicker-list { display: flex; gap: 8px; flex-wrap: wrap; }
+.cc-figpick { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 1px solid rgba(230,237,242,0.16); background: transparent; border-radius: 8px; padding: 5px 7px; cursor: pointer; }
+.cc-figpick:hover { border-color: #f3ba62; }
+.cc-figpick em { font-style: normal; font-size: 10px; color: #f3ba62; }
+.cc-figpick small { font-size: 10px; color: #8ba0b0; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 存形状面板 */
+.cc-figsave { margin-top: 10px; border-top: 1px solid rgba(230,237,242,0.12); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.cc-figsave-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c4d1db; flex-wrap: wrap; }
+.cc-figsave-row select, .cc-figsave-row input { background: #0d1319; border: 1px solid rgba(230,237,242,0.2); color: #dfe7ee; border-radius: 5px; padding: 2px 6px; font-size: 12px; }
+.cc-figsave-row .hint { font-size: 11px; color: #8ba0b0; }

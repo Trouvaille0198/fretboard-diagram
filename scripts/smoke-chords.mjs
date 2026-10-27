@@ -474,5 +474,29 @@ console.log("== chordChartModel：插入一拍 ==");
 	A("候选连线进 data.connections", linked.connections && Object.values(linked.connections)[0].startNoteId === "f0-s1");
 }
 
+// ===== 指法小图渲染几何(figSvg/figGeometry/figHitTest 同源一致性) =====
+{
+	const { boardFigData, figSvg, figGeometry, figHitTest, degreeLabel } = await import("../src/utils/chordFig.js");
+	const KEY = { root: 0, minor: false };
+	const N = () => ({ visibility: "visible" });
+	const am = { "o-s0": N(), "f0-s1": N(), "f1-s2": N(), "f1-s3": N(), "o-s4": N(), connections: {} };
+	const fa = boardFigData(am, { degree: 6, quality: "m" }, KEY);
+	for (const o of [{}, { orientation: "h" }]) {
+		const g = figGeometry(fa, o);
+		const svg = figSvg(fa, o);
+		const m = svg.match(/width="(\d+)" height="(\d+)"/);
+		A("几何与渲染尺寸一致(" + (o.orientation ?? "v") + ")", g.W === +m[1] && g.H === +m[2]);
+		const p = g.pt(0.5 * g.cell, g.spanS / 5);
+		const hit = figHitTest(g, p.x, p.y);
+		A("hitTest 命中品1弦1(" + (o.orientation ?? "v") + ")", hit && hit.string === 1 && hit.fret === 1);
+		const e = g.pt(-0.35 * g.cell, 0);
+		const eh = figHitTest(g, e.x, e.y);
+		A("hitTest 命中空弦位(" + (o.orientation ?? "v") + ")", eh && eh.string === 0 && eh.fret === 0);
+	}
+	// Am 根音 A(pc9):B弦品1=C→♭3、E空弦→5;C大调内:A空弦=6、G空弦=5、C音=1
+	A("度数:和弦内(Am 根 A, x02210 的音)", degreeLabel(1, 1, "chord", 9) === "♭3" && degreeLabel(0, 0, "chord", 9) === "5" && degreeLabel(4, 0, "chord", 9) === "R");
+	A("度数:调内(C 大调, A=6 G=5 C=1)", degreeLabel(4, 0, "scale", null, KEY) === "6" && degreeLabel(2, 0, "scale", null, KEY) === "5" && degreeLabel(1, 1, "scale", null, KEY) === "1");
+}
+
 console.log(fail ? `\n✗ ${fail}/${n} 断言失败` : `\n✓ 全部 ${n} 项断言通过`);
 process.exit(fail ? 1 : 0);
