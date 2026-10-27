@@ -1172,8 +1172,7 @@ export function ChordChartView({ songId }) {
 				) : null}
 				{m.repeatStart ? <span className="cc-bardots start" /> : null}
 				{m.endBar === "repeatEnd" ? <span className="cc-bardots end" /> : null}
-				<div className="cc-cell-slots">{m.slots.map((_, si) => slotView(mi, si))}</div>
-				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格自身不受图影响，记号永远同线） */}
+				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格上方，拍格自身不受图影响，记号永远同线） */}
 				{figOpts.mode === "inline" ? (
 					<div className="cc-cell-figs">
 						{m.slots.map((sl, si) => {
@@ -1185,6 +1184,7 @@ export function ChordChartView({ songId }) {
 						})}
 					</div>
 				) : null}
+				<div className="cc-cell-slots">{m.slots.map((_, si) => slotView(mi, si))}</div>
 				<input key={`cl-${m.id}-${m.lyrics || ""}`} className={`cc-cell-lyrics ${m.lyrics ? "has" : ""}`} defaultValue={m.lyrics || ""}
 					readOnly={!editing} placeholder={editing ? "" : (ts.lyricsFor ?? "当前小节歌词")}
 					onBlur={e => patchMeasure(mi, x => ({ ...x, lyrics: e.target.value }))} />
@@ -1536,7 +1536,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v50</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v51</div>
 
 
 			{dialog ? (
