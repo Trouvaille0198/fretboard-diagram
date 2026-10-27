@@ -198,7 +198,7 @@ export function figSvg(fig, opts = {}) {
 	}
 	// 品数:每品标实际品号(品轴各品中心、弦轴外侧:v=网格左,h=网格下);compact 只标起始品
 	if (opts.fretNums !== false && nFrets > 0) {
-		const fs = (0.52 * cell).toFixed(2);
+		const fs = (0.6 * cell).toFixed(2);
 		for (let i = 0; i < nFrets; i++) {
 			if (compact && i > 0) break;
 			if ((fig.startFret + i) % 2 === 0) continue; // 只标奇数品(教材惯例,偶数品留白)
@@ -212,7 +212,7 @@ export function figSvg(fig, opts = {}) {
 				const o = pt(center + 0.19 * cell, -0.18 * cell);
 				anchor = { x: o.x, y: o.y, ta: "end" };
 			}
-			svg += `<text x="${anchor.x.toFixed(2)}" y="${anchor.y.toFixed(2)}" font-size="${fs}" fill="${th.line}" opacity="0.85" text-anchor="${anchor.ta}">${fig.startFret + i}</text>`;
+			svg += `<text x="${anchor.x.toFixed(2)}" y="${anchor.y.toFixed(2)}" font-size="${fs}" font-weight="600" fill="${th.dot}" text-anchor="${anchor.ta}">${fig.startFret + i}</text>`;
 		}
 	}
 let s = svg;

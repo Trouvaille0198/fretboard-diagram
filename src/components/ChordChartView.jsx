@@ -6,6 +6,9 @@ import { FigView } from "./ChordFig.jsx";
 import { FigBoardEditor } from "./FigBoardEditor.jsx";
 import { Toast } from "./Toast";
 import audioService from "../services/audioService";
+
+// 指法小图尺寸档位（汇总行可切）
+const FIG_SIZES = [112, 144, 176];
 import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken } from "../utils/chordLib";
 import { ChordSign } from "./ChordSign";
 import {
@@ -51,7 +54,6 @@ export function ChordChartView({ songId }) {
 		if (routedId && !loadCharts().some(c => c.id === routedId)) window.location.replace('#/chords');
 	}, [routedId]);
 	const [cursor, setCursor] = useState({ mi: 0, si: 0, half: null });
-	const [transposeRoot, setTransposeRoot] = useState(null); // null = 原调；数字 = 移调后 root pc
 	const [playing, setPlaying] = useState(null); // { mi, si, half } 当前发声槽
 	const [metronome, setMetronome] = useState(true);
 	const [speed, setSpeed] = useState(1);
@@ -145,9 +147,16 @@ export function ChordChartView({ songId }) {
 	const fileRef = useRef(null);
 
 	// 指法小图(黑点格)全局展示设置:方向/度数/尺寸;localStorage 持久化
+	// 尺寸档位 112/144/176；旧档(88/104/128)读入时升级到最近的新档
 	const [figOpts, setFigOpts] = useState(() => {
-		try { const v = JSON.parse(localStorage.getItem("fretboard-figopts") || "null"); if (v && v.orientation) return v; } catch (e) { /* 忽略 */ }
-		return { orientation: "v", degMode: "chord", size: 104 };
+		try {
+			const v = JSON.parse(localStorage.getItem("fretboard-figopts") || "null");
+			if (v && v.orientation) {
+				if (!FIG_SIZES.includes(v.size)) v.size = v.size <= 88 ? FIG_SIZES[0] : (v.size <= 104 ? FIG_SIZES[1] : FIG_SIZES[2]);
+				return v;
+			}
+		} catch (e) { /* 忽略 */ }
+		return { orientation: "v", degMode: "chord", size: 144 };
 	});
 	useEffect(() => { try { localStorage.setItem("fretboard-figopts", JSON.stringify(figOpts)); } catch (e) { /* 忽略 */ } }, [figOpts]);
 
@@ -158,16 +167,13 @@ export function ChordChartView({ songId }) {
 	const saveTimerRef = useRef(null);
 
 	const editing = toolTab !== "preview"; // 预览页签 = 查看态；其余页签 = 编辑（tab 栏永远不变）
-	const viewKey = { root: transposeRoot ?? song.key.root, minor: song.key.minor };
+	const viewKey = { root: song.key.root, minor: song.key.minor };
 	// 生效调：小节级转调标记（keyRoot）覆盖到该小节起；全局移调叠加 —— 播放/按法/音名显示都用它
 	const keyAt = (mi) => {
 		let key = { root: song.key.root, minor: song.key.minor };
 		for (let i = 0; i <= mi && song.measures.length; i++) {
 			const m = song.measures[i];
 			if (m && m.keyRoot != null) key = { root: m.keyRoot, minor: !!m.keyMinor };
-		}
-		if (transposeRoot != null && transposeRoot !== song.key.root) {
-			key = { root: (key.root + (transposeRoot - song.key.root) + 24) % 12, minor: key.minor };
 		}
 		return key;
 	};
@@ -1051,7 +1057,7 @@ export function ChordChartView({ songId }) {
 	const stageSnapshot = useMemo(() => {
 		const frame = stageChord ? stageFrame(stageChord, song, keyAt(playing ? playing.mi : cursor.mi)) : null;
 		return frame ? { state: frame } : null;
-	}, [stageChord, song.colorScheme, transposeRoot, song.key.root, song.enharmonic, cursor.mi, playing]);
+	}, [stageChord, song.colorScheme, song.key.root, song.enharmonic, cursor.mi, playing]);
 	const stagePos = playing || { mi: cursor.mi, si: cursor.si };
 	const stageSign = stageChord
 		? `${chordParts(stageChord, "degree", keyAt(playing ? playing.mi : cursor.mi)).main.replace(/M$/, "")} · ${formatName(stageChord, keyAt(playing ? playing.mi : cursor.mi))}`
@@ -1064,7 +1070,7 @@ export function ChordChartView({ songId }) {
 			// 8pu 式单行内联：1M / 6m / 4M7 / 57 / 5M/7;手画指法小图(黑点格)放在记号上方
 			return (
 				<>
-					{u.fig ? <FigView data={u.fig} chord={u.chord} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 44 : figOpts.size }} /> : null}
+					{u.fig ? <FigView data={u.fig} chord={u.chord} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }} /> : null}
 					<ChordSign chord={u.chord} display={scoreDisplay} viewKey={keyAt(mi)} compact={compact} />
 				</>
 			);
@@ -1402,28 +1408,14 @@ export function ChordChartView({ songId }) {
 							<label className="cc-meta">♩=
 								<input type="number" min="30" max="240" value={song.bpm} disabled={!editing} onChange={e => setSong(s => ({ ...s, bpm: Math.max(30, Math.min(240, Number(e.target.value) || 72)) }))} />
 							</label>
-							{/* 整曲移调（看谱/播放用，不改写谱面）—— 从「⋯」菜单提到谱头，预览态也能用 */}
-							<label className={`cc-meta cc-transpose ${transposeRoot != null ? "on" : ""}`} title={ts.transposeTip ?? "移调整曲：只改看谱/播放的调，谱面级数不动"}>
-								{ts.transpose ?? "移调"}
-								<select value={transposeRoot ?? song.key.root} onChange={e => setTransposeRoot(Number(e.target.value) === song.key.root ? null : Number(e.target.value))}>
-									<option value={song.key.root}>{ts.origKey ?? "原调"} {PC_KEY[song.key.root]}</option>
-									{PC_KEY.map((k, pc) => pc === song.key.root ? null : <option key={pc} value={pc}>{k}</option>)}
-								</select>
-								{transposeRoot != null ? <button className="cc-key-clear" title={ts.transposeClear ?? "回到原调"} onClick={() => setTransposeRoot(null)}>×</button> : null}
-							</label>
-							{/* 谱中转调（局内转调）：从光标小节起换调，写进谱面本身 */}
-							{editing ? (
-								<span className="cc-meta cc-keyhere" title={ts.keyChangeTip ?? "从该小节起转调（播放/音名/按法随之换调）"}>
-									{ts.keyChange ?? "转调"}
-									{keyStepper()}
-								</span>
-							) : null}
-							{/* 生效调：移调或谱中转调真正起作用时才出现，避免"改了却看不出" */}
+							{/* 调只有一个：上方 "1=" 即全局调，改它全谱（唱名/和弦图/播放）一起换。
+							    谱中转调入口在拍的菜单（该拍起生效，直到下一个转调/曲末），不在谱头 */}
+							{/* 生效调：谱中转调真正起作用时才出现，避免"改了却看不出" */}
 							{(() => {
 								const ek = keyAt(cursor.mi);
 								const deviates = ek.root !== song.key.root || !!ek.minor !== !!song.key.minor;
 								if (!deviates) return null;
-								return <span className="cc-effective" title={ts.effectiveTip ?? "当前光标处实际生效的调"}>⇒ 1 = {PC_KEY[ek.root]}{ek.minor ? "m" : ""}</span>;
+								return <span className="cc-effective" title={ts.effectiveTip ?? "当前光标处实际生效的调（谱中转调后）"}>⇒ 1 = {PC_KEY[ek.root]}{ek.minor ? "m" : ""}</span>;
 							})()}
 						</div>
 						<input className="cc-score-title" value={song.name} readOnly={!editing} onChange={e => setSong(s => ({ ...s, name: e.target.value }))} />
@@ -1470,6 +1462,7 @@ export function ChordChartView({ songId }) {
 								onAttach={currentUnit?.kind === "chord" ? () => editFig(cursor.mi, cursor.si, cursor.half) : null}
 								canSplit={canSplitCurrent} onPatchUnit={patchUnitFromPanel} onSetKind={onPanelSetKind}
 								onToggleSplit={toggleSplit} onClose={() => setPopupOpen(false)} t={t}
+								keyHere={editing ? keyStepper(cursor.mi) : null}
 								tab={cpTab} onTab={setCpTab} />
 						</div>
 					) : null}
@@ -1481,7 +1474,7 @@ export function ChordChartView({ songId }) {
 								<span className="cc-figopts">
 									<button title="小图方向" onClick={() => setFigOpts(o => ({ ...o, orientation: o.orientation === "v" ? "h" : "v" }))}>{figOpts.orientation === "v" ? "↕" : "↔"}</button>
 									<button title="度数标注" onClick={() => setFigOpts(o => ({ ...o, degMode: o.degMode === "chord" ? "scale" : (o.degMode === "scale" ? "none" : "chord") }))}>{figOpts.degMode === "chord" ? "级数" : (figOpts.degMode === "scale" ? "调内" : "无标注")}</button>
-									<button title="小图尺寸" onClick={() => setFigOpts(o => ({ ...o, size: o.size >= 128 ? 88 : (o.size >= 104 ? 128 : 104) }))}>{figOpts.size}px</button>
+									<button title="小图尺寸" onClick={() => setFigOpts(o => ({ ...o, size: o.size >= FIG_SIZES[2] ? FIG_SIZES[0] : (o.size >= FIG_SIZES[1] ? FIG_SIZES[2] : FIG_SIZES[1]) }))}>{figOpts.size}px</button>
 								</span>
 							</div>
 							<div className="cc-legend-row">
@@ -1518,14 +1511,14 @@ export function ChordChartView({ songId }) {
 								viewKey={keyAt(figTarget.mi)}
 								figOpts={figOpts}
 								showToast={showToast}
-								onDone={figData => { patchUnit(figTarget.mi, figTarget.si, figTarget.half, { fig: figData || undefined }); setFigTarget(null); }}
-								onCancel={() => setFigTarget(null)} />
+								onAutoSave={figData => patchUnit(figTarget.mi, figTarget.si, figTarget.half, { fig: figData || undefined })}
+								onClose={() => setFigTarget(null)} />
 						</div>
 					</div>
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v46</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v47</div>
 
 
 			{dialog ? (

@@ -45,9 +45,10 @@ const RHYTHMS = [
 
 // 8pu 式就地和弦面板（结构原样照抄）：
 // 顶部动作条（休止符/— 延音/⇄拆分/✕删/⌫收起）+ 数字格(带音名) + 质量行 + 变音行 + 底部页签(和弦C/低音B/节奏型R)
-export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUnit, onSetKind, onToggleSplit, onClose, t, tab: tabProp, onTab, hasAttach, onAttach, defaultQuality }) {
+export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUnit, onSetKind, onToggleSplit, onClose, t, tab: tabProp, onTab, hasAttach, onAttach, defaultQuality, keyHere }) {
 	const ts = t?.chords ?? {};
 	const [tabLocal, setTabLocal] = useState("chord");
+	const [keyRowOpen, setKeyRowOpen] = useState(false);
 	const tab = tabProp ?? tabLocal;
 	const setTab = onTab ?? setTabLocal; // 受控（C/B/R 快捷键切页签），否则自治
 	const chord = unit && unit.kind === "chord" ? unit.chord : null;
@@ -67,8 +68,16 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 						title={hasAttach ? (ts.attachViewTip ?? "查看/编辑该拍的黑点指法小图") : (ts.attachTip ?? "给该拍画一张黑点指法小图（可挑选形状/手捏/存形状库）")}
 						onClick={onAttach}>{ts.attachTab ?? "指法图"}{hasAttach ? " ✓" : ""}</button>
 				) : null}
+				{keyHere ? (
+					<button className={`cc-cp-keytoggle ${keyRowOpen ? "on" : ""}`}
+						title={ts.keyChangeTip ?? "从该拍所在小节起转调（之后的拍全部跟随，直到下一个转调；调回全局调 = 清除标记）"}
+						onClick={() => setKeyRowOpen(v => !v)}>{ts.keyChange ?? "转调"}</button>
+				) : null}
 				<button onClick={onClose} title={ts.closePanel ?? "收起（Esc）"}><span>{ts.collapse ?? "收起"}</span></button>
 			</div>
+
+			{/* 转调行：该拍起生效（写进谱面，谱上角标标注）；调与全局相同时自动清除 */
+			keyHere && keyRowOpen ? <div className="cc-cp-keyrow">{keyHere}</div> : null}
 
 			{tab === "chord" ? (
 				<>
