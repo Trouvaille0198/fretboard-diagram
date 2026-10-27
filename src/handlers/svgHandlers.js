@@ -17,10 +17,15 @@ export function createSvgClickHandler(params) {
         connectionToolbarVisible,
         setConnectionToolbarVisible,
         setToolbarDropdown,
+        consumePendingBrushClick,
         updateNote: updateNoteFn
     } = params;
 
     return () => {
+        // 拖染刷子引发的 click 先吞掉（拖过颜色后的松开不应误关工具栏/取消选中）
+        if (consumePendingBrushClick && consumePendingBrushClick()) {
+            return;
+        }
         if (connectionMode && connectionStartNote) {
             // 在连线模式下，点击空白区域取消连线
             setConnectionStartNote(null);
@@ -96,7 +101,7 @@ export function createSvgMouseMoveHandler(params) {
     } = params;
 
     return (e) => {
-        if (!connectionMode && shouldBrushPaint && shouldBrushPaint(e) && svgElementRef.current) {
+        if (shouldBrushPaint && shouldBrushPaint(e) && svgElementRef.current) {
             const svg = svgElementRef.current;
             const point = svg.createSVGPoint();
             point.x = e.clientX;
@@ -140,7 +145,7 @@ export function createSvgMouseMoveHandler(params) {
 }
 
 export function createSvgMouseDownHandler(params) {
-    const { startBrushPaint } = params;
+    const { connectionMode, startBrushPaint } = params;
 
     return (e) => {
         // 如果点击的是工具栏按钮，不处理
@@ -149,7 +154,11 @@ export function createSvgMouseDownHandler(params) {
         }
 
         if (e.button === 0) {
-            startBrushPaint?.(e.pointerType);
+            // 连线模式：音符上的按下是拖连线的领地，不武装刷染；
+            // 空白处按下照常武装——连线激活时同样能长按拖染（非音符起点拖不出连线，两不误）
+            if (!(connectionMode && e.target.closest('g.note'))) {
+                startBrushPaint?.(e.pointerType);
+            }
         }
     };
 }
