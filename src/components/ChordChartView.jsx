@@ -1061,11 +1061,11 @@ export function ChordChartView({ songId }) {
 	const scoreDisplay = editing ? "degree" : previewDisplay;
 	const beatContent = (u, compact, mi) => {
 		if (u.kind === "chord" && u.chord) {
-			// 8pu 式单行内联：1M / 6m / 4M7 / 57 / 5M/7;手画指法小图(黑点格)嵌在记号下
+			// 8pu 式单行内联：1M / 6m / 4M7 / 57 / 5M/7;手画指法小图(黑点格)放在记号上方
 			return (
 				<>
-					<ChordSign chord={u.chord} display={scoreDisplay} viewKey={keyAt(mi)} compact={compact} />
 					{u.fig ? <FigView data={u.fig} chord={u.chord} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 44 : figOpts.size }} /> : null}
+					<ChordSign chord={u.chord} display={scoreDisplay} viewKey={keyAt(mi)} compact={compact} />
 				</>
 			);
 		}
@@ -1525,7 +1525,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v38</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v41</div>
 
 
 			{dialog ? (
