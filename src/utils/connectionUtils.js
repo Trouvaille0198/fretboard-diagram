@@ -1,10 +1,21 @@
 import { calculateConnectionColor, calculateArcPath, getPointOnPathAtDistance } from '../utils.js';
+import { CONSTS } from '../constants.js';
 
 function measurePathLength(pathString) {
     const svgNS = 'http://www.w3.org/2000/svg';
     const tempPath = document.createElementNS(svgNS, 'path');
     tempPath.setAttribute('d', pathString);
     return tempPath.getTotalLength();
+}
+
+// 弧线默认凸向自适应：连线中点落在指板上半区 → 朝上凸（curvature 为正），
+// 下半区 → 朝下凸（负）。弧线背离指板中心弯出，不压中间弦的音符；
+// magnitude 取预设弧度绝对值（用户手动调过的弧度不走这里）
+export function adaptiveArcCurvature(startCenter, endCenter, magnitude = 0.7) {
+    if (!startCenter || !endCenter) return Math.abs(magnitude);
+    const boardMiddleY = CONSTS.offsetY + CONSTS.stringSpacing * (CONSTS.numStrings - 1) / 2;
+    const midY = (startCenter.y + endCenter.y) / 2;
+    return midY < boardMiddleY ? Math.abs(magnitude) : -Math.abs(magnitude);
 }
 
 // 生成连线路径：直线/弧线共用一套逻辑，箭头和描边端点各自留出缩进
