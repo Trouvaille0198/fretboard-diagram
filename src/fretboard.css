@@ -4366,11 +4366,15 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 /* 拍格 */
+.cc-cell-figs { display: flex; align-items: flex-end; gap: 4px; margin-top: 4px; min-height: 0; }
+.cc-cell-figs:empty { display: none; }
+.cc-cell-figs .cc-figview svg { height: 72px; width: auto; max-width: 100%; display: block; }
+
 .cc-cell-slots {
     display: flex;
     gap: 6px;
     min-height: 78px;
-    flex: 1; /* 撑满小节格：同行拍格等高，和弦记号才会在同一条线上 */
+    /* 固定记号行高（不撑满小节格）：拍格不受图影响，全谱和弦记号永远同一条线 */
 }
 
 /* 空拍也要看得见：以前 border 全透明 + 无 glyph，空小节只剩一根小节线，整张谱像坏了。
@@ -4513,6 +4517,7 @@ html[data-theme="light"] .cc-page {
 }
 
 /* 歌词：贴小节下、透明输入 */
+.cc-cell-lyrics { margin-top: auto; }
 .cc-cell-lyrics {
     width: 100%;
     margin-top: 10px;
