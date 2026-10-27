@@ -3828,6 +3828,8 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 /* 拍格 */
 .cc-cell-slots { display: flex; gap: 6px; min-height: 78px; }
+/* 有指法小图的拍加宽：图随拍宽放大（无图拍均分剩余），否则 8 拍小节里图只有 ~40px */
+.cc-beat:has(.cc-figview) { flex: 3; }
 /* 空拍也要看得见：以前 border 全透明 + 无 glyph，空小节只剩一根小节线，整张谱像坏了。
    这里给一条很淡的网格线，既保持 8pu 的干净感，又能读出"这小节有几拍"。 */
 .cc-page { --cc-grid-ink: rgba(180, 218, 232, 0.11); }
@@ -4451,11 +4453,16 @@ html[data-theme="light"] .cc-cell-tools { box-shadow: 0 4px 14px rgba(20, 40, 60
 .cc-legend-item.has { border-style: solid; border-color: var(--app-border); background: var(--app-panel); }
 .cc-legend-label { font-size: 13.5px; font-weight: 700; color: var(--app-text); margin-bottom: 4px; }
 .cc-legend-img { min-height: 64px; display: flex; align-items: center; justify-content: center; }
-.cc-legend-img svg { max-width: 100%; height: auto; }
+.cc-legend-img svg { max-width: none; height: auto; }
 .cc-legend-add { font-size: 22px; color: var(--app-text-soft); opacity: 0.6; }
 .cc-legend-item:not(.has) { cursor: pointer; }
 .cc-legend-item:not(.has):hover { border-color: var(--cc-accent, #3d8bff); }
 /* 弹层配图按钮 */
+.cc-cp-keytoggle { border: 1px solid rgba(230,237,242,0.2); background: transparent; color: var(--cc-text, #dfe7ee); border-radius: var(--cc-radius, 6px); padding: 3px 9px; font-size: 12px; cursor: pointer; }
+.cc-cp-keytoggle:hover, .cc-cp-keytoggle.on { border-color: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #6fb0ff); }
+.cc-cp-keyrow { display: flex; align-items: center; gap: 6px; padding: 6px 2px 2px; }
+.cc-cp-keyrow .cc-key-stepper b { color: var(--cc-accent-text, #6fb0ff); }
+
 .cc-cp-attach {
     margin-left: auto;
     background: var(--app-bg-secondary);

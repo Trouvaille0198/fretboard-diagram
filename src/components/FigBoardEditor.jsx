@@ -18,9 +18,10 @@ const solfegeRelKey = (noteIndex, rootNote) => SOLFEGE_REL[((noteIndex - rootNot
 
 // 指法小图编辑器——打谱页内大弹窗里的"裁剪版普通编辑器"：
 // 交互与普通编辑完全同源(点音亮灭/连线拖拽/长按刷染),但按小图场景裁剪：
-// 音符恒为 mono 单色点(无色板)、工具区只有连线预设 + 品数滑块(无钢琴/下载/异色)。
-// 顶条：形状库候选(该拍和弦匹配) / 存为形状 / ✓完成(只存亮音+连线) / 取消。
-export function FigBoardEditor({ initialData, chord, viewKey, onDone, onCancel, showToast, figOpts }) {
+// 音符恒为 mono 单色点(无色板)、工具区只有连线预设(无钢琴/下载/异色)。
+// 编辑实时自动保存(数据变化即落盘到该拍 unit.fig,无需手动确认)；
+// 顶条：形状库候选(该拍和弦匹配) / 存为形状 / 关闭。
+export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClose, showToast, figOpts }) {
   const [data, setData] = useState(() => (initialData && Object.keys(initialData).length ? JSON.parse(JSON.stringify(initialData)) : {}));
   const dataRef = useRef(data);
   dataRef.current = data;
@@ -168,24 +169,29 @@ export function FigBoardEditor({ initialData, chord, viewKey, onDone, onCancel, 
     }
   };
 
-  const finish = () => {
-    const out = {};
-    Object.entries(data).forEach(([id, n]) => {
-      if (id === 'connections') { if (Object.keys(n || {}).length) out.connections = n; return; }
-      if (id.startsWith('conn-')) return;
-      if (n && (n.visibility === 'visible' || n.visibility === 'selected')) out[id] = n;
-    });
-    onDone(Object.keys(out).some(k => k !== 'connections') ? out : null);
-  };
+  // —— 自动保存：数据一变（防抖 300ms）就落盘到该拍；首次挂载不触发 ——
+  const autoSaveRef = useRef(false);
+  React.useEffect(() => {
+    if (!autoSaveRef.current) { autoSaveRef.current = true; return; }
+    const t = setTimeout(() => {
+      const out = {};
+      Object.entries(data).forEach(([id, n]) => {
+        if (id === 'connections') { if (Object.keys(n || {}).length) out.connections = n; return; }
+        if (id.startsWith('conn-')) return;
+        if (n && (n.visibility === 'visible' || n.visibility === 'selected')) out[id] = n;
+      });
+      onAutoSave && onAutoSave(Object.keys(out).some(k => k !== 'connections') ? out : null);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [data, onAutoSave]);
 
   return (
     <div className="figbe">
       <div className="figbe-top">
-        <span className="figbe-title">▦ 指法小图{chord ? '（点音亮灭 · 拖连线 · 长按刷染，音符为单色点）' : '（点音亮灭 · 拖连线 · 长按刷染）'}</span>
+        <span className="figbe-title">▦ 指法小图（自动保存 · 点音亮灭 · 拖连线 · 长按刷染）</span>
         {chord ? <button className="button sm" onClick={() => setShapesOpen(v => !v)}>形状库</button> : null}
         <button className="button sm" onClick={openSave}>存为形状</button>
-        <button className="button sm accent" onClick={finish}>✓ 完成</button>
-        <button className="button sm" onClick={onCancel}>取消</button>
+        <button className="button sm accent" onClick={onClose}>关闭</button>
       </div>
 
       <div className="figbe-body">
