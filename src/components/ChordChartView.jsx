@@ -1169,6 +1169,12 @@ export function ChordChartView({ songId }) {
 				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格上方，拍格自身不受图影响，记号永远同线） */}
 				{figOpts.mode === "inline" ? (
 					<div className={`cc-cell-figs${rowHasFig ? " pad" : ""}`}>
+						{m.slots.some(sl => (sl.split || [sl]).some(u => u.fig)) ? null : (
+							editing && rowHasFig ? (
+								<span className="cc-figslot-ph" title={ts.figAddTip ?? "双击给这小节配指法图"}
+									onDoubleClick={() => { const first = m.slots.findIndex(sl2 => (sl2.split || [sl2]).some(u2 => u2.kind === "chord")); editFig(mi, first === -1 ? 0 : first, null); }}>＋</span>
+							) : null
+						)}
 						{m.slots.map((sl, si) => {
 							const us = sl.split || [sl];
 							return (
@@ -1178,11 +1184,6 @@ export function ChordChartView({ songId }) {
 											opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }}
 											onDoubleClick={() => { if (editing) editFig(mi, si, sl.split ? h : null); }} />
 									) : null))}
-									{/* 同行占位带的空槽：淡虚线占位框，双击直接给这拍配图——空带变功能槽 */}
-									{editing && rowHasFig && !us.some(u => u.fig) ? (
-										<span className="cc-figslot-ph" title={ts.figAddTip ?? "双击给这拍配指法图"}
-											onDoubleClick={() => editFig(mi, si, null)}>＋</span>
-									) : null}
 								</div>
 							);
 						})}
@@ -1560,7 +1561,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v61</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v62</div>
 
 
 			{dialog ? (
