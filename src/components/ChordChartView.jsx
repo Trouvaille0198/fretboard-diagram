@@ -1178,6 +1178,11 @@ export function ChordChartView({ songId }) {
 											opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }}
 											onDoubleClick={() => { if (editing) editFig(mi, si, sl.split ? h : null); }} />
 									) : null))}
+									{/* 同行占位带的空槽：淡虚线占位框，双击直接给这拍配图——空带变功能槽 */}
+									{editing && rowHasFig && !us.some(u => u.fig) ? (
+										<span className="cc-figslot-ph" title={ts.figAddTip ?? "双击给这拍配指法图"}
+											onDoubleClick={() => editFig(mi, si, null)}>＋</span>
+									) : null}
 								</div>
 							);
 						})}
@@ -1555,7 +1560,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v60</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v61</div>
 
 
 			{dialog ? (
