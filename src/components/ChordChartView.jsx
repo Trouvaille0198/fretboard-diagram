@@ -1176,12 +1176,6 @@ export function ChordChartView({ songId }) {
 				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格上方，拍格自身不受图影响，记号永远同线） */}
 				{figOpts.mode === "inline" ? (
 					<div className={`cc-cell-figs${rowHasFig ? " pad" : ""}`}>
-						{m.slots.some(sl => (sl.split || [sl]).some(u => u.fig)) ? null : (
-							editing && rowHasFig ? (
-								<span className="cc-figslot-ph" title={ts.figAddTip ?? "双击给这小节配指法图"}
-									onDoubleClick={() => { const first = m.slots.findIndex(sl2 => (sl2.split || [sl2]).some(u2 => u2.kind === "chord")); editFig(mi, first === -1 ? 0 : first, null); }}>＋</span>
-							) : null
-						)}
 						{m.slots.map((sl, si) => {
 							const us = sl.split || [sl];
 							return (
@@ -1568,7 +1562,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v64</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v65</div>
 
 
 			{dialog ? (
