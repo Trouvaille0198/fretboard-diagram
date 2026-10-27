@@ -25,6 +25,11 @@ export function degreeLabel(string, fret, mode, rootPc, key) {
 		if (key.minor) return MINOR_NATURAL[rel] ?? MAJOR_DEGREES[rel] ?? "";
 		return MAJOR_DEGREES[rel] ?? "";
 	}
+	if (rootPc == null) {
+		// 无和弦根（延音拍等）：降级为调内级数，不给空白点
+		const rel = (pc - key.root + 120) % 12;
+		return key.minor ? (MINOR_NATURAL[rel] ?? MAJOR_DEGREES[rel] ?? "") : (MAJOR_DEGREES[rel] ?? "");
+	}
 	return CHORD_DEGREES[(pc - rootPc + 120) % 12] ?? "";
 }
 
