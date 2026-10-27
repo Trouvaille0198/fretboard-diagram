@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { FretboardSVG } from './FretboardSVG';
 import { ConnectionPresetIcon } from './ConnectionPresetIcon';
-import { FretRangeSlider } from './FretRangeSlider';
+import { FretWindowThumb } from './FretWindowThumb';
 import { CONNECTION_PRESETS, useConnectionState } from '../hooks/useConnectionState';
 import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, getNotePosition, boardGeometry } from '../utils/fretboardCalculations';
 import { createNoteClickHandler, createNoteMouseDownHandler, createConnectionDragEndHandler } from '../handlers/noteHandlers';
@@ -255,10 +255,13 @@ export function FigBoardEditor({ initialData, chord, viewKey, onDone, onCancel, 
             hideInactiveNotes={false}
             connectionPreset={conn.connectionPreset}
           />
+          <FretWindowThumb startFret={fretWin.start} endFret={fretWin.end}
+            onFretWindowChange={(w) => setFretWin(prev => ({ start: w.start ?? prev.start, end: w.end ?? prev.end }))}
+            svgRef={svgElementRef} />
         </div>
 
         <div className="figbe-side">
-          <div className="figbe-side-block figbe-tools">
+          <div className="figbe-side-block">
             <div className="figbe-side-title">连线</div>
             <div className="figbe-presets">
               {CONNECTION_PRESETS.map(p => (
@@ -269,9 +272,6 @@ export function FigBoardEditor({ initialData, chord, viewKey, onDone, onCancel, 
               ))}
               {conn.connectionMode ? <button className="button" onClick={() => conn.setConnectionMode(false)} title="退出连线（右键同）">✕</button> : null}
             </div>
-            <div className="figbe-side-title figbe-tools-gap">品窗 <em>{fretWin.start + 1}–{fretWin.end} 品</em></div>
-            <FretRangeSlider startFret={fretWin.start} endFret={fretWin.end}
-              onFretWindowChange={(w) => setFretWin(prev => ({ start: w.start ?? prev.start, end: w.end ?? prev.end }))} />
           </div>
           <div className="figbe-side-block">
             <div className="figbe-side-title">预览</div>

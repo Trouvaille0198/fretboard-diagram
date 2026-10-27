@@ -30,6 +30,7 @@ import { expandTimeline, stateClock, END_PAUSE_MS, accumulateStates, chainLinksO
 import { stageWindowOf, cropBoxOfNotes } from './utils/animStage';
 import { buildActionOverlay } from './utils/staticSummary';
 import { FretboardSVG } from './components/FretboardSVG';
+import { FretWindowThumb } from './components/FretWindowThumb';
 import { useLanguage } from './i18n';
 
 const COLOR_SCHEMES = ['navy', 'crimson', 'green', 'blue', 'red', 'brown'];
@@ -1911,6 +1912,8 @@ function Fretboard({ mode = 'normal' }) {
           </g>,
           svgElementRef.current
         )}
+        <FretWindowThumb startFret={view.startFret} endFret={view.endFret}
+          onFretWindowChange={setFretWindowMemo} svgRef={svgElementRef} />
       </figure>
       </div>
 
@@ -2038,9 +2041,6 @@ function Fretboard({ mode = 'normal' }) {
             onRootNoteSelect={setRootNote}
             displayMode={displayMode}
             setDisplayMode={setDisplayMode}
-            startFret={startFret}
-            endFret={endFret}
-            onFretWindowChange={setFretWindowMemo}
             t={t}
           />
         </div>
@@ -2082,9 +2082,6 @@ function Fretboard({ mode = 'normal' }) {
         onRootNoteSelect={setRootNote}
         displayMode={displayMode}
         setDisplayMode={setDisplayMode}
-        startFret={startFret}
-        endFret={endFret}
-        onFretWindowChange={setFretWindowMemo}
         t={t}
       />
       )}

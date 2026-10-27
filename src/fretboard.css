@@ -1028,6 +1028,7 @@ button.color.level2.selected {
     display: block;
     position: relative;
     z-index: 1;
+    flex: 0 1 auto;
     isolation: isolate;
     max-width: 100%;
     height: auto;
@@ -1438,158 +1439,68 @@ svg.drag-connecting * {
 }
 
 /* 品格范围滑块 */
-.fret-range-slider-wrapper {
+/* 品窗拖块（替代旧双头滑块）：板旁窄竖轨 + 小把手，左右拖平移品窗 */
+.fwt {
+    position: relative;
+    flex: 0 0 auto;
+    width: 22px;
+    align-self: stretch;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 0 0;
-    margin: 0 auto;
-    max-width: 500px;
-    width: 100%;
-    box-sizing: border-box;
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
+    user-select: none;
+    touch-action: none;
 }
-
-/* 双滑块范围选择器 */
-.dual-range-slider {
-    position: relative;
-    width: min(100%, 300px);
-    height: 50px;
-    margin: 0 auto;
-}
-
-.dual-range-inputs-container {
-    position: relative;
-    margin: auto;
-    width: 80%;
-    height: 100%;
-    padding: 0 9px;
-}
-
-/* 滑块轨道背景 */
-.dual-range-track {
+.fwt-rail {
     position: absolute;
-    top: 40px;
-    left: 9px;
-    right: 9px;
-    height: 6px;
-    background: rgba(230, 237, 242, 0.18);
+    top: 8px;
+    bottom: 22px;
+    left: 50%;
+    width: 2px;
+    margin-left: -1px;
     border-radius: 999px;
-    z-index: 0;
+    background: rgba(230, 237, 242, 0.1);
 }
-
-/* 选中范围高亮 */
-.dual-range-selected {
-    position: absolute;
-    top: 40px;
-    height: 6px;
-    background: linear-gradient(90deg, var(--app-control-thumb-border), var(--app-control-thumb-border-hover));
-    border-radius: 999px;
-    box-shadow: 0 0 10px rgba(228, 165, 75, 0.28);
-    pointer-events: none;
+.fwt-knob {
+    position: relative;
     z-index: 1;
-    transition: left 0.1s ease, width 0.1s ease;
+    width: 14px;
+    height: 34px;
+    border-radius: 6px;
+    background: rgba(230, 237, 242, 0.16);
+    border: 1px solid rgba(230, 237, 242, 0.22);
+    cursor: ew-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.45;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s;
 }
-
-/* 滑块输入 */
-.dual-range-input {
-    position: absolute;
-    width: calc(100% - 18px);
-    left: 9px;
-    height: 6px;
-    top: 40px;
-    background: transparent;
-    -webkit-appearance: none;
-    appearance: none;
+.fwt-knob:hover, .fwt.dragging .fwt-knob {
+    opacity: 1;
+    background: rgba(230, 237, 242, 0.24);
+    border-color: var(--app-control-thumb-border, #e4a54b);
+}
+.fwt-grip {
+    width: 6px;
+    height: 16px;
+    border-radius: 3px;
+    background: rgba(230, 237, 242, 0.45);
     pointer-events: none;
-    cursor: pointer;
-    margin: 0;
-    padding: 0;
-    z-index: 2;
 }
-
-/* 滑块手柄 - Webkit */
-.dual-range-input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    background: var(--app-control-thumb-bg);
-    border: 2px solid var(--app-control-thumb-border);
-    border-radius: 50%;
-    cursor: pointer;
-    pointer-events: all;
-    position: relative;
-    z-index: 3;
-    margin-top: -6px;
-    box-shadow: 0 4px 12px rgba(17, 34, 44, 0.28);
-    transition: border-color 0.2s, transform 0.2s;
-}
-
-.dual-range-input::-webkit-slider-thumb:hover {
-    border-color: var(--app-control-thumb-border-hover);
-    transform: scale(1.05);
-}
-
-/* 滑块手柄 - Firefox */
-.dual-range-input::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    background: var(--app-control-thumb-bg);
-    border: 2px solid var(--app-control-thumb-border);
-    border-radius: 50%;
-    cursor: pointer;
-    pointer-events: all;
-    position: relative;
-    z-index: 3;
-    box-shadow: 0 4px 12px rgba(17, 34, 44, 0.28);
-    transition: border-color 0.2s, transform 0.2s;
-}
-
-.dual-range-input::-moz-range-thumb:hover {
-    border-color: var(--app-control-thumb-border-hover);
-    transform: scale(1.05);
-}
-
-/* 滑块轨道 */
-.dual-range-input::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 6px;
-    background: transparent;
-    border-radius: 999px;
-}
-
-.dual-range-input::-moz-range-track {
-    width: 100%;
-    height: 6px;
-    background: transparent;
-    border-radius: 999px;
-}
-
-.dual-range-input-min {
-    z-index: 2;
-}
-
-.dual-range-input-max {
-    z-index: 3;
-}
-
-/* 数字提示框 */
-.fret-value-tooltip {
+.fwt.dragging .fwt-grip { background: rgba(230, 237, 242, 0.8); }
+.fwt-label {
     position: absolute;
-    top: 4px;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--app-text-muted);
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--app-text-muted, #9fb2c0);
+    opacity: 0.6;
     white-space: nowrap;
     pointer-events: none;
-    z-index: 4;
-    transition: left 0.1s ease;
-    text-align: center;
 }
+.fwt.dragging .fwt-label { opacity: 1; color: var(--app-control-thumb-border, #e4a54b); }
 
 /* 预览悬停note的高亮 */
 g.note.preview-hover {
@@ -5484,13 +5395,10 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) { color: #c0392
 .figbe-top { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .figbe-title { font-size: 13px; color: #dfe7ee; margin-right: auto; }
 .figbe-body { display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; min-height: 0; }
-.figbe-board { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
-.figbe-board svg { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.figbe-board { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.figbe-board svg { max-width: calc(100% - 28px); max-height: 100%; width: auto; height: auto; flex: 0 1 auto; }
 .figbe-side { display: flex; flex-direction: row; gap: 14px; flex: 0 0 auto; flex-wrap: wrap; align-items: stretch; }
 .figbe-side-block { flex: 1 1 180px; border: 1px solid rgba(230,237,242,0.12); border-radius: 10px; padding: 10px 12px; }
-/* 连线+品窗合一块上下摆放（连线行在上、品窗滑块在下），预览独立一块 */
-.figbe-tools { flex: 2.2 1 340px; }
-.figbe-tools-gap { margin-top: 12px; }
 .figbe-side-title { font-size: 12px; color: #9fb2c0; margin-bottom: 8px; }
 .figbe-side-title em { font-style: normal; color: #f3ba62; }
 .figbe-presets { display: flex; gap: 6px; flex-wrap: wrap; }
