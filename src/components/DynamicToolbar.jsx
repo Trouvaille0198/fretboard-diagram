@@ -66,7 +66,7 @@ export function DynamicToolbar({
           <button
             className={`dyn-btn dyn-scheme ${transTool ? 'on' : ''}`}
             onClick={onToggleTransTool}
-            title="透明音：开启后点击音符涂背景色幽灵音（独立于色系，换色系不变）"
+            title="透明音：开启后点击音符涂背景色幽灵音（独立于色系，换色系不变）；按住 Ctrl 点击等效"
           >
             <span className="dyn-scheme-dot" style={{ background: 'var(--background-color)', boxShadow: 'inset 0 0 0 2px rgba(230,237,242,0.55)' }} />
           </button>

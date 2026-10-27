@@ -828,15 +828,25 @@ function Fretboard({ mode = 'normal' }) {
       const vis = noteData.visibility || visibility;
       const active = (vis === 'visible' || vis === 'selected') && noteData.color && noteData.color !== 'white';
       if (!active) {
-        // 透明音工具优先：涂 trans（字符串色，独立于色系——restyle 不认它，换色系不变）
-        dyn.paintNote(noteId, { color: transTool ? 'trans' : getVividColorValue(), color2: null, visibility: 'visible' });
+        // 透明音工具优先（Ctrl+点击等效临时开启）：涂 trans（字符串色，独立于色系——restyle 不认它，换色系不变）
+        dyn.paintNote(noteId, { color: (transTool || event.ctrlKey) ? 'trans' : getVividColorValue(), color2: null, visibility: 'visible' });
       } else {
         dyn.paintNote(noteId, { color: 'white', color2: null, visibility });
       }
       return;
     }
+    // Ctrl+点击：涂透明色（trans 幽灵音，背景色圆——独立于色系）；已是 trans 再 Ctrl+点击则熄灭复原
+    if (event.ctrlKey) {
+      const cur = dataRef.current[noteId] || {};
+      const isTrans = cur.color === 'trans';
+      setData(prev => ({
+        ...prev,
+        [noteId]: { ...cur, type: 'note', color: isTrans ? 'white' : 'trans', color2: null, visibility: isTrans ? visibility : 'visible' }
+      }));
+      return;
+    }
     baseNoteClick(event, noteId);
-  }, [baseNoteClick, visibility, dataRef, getVividColorValue, transTool]);
+  }, [baseNoteClick, visibility, dataRef, getVividColorValue, transTool, setData]);
 
   // 按下音符：动态模式优先进入滑弦拖拽（从亮着的音拖出）；否则走连线拖拽
   const baseNoteMouseDown = useCallback(createNoteMouseDownHandler({
