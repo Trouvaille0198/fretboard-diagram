@@ -184,7 +184,7 @@ export function candidateToData(candidate) {
 	const data = {};
 	candidate.points.forEach(p => {
 		const id = p.fret === 0 ? `o-s${p.string}` : `f${p.fret - 1}-s${p.string}`;
-		data[id] = { type: "note", color: "black", color2: null, visibility: "visible" };
+		data[id] = { type: "note", color: "mono", color2: null, visibility: "visible" };
 	});
 	if (candidate.links.length) {
 		data.connections = {};

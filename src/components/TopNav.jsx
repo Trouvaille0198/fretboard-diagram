@@ -48,7 +48,7 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v38">v38</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v39">v39</span>
 				<button className="top-nav-icon" onClick={toggleLang} title={lang === "zh" ? "Switch to English" : "切换为中文"}>
 					{lang === "zh" ? "En" : "中"}
 				</button>

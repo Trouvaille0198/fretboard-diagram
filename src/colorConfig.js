@@ -10,6 +10,10 @@ export const LEVEL1_COLORS = {
         fill: 'var(--background-color)',  // 音符填充色（透明色，黑色）
         button: 'var(--background-color)' // 调色盘按钮背景色
     },
+    mono: {
+        fill: '#e8eef4',           // 单色点（指法小图编辑：点亮即黑白点,无彩色语义）
+        button: '#e8eef4'
+    },
     navy: {
         fill: '#2c6cca',           // 经典蓝（提亮版）
         button: '#2c6cca'
