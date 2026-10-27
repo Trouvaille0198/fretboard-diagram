@@ -3,6 +3,7 @@ import { useLanguage } from "../i18n";
 import { ScoreBoard } from "./ScorePieces";
 import { ChordPopup } from "./ChordPopup";
 import { FigView } from "./ChordFig.jsx";
+import { FigBoardEditor } from "./FigBoardEditor.jsx";
 import { Toast } from "./Toast";
 import audioService from "../services/audioService";
 import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken } from "../utils/chordLib";
@@ -1009,18 +1010,11 @@ export function ChordChartView({ songId }) {
 		if (!slot) return null;
 		return slot.split ? (slot.split[half || 0] || null) : slot;
 	};
-	// 跳普通指板编辑器画该拍的指法小图(全屏那套交互):和弦+调随行(挑形状),画完回存 unit.fig
+	// 弹窗编辑该拍的指法小图(裁剪版普通编辑器:点音亮灭/连线/品数滑块,无色板钢琴)
+	const [figTarget, setFigTarget] = useState(null); // { mi, si, half }
 	const editFig = (mi, si, half) => {
 		setPopupOpen(false);
-		const u = unitAt(mi, si, half);
-		try {
-			sessionStorage.setItem("fretboard-attach-edit", JSON.stringify({
-				songId: song.id, kind: "fig", target: { mi, si, half },
-				frame: u?.fig || null,
-				chord: u?.chord || null, key: keyAt(mi),
-			}));
-		} catch (e) { /* 忽略 */ }
-		window.location.hash = "#/";
+		setFigTarget({ mi, si, half });
 	};
 
 	// 指法图一览：谱内所有带小图的和弦槽位（M 位置 + 和弦 + 图）；编辑态点卡片可改
@@ -1512,6 +1506,24 @@ export function ChordChartView({ songId }) {
 			</div>
 
 			
+
+			{figTarget != null ? (() => {
+				const u = unitAt(figTarget.mi, figTarget.si, figTarget.half);
+				return (
+					<div className="figbe-mask" onMouseDown={e => { if (e.target === e.currentTarget) setFigTarget(null); }}>
+						<div className="figbe-box">
+							<FigBoardEditor
+								initialData={u?.fig}
+								chord={u?.chord}
+								viewKey={keyAt(figTarget.mi)}
+								figOpts={figOpts}
+								showToast={showToast}
+								onDone={figData => { patchUnit(figTarget.mi, figTarget.si, figTarget.half, { fig: figData || undefined }); setFigTarget(null); }}
+								onCancel={() => setFigTarget(null)} />
+						</div>
+					</div>
+				);
+			})() : null}
 
 			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v38</div>
 
