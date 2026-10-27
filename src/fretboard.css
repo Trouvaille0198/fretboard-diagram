@@ -4084,7 +4084,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     background: var(--app-panel);
     border: 1px solid var(--app-border);
     border-radius: 14px;
-    padding: 18px 22px 14px;
+    padding: 14px 10px 12px;
     min-width: 0;
 }
 
@@ -4195,7 +4195,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 .cc-line-head {
-    width: 46px;
+    width: 26px;
     flex: none;
     display: flex;
     flex-direction: column;
@@ -4237,7 +4237,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cell {
     position: relative;
     min-width: 0;
-    padding: 4px 8px 2px 14px;
+    padding: 4px 6px 2px 9px;
     display: flex;
     flex-direction: column;
     /* 左侧让开小节线的呼吸空间 */
@@ -4387,10 +4387,10 @@ g.drag-fx-layer circle[stroke-dasharray] {
 /* pad：同行有图时全行占位（空小节也留同高带），记号才同线；整行无图(:empty 无 pad)不占高 */
 .cc-cell-figs { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 4px; min-height: 0; }
 .cc-cell-figs:empty:not(.pad) { display: none; }
-.cc-cell-figs.pad { min-height: 96px; }
+.cc-cell-figs.pad { min-height: 112px; }
 .cc-cell-figslot { flex: 1; display: flex; gap: 2px; min-width: 0; }
 .cc-cell-figslot .cc-figview { flex: 1; display: flex; justify-content: center; min-width: 0; }
-.cc-cell-figs svg { height: 92px; width: auto; max-width: 100%; display: block; }
+.cc-cell-figs svg { height: 108px; width: auto; max-width: 100%; display: block; }
 
 .cc-cell-slots {
     display: flex;
