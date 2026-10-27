@@ -1074,7 +1074,8 @@ export function ChordChartView({ songId }) {
 			// 8pu 式单行内联：1M / 6m / 4M7 / 57 / 5M/7;手画指法小图(黑点格)放在记号上方
 			return (
 				<>
-					{u.fig ? <FigView data={u.fig} chord={u.chord} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }} /> : null}
+					{/* hover 模式：图挂在拍上（CSS 默认隐藏，悬停浮动显示）；内嵌模式：图在独立图行 */}
+					{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={u.chord} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }} /> : null}
 					<ChordSign chord={u.chord} display={scoreDisplay} viewKey={keyAt(mi)} compact={compact} />
 				</>
 			);
@@ -1172,6 +1173,18 @@ export function ChordChartView({ songId }) {
 				{m.repeatStart ? <span className="cc-bardots start" /> : null}
 				{m.endBar === "repeatEnd" ? <span className="cc-bardots end" /> : null}
 				<div className="cc-cell-slots">{m.slots.map((_, si) => slotView(mi, si))}</div>
+				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格自身不受图影响，记号永远同线） */}
+				{figOpts.mode === "inline" ? (
+					<div className="cc-cell-figs">
+						{m.slots.map((sl, si) => {
+							const us = sl.split || [sl];
+							return us.map((u, h) => (u.kind === "chord" && u.chord && u.fig ? (
+								<FigView key={si + "-" + h} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
+									opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }} />
+							) : null));
+						})}
+					</div>
+				) : null}
 				<input key={`cl-${m.id}-${m.lyrics || ""}`} className={`cc-cell-lyrics ${m.lyrics ? "has" : ""}`} defaultValue={m.lyrics || ""}
 					readOnly={!editing} placeholder={editing ? "" : (ts.lyricsFor ?? "当前小节歌词")}
 					onBlur={e => patchMeasure(mi, x => ({ ...x, lyrics: e.target.value }))} />
@@ -1523,7 +1536,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v49</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v50</div>
 
 
 			{dialog ? (
