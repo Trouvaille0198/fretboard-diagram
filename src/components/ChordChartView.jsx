@@ -1177,10 +1177,14 @@ export function ChordChartView({ songId }) {
 					<div className="cc-cell-figs">
 						{m.slots.map((sl, si) => {
 							const us = sl.split || [sl];
-							return us.map((u, h) => (u.kind === "chord" && u.chord && u.fig ? (
-								<FigView key={si + "-" + h} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
-									opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }} />
-							) : null));
+							return (
+								<div className="cc-cell-figslot" key={si}>
+									{us.map((u, h) => (u.kind === "chord" && u.chord && u.fig ? (
+										<FigView key={h} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
+											opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }} />
+									) : null))}
+								</div>
+							);
 						})}
 					</div>
 				) : null}
@@ -1536,7 +1540,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v52</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v53</div>
 
 
 			{dialog ? (
