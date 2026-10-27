@@ -1062,13 +1062,14 @@ export function ChordChartView({ songId }) {
 
 	// 拍格内容（和弦竖排记号 / 休止 / 延音 / 空）——编辑恒数字级数，预览按三态选择
 	const scoreDisplay = editing ? "degree" : previewDisplay;
-	const beatContent = (u, compact, mi) => {
+	const beatContent = (u, compact, mi, si, half) => {
 		if (u.kind === "chord" && u.chord) {
 			// 8pu 式单行内联：1M / 6m / 4M7 / 57 / 5M/7;手画指法小图(黑点格)放在记号上方
 			return (
 				<>
 					{/* hover 模式：图挂在拍上（CSS 默认隐藏，悬停浮动显示）；内嵌模式：图在独立图行 */}
-					{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={u.chord} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }} /> : null}
+					{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={u.chord} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
+						onDoubleClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} /> : null}
 					<ChordSign chord={u.chord} display={scoreDisplay} viewKey={keyAt(mi)} compact={compact} />
 				</>
 			);
@@ -1106,7 +1107,7 @@ export function ChordChartView({ songId }) {
 								className={`cc-beat-unit ${active ? "cur" : ""} ${playingHalf ? "playing" : ""}`}
 								onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: slot.split ? h : null }); setPopupOpen(true); }}
 							>
-								{beatContent(u, !!slot.split, mi)}
+								{beatContent(u, !!slot.split, mi, si, slot.split ? h : null)}
 								{u.rhythm ? <span className="cc-rhythm-mark">{u.rhythm === "ballad" ? "∼" : u.rhythm === "block" ? "▮" : u.rhythm === "waltz" ? "③" : ""}</span> : null}
 							</div>
 						);
@@ -1174,7 +1175,8 @@ export function ChordChartView({ songId }) {
 								<div className="cc-cell-figslot" key={si}>
 									{us.map((u, h) => (u.kind === "chord" && u.chord && u.fig ? (
 										<FigView key={h} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
-											opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }} />
+											opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }}
+											onDoubleClick={() => { if (editing) editFig(mi, si, sl.split ? h : null); }} />
 									) : null))}
 								</div>
 							);
@@ -1547,7 +1549,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v57</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v58</div>
 
 
 			{dialog ? (
