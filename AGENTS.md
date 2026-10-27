@@ -20,4 +20,4 @@
 
 - 组件按 i18n 分块取词：`const ts = t?.chords ?? {}` + `ts.xxx ?? "中文默认"` 双兜底。
 - 和弦谱数据模型在 `src/utils/chordChartModel.js`（localStorage `fretboard-chordcharts`，滚动备份 ×3）。
-- 打谱页（`#/chords`）的 7 个工具页签**永远不变**：预览是其中之一，内容区单独渲染预览子栏（文本谱/动态谱），不换 tab 栏。
+- 和弦谱页（`#/chords`）的 7 个工具页签**永远不变**：预览是其中之一，内容区单独渲染预览子栏（文本谱/动态谱），不换 tab 栏。
