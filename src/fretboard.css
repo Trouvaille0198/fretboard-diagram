@@ -4366,9 +4366,12 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 /* 拍格 */
-.cc-cell-figs { display: flex; align-items: flex-start; justify-content: center; gap: 6px; margin-bottom: 4px; min-height: 0; }
+/* 图行按拍分格：每格与正下方拍格同宽对齐（gap 与 slots 一致），图在自己拍的格内居中 */
+.cc-cell-figs { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 4px; min-height: 0; }
 .cc-cell-figs:empty { display: none; }
-.cc-cell-figs .cc-figview svg { height: 92px; width: auto; max-width: 100%; display: block; }
+.cc-cell-figslot { flex: 1; display: flex; gap: 2px; min-width: 0; }
+.cc-cell-figslot .cc-figview { flex: 1; display: flex; justify-content: center; min-width: 0; }
+.cc-cell-figs svg { height: 92px; width: auto; max-width: 100%; display: block; }
 
 .cc-cell-slots {
     display: flex;
