@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLanguage } from "../i18n";
 import { ScoreBoard } from "./ScorePieces";
 import { ChordPopup } from "./ChordPopup";
-import { FigView, FigEditor } from "./ChordFig.jsx";
+import { FigView } from "./ChordFig.jsx";
 import { Toast } from "./Toast";
 import audioService from "../services/audioService";
 import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken } from "../utils/chordLib";
@@ -149,8 +149,7 @@ export function ChordChartView({ songId }) {
 		return { orientation: "v", degMode: "chord", size: 104 };
 	});
 	useEffect(() => { try { localStorage.setItem("fretboard-figopts", JSON.stringify(figOpts)); } catch (e) { /* 忽略 */ } }, [figOpts]);
-	// 指法图编辑目标(拍格 {mi,si,half})
-	const [figTarget, setFigTarget] = useState(null);
+
 	const typeTimerRef = useRef(null);
 	const scoreRef = useRef(null);
 	const popupRef = useRef(null);
@@ -1010,6 +1009,20 @@ export function ChordChartView({ songId }) {
 		if (!slot) return null;
 		return slot.split ? (slot.split[half || 0] || null) : slot;
 	};
+	// 跳普通指板编辑器画该拍的指法小图(全屏那套交互):和弦+调随行(挑形状),画完回存 unit.fig
+	const editFig = (mi, si, half) => {
+		setPopupOpen(false);
+		const u = unitAt(mi, si, half);
+		try {
+			sessionStorage.setItem("fretboard-attach-edit", JSON.stringify({
+				songId: song.id, kind: "fig", target: { mi, si, half },
+				frame: u?.fig || null,
+				chord: u?.chord || null, key: keyAt(mi),
+			}));
+		} catch (e) { /* 忽略 */ }
+		window.location.hash = "#/";
+	};
+
 	// 指法图一览：谱内所有带小图的和弦槽位（M 位置 + 和弦 + 图）；编辑态点卡片可改
 	const attachedUnits = useMemo(() => {
 		const out = [];
@@ -1460,7 +1473,7 @@ export function ChordChartView({ songId }) {
 							<ChordPopup song={song} viewKey={keyAt(cursor.mi)} unit={currentUnit} typedHint={typedHint}
 								defaultQuality={(d) => defaultQualityFor(d)}
 								hasAttach={!!(currentUnit?.kind === "chord" && currentUnit.fig)}
-								onAttach={currentUnit?.kind === "chord" ? () => setFigTarget({ mi: cursor.mi, si: cursor.si, half: cursor.half }) : null}
+								onAttach={currentUnit?.kind === "chord" ? () => editFig(cursor.mi, cursor.si, cursor.half) : null}
 								canSplit={canSplitCurrent} onPatchUnit={patchUnitFromPanel} onSetKind={onPanelSetKind}
 								onToggleSplit={toggleSplit} onClose={() => setPopupOpen(false)} t={t}
 								tab={cpTab} onTab={setCpTab} />
@@ -1480,7 +1493,7 @@ export function ChordChartView({ songId }) {
 							<div className="cc-legend-row">
 								{attachedUnits.map((a, idx) => (
 									<div key={`${a.mi}-${a.si}-${a.half}-${idx}`} className="cc-legend-item has"
-										onClick={() => { if (editing) setFigTarget({ mi: a.mi, si: a.si, half: a.half }); }}>
+										onClick={() => { if (editing) editFig(a.mi, a.si, a.half); }}>
 										<div className="cc-legend-label">{formatInline(a.chord, "degree", keyAt(a.mi))}<small>M{a.mi + 1}</small></div>
 										<div className="cc-legend-img"><FigView data={a.fig} chord={a.chord} viewKey={keyAt(a.mi)} opts={figOpts} /></div>
 									</div>
@@ -1498,26 +1511,7 @@ export function ChordChartView({ songId }) {
 
 			</div>
 
-			{figTarget != null ? (() => {
-				const u = unitAt(figTarget.mi, figTarget.si, figTarget.half);
-				return (
-					<div className="cc-figmodal" onMouseDown={e => { if (e.target === e.currentTarget) setFigTarget(null); }}>
-						<div className="cc-figmodal-box">
-							<div className="cc-figmodal-head">
-								<span>{u?.chord ? `M${figTarget.mi + 1} · ${formatInline(u.chord, "degree", keyAt(figTarget.mi))} · 指法小图` : "指法小图"}</span>
-								<button className="cc-modal-x" onClick={() => setFigTarget(null)}>✕</button>
-							</div>
-							<FigEditor initialData={u?.fig} chord={u?.chord} viewKey={keyAt(figTarget.mi)} opts={figOpts} showToast={showToast}
-								onSave={data => {
-									const has = data && Object.keys(data).some(k => k !== "connections" && (data[k] || {}).visibility === "visible");
-									patchUnit(figTarget.mi, figTarget.si, figTarget.half, { fig: has ? data : undefined });
-									setFigTarget(null);
-								}}
-								onClose={() => setFigTarget(null)} />
-						</div>
-					</div>
-				);
-			})() : null}
+			
 
 			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v38</div>
 

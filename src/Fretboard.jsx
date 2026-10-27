@@ -28,6 +28,9 @@ import { Toast } from './components/Toast';
 import { createPortal } from 'react-dom';
 import { expandTimeline, stateClock, END_PAUSE_MS, accumulateStates, chainLinksOf } from './utils/timeline';
 import { stageWindowOf, cropBoxOfNotes } from './utils/animStage';
+import { candidatesForChord, candidateToData, shapeFromBoard, builtinShapes, loadShapes, persistShapes } from './utils/chordShapes';
+import { figSvg } from './utils/chordFig';
+import { QUALITIES } from './utils/chordLib';
 import { buildActionOverlay } from './utils/staticSummary';
 import { FretboardSVG } from './components/FretboardSVG';
 import { useLanguage } from './i18n';
@@ -282,10 +285,24 @@ function Fretboard({ mode = 'normal' }) {
   });
   framesRef2.current = dynamic.frames;
 
-  // 普通模式挂载：载入配图板面（一次性）
+  // 普通模式挂载：载入配图/指法小图板面（一次性）
   useEffect(() => {
-    if (mode !== 'normal' || !attachEdit || attachEdit.kind !== 'board') return;
-    if (attachEdit.frame) applyHistorySnapshot(attachEdit.frame);
+    if (mode !== 'normal' || !attachEdit) return;
+    if (attachEdit.kind === 'board') {
+      if (attachEdit.frame) applyHistorySnapshot(attachEdit.frame);
+    } else if (attachEdit.kind === 'fig') {
+      // 指法小图编辑：板面 = fig 数据(音符统一 mono 单色点)；品窗按最低按弦品收敛；空 = 空白板
+      const frame = attachEdit.frame;
+      if (frame && frame.data) {
+        applyHistorySnapshot(frame);
+        const pressed = Object.keys(frame.data).map(id => { const m = /^(?:o|f(-?\d+))-s\d$/.exec(id); return m && m[1] !== undefined ? +m[1] + 1 : null; }).filter(v => v && v > 0);
+        if (pressed.length) { setStartFret(Math.max(0, Math.min(...pressed) - 1)); setEndFret(Math.min(15, Math.max(...pressed) + 2)); }
+      } else {
+        setStartFret(0); setEndFret(5);
+      }
+      setSelectedColorLevel(1);
+      setSelectedColor('mono');
+    }
     sessionStorage.removeItem('fretboard-attach-entry-loaded');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -295,25 +312,61 @@ function Fretboard({ mode = 'normal' }) {
       const { loadCharts, saveChart } = await import('./utils/chordChartModel');
       const song = loadCharts().find(c => c.id === attachEdit.songId);
       if (!song) throw new Error('song missing');
-      // 一个和弦（拍格实例）一张图：回存到该槽位 unit.image
+      // 一个和弦（拍格实例）一张图：回存到该槽位（fig=纯 data；board/clip=旧配图）
       const t = attachEdit.target || {};
+      const field = attachEdit.kind === 'fig' ? 'fig' : 'image';
       const measures = song.measures.map((m, mi) => {
         if (mi !== t.mi) return m;
         const slots = m.slots.map((sl, si) => {
           if (si !== t.si) return sl;
+          const patch = { [field]: frameOrClip };
           if (sl.split && t.half != null) {
-            const split = sl.split.map((u, h) => (h === t.half ? { ...u, image: frameOrClip } : u));
+            const split = sl.split.map((u, h) => (h === t.half ? { ...u, ...patch } : u));
             return { ...sl, split };
           }
-          return { ...sl, image: frameOrClip };
+          return { ...sl, ...patch };
         });
         return { ...m, slots };
       });
       saveChart({ ...song, measures });
     } catch (e) { console.error('配图回存失败', e); }
     sessionStorage.removeItem('fretboard-attach-edit');
-    window.location.hash = '#/chords';
+    window.location.hash = '#/chords?id=' + attachEdit.songId;
   }, [attachEdit]);
+
+  // figEdit 会话：形状挑选/存形状（与打谱页同款内核,在普通编辑器顶条上操作）
+  const [figShapesOpen, setFigShapesOpen] = useState(false);
+  const [figSaveForm, setFigSaveForm] = useState(null); // { quality, intervals } 存形状表单
+  const figCandidates = useMemo(() => {
+    if (!figShapesOpen || !attachEdit || attachEdit.kind !== 'fig' || !attachEdit.chord) return [];
+    return candidatesForChord(attachEdit.chord, attachEdit.key || { root: 0, minor: false }, [...builtinShapes(), ...loadShapes()]);
+  }, [figShapesOpen, attachEdit]);
+
+  // 挑选应用：候选 → mono 板面 + 品窗收敛
+  const applyFigCandidate = useCallback((c) => {
+    const data = candidateToData(c);
+    const pressed = Object.keys(data).map(id => { const m = /^f(-?\d+)-s\d$/.exec(id); return m ? +m[1] + 1 : null; }).filter(v => v && v > 0);
+    applyHistorySnapshot({
+      data,
+      startFret: pressed.length ? Math.max(0, Math.min(...pressed) - 1) : 0,
+      endFret: pressed.length ? Math.min(15, Math.max(...pressed) + 2) : 5,
+      enharmonic, displayMode: 'note', rootNote: null, visibility: 'transparent',
+    });
+    setFigShapesOpen(false);
+  }, [applyHistorySnapshot, enharmonic]);
+
+  // 存形状：按板面音程集推断质量(失败走表单手选)
+  const openFigSave = useCallback(() => {
+    const got = shapeFromBoard(dataRef.current);
+    if (!got.shape) { showToast('先点亮几个音再存形状', 'info'); return; }
+    if (got.quality !== null) {
+      const shape = { ...got.shape, name: (got.quality || '三和弦') + ' 形状' };
+      const all = loadShapes(); all.push(shape); persistShapes(all);
+      showToast(`已存入形状库：${shape.name}`, 'success');
+    } else {
+      setFigSaveForm({ quality: '', intervals: got.intervals, shape: got.shape });
+    }
+  }, [showToast]);
 
   // 动态模式挂载：attach 会话下新建 clip（无 ?c= 时）
   useEffect(() => {
@@ -1667,25 +1720,83 @@ function Fretboard({ mode = 'normal' }) {
     <>
       {attachEdit ? (
         <div className="attach-bar">
-          <span className="attach-bar-label">🖼 {attachEdit.kind === 'board' ? '静态配图编辑中' : '动图配图编辑中'}</span>
-          <button className="button sm accent" onClick={async () => {
-            if (attachEdit.kind === 'board') {
-              await finishAttach({ kind: 'board', frame: captureBoard() });
-            } else {
-              // 动图：冲刷并落堆后回存引用
-              const flushed = dynamic.flushBoard ? dynamic.flushBoard() : null;
-              const frames = (flushed && flushed.frames) || framesRef2.current;
-              const clip = dynamic.sessionClip;
-              if (clip && frames && frames.length) {
-                dynamic.persistClip();
-                await finishAttach({ kind: 'clip', id: clip.id });
-              }
-            }
-          }}>✓ 完成配图</button>
+          {attachEdit.kind === 'fig' ? (
+            <>
+              <span className="attach-bar-label">▦ 指法小图编辑中（点音亮灭/连线照常，音符为单色点）</span>
+              {attachEdit.chord ? (
+                <button className="button sm" onClick={() => setFigShapesOpen(v => !v)}>形状库</button>
+              ) : null}
+              <button className="button sm" onClick={openFigSave}>存为形状</button>
+              <button className="button sm accent" onClick={async () => {
+                // 只存亮音 + 连线(不带全网格暗音,fig 数据保持干净)
+                const board = captureBoard();
+                const data = {};
+                Object.entries(board.data || {}).forEach(([id, n]) => {
+                  if (id === 'connections') { if (Object.keys(n || {}).length) data.connections = n; return; }
+                  if (id.startsWith('conn-')) return;
+                  if (n && (n.visibility === 'visible' || n.visibility === 'selected')) data[id] = n;
+                });
+                await finishAttach(Object.keys(data).some(k => k !== 'connections') ? data : null);
+              }}>✓ 完成</button>
+            </>
+          ) : (
+            <>
+              <span className="attach-bar-label">🖼 {attachEdit.kind === 'board' ? '静态配图编辑中' : '动图配图编辑中'}</span>
+              <button className="button sm accent" onClick={async () => {
+                if (attachEdit.kind === 'board') {
+                  await finishAttach({ kind: 'board', frame: captureBoard() });
+                } else {
+                  // 动图：冲刷并落堆后回存引用
+                  const flushed = dynamic.flushBoard ? dynamic.flushBoard() : null;
+                  const frames = (flushed && flushed.frames) || framesRef2.current;
+                  const clip = dynamic.sessionClip;
+                  if (clip && frames && frames.length) {
+                    dynamic.persistClip();
+                    await finishAttach({ kind: 'clip', id: clip.id });
+                  }
+                }
+              }}>✓ 完成配图</button>
+            </>
+          )}
           <button className="button sm" onClick={() => {
             sessionStorage.removeItem('fretboard-attach-edit');
             window.location.hash = '#/chords';
           }}>取消</button>
+
+          {figShapesOpen && attachEdit.chord ? (
+            <div className="attach-shapes">
+              <div className="attach-shapes-title">{figCandidates.length ? `${figCandidates.length} 个候选（按把位从低到高，点击应用）` : '该质量暂无形状——手捏一个存进库就有了'}</div>
+              <div className="attach-shapes-list">
+                {figCandidates.map((c, i) => (
+                  <button key={i} className="attach-shape" onClick={() => applyFigCandidate(c)}
+                    title={`${c.shape.name} @${c.rootFret}品`}>
+                    <span className="attach-shape-fig" dangerouslySetInnerHTML={{ __html: figSvg({ points: c.points.map(p => ({ string: p.string, fret: p.fret })), links: [], startFret: Math.min(...c.points.filter(p => p.fret > 0).map(p => p.fret), 13), window: 4, rootPc: c.rootPc, fail: false }, { degMode: 'none', size: 44 }) }} />
+                    <em>{c.rootFret === 0 ? '开放把' : c.rootFret + '品'}</em>
+                    <small>{c.shape.name}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {figSaveForm ? (
+            <div className="attach-shapes attach-saveform">
+              <div className="attach-shapes-title">未识别质量（音程 {figSaveForm.intervals.join(',')}）——手动分类后存入</div>
+              <div className="attach-saveform-row">
+                <select defaultValue="" onChange={e => setFigSaveForm(f => ({ ...f, quality: e.target.value }))}>
+                  <option value="">— 选择质量 —</option>
+                  {QUALITIES.map(q => <option key={q} value={q}>{q || '三和弦'}</option>)}
+                </select>
+                <button className="button sm accent" disabled={!figSaveForm.quality} onClick={() => {
+                  const shape = { ...figSaveForm.shape, quality: figSaveForm.quality, name: (figSaveForm.quality || '三和弦') + ' 形状' };
+                  const all = loadShapes(); all.push(shape); persistShapes(all);
+                  setFigSaveForm(null);
+                  showToast(`已存入形状库：${shape.name}`, 'success');
+                }}>存入</button>
+                <button className="button sm" onClick={() => setFigSaveForm(null)}>不存了</button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
       <div className="title-header">
