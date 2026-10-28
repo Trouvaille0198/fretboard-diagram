@@ -38,6 +38,11 @@ export function TopNav({ mode }) {
 					window.dispatchEvent(new CustomEvent("fretboard:clips-synced"));
 				})
 				.catch(() => { /* 下次广播再试 */ });
+		}, (d) => {
+			// 远端删除：直接从本地剔除（merge 语义救不活它，服务端墓碑也会拦）
+			if (d.table === "charts") persistCharts(loadCharts().filter(c => c.id !== d.id));
+			if (d.table === "clips") persistClips(loadClips().filter(c => c.id !== d.id));
+			window.dispatchEvent(new CustomEvent("fretboard:charts-deleted", { detail: d }));
 		});
 		return unsub;
 	}, [user]);

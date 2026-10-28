@@ -47,7 +47,7 @@ try {
 
 	r = await j("POST", "/api/charts/merge", [{ id: "c1", name: "A", measures: [], updatedAt: 10 }], tk);
 	ok(r.status === 200 && r.data.items.length === 1, "merge local in");
-	r = await j("PUT", "/api/charts/c1", { id: "c1", name: "A2", measures: [{ slots: [] }] }, tk);
+	r = await j("PUT", "/api/charts/c1", { id: "c1", name: "A2", measures: [{ slots: [] }], updatedAt: Date.now() }, tk);
 	ok(r.status === 200 && r.data.item.name === "A2", "upsert chart");
 	r = await j("GET", "/api/charts", null, tk);
 	ok(r.status === 200 && r.data.items.length === 1 && r.data.items[0].name === "A2", "get charts");
@@ -59,7 +59,7 @@ try {
 	ok(r.data.items.length === 0, "charts empty after delete");
 
 	// clips（动图堆）同套语义
-	r = await j("PUT", "/api/clips/cx1", { id: "cx1", name: "动图1", frames: [] }, tk);
+	r = await j("PUT", "/api/clips/cx1", { id: "cx1", name: "动图1", frames: [], updatedAt: Date.now() }, tk);
 	ok(r.status === 200 && r.data.item.id === "cx1", "upsert clip");
 	r = await j("GET", "/api/clips", null, tk);
 	ok(r.status === 200 && r.data.items.length === 1 && r.data.items[0].name === "动图1", "get clips");
@@ -67,6 +67,12 @@ try {
 	ok(r.data.items.length === 2, "merge clip in");
 	r = await j("DELETE", "/api/clips/cx1", null, tk);
 	ok(r.status === 200, "delete clip");
+
+	// 乐观并发：携带比库里旧的 updatedAt → 409 拒收（陈旧覆盖防护）
+	r = await j("PUT", "/api/charts/cx-old", { id: "cx-old", name: "v1", updatedAt: 1000 }, tk);
+	ok(r.status === 200, "occ: first insert ok");
+	r = await j("PUT", "/api/charts/cx-old", { id: "cx-old", name: "stale-write", updatedAt: 500 }, tk);
+	ok(r.status === 409 && r.data.error === "stale_write", "occ: stale write rejected");
 
 	r = await j("POST", "/api/auth/logout", null, tk);
 	ok(r.status === 200, "logout");

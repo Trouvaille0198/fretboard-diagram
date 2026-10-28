@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, salt TEXT NOT NULL, has
 CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, name TEXT NOT NULL, exp INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS charts (name TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (name, id));
 CREATE TABLE IF NOT EXISTS clips  (name TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (name, id));
+CREATE TABLE IF NOT EXISTS tombstones (name TEXT NOT NULL, tbl TEXT NOT NULL, id TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (name, tbl, id));
 `);
 
 const hashPass = (pass, salt) => crypto.scryptSync(pass, salt, 32).toString("hex");
@@ -74,6 +75,7 @@ const handleCollection = async (table, req, res, url, p, name) => {
 		const tx = db.transaction((list) => {
 			for (const c of list) {
 				if (!c || !c.id) continue;
+				if (tombstoned(name, table, c.id, c.updatedAt)) continue; // 已删：旧数据不得复活
 				upsert.run({ name, id: c.id, data: JSON.stringify(c), updated_at: c.updatedAt || 0 });
 			}
 		});
@@ -88,16 +90,26 @@ const handleCollection = async (table, req, res, url, p, name) => {
 		// 必需字段守门：缺失补默认（脏数据进库会让所有端渲染崩溃）
 		if (table === "charts" && !item.key) item.key = { root: 0, minor: false };
 		if (table === "charts") { item.timeSig = item.timeSig || 4; item.bpm = item.bpm || 72; }
+		// 乐观并发：写入方携带的 updatedAt（它所基于的版本）比库里的旧 → 陈旧覆盖，拒收。
+		// 否则一个卡死/陈旧的旧客户端（曾实测 ~90ms 一次回环 PUT）会把一切远端改动瞬间打回
+		const stored = db.prepare(`SELECT updated_at u FROM ${table} WHERE name = ? AND id = ?`).get(name, item.id);
+		if (stored && (item.updatedAt || 0) < stored.u) { json(res, 409, { error: "stale_write", currentUpdatedAt: stored.u }); return true; }
 		const stamped = { ...item, updatedAt: Date.now() };
+		if (tombstoned(name, table, item.id, item.updatedAt)) { json(res, 200, { item: stamped, resurrectBlocked: true }); return true; }
+		const body = JSON.stringify(stamped);
 		db.prepare(`
 			INSERT INTO ${table} (name, id, data, updated_at) VALUES (?, ?, ?, ?)
 			ON CONFLICT (name, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at
-		`).run(name, item.id, JSON.stringify(stamped), stamped.updatedAt);
+		`).run(name, item.id, body, stamped.updatedAt);
+		if (shouldBroadcast(table, item.id, body)) broadcast("changed"); // 内容没变不广播（回环熔断）
 		json(res, 200, { item: stamped });
 		return true;
 	}
 	if (m && req.method === "DELETE") {
-		db.prepare(`DELETE FROM ${table} WHERE name = ? AND id = ?`).run(name, decodeURIComponent(m[1]));
+		const id = decodeURIComponent(m[1]);
+		db.prepare(`DELETE FROM ${table} WHERE name = ? AND id = ?`).run(name, id);
+		db.prepare("INSERT OR REPLACE INTO tombstones (name, tbl, id, at) VALUES (?, ?, ?, ?)").run(name, table, id, Date.now());
+		broadcast("deleted", { table, id });
 		json(res, 200, { ok: true });
 		return true;
 	}
@@ -106,15 +118,30 @@ const handleCollection = async (table, req, res, url, p, name) => {
 
 // ===== 实时同步（SSE）：登录客户端订阅，任何曲目/动图写入后广播，各端拉取合并 =====
 const sseClients = new Set();
-const broadcast = (type) => {
+const broadcast = (type, payload = {}) => {
 	for (const c of sseClients) {
-		try { c.write(`event: ${type}\ndata: {}\n\n`); } catch (e) { sseClients.delete(c); }
+		try { c.write(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`); } catch (e) { sseClients.delete(c); }
 	}
+};
+// 写入去重：同 id 数据内容没变就不广播（防旧客户端的保存回环被放大；多端幂等）
+const lastWriteSig = new Map(); // `${table}|${id}` → data 字符串
+const shouldBroadcast = (table, id, data) => {
+	const key = `${table}|${id}`;
+	if (lastWriteSig.get(key) === data) return false;
+	lastWriteSig.set(key, data);
+	return true;
+};
+
+// 删除墓碑：此后 merge/PUT 想写回同 id，必须比删除时刻新（防"本地旧数据经 merge 复活已删曲"）
+const tombstoned = (name, tbl, id, updatedAt) => {
+	const t = db.prepare("SELECT at FROM tombstones WHERE name = ? AND tbl = ? AND id = ?").get(name, tbl, id);
+	return !!t && (updatedAt || 0) <= t.at;
 };
 
 const server = http.createServer(async (req, res) => {
 	const url = new URL(req.url, "http://x");
 	const p = url.pathname;
+	if (process.env.FRETB_LOG) console.log("[req]", req.method, p);
 	if (req.method === "OPTIONS") return json(res, 204, {});
 
 	if (p === "/api/auth/login" && req.method === "POST") {
@@ -153,10 +180,7 @@ const server = http.createServer(async (req, res) => {
 	}
 
 	for (const table of ["charts", "clips"]) {
-		if (await handleCollection(table, req, res, url, p, name)) {
-			if (req.method === "PUT" || req.method === "DELETE" || p.endsWith("/merge")) broadcast("changed");
-			return;
-		}
+		if (await handleCollection(table, req, res, url, p, name)) return; // 广播在 PUT/DELETE 内部（带内容去重）
 	}
 	json(res, 404, { error: "not_found" });
 });
