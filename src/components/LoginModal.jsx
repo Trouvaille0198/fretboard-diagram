@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import './LoginModal.css';
 import { useLanguage } from '../i18n';
 import { login } from '../utils/authModel';
@@ -38,7 +39,9 @@ export function LoginModal({ onLoggedIn, onGuest, onClose }) {
         }
     };
 
-    return (
+    // portal 到 body：顶栏 .top-nav 有 backdrop-filter，会让其中 fixed 后代以顶栏为包含块（弹窗会飞出屏幕），
+    // 挂到 document.body 才能稳定全屏居中
+    return createPortal(
         <div className="login-modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose && onClose(); }}>
             <div className="login-modal">
                 <h2>{tl.titleLogin ?? '登录账号'}</h2>
@@ -61,6 +64,7 @@ export function LoginModal({ onLoggedIn, onGuest, onClose }) {
                 </div>
                 <p className="login-note">{tl.note ?? '登录后曲目自动云端同步（SQLite），换设备/清缓存不丢；游客数据在登录时并入账号。'}</p>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
