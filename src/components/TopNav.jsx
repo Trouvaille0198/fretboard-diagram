@@ -14,6 +14,7 @@ export function TopNav({ mode }) {
 	const [user, setUser] = useState(() => authUser()?.user ?? null);
 	const [loginOpen, setLoginOpen] = useState(false);
 	const [cloudFail, setCloudFail] = useState(false);
+	const [logoutAsk, setLogoutAsk] = useState(false);
 
 	// 云端同步失败提示（红点）：静默失败曾造成数据事故，必须可见
 	useEffect(() => {
@@ -117,18 +118,30 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v75">v75</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v76">v76</span>
 				{user ? (
 					<span className="top-nav-user" title={user + (cloudFail ? "（⚠ 云同步失败：改动只存在本机，稍后会自动重试或重新登录）" : "")}>
 						{cloudFail ? <span className="top-nav-cloudfail" title="云同步失败：改动只存在本机">⚠</span> : null}
 						<span className="top-nav-user-name">{user}</span>
-						<button className="top-nav-icon" onClick={() => { logout(); }} title="退出登录（回到游客，本地数据保留）">⎋</button>
+						<button className="top-nav-icon" onClick={() => setLogoutAsk(true)} title="退出登录">⏻</button>
 					</span>
 				) : (
 					<button className="top-nav-icon" onClick={() => setLoginOpen(true)} title="登录 / 注册（数据云端同步）">👤</button>
 				)}
 				{loginOpen ? (
 					<LoginModal onLoggedIn={() => setLoginOpen(false)} onGuest={() => {}} onClose={() => setLoginOpen(false)} />
+				) : null}
+				{logoutAsk ? (
+					<div className="login-modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setLogoutAsk(false); }}>
+						<div className="login-modal">
+							<h2>退出登录？</h2>
+							<p className="merge-ask-text">退出后回到游客模式，本机数据保留。</p>
+							<div className="merge-ask-btns">
+								<button className="btn-primary" onClick={() => { setLogoutAsk(false); logout(); }}>退出</button>
+								<button className="merge-ask-no" onClick={() => setLogoutAsk(false)}>取消</button>
+							</div>
+						</div>
+					</div>
 				) : null}
 				{mergeAsk ? (
 					<div className="login-modal-overlay">
