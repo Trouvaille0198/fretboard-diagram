@@ -200,10 +200,10 @@ export function ChordChartView({ songId }) {
 	const saveTimerRef = useRef(null);
 
 	const editing = toolTab !== "preview"; // 预览页签 = 查看态；其余页签 = 编辑（tab 栏永远不变）
-	const viewKey = { root: song.key.root, minor: song.key.minor };
+	const viewKey = { root: song.key?.root ?? 0, minor: !!song.key?.minor };
 	// 生效调：小节级转调标记（keyRoot）覆盖到该小节起；全局移调叠加 —— 播放/按法/音名显示都用它
 	const keyAt = (mi) => {
-		let key = { root: song.key.root, minor: song.key.minor };
+		let key = { root: song.key?.root ?? 0, minor: !!song.key?.minor };
 		for (let i = 0; i <= mi && song.measures.length; i++) {
 			const m = song.measures[i];
 			if (m && m.keyRoot != null) key = { root: m.keyRoot, minor: !!m.keyMinor };
@@ -235,7 +235,18 @@ export function ChordChartView({ songId }) {
 
 	// 多标签页同步：其他标签页保存了更新的谱子 → 采纳，避免本页用旧内存覆盖丢数据
 	useEffect(() => {
-		const onSynced = () => setCharts(loadCharts());
+		const onSynced = () => {
+			setCharts(loadCharts());
+			// 实时跟进：云端版本比内存新（别的浏览器改了这首）且本页没有未落盘编辑 → 采纳远端
+			if (saveTimerRef.current) return;
+			const latest = loadCharts().find(c => c.id === songRef.current.id);
+			if (latest && (latest.updatedAt || 0) > (songRef.current.updatedAt || 0)) {
+				suppressHistoryRef.current = true; // 采纳远端不算一步撤销
+				suppressSaveRef.current = true;
+				setSong(latest);
+				clearHistory(); // 远端结构与本地撤销栈不再对应
+			}
+		};
 		window.addEventListener("fretboard:charts-synced", onSynced);
 		return () => window.removeEventListener("fretboard:charts-synced", onSynced);
 	}, []);
@@ -294,8 +305,11 @@ export function ChordChartView({ songId }) {
 		setCurrentId(next.id);
 	}, []);
 
+	// 采纳远端版本时跳过一次保存（否则原样回写 → updatedAt 变新 → 广播 → 各端再拉，写放大回环）
+	const suppressSaveRef = useRef(false);
 	// 自动保存（防抖）；卸载时冲刷最后 800ms 内的编辑
 	useEffect(() => {
+		if (suppressSaveRef.current) { suppressSaveRef.current = false; return; }
 		clearTimeout(saveTimerRef.current);
 		saveTimerRef.current = setTimeout(() => {
 			saveTimerRef.current = null;
@@ -379,10 +393,10 @@ export function ChordChartView({ songId }) {
 	const keyStepper = (mi) => {
 		const target = mi != null ? mi : cursor.mi;
 		const m = song.measures[target] || {};
-		const cur = m.keyRoot ?? song.key.root;
+		const cur = m.keyRoot ?? (song.key?.root ?? 0);
 		const minor = m.keyRoot != null ? !!m.keyMinor : song.key.minor;
 		const setKey = (root, m2) => patchMeasure(target, x => {
-			const sameAsSong = root === song.key.root && !!m2 === !!song.key.minor;
+			const sameAsSong = root === (song.key?.root ?? 0) && !!m2 === !!song.key?.minor;
 			return { ...x, keyRoot: sameAsSong ? null : root, keyMinor: sameAsSong ? undefined : m2 };
 		});
 		return (
@@ -1109,7 +1123,7 @@ export function ChordChartView({ songId }) {
 	const stageSnapshot = useMemo(() => {
 		const frame = stageChord ? stageFrame(stageChord, song, keyAt(playing ? playing.mi : cursor.mi)) : null;
 		return frame ? { state: frame } : null;
-	}, [stageChord, song.colorScheme, song.key.root, song.enharmonic, cursor.mi, playing]);
+	}, [stageChord, song.colorScheme, song.key?.root, song.enharmonic, cursor.mi, playing]);
 	const stagePos = playing || { mi: cursor.mi, si: cursor.si };
 	const stageSign = stageChord
 		? `${chordParts(stageChord, "degree", keyAt(playing ? playing.mi : cursor.mi)).main.replace(/M$/, "")} · ${formatName(stageChord, keyAt(playing ? playing.mi : cursor.mi))}`
@@ -1462,12 +1476,12 @@ export function ChordChartView({ songId }) {
 							{/* 所有设置统一收纳：⚙ 按钮开面板（曲谱:调/拍号/BPM + 和弦图:方向/度数/尺寸/展示） */}
 							<button className={`cc-settings-btn${settingsOpen ? " on" : ""}`} title={ts.settingsTip ?? "设置：调 / 拍号 / 速度 / 和弦图"}
 								onClick={() => setSettingsOpen(v => !v)}>
-								⚙ 1 = {PC_KEY[song.key.root]}{song.key.minor ? "m" : ""} · {song.timeSig}/4 · ♩={song.bpm}
+								⚙ 1 = {PC_KEY[song.key?.root ?? 0]}{song.key?.minor ? "m" : ""} · {song.timeSig ?? 4}/4 · ♩={song.bpm ?? 72}
 							</button>
 							{/* 生效调：谱中转调真正起作用时才出现，避免"改了却看不出" */}
 							{(() => {
 								const ek = keyAt(cursor.mi);
-								const deviates = ek.root !== song.key.root || !!ek.minor !== !!song.key.minor;
+								const deviates = ek.root !== (song.key?.root ?? 0) || !!ek.minor !== !!song.key?.minor;
 								if (!deviates) return null;
 								return <span className="cc-effective" title={ts.effectiveTip ?? "当前光标处实际生效的调（谱中转调后）"}>⇒ 1 = {PC_KEY[ek.root]}{ek.minor ? "m" : ""}</span>;
 							})()}
@@ -1477,10 +1491,10 @@ export function ChordChartView({ songId }) {
 										<div className="cc-settings-label">{ts.gSong ?? "曲谱"}</div>
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.keyLabel ?? "调"}</span>
 											<span className="cc-settings-v">1 =
-												<select value={song.key.root} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { ...s.key, root: Number(e.target.value) } }))}>
+												<select value={song.key?.root ?? 0} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { root: Number(e.target.value), minor: !!s.key?.minor } }))}>
 													{PC_KEY.map((k, pc) => <option key={pc} value={pc}>{k}</option>)}
 												</select>
-												<label className="cc-iconbtn" title={ts.minor ?? "小调"}><input type="checkbox" checked={song.key.minor} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { ...s.key, minor: e.target.checked } }))} />m</label>
+												<label className="cc-iconbtn" title={ts.minor ?? "小调"}><input type="checkbox" checked={!!song.key?.minor} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { root: s.key?.root ?? 0, minor: e.target.checked } }))} />m</label>
 											</span>
 										</div>
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.timeSigLabel ?? "拍号"}</span>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLanguage } from "../i18n";
 import { LoginModal } from "./LoginModal";
-import { authUser, logout, onAuthChange, mergeLocalToCloud, pullCloud } from "../utils/authModel";
+import { authUser, logout, onAuthChange, mergeLocalToCloud, pullCloud, subscribeCloud } from "../utils/authModel";
 import { loadCharts, persistCharts } from "../utils/chordChartModel";
 import { loadClips, persistClips } from "../utils/clipModel";
 
@@ -27,6 +27,21 @@ export function TopNav({ mode }) {
 
 	// 登录态变化：刷新顶栏用户名；登录成功 → 本机有游客数据则询问是否并入，没有则直接拉云端
 	const [mergeAsk, setMergeAsk] = useState(null); // { user } 待询问；null 无
+	// 实时同步：登录期间订阅云端变更（其他浏览器/设备的写入），拉取合并并通知各页刷新
+	useEffect(() => {
+		if (!user) return;
+		const unsub = subscribeCloud(() => {
+			mergeLocalToCloud(loadCharts(), loadClips())
+				.then(({ charts, clips }) => {
+					persistCharts(charts); persistClips(clips);
+					window.dispatchEvent(new CustomEvent("fretboard:charts-synced"));
+					window.dispatchEvent(new CustomEvent("fretboard:clips-synced"));
+				})
+				.catch(() => { /* 下次广播再试 */ });
+		});
+		return unsub;
+	}, [user]);
+
 	// 已登录（token 从 localStorage 恢复，不经过 login 动作）时：挂载即静默合并云端——
 	// 否则刷新页面会一直显示陈旧的本地列表，用户会以为数据丢了
 	useEffect(() => {
