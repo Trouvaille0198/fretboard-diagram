@@ -23,12 +23,9 @@ async function api(method, path, body) {
 	return data;
 }
 
-export async function register(user, pass) {
-	const d = await api("POST", "/auth/register", { user, pass });
-	current = { token: d.token, user: d.user };
-	localStorage.setItem(AUTH_KEY, JSON.stringify(current));
-	emit();
-	return d;
+// 注册暂不开放（固定账号）：保留占位避免旧调用点报错
+export async function register() {
+	throw Object.assign(new Error("register_disabled"), { code: "register_disabled" });
 }
 
 export async function login(user, pass) {
