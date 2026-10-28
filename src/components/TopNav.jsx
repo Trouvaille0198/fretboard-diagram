@@ -118,7 +118,7 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v80">v80</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v81">v81</span>
 				{user ? (
 					<span className="top-nav-user" title={user + (cloudFail ? "（⚠ 云同步失败：改动只存在本机，稍后会自动重试或重新登录）" : "")}>
 						{cloudFail ? <span className="top-nav-cloudfail" title="云同步失败：改动只存在本机">⚠</span> : null}

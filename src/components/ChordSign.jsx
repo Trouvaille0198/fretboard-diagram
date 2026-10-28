@@ -10,10 +10,14 @@ export function ChordSign({ chord, display = "degree", viewKey, compact }) {
 	const sup = /^[0-9]/.test(parts.suffix);
 	const cls = `csign ${sup ? "csign-sup" : ""} ${compact ? "csign-sm" : ""}`;
 	if (parts.flat) return <span className={cls}><span className="csign-flat">{parts.flat}</span></span>;
+	// 后缀拆两段：前导数字（7/9）用大号；余下（b9 的 b、♯13 的 ♯、m、dim…）保持小字
+	const m = /^([0-9]+)(.*)$/.exec(parts.suffix || "");
 	return (
 		<span className={cls}>
 			<span className="csign-deg">{parts.degree}</span>
-			{parts.suffix ? <span className="csign-sfx">{parts.suffix}</span> : null}
+			{m ? (
+				<span className="csign-sfx"><span className="csign-num">{m[1]}</span>{m[2] ? <span>{m[2]}</span> : null}</span>
+			) : parts.suffix ? <span className="csign-sfx">{parts.suffix}</span> : null}
 			{parts.bass ? <span className="csign-bass">{parts.bass}</span> : null}
 		</span>
 	);
