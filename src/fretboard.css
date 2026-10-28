@@ -6738,7 +6738,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 .csign-sup .csign-sfx {
-    font-size: 0.64em;
+    font-size: 0.7em;
     /* 只有数字开头的后缀才缩小上标 */
     align-self: flex-start;
     /* 顶到右上：上标位 */
@@ -6771,7 +6771,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 .csign-sm.csign-sup .csign-sfx {
-    font-size: 0.62em;
+    font-size: 0.68em;
     margin-top: 1px;
 }
 
@@ -6785,7 +6785,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 .cc-beat .csign-sup .csign-sfx {
-    font-size: 15px;
+    font-size: 17px;
 }
 
 .cc-beat .csign-bass {
@@ -6801,7 +6801,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 .cc-beat .csign-sm.csign-sup .csign-sfx {
-    font-size: 9.5px;
+    font-size: 11px;
 }
 
 /* 休止/延音字跟随放大，保持行内节奏一致 */
