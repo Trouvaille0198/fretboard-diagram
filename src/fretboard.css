@@ -4216,6 +4216,20 @@ g.drag-fx-layer circle[stroke-dasharray] {
     gap: 3px;
 }
 
+.cc-line-no-float { position: absolute; left: 2px; top: 0; z-index: 5; pointer-events: none; opacity: 0.7; }
+.cc-line { position: relative; }
+
+/* 移动端：左右边距全部收紧（寸土寸金） */
+@media (max-width: 640px) {
+    .app-main { padding: 2px !important; }
+    .cc-page .cc-body { padding: 2px; }
+    .cc-page .cc-score { padding: 6px 6px 6px; }
+    .cc-cell { padding: 4px 5px 2px 5px; }
+    .cc-page .cc-cell-slots { gap: 3px; }
+    .cc-page .cc-tooltabs button { padding: 5px 8px 4px; }
+    .cc-score-head { gap: 4px; }
+}
+
 .cc-line-no {
     color: var(--app-text-soft);
     font-size: 11px;
