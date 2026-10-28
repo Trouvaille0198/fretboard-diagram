@@ -6190,6 +6190,10 @@ html[data-theme="light"] .button.sm.edit-enter {
     min-height: 40px;
 }
 
+/* ← 返回按钮：不是页签——去掉 tooltabs 通用 button 的底边亮条/页签圆角，hover 只变色 */
+.cc-tooltabs .cc-songs-icon { border-bottom: none; border-radius: 8px; padding: 5px 9px; }
+.cc-tooltabs .cc-songs-icon:hover { border-bottom: none; }
+
 .cc-page .cc-tooltabs {
     gap: 2px;
 }
