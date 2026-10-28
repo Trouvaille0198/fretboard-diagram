@@ -4257,15 +4257,16 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 .cc-cell::before {
-    /* 左小节线 */
+    /* 左小节线：只画拍格+歌词区，不延伸进上方的和弦图行 */
     content: "";
     position: absolute;
     left: 0;
-    top: 0;
     bottom: 0;
     width: 1.5px;
     background: var(--cc-bar-ink);
 }
+.cc-cell:has(.cc-cell-figs.pad)::before { top: 116px; } /* 图行占位高度(112+边距)以下才开始画线 */
+.cc-cell:not(:has(.cc-cell-figs.pad))::before { top: 0; }
 
 .cc-cell:first-child::before {
     width: 3px;
