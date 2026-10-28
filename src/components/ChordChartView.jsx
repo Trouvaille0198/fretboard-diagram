@@ -243,6 +243,7 @@ export function ChordChartView({ songId }) {
 	useEffect(() => {
 		const onStorage = (e) => {
 			if (e.key !== "fretboard-chordcharts") return;
+			if (saveTimerRef.current) return; // 本页还有未落盘的编辑：先让本地保存赢，下次再对齐远端
 			try {
 				const latest = loadCharts().find(c => c.id === songRef.current.id);
 				if (latest && latest.updatedAt > (songRef.current.updatedAt || 0)) {
@@ -297,12 +298,32 @@ export function ChordChartView({ songId }) {
 	useEffect(() => {
 		clearTimeout(saveTimerRef.current);
 		saveTimerRef.current = setTimeout(() => {
-			const saved = saveChart(song);
+			saveTimerRef.current = null;
+			const saved = saveChart(songRef.current);
 			setCharts(loadCharts());
 			setCurrentId(saved.id);
 		}, 800);
 		return () => clearTimeout(saveTimerRef.current);
 	}, [song]);
+
+	// 防抖窗口防丢：刷新 / 切后台 / 关页前立刻落盘（否则最后 0.8s 的编辑在重开后"被改回"）
+	useEffect(() => {
+		const flush = () => {
+			if (!saveTimerRef.current) return;
+			clearTimeout(saveTimerRef.current);
+			saveTimerRef.current = null;
+			try { saveChart(songRef.current); } catch (e) { /* 尽力而为 */ }
+		};
+		const onVis = () => { if (document.visibilityState === "hidden") flush(); };
+		window.addEventListener("beforeunload", flush);
+		window.addEventListener("pagehide", flush);
+		document.addEventListener("visibilitychange", onVis);
+		return () => {
+			window.removeEventListener("beforeunload", flush);
+			window.removeEventListener("pagehide", flush);
+			document.removeEventListener("visibilitychange", onVis);
+		};
+	}, []);
 
 	useEffect(() => () => {
 		timersRef.current.forEach(id => clearTimeout(id));
@@ -1290,14 +1311,11 @@ export function ChordChartView({ songId }) {
 								{[0.5, 0.75, 1, 1.25, 1.5].map(x => <option key={x} value={x}>{x}×</option>)}
 							</select>
 							<label className="cc-iconbtn" title={ts.metronome ?? "节拍器"}><input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} />{ts.metronome ?? "节拍器"}</label>
-							<span className="cc-sep" />
-							<button className="button sm" onClick={undo} title={ts.undo ?? "撤销 (Ctrl+Z)"}>↩</button>
-							<button className="button sm" onClick={redo} title={ts.redo ?? "重做 (Ctrl+Shift+Z)"}>↪</button>
-							<button className="button sm accent" onClick={makeClip} title={ts.makeClipTitle ?? "整曲生成指板动图"}>{ts.makeClip ?? "生成动图"}</button>
 							<span className="cc-more-wrap">
 								<button className="button sm cc-more-btn" onClick={() => setMenuOpen(v => !v)} title={ts.more ?? "更多"}>⋯</button>
 								{menuOpen ? (
 									<div className="cc-menu" onClick={() => setMenuOpen(false)}>
+										<button className="cc-menu-item" onClick={() => { setMenuOpen(false); makeClip(); }}>🎬 {ts.makeClip ?? "生成动图"}</button>
 										<button className="cc-menu-item" onClick={goSongList}>{ts.songsTitle ?? "曲目"}…</button>
 										<button className="cc-menu-item" onClick={newSong}>＋ {ts.newSong ?? "新歌"}</button>
 										<button className="cc-menu-item danger" onClick={() => { setMenuOpen(false); removeChartById(song.id); }}>✕ {ts.delSong ?? "删除这首歌"}</button>
@@ -1535,9 +1553,8 @@ export function ChordChartView({ songId }) {
 							const rowHasFig = row.some(mm => mm.slots.some(sl => (sl.split || [sl]).some(u => u && u.fig)));
 							return (
 								<div className="cc-line" key={ri}>
-									<div className="cc-line-head">
-										<span className="cc-line-no">{first + 1}</span>
-									</div>
+									{/* 行号：叠在行首小节格左上角小字，不占独立列 */}
+									<span className="cc-line-no cc-line-no-float">{first + 1}</span>
 									{/* 网格轨道按行内小节数固定：末行不满时列宽仍与他行像素级一致（加行入口在谱面底部按钮，不占格） */}
 									<div className="cc-line-cells" style={{ gridTemplateColumns: `repeat(${per}, 1fr)` }}>
 										{row.map((m, k) => cellView(m, first + k, rowHasFig))}
