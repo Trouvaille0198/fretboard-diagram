@@ -438,7 +438,8 @@ export function ChordChartView({ songId }) {
 		title: ts.sectionBtn ?? "段落标记",
 		label: ts.sectionPrompt ?? "段落名（如 主歌1）",
 		value: song.measures[mi]?.section || "",
-		onOk: (v) => patchMeasure(mi, x => ({ ...x, section: String(v ?? "").trim() || null }))
+		onOk: (v) => patchMeasure(mi, x => ({ ...x, section: String(v ?? "").trim() || null })),
+		onDelete: song.measures[mi]?.section ? () => patchMeasure(mi, x => ({ ...x, section: null })) : null,
 	});
 
 	// ============ Q 复制模式（拖选小节段：复制 / 插入 / 删除） ============
@@ -1243,8 +1244,8 @@ export function ChordChartView({ songId }) {
 						{m.house ? <span className="cc-house">{m.house}.</span> : null}
 						{m.section ? (
 							<span className="cc-sectionmark"
-								title={ts.sectionDel ?? "双击删除段落标记"}
-								onDoubleClick={() => patchMeasure(mi, x => ({ ...x, section: null }))}>
+								title={ts.sectionEditTip ?? "点击编辑段落标记"}
+								onClick={e => { e.stopPropagation(); promptSection(mi); }}>
 								{m.section}
 							</span>
 						) : null}
@@ -1673,6 +1674,10 @@ export function ChordChartView({ songId }) {
 							) : <div className="cc-dialog-text">{dialog.text}</div>}
 						</div>
 						<div className="cc-modal-foot">
+							{dialog.type === "prompt" && dialog.onDelete ? (
+								<button className="button sm danger" style={{ marginRight: "auto" }}
+									onClick={() => { const d = dialog; d.onDelete?.(); setDialog(cur => (cur === d ? null : cur)); }}>{ts.deleteMark ?? "删除标记"}</button>
+							) : null}
 							{dialog.type !== "alert" ? <button className="button sm" onClick={() => setDialog(null)}>{ts.cancel ?? "取消"}</button> : null}
 							{dialog.type === "choose" ? null : (
 								<button className={`button sm ${dialog.type === "confirm" ? "danger" : "accent"}`}
