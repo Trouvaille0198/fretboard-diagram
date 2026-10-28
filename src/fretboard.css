@@ -4075,7 +4075,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     display: flex;
     flex-direction: column;
     padding: 16px;
-    max-width: 1560px;
+    max-width: 2200px;
     width: 100%;
     margin: 0 auto;
 }

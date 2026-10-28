@@ -167,6 +167,23 @@ export function ChordChartView({ songId }) {
 
 	const typeTimerRef = useRef(null);
 	const scoreRef = useRef(null);
+
+	// 每行小节数自适应谱面宽度：按拍数估小节最小宽，宽屏多放几节、窄屏少放——而不是把固定 4 节拉到失真
+	const [autoPer, setAutoPer] = useState(song.rowsPerLine || 4);
+	useEffect(() => {
+		const el = scoreRef.current;
+		if (!el || typeof ResizeObserver === "undefined") return;
+		const calc = () => {
+			const slotsPer = (songRef.current.timeSig || 4) * 2; // 每小节拍格数（半拍制）
+			const minMeasure = slotsPer * 40 + 40; // 单小节最小宽（拍格 ~40px + 小节呼吸位）
+			const per = Math.max(2, Math.min(8, Math.floor(el.clientWidth / minMeasure)));
+			setAutoPer(p => (p === per ? p : per));
+		};
+		calc();
+		const ro = new ResizeObserver(calc);
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, [song.timeSig]);
 	const popupRef = useRef(null);
 	const timersRef = useRef([]);
 	const saveTimerRef = useRef(null);
@@ -545,7 +562,7 @@ export function ChordChartView({ songId }) {
 	// 新增一行：末行残缺时先补满，再整加一行完整空小节（8pu 的行概念）
 	const addRow = () => setSong(s => {
 		const measures = s.measures.slice();
-		const per = s.rowsPerLine || 4;
+		const per = autoPer;
 		const pad = (per - (measures.length % per)) % per;
 		for (let i = 0; i < pad + per; i++) measures.push(createMeasure(s.timeSig));
 		return { ...s, measures };
@@ -1248,7 +1265,7 @@ export function ChordChartView({ songId }) {
 	};
 
 	const rows = [];
-	const per = song.rowsPerLine || 4;
+	const per = autoPer; // 响应式：视谱面宽度而定（rowsPerLine 仅作初值）
 	for (let i = 0; i < song.measures.length; i += per) rows.push(song.measures.slice(i, i + per));
 
 	return (
@@ -1568,7 +1585,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v67</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v68</div>
 
 
 			{dialog ? (
