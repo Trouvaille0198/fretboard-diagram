@@ -64,7 +64,7 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v69">v69</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v70">v70</span>
 				{user ? (
 					<span className="top-nav-user" title={user}>
 						<span className="top-nav-user-name">{user}</span>
