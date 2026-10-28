@@ -69,13 +69,17 @@ const flagCloudFail = () => {
 // ===== 实时同步（SSE）：云端任何写入广播到所有登录端，订阅方拉取合并 =====
 let lastSelfWrite = 0; // 自己刚写完的广播不回环处理
 export function markCloudWrite() { lastSelfWrite = Date.now(); }
-export function subscribeCloud(onChange) {
+export function subscribeCloud(onChange, onDeleted) {
 	const au = authUser();
 	if (!au || typeof EventSource === "undefined") return () => {};
 	const es = new EventSource("/api/events?token=" + encodeURIComponent(au.token));
 	es.addEventListener("changed", () => {
 		if (Date.now() - lastSelfWrite < 2500) return; // 自己触发的广播：跳过
 		try { onChange(); } catch (e) { /* 订阅方兜 */ }
+	});
+	es.addEventListener("deleted", (ev) => {
+		if (Date.now() - lastSelfWrite < 2500) return;
+		try { const d = JSON.parse(ev.data || "{}"); onDeleted && onDeleted(d); } catch (e) { /* 订阅方兜 */ }
 	});
 	return () => { try { es.close(); } catch (e) { /* 已关 */ } };
 }

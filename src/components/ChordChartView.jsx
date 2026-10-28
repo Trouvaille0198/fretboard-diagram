@@ -242,13 +242,23 @@ export function ChordChartView({ songId }) {
 			const latest = loadCharts().find(c => c.id === songRef.current.id);
 			if (latest && (latest.updatedAt || 0) > (songRef.current.updatedAt || 0)) {
 				suppressHistoryRef.current = true; // 采纳远端不算一步撤销
-				suppressSaveRef.current = true;
+				adoptedRef.current = latest; // 这版是云端来的，别原样回存
 				setSong(latest);
 				clearHistory(); // 远端结构与本地撤销栈不再对应
 			}
 		};
 		window.addEventListener("fretboard:charts-synced", onSynced);
 		return () => window.removeEventListener("fretboard:charts-synced", onSynced);
+	}, []);
+
+	// 正在编辑的曲被远端删除：退出到列表（别守着一具空壳）
+	useEffect(() => {
+		const onDeleted = (e) => {
+			const d = e.detail || {};
+			if (d.id && d.id === songRef.current.id) window.location.hash = "#/chords";
+		};
+		window.addEventListener("fretboard:charts-deleted", onDeleted);
+		return () => window.removeEventListener("fretboard:charts-deleted", onDeleted);
 	}, []);
 
 	useEffect(() => {
@@ -305,11 +315,12 @@ export function ChordChartView({ songId }) {
 		setCurrentId(next.id);
 	}, []);
 
-	// 采纳远端版本时跳过一次保存（否则原样回写 → updatedAt 变新 → 广播 → 各端再拉，写放大回环）
-	const suppressSaveRef = useRef(false);
+	// 采纳远端版本时跳过保存：比对对象（StrictMode 双跑 effect 时一次性标志会被吃掉，
+	// 第二跑照常保存→广播→采纳→保存…形成无限 PUT 回环；对象比对两次都命中）
+	const adoptedRef = useRef(null);
 	// 自动保存（防抖）；卸载时冲刷最后 800ms 内的编辑
 	useEffect(() => {
-		if (suppressSaveRef.current) { suppressSaveRef.current = false; return; }
+		if (song === adoptedRef.current) return;
 		clearTimeout(saveTimerRef.current);
 		saveTimerRef.current = setTimeout(() => {
 			saveTimerRef.current = null;
