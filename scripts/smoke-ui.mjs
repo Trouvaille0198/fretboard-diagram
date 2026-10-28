@@ -193,6 +193,30 @@ const suiteSrc = `(async () => {
 	try { if (had) Object.defineProperty(navigator, 'clipboard', { ...had, configurable: true }); } catch (e) {}
 	A('Ctrl+C 无剪贴板 → 回落下载', guard === 'download', String(guard));
 
+	// ---------- 和弦谱页：弹窗几何自检（fixed 弹窗必须挂 body 且完全在视口内、中心对齐） ----------
+	try {
+		location.hash = '#/chords';
+		await sleep(1400);
+		const openLogin = () => { const b = Array.from(document.querySelectorAll('.top-nav-icon')).find(x => (x.title || '').includes('登录')); if (b) b.click(); return !!b; };
+		if (await openLogin()) {
+			await sleep(500);
+			const m = document.querySelector('.login-modal');
+			A('登录弹窗打开', !!m);
+			if (m) {
+				const r = m.getBoundingClientRect();
+				const inBody = !m.closest('.top-nav') && !!m.closest('body');
+				A('登录弹窗 portal 挂 body（不被顶栏 backdrop-filter 劫持）', inBody);
+				A('登录弹窗完全在视口内', r.top >= 0 && r.left >= 0 && r.bottom <= innerHeight && r.right <= innerWidth,
+					't=' + Math.round(r.top) + ' l=' + Math.round(r.left) + ' b=' + Math.round(r.bottom - innerHeight) + ' r=' + Math.round(r.right - innerWidth));
+				const offY = Math.round(Math.abs(r.top + r.height / 2 - innerHeight / 2));
+				A('登录弹窗垂直居中(±8px)', offY <= 8, 'offY=' + offY);
+			}
+			const guest = document.querySelector('.login-alt .btn-ghost'); if (guest) guest.click();
+			await sleep(300);
+			A('游客入口关闭弹窗', !document.querySelector('.login-modal-overlay'));
+		} else A('登录入口存在', false, '无登录按钮');
+	} catch (e) { A('和弦谱弹窗用例异常', false, String(e && e.message)); }
+
 	clearSmoke();
 	return out;
 })()`;
