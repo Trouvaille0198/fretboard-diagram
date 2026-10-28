@@ -1,6 +1,6 @@
 // 账号服务：固定账号（暂不开放注册）+ SQLite 单文件存储（server/data.db，整个文件拷走即完成转移）
-// 表：users(name, salt, hash) / sessions(token, name, exp) / charts(name, id, data, updated_at)
-// 游客不经过这里（纯浏览器 localStorage），只有登录用户走本服务。
+// 表：users(name, salt, hash) / sessions(token, name, exp) / charts(name,id,data,updated_at) / clips(name,id,data,updated_at)
+// charts=和弦谱曲目；clips=动图堆。游客不经过这里（纯浏览器 localStorage），只有登录用户走本服务。
 import http from "node:http";
 import crypto from "node:crypto";
 import path from "node:path";
@@ -22,6 +22,7 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS users (name TEXT PRIMARY KEY, salt TEXT NOT NULL, hash TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, name TEXT NOT NULL, exp INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS charts (name TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (name, id));
+CREATE TABLE IF NOT EXISTS clips  (name TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (name, id));
 `);
 
 const hashPass = (pass, salt) => crypto.scryptSync(pass, salt, 32).toString("hex");
@@ -38,7 +39,7 @@ const issueToken = (name) => {
 	db.prepare("INSERT INTO sessions (token, name, exp) VALUES (?, ?, ?)").run(token, name, Date.now() + TOKEN_TTL);
 	return token;
 };
-const authUser = (req, url) => {
+const authName = (req, url) => {
 	const token = url.searchParams.get("token") || req.headers["x-auth-token"] || "";
 	if (!token) return null;
 	const row = db.prepare("SELECT name FROM sessions WHERE token = ? AND exp > ?").get(token, Date.now());
@@ -54,8 +55,51 @@ const readBody = (req) => new Promise((ok) => {
 	req.on("data", (c) => { buf += c; if (buf.length > 8 * 1024 * 1024) req.destroy(); });
 	req.on("end", () => { try { ok(JSON.parse(buf || "{}")); } catch { ok({}); } });
 });
-const chartsOf = (name) => db.prepare("SELECT data FROM charts WHERE name = ? ORDER BY updated_at DESC")
+
+// ===== 集合（charts/clips 同一套语义：列表 / merge / 单条 upsert / 单条删除）=====
+const rowsOf = (table, name) => db.prepare(`SELECT data FROM ${table} WHERE name = ? ORDER BY updated_at DESC`)
 	.all(name).map(r => { try { return JSON.parse(r.data); } catch { return null; } }).filter(Boolean);
+
+const handleCollection = async (table, req, res, url, p, name) => {
+	if (p === `/api/${table}` && req.method === "GET") { json(res, 200, { items: rowsOf(table, name) }); return true; }
+	if (p === `/api/${table}/merge` && req.method === "POST") {
+		// 登录时把本地(游客期)数据并入云端：同 id 以 updatedAt 新者胜，云端没有的直接进
+		const body = await readBody(req);
+		const incoming = Array.isArray(body) ? body : (body.items || []);
+		const upsert = db.prepare(`
+			INSERT INTO ${table} (name, id, data, updated_at) VALUES (@name, @id, @data, @updated_at)
+			ON CONFLICT (name, id) DO UPDATE SET data = @data, updated_at = @updated_at
+			WHERE @updated_at > ${table}.updated_at
+		`);
+		const tx = db.transaction((list) => {
+			for (const c of list) {
+				if (!c || !c.id) continue;
+				upsert.run({ name, id: c.id, data: JSON.stringify(c), updated_at: c.updatedAt || 0 });
+			}
+		});
+		tx(incoming);
+		json(res, 200, { items: rowsOf(table, name) });
+		return true;
+	}
+	const m = new RegExp(`^/api/${table}/([^/]+)$`).exec(p);
+	if (m && req.method === "PUT") {
+		const item = await readBody(req);
+		if (!item || !item.id) { json(res, 400, { error: "bad_item" }); return true; }
+		const stamped = { ...item, updatedAt: Date.now() };
+		db.prepare(`
+			INSERT INTO ${table} (name, id, data, updated_at) VALUES (?, ?, ?, ?)
+			ON CONFLICT (name, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at
+		`).run(name, item.id, JSON.stringify(stamped), stamped.updatedAt);
+		json(res, 200, { item: stamped });
+		return true;
+	}
+	if (m && req.method === "DELETE") {
+		db.prepare(`DELETE FROM ${table} WHERE name = ? AND id = ?`).run(name, decodeURIComponent(m[1]));
+		json(res, 200, { ok: true });
+		return true;
+	}
+	return false;
+};
 
 const server = http.createServer(async (req, res) => {
 	const url = new URL(req.url, "http://x");
@@ -77,50 +121,14 @@ const server = http.createServer(async (req, res) => {
 		return json(res, 200, { ok: true });
 	}
 	if (p === "/api/auth/me" && req.method === "GET") {
-		const name = authUser(req, url);
+		const name = authName(req, url);
 		return name ? json(res, 200, { user: name }) : json(res, 401, { error: "no_auth" });
 	}
 
-	if (p.startsWith("/api/charts")) {
-		const name = authUser(req, url);
-		if (!name) return json(res, 401, { error: "no_auth" });
-
-		if (p === "/api/charts" && req.method === "GET") return json(res, 200, { charts: chartsOf(name) });
-
-		if (p === "/api/charts/merge" && req.method === "POST") {
-			// 登录时把本地(游客期)曲目并入云端：同 id 以 updatedAt 新者胜，云端没有的直接进
-			const body = await readBody(req);
-			const incoming = Array.isArray(body) ? body : (body.charts || []);
-			const upsert = db.prepare(`
-				INSERT INTO charts (name, id, data, updated_at) VALUES (@name, @id, @data, @updated_at)
-				ON CONFLICT (name, id) DO UPDATE SET data = @data, updated_at = @updated_at
-				WHERE @updated_at > charts.updated_at
-			`);
-			const tx = db.transaction((list) => {
-				for (const c of list) {
-					if (!c || !c.id || !Array.isArray(c.measures)) continue;
-					upsert.run({ name, id: c.id, data: JSON.stringify(c), updated_at: c.updatedAt || 0 });
-				}
-			});
-			tx(incoming);
-			return json(res, 200, { charts: chartsOf(name) });
-		}
-
-		const m = /^\/api\/charts\/([^/]+)$/.exec(p);
-		if (m && req.method === "PUT") {
-			const chart = await readBody(req);
-			if (!chart || !chart.id || !Array.isArray(chart.measures)) return json(res, 400, { error: "bad_chart" });
-			const stamped = { ...chart, updatedAt: Date.now() };
-			db.prepare(`
-				INSERT INTO charts (name, id, data, updated_at) VALUES (?, ?, ?, ?)
-				ON CONFLICT (name, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at
-			`).run(name, chart.id, JSON.stringify(stamped), stamped.updatedAt);
-			return json(res, 200, { chart: stamped });
-		}
-		if (m && req.method === "DELETE") {
-			db.prepare("DELETE FROM charts WHERE name = ? AND id = ?").run(name, decodeURIComponent(m[1]));
-			return json(res, 200, { ok: true });
-		}
+	const name = authName(req, url);
+	if (!name) return json(res, 401, { error: "no_auth" });
+	for (const table of ["charts", "clips"]) {
+		if (await handleCollection(table, req, res, url, p, name)) return;
 	}
 	json(res, 404, { error: "not_found" });
 });

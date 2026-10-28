@@ -43,10 +43,19 @@ export async function logout() {
 	emit();
 }
 
-// 登录后同步：本地(游客期)曲目并入云端（updatedAt 新者胜），回写本地并返回合并结果
-export async function syncChartsFromServer(localCharts) {
-	const d = await api("POST", "/charts/merge", localCharts);
-	return d.charts || [];
+// ===== 登录时的数据交接（谱子 charts + 动图堆 clips）=====
+// 合并：本地(游客期)数据并入云端（同 id 以 updatedAt 新者胜），返回云端合集
+export async function mergeLocalToCloud(localCharts, localClips) {
+	const [c, l] = await Promise.all([
+		api("POST", "/charts/merge", localCharts || []),
+		api("POST", "/clips/merge", localClips || []),
+	]);
+	return { charts: c.items || [], clips: l.items || [] };
+}
+// 只拉云端（不合并）：用于"不合并本机数据"时以账号为准覆盖本地
+export async function pullCloud() {
+	const [c, l] = await Promise.all([api("GET", "/charts"), api("GET", "/clips")]);
+	return { charts: c.items || [], clips: l.items || [] };
 }
 
 // 曲目增删改的云端镜像（登录时才走）。失败绝不静默：顶栏亮红点提示"云同步失败"，
@@ -67,6 +76,21 @@ export function cloudSaveChart(song) {
 export function cloudDeleteChart(id) {
 	if (!authUser()) return;
 	api("DELETE", "/charts/" + encodeURIComponent(id)).catch(e => {
+		if (e.status === 401) logoutQuiet();
+		flagCloudFail();
+	});
+}
+// 动图堆镜像（同 charts 语义）
+export function cloudSaveClip(clip) {
+	if (!authUser()) return;
+	api("PUT", "/clips/" + encodeURIComponent(clip.id), clip).catch(e => {
+		if (e.status === 401) logoutQuiet();
+		flagCloudFail();
+	});
+}
+export function cloudDeleteClip(id) {
+	if (!authUser()) return;
+	api("DELETE", "/clips/" + encodeURIComponent(id)).catch(e => {
 		if (e.status === 401) logoutQuiet();
 		flagCloudFail();
 	});
