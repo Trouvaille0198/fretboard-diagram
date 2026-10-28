@@ -26,6 +26,18 @@ export function TopNav({ mode }) {
 
 	// 登录态变化：刷新顶栏用户名；登录成功 → 本机有游客数据则询问是否并入，没有则直接拉云端
 	const [mergeAsk, setMergeAsk] = useState(null); // { user } 待询问；null 无
+	// 已登录（token 从 localStorage 恢复，不经过 login 动作）时：挂载即静默合并云端——
+	// 否则刷新页面会一直显示陈旧的本地列表，用户会以为数据丢了
+	useEffect(() => {
+		if (!authUser()) return;
+		mergeLocalToCloud(loadCharts(), loadClips())
+			.then(({ charts, clips }) => {
+				persistCharts(charts); persistClips(clips);
+				window.dispatchEvent(new CustomEvent("fretboard:charts-synced"));
+				window.dispatchEvent(new CustomEvent("fretboard:clips-synced"));
+			})
+			.catch(() => { /* 服务不可达：保持本地 */ });
+	}, []);
 	useEffect(() => onAuthChange(() => {
 		const au = authUser();
 		setUser(au?.user ?? null);
@@ -105,7 +117,7 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v74">v74</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v75">v75</span>
 				{user ? (
 					<span className="top-nav-user" title={user + (cloudFail ? "（⚠ 云同步失败：改动只存在本机，稍后会自动重试或重新登录）" : "")}>
 						{cloudFail ? <span className="top-nav-cloudfail" title="云同步失败：改动只存在本机">⚠</span> : null}
