@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './LoginModal.css';
 import { useLanguage } from '../i18n';
 import { login } from '../utils/authModel';
 
