@@ -141,7 +141,7 @@ const tombstoned = (name, tbl, id, updatedAt) => {
 const server = http.createServer(async (req, res) => {
 	const url = new URL(req.url, "http://x");
 	const p = url.pathname;
-	if (process.env.FRETB_LOG) console.log("[req]", req.method, p);
+	if (process.env.FRETB_LOG) console.log("[req]", req.method, p, String(req.headers["x-auth-token"] || "").slice(0, 8));
 	if (req.method === "OPTIONS") return json(res, 204, {});
 
 	if (p === "/api/auth/login" && req.method === "POST") {
