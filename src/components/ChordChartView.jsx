@@ -1103,7 +1103,7 @@ export function ChordChartView({ songId }) {
 				<>
 					{/* hover 模式：图挂在拍上（CSS 默认隐藏，悬停浮动显示）；内嵌模式：图在独立图行 */}
 					{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={u.chord} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
-						onDoubleClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} /> : null}
+						onClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} /> : null}
 					<ChordSign chord={u.chord} display={scoreDisplay} viewKey={keyAt(mi)} compact={compact} />
 				</>
 			);
@@ -1210,7 +1210,7 @@ export function ChordChartView({ songId }) {
 									{us.map((u, h) => (((u.kind === "chord" && u.chord) || u.kind === "hold") && u.fig ? (
 										<FigView key={h} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
 											opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }}
-											onDoubleClick={() => { if (editing) editFig(mi, si, sl.split ? h : null); }} />
+											onClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, sl.split ? h : null); }} />
 									) : null))}
 								</div>
 							);
@@ -1586,7 +1586,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v76</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v77</div>
 
 
 			{dialog ? (
