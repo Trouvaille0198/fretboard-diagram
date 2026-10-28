@@ -114,3 +114,10 @@
     line-height: 1.55;
     text-align: center;
 }
+
+/* 登录后"合并本机数据？"询问弹窗 */
+.merge-ask-text { font-size: 13.5px; line-height: 1.7; color: var(--app-text, #e8eef4); margin: 0 0 16px; }
+.merge-ask-text b { color: var(--app-accent-text, #6fb0ff); }
+.merge-ask-btns { display: flex; flex-direction: column; gap: 8px; }
+.merge-ask-no { border: 1px solid var(--app-border-strong, rgba(230,237,242,0.22)); background: transparent; color: var(--app-text-muted, #9fb2c0); border-radius: 9px; padding: 9px 0; font-size: 13px; cursor: pointer; }
+.merge-ask-no:hover { color: var(--app-text, #e8eef4); border-color: var(--app-accent, #3d8bff); }

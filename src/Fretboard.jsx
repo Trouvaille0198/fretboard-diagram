@@ -149,6 +149,12 @@ function Fretboard({ mode = 'normal' }) {
   // 指板堆（动图列表）
   const [clips, setClips] = useState(() => loadClips());
   const refreshClips = useCallback(() => setClips(loadClips()), []);
+  // 登录合并云端动图堆后刷新本页动图列表
+  useEffect(() => {
+    const onSync = () => refreshClips();
+    window.addEventListener('fretboard:clips-synced', onSync);
+    return () => window.removeEventListener('fretboard:clips-synced', onSync);
+  }, [refreshClips]);
 
   // 拼接区（普通模式）：Ctrl+S 逐张加入；多标签间经 storage 事件同步
   const [stitchItems, setStitchItems] = useState(() => loadStitch());

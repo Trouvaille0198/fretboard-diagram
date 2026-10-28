@@ -46,17 +46,27 @@ try {
 	ok(r.status === 401, "bad token 401");
 
 	r = await j("POST", "/api/charts/merge", [{ id: "c1", name: "A", measures: [], updatedAt: 10 }], tk);
-	ok(r.status === 200 && r.data.charts.length === 1, "merge local in");
+	ok(r.status === 200 && r.data.items.length === 1, "merge local in");
 	r = await j("PUT", "/api/charts/c1", { id: "c1", name: "A2", measures: [{ slots: [] }] }, tk);
-	ok(r.status === 200 && r.data.chart.name === "A2", "upsert chart");
+	ok(r.status === 200 && r.data.item.name === "A2", "upsert chart");
 	r = await j("GET", "/api/charts", null, tk);
-	ok(r.status === 200 && r.data.charts.length === 1 && r.data.charts[0].name === "A2", "get charts");
+	ok(r.status === 200 && r.data.items.length === 1 && r.data.items[0].name === "A2", "get charts");
 	r = await j("POST", "/api/charts/merge", [{ id: "c1", name: "OLD", measures: [], updatedAt: 5 }], tk);
-	ok(r.data.charts[0].name === "A2", "merge older loses");
+	ok(r.data.items[0].name === "A2", "merge older loses");
 	r = await j("DELETE", "/api/charts/c1", null, tk);
 	ok(r.status === 200, "delete chart");
 	r = await j("GET", "/api/charts", null, tk);
-	ok(r.data.charts.length === 0, "charts empty after delete");
+	ok(r.data.items.length === 0, "charts empty after delete");
+
+	// clips（动图堆）同套语义
+	r = await j("PUT", "/api/clips/cx1", { id: "cx1", name: "动图1", frames: [] }, tk);
+	ok(r.status === 200 && r.data.item.id === "cx1", "upsert clip");
+	r = await j("GET", "/api/clips", null, tk);
+	ok(r.status === 200 && r.data.items.length === 1 && r.data.items[0].name === "动图1", "get clips");
+	r = await j("POST", "/api/clips/merge", [{ id: "cx2", name: "动图2", frames: [], updatedAt: 5 }], tk);
+	ok(r.data.items.length === 2, "merge clip in");
+	r = await j("DELETE", "/api/clips/cx1", null, tk);
+	ok(r.status === 200, "delete clip");
 
 	r = await j("POST", "/api/auth/logout", null, tk);
 	ok(r.status === 200, "logout");

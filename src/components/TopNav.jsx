@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useLanguage } from "../i18n";
 import { LoginModal } from "./LoginModal";
-import { authUser, logout, onAuthChange, syncChartsFromServer } from "../utils/authModel";
+import { authUser, logout, onAuthChange, mergeLocalToCloud, pullCloud } from "../utils/authModel";
 import { loadCharts, persistCharts } from "../utils/chordChartModel";
+import { loadClips, persistClips } from "../utils/clipModel";
 
 // 顶部导航（8pu 式）：logo + 三模式文字 tab + 右侧主题/语言，常驻所有页面
 // mode: 'normal' | 'dynamic' | 'chords'
@@ -23,16 +24,46 @@ export function TopNav({ mode }) {
 		return () => { window.removeEventListener("fretboard:cloud-error", onErr); window.removeEventListener("fretboard:cloud-ok", onOk); };
 	}, []);
 
-	// 登录态变化：刷新顶栏用户名；登录成功时把本地(游客期)曲目并入云端再拉回（updatedAt 新者胜）
+	// 登录态变化：刷新顶栏用户名；登录成功 → 本机有游客数据则询问是否并入，没有则直接拉云端
+	const [mergeAsk, setMergeAsk] = useState(null); // { user } 待询问；null 无
 	useEffect(() => onAuthChange(() => {
 		const au = authUser();
 		setUser(au?.user ?? null);
 		if (au) {
-			syncChartsFromServer(loadCharts())
-				.then(merged => { persistCharts(merged); window.dispatchEvent(new CustomEvent("fretboard:charts-synced")); })
-				.catch(() => { /* 服务端不可达时保持本地，下次登录再并 */ });
+			const charts = loadCharts();
+			const clips = loadClips();
+			if (charts.length || clips.length) setMergeAsk({ user: au.user, charts: charts.length, clips: clips.length });
+			else pullAndApply();
 		}
 	}), []);
+	const pullAndApply = () => {
+		pullCloud()
+			.then(({ charts, clips }) => {
+				persistCharts(charts); persistClips(clips);
+				window.dispatchEvent(new CustomEvent("fretboard:charts-synced"));
+				window.dispatchEvent(new CustomEvent("fretboard:clips-synced"));
+			})
+			.catch(() => { /* 服务端不可达：保持本地，下次登录再处理 */ });
+	};
+	const doMergeLocal = () => {
+		mergeLocalToCloud(loadCharts(), loadClips())
+			.then(({ charts, clips }) => {
+				persistCharts(charts); persistClips(clips);
+				window.dispatchEvent(new CustomEvent("fretboard:charts-synced"));
+				window.dispatchEvent(new CustomEvent("fretboard:clips-synced"));
+			})
+			.catch(() => { /* 同上 */ });
+		setMergeAsk(null);
+	};
+	const doNotMerge = () => {
+		// 不合并：本机数据先备份（可找回），再以账号云端为准覆盖本地
+		try {
+			localStorage.setItem("fretboard-chordcharts-guest-bak", localStorage.getItem("fretboard-chordcharts") || "[]");
+			localStorage.setItem("fretboard-clips-guest-bak", localStorage.getItem("fretboard-clips") || "[]");
+		} catch (e) { /* 备份失败也继续 */ }
+		pullAndApply();
+		setMergeAsk(null);
+	};
 
 	useEffect(() => {
 		document.documentElement.setAttribute("data-theme", theme);
@@ -74,7 +105,7 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v73">v73</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v74">v74</span>
 				{user ? (
 					<span className="top-nav-user" title={user + (cloudFail ? "（⚠ 云同步失败：改动只存在本机，稍后会自动重试或重新登录）" : "")}>
 						{cloudFail ? <span className="top-nav-cloudfail" title="云同步失败：改动只存在本机">⚠</span> : null}
@@ -86,6 +117,21 @@ export function TopNav({ mode }) {
 				)}
 				{loginOpen ? (
 					<LoginModal onLoggedIn={() => setLoginOpen(false)} onGuest={() => {}} onClose={() => setLoginOpen(false)} />
+				) : null}
+				{mergeAsk ? (
+					<div className="login-modal-overlay">
+						<div className="login-modal">
+							<h2>合并本机数据？</h2>
+							<p className="merge-ask-text">
+								检测到本机游客数据：{mergeAsk.charts ? mergeAsk.charts + " 首曲目" : ""}{mergeAsk.charts && mergeAsk.clips ? " · " : ""}{mergeAsk.clips ? mergeAsk.clips + " 个动图" : ""}。
+								合并到账号 <b>{mergeAsk.user}</b> 吗？（同名单条以更新时间新者为准）
+							</p>
+							<div className="merge-ask-btns">
+								<button className="btn-primary" onClick={doMergeLocal}>合并到账号</button>
+								<button className="merge-ask-no" onClick={doNotMerge}>不合并（本机数据自动备份）</button>
+							</div>
+						</div>
+					</div>
 				) : null}
 				<button className="top-nav-icon" onClick={toggleLang} title={lang === "zh" ? "Switch to English" : "切换为中文"}>
 					{lang === "zh" ? "En" : "中"}

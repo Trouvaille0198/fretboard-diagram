@@ -1,6 +1,8 @@
 // 动图（Clip）模型与本地存储：指板堆的唯一数据单元
 // Clip = 帧序列（板面状态）+ 每步过渡规格（技法语义）
 
+import { cloudSaveClip, cloudDeleteClip } from "./authModel.js";
+
 const CLIPS_KEY = "fretboard-clips";
 
 export const TECHNIQUES = [];
@@ -50,11 +52,13 @@ export function saveClip(clip) {
 	if (existing !== -1) clips[existing] = clip;
 	else clips.unshift(clip);
 	persistClips(clips);
+	cloudSaveClip(clip); // 登录用户镜像到云端（游客 no-op）
 	return clip;
 }
 
 export function deleteClip(id) {
 	persistClips(loadClips().filter(c => c.id !== id));
+	cloudDeleteClip(id);
 }
 
 export function renameClip(id, name) {
