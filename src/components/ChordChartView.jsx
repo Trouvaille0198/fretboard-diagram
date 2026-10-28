@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../i18n";
 import { ScoreBoard } from "./ScorePieces";
 import { ChordPopup } from "./ChordPopup";
@@ -79,7 +79,23 @@ export function ChordChartView({ songId }) {
 	const [sel, setSel] = useState({ anchor: null, end: null }); // 选区（小节索引；end=null 表示还没成段）
 	const [copiedCount, setCopiedCount] = useState(0);
 	const [cpTab, setCpTab] = useState("chord"); // 弹层页签（C/B/R 切换）
-	const [cellMenu, setCellMenu] = useState(null); // 打开的小节菜单 mi
+	const [cellMenu, setCellMenu] = useState(null);
+	// 菜单防截屏：任何下拉（⚙/⋯/小节菜单）打开后钳回视口内——
+	// 移动端工具栏可能横向溢出，菜单 right:0 对齐的是溢出祖先的右缘而非屏幕
+	useLayoutEffect(() => {
+		const el = document.querySelector(".cc-menu, .cc-mmenu, .cc-settings");
+		if (!el) { return; }
+		el.style.transform = "";
+		const r = el.getBoundingClientRect();
+		let dx = 0, dy = 0;
+		if (r.right > innerWidth - 4) dx = innerWidth - 4 - r.right;
+		if (r.left + dx < 4) dx = 4 - r.left;
+		if (r.bottom > innerHeight - 4) dy = innerHeight - 4 - r.bottom;
+		if (r.top + dy < 4) dy = 4 - r.top;
+		if (dx || dy) el.style.transform = `translate(${dx}px, ${dy}px)`;
+	}, [menuOpen, cellMenu, settingsOpen]);
+
+ // 打开的小节菜单 mi
 	const [popupOpen, setPopupOpen] = useState(false); // 就地和弦面板
 	const [popupPos, setPopupPos] = useState(null);
 	const [typedHint, setTypedHint] = useState(""); // 键盘输入中的和弦串（面板头显示）
