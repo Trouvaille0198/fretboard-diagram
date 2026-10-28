@@ -4221,6 +4221,9 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 /* 移动端：左右边距全部收紧（寸土寸金） */
 @media (max-width: 640px) {
+    /* 复制模式条：窄屏允许换行，长提示词在条内折行，不再把标题挤出屏 */
+    .cc-copybar { flex-wrap: wrap; gap: 4px 8px; padding: 6px 10px; font-size: 12px; }
+    .cc-copybar-state { white-space: normal; line-height: 1.5; }
     .app-main { padding: 2px !important; }
     .cc-page .cc-body { padding: 2px; }
     .cc-page .cc-score { padding: 6px 6px 6px; }
