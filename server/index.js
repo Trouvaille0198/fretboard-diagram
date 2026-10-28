@@ -85,6 +85,9 @@ const handleCollection = async (table, req, res, url, p, name) => {
 	if (m && req.method === "PUT") {
 		const item = await readBody(req);
 		if (!item || !item.id) { json(res, 400, { error: "bad_item" }); return true; }
+		// 必需字段守门：缺失补默认（脏数据进库会让所有端渲染崩溃）
+		if (table === "charts" && !item.key) item.key = { root: 0, minor: false };
+		if (table === "charts") { item.timeSig = item.timeSig || 4; item.bpm = item.bpm || 72; }
 		const stamped = { ...item, updatedAt: Date.now() };
 		db.prepare(`
 			INSERT INTO ${table} (name, id, data, updated_at) VALUES (?, ?, ?, ?)
@@ -99,6 +102,14 @@ const handleCollection = async (table, req, res, url, p, name) => {
 		return true;
 	}
 	return false;
+};
+
+// ===== 实时同步（SSE）：登录客户端订阅，任何曲目/动图写入后广播，各端拉取合并 =====
+const sseClients = new Set();
+const broadcast = (type) => {
+	for (const c of sseClients) {
+		try { c.write(`event: ${type}\ndata: {}\n\n`); } catch (e) { sseClients.delete(c); }
+	}
 };
 
 const server = http.createServer(async (req, res) => {
@@ -127,8 +138,25 @@ const server = http.createServer(async (req, res) => {
 
 	const name = authName(req, url);
 	if (!name) return json(res, 401, { error: "no_auth" });
+
+	if (p === "/api/events" && req.method === "GET") {
+		res.writeHead(200, {
+			"Content-Type": "text/event-stream",
+			"Cache-Control": "no-store",
+			"Access-Control-Allow-Origin": "*",
+			Connection: "keep-alive",
+		});
+		res.write("retry: 3000\n\n");
+		sseClients.add(res);
+		req.on("close", () => sseClients.delete(res));
+		return;
+	}
+
 	for (const table of ["charts", "clips"]) {
-		if (await handleCollection(table, req, res, url, p, name)) return;
+		if (await handleCollection(table, req, res, url, p, name)) {
+			if (req.method === "PUT" || req.method === "DELETE" || p.endsWith("/merge")) broadcast("changed");
+			return;
+		}
 	}
 	json(res, 404, { error: "not_found" });
 });
