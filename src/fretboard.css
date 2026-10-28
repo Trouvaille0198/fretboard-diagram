@@ -3367,6 +3367,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     font-variant-numeric: tabular-nums;
 }
 
+.top-nav-icon { min-width: 30px; height: 30px; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; box-sizing: border-box; }
 .top-nav-icon {
     min-width: 34px;
     height: 30px;

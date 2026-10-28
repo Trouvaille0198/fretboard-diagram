@@ -193,10 +193,11 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   return (
     <div className="figbe">
       <div className="figbe-top">
-        <span className="figbe-title">▦ 指法小图（自动保存 · 点音亮灭 · 拖连线 · 长按刷染）</span>
+        <span className="figbe-title">指法图</span>
         {chord ? <button className="button sm" onClick={() => setShapesOpen(v => !v)}>形状库</button> : null}
         <button className="button sm" onClick={openSave}>存为形状</button>
-        <button className="button sm accent" onClick={onClose}>关闭</button>
+        <button className="button sm danger" onClick={() => { onAutoSave && onAutoSave(null); onClose(); }}>删除</button>
+        <button className="button sm accent" onClick={onClose}>完成</button>
       </div>
 
       <div className="figbe-body">
@@ -314,7 +315,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
       {shapesOpen ? (
         <div className="figbe-shapes">
-          <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选（按把位从低到高，点击应用）` : '该质量暂无形状——手捏一个存进库就有了'}</div>
+          <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选 · 点击应用` : '暂无形状'}</div>
           <div className="figbe-shapes-list">
             {candidates.map((c, i) => (
               <button key={i} className="figbe-shape" onClick={() => applyCandidate(c)} title={`${c.shape.name} @${c.rootFret}品`}>
@@ -329,7 +330,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
       {saveForm ? (
         <div className="figbe-shapes figbe-saveform">
-          <div className="figbe-shapes-title">未识别质量（音程 {saveForm.intervals.join(',')}）——手动分类后存入</div>
+          <div className="figbe-shapes-title">未识别质量 · 手动选择后存入</div>
           <div className="figbe-saveform-row">
             <select defaultValue="" onChange={e => setSaveForm(f => ({ ...f, quality: e.target.value }))}>
               <option value="">— 选择质量 —</option>

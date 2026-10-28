@@ -58,7 +58,18 @@ export function ChordChartView({ songId }) {
 	const [metronome, setMetronome] = useState(true);
 	const [speed, setSpeed] = useState(1);
 	const [menuOpen, setMenuOpen] = useState(false); // 工具行「更多」菜单
-	const [settingsOpen, setSettingsOpen] = useState(false); // 谱头「设置」面板（曲谱+和弦图设置统一收纳）
+	const [settingsOpen, setSettingsOpen] = useState(false); // 谱头「设置」面板
+	// 菜单（⚙设置 / ⋯更多 / 小节右键）：点击任何菜单外区域即关闭
+	useEffect(() => {
+		const onDocDown = (e) => {
+			if (e.target.closest(".cc-settings, .cc-settings-btn")) return;
+			if (e.target.closest(".cc-menu, .cc-more-btn")) return;
+			if (e.target.closest(".cc-mmenu")) return;
+			setSettingsOpen(false); setMenuOpen(false); setCellMenu(null);
+		};
+		document.addEventListener("mousedown", onDocDown);
+		return () => document.removeEventListener("mousedown", onDocDown);
+	}, []);
 	const [toolTab, setToolTab] = useState("chord"); // 工具栏页签：和弦 | 小节
 	const [viewTab, setViewTab] = useState("text"); // 查看：文本谱 | 动态谱
 	// 预览记谱形式（编辑态恒为数字功能谱）：number=1-7 | roman=I/vi | name=Am/Dmaj7
@@ -741,7 +752,7 @@ export function ChordChartView({ songId }) {
 						: { ...st, end: Math.max(0, Math.min(song.measures.length - 1, (st.end ?? st.anchor) + (e.key === "ArrowRight" ? 1 : -1))) });
 					return;
 				}
-				if (e.key === "Tab" || e.key === " " || e.key === "Enter" || /^[1-7]$/.test(e.key)) { e.preventDefault(); }
+				if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === "Tab" || e.key === " " || e.key === "Enter" || /^[1-7]$/.test(e.key))) { e.preventDefault(); }
 				return;
 			}
 			if ((e.key === "q" || e.key === "Q") && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -763,7 +774,7 @@ export function ChordChartView({ songId }) {
 			}
 			if (onChordKey(e)) return;
 			// ===== 8pu 官方键位（和弦谱）：Tab=下一个小节；Ctrl+←/→=上/下小节；Ctrl+Space=从头播放；Ctrl+C/V=复制/粘贴和弦或小节；Alt+A=段落标记 =====
-			if (e.key === "Tab") {
+			if (e.key === "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey) {
 				e.preventDefault(); commitTyped();
 				setCursor(c => {
 					const jump = e.shiftKey ? -1 : 1;
@@ -1165,14 +1176,7 @@ export function ChordChartView({ songId }) {
 					setCellMenu(cellMenu === mi ? null : mi);
 				}}
 				onClick={e => {
-					if (copyMode) return;
-					if (!editing) {
-						// 预览态点谱面：回到和弦页签编辑并定位到该小节
-						const firstEmpty = m.slots.findIndex(sl => (sl.split ? sl.split.every(u => u.kind !== "chord") : sl.kind !== "chord"));
-						setCursor({ mi, si: firstEmpty === -1 ? 0 : firstEmpty, half: null });
-						setToolTab("chord");
-						return;
-					}
+					if (copyMode || !editing) return;
 					if (e.target.closest(".cc-beat, .cc-cell-lyrics, .cc-mmenu")) return;
 					const firstEmpty = m.slots.findIndex(sl => (sl.split ? sl.split.every(u => u.kind !== "chord") : sl.kind !== "chord"));
 					const si = firstEmpty === -1 ? 0 : firstEmpty;
@@ -1273,14 +1277,11 @@ export function ChordChartView({ songId }) {
 			<header className="cc-toolbar">
 				<div className="cc-tabs-row">
 					<nav className="cc-tooltabs">
+						<button className="cc-songs-btn cc-songs-icon" onClick={goSongList} title={ts.songsTip ?? "回曲目列表"}>←</button>
 						<button className={toolTab === "preview" ? "on" : ""} onClick={() => { stopPlayback(); setToolTab("preview"); }}>{ts.tabPreview ?? "预览"}</button>
 						<button className={toolTab === "chord" ? "on" : ""} onClick={() => setToolTab("chord")}>{ts.tabChord ?? "和弦"}</button>
 						<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure ?? "小节"}</button>
 					</nav>
-					{/* 曲目入口常驻（编辑/预览都在）：曲目列表不该藏在「⋯」里 */}
-					<button className="cc-songs-btn" onClick={goSongList} title={ts.songsTip ?? "回曲目列表"}>
-						← {ts.songsTitle ?? "曲目"}
-					</button>
 					<span className="cc-flex" />
 					{editing ? (
 						<>
@@ -1294,7 +1295,7 @@ export function ChordChartView({ songId }) {
 							<button className="button sm" onClick={redo} title={ts.redo ?? "重做 (Ctrl+Shift+Z)"}>↪</button>
 							<button className="button sm accent" onClick={makeClip} title={ts.makeClipTitle ?? "整曲生成指板动图"}>{ts.makeClip ?? "生成动图"}</button>
 							<span className="cc-more-wrap">
-								<button className="button sm" onClick={() => setMenuOpen(v => !v)} title={ts.more ?? "更多"}>⋯</button>
+								<button className="button sm cc-more-btn" onClick={() => setMenuOpen(v => !v)} title={ts.more ?? "更多"}>⋯</button>
 								{menuOpen ? (
 									<div className="cc-menu" onClick={() => setMenuOpen(false)}>
 										<button className="cc-menu-item" onClick={goSongList}>{ts.songsTitle ?? "曲目"}…</button>
@@ -1585,7 +1586,7 @@ export function ChordChartView({ songId }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v75</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v76</div>
 
 
 			{dialog ? (

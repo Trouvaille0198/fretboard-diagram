@@ -61,7 +61,6 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 		<div className="cc-cp">
 			{/* 顶部动作条（8pu 同款） */}
 			<div className="cc-cp-menu">
-				<button onClick={onToggleSplit} disabled={!canSplit} title={ts.splitHint ?? "拆分当前拍（Enter）"}><span>⇄</span></button>
 				<button className="danger" onClick={() => onSetKind("empty")} disabled={!unit || unit.kind === "empty"} title={ts.clearHint ?? "删（⌫）"}><span>✕</span></button>
 				{onAttach ? (
 					<button className={`cc-cp-attach cc-cp-back ${hasAttach ? "has" : ""}`} disabled={!(hasChord || unit?.kind === "hold")}
@@ -73,7 +72,6 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 						title={ts.keyChangeTip ?? "从该拍所在小节起转调（之后的拍全部跟随，直到下一个转调；调回全局调 = 清除标记）"}
 						onClick={() => setKeyRowOpen(v => !v)}>{ts.keyChange ?? "转调"}</button>
 				) : null}
-				<button onClick={onClose} title={ts.closePanel ?? "收起（Esc）"}><span>{ts.collapse ?? "收起"}</span></button>
 			</div>
 
 			{/* 转调行：该拍起生效（写进谱面，谱上角标标注）；调与全局相同时自动清除 */
