@@ -49,12 +49,31 @@ export async function syncChartsFromServer(localCharts) {
 	return d.charts || [];
 }
 
-// 曲目增删改的云端镜像（登录时才走；失败静默——本地照常保存，下次编辑再试）
+// 曲目增删改的云端镜像（登录时才走）。失败绝不静默：顶栏亮红点提示"云同步失败"，
+// 否则服务端重启/换库/token 失效时用户以为在云端，实际全部丢——历史上因此出过数据事故
+let cloudFailTimer = null;
+const flagCloudFail = () => {
+	window.dispatchEvent(new CustomEvent("fretboard:cloud-error"));
+	if (cloudFailTimer) clearTimeout(cloudFailTimer);
+	cloudFailTimer = setTimeout(() => window.dispatchEvent(new CustomEvent("fretboard:cloud-ok")), 8000);
+};
 export function cloudSaveChart(song) {
 	if (!authUser()) return;
-	api("PUT", "/charts/" + encodeURIComponent(song.id), song).catch(() => { /* 静默重试靠下次编辑 */ });
+	api("PUT", "/charts/" + encodeURIComponent(song.id), song).catch(e => {
+		if (e.status === 401) logoutQuiet(); // 会话失效：退回游客态让用户可见，而不是假装登录着
+		flagCloudFail();
+	});
 }
 export function cloudDeleteChart(id) {
 	if (!authUser()) return;
-	api("DELETE", "/charts/" + encodeURIComponent(id)).catch(() => {});
+	api("DELETE", "/charts/" + encodeURIComponent(id)).catch(e => {
+		if (e.status === 401) logoutQuiet();
+		flagCloudFail();
+	});
+}
+// 会话失效静默退出（用户名从顶栏消失=可感知），本地数据不动
+function logoutQuiet() {
+	current = null;
+	localStorage.removeItem(AUTH_KEY);
+	emit();
 }
