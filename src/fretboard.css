@@ -3524,7 +3524,8 @@ g.drag-fx-layer circle[stroke-dasharray] {
     gap: 10px;
     background: transparent;
     border: none;
-    border-radius: 7px;
+    border-radius: var(--cc-ctl-radius);
+    font-size: var(--cc-ctl-fs, 12.5px);
     color: var(--app-text);
     font-size: 13px;
     padding: 7px 10px;
@@ -3584,12 +3585,9 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 .cc-cp-menu button {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: var(--app-bg-secondary);
-    border: 1px solid var(--app-border);
-    border-radius: 7px;
+    background: var(--cc-ctl-bg, var(--app-bg-secondary));
+    border: var(--cc-ctl-border, 1px solid var(--app-border));
+    border-radius: var(--cc-ctl-radius);
     color: var(--app-text-muted);
     cursor: pointer;
     font-size: 13.5px;
@@ -4112,10 +4110,11 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-settings-row select, .cc-settings-row input[type="number"] { background: var(--cc-input, #0d1319); border: 1px solid var(--cc-line, rgba(230,237,242,0.2)); color: var(--cc-text, #dfe7ee); border-radius: 6px; padding: 2px 6px; font-size: 13px; }
 .cc-settings-row input[type="number"] { width: 64px; }
 .cc-settings-seg { display: inline-flex; border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); border-radius: 7px; overflow: hidden; }
-.cc-settings-seg button { border: none; background: transparent; color: var(--cc-muted, #9fb2c0); padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
+.cc-settings-seg { border-radius: var(--cc-ctl-radius); }
+.cc-settings-seg button { border: none; background: transparent; color: var(--cc-muted, #9fb2c0); padding: 3px 10px; font-size: var(--cc-ctl-fs, 12.5px); cursor: pointer; }
 .cc-settings-seg button + button { border-left: 1px solid var(--cc-line, rgba(230,237,242,0.14)); }
 .cc-settings-seg button.on { background: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #fff); }
-.cc-settings-rowbtn { border: 1px dashed var(--cc-line, rgba(230,237,242,0.25)); background: transparent; color: var(--cc-text, #dfe7ee); border-radius: 7px; padding: 4px 8px; font-size: 12.5px; cursor: pointer; align-self: flex-start; }
+.cc-settings-rowbtn { border: 1px dashed var(--cc-line, rgba(230,237,242,0.25)); background: transparent; color: var(--cc-text, #dfe7ee); border-radius: var(--cc-ctl-radius); padding: 4px 12px; cursor: pointer; align-self: flex-start; }
 .cc-settings-rowbtn:hover { border-color: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #6fb0ff); }
 
 .cc-score-head {
@@ -5107,14 +5106,11 @@ html[data-theme="light"] .cc-cell-tools {
 }
 
 .cc-key-stepper button {
-    width: 28px;
-    height: 26px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--app-bg-secondary);
-    border: 1px solid var(--app-border);
-    border-radius: 6px;
+    width: var(--cc-ctl-h, 28px);
+    height: var(--cc-ctl-h, 28px);
+    background: var(--cc-ctl-bg, var(--app-bg-secondary));
+    border: var(--cc-ctl-border, 1px solid var(--app-border));
+    border-radius: var(--cc-ctl-radius);
     color: var(--app-text);
     font-size: 14px;
     cursor: pointer;
@@ -5942,14 +5938,34 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 /* ============ 曲目入口 + 曲目面板 ============ */
 /* 曲目列表原先只存在于「⋯」菜单的一个 <select> 里，预览态还不可用——这里给它一个常驻入口和正经列表 */
-.cc-songs-btn {
+/* ===== 小控件统一基线（v1.0.1）：所有 chords 页小按钮/图标按钮一套规格 ===== */
+.cc-page {
+    --cc-ctl-h: 28px;        /* 统一高度 */
+    --cc-ctl-radius: var(--cc-radius, 8px); /* 统一圆角：走页面既有 --cc-radius(3px) 体系 */
+    --cc-ctl-fs: 12.5px;     /* 统一字号 */
+    --cc-ctl-pad: 0 10px;    /* 统一水平内垫 */
+    --cc-ctl-bg: var(--app-bg-secondary);
+    --cc-ctl-border: 1px solid var(--app-border);
+}
+.cc-page .button.sm, .cc-songs-btn, .cc-cp-menu button, .cc-key-stepper button,
+.cc-settings-rowbtn, .cc-more-btn, .cc-figopts button {
+    height: var(--cc-ctl-h);
+    border-radius: var(--cc-ctl-radius);
+    font-size: var(--cc-ctl-fs);
+    padding: var(--cc-ctl-pad);
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 4px;
+    box-sizing: border-box;
+}
+.cc-page .button.sm { background: var(--cc-ctl-bg); border: var(--cc-ctl-border); color: var(--app-text-muted); }
+
+.cc-songs-btn {
     flex: none;
-    background: var(--app-bg-secondary);
-    border: 1px solid var(--app-border);
-    border-radius: 8px;
+    background: var(--cc-ctl-bg, var(--app-bg-secondary));
+    border: var(--cc-ctl-border, 1px solid var(--app-border));
+    border-radius: var(--cc-ctl-radius);
     color: var(--app-text-muted);
     font-size: 13px;
     padding: 6px 12px;
@@ -6190,9 +6206,8 @@ html[data-theme="light"] .button.sm.edit-enter {
     min-height: 40px;
 }
 
-/* ← 返回按钮：不是页签——去掉 tooltabs 通用 button 的底边亮条/页签圆角，hover 只变色 */
-.cc-tooltabs .cc-songs-icon { border-bottom: none; border-radius: 8px; padding: 5px 9px; }
-.cc-tooltabs .cc-songs-icon:hover { border-bottom: none; }
+/* ← 返回按钮：不是页签——无底边亮条，规格走控件基线（提权越过 tooltabs 覆盖层） */
+.cc-page .cc-tooltabs .cc-songs-icon { border-bottom: none; padding: 0 9px; border-radius: var(--cc-ctl-radius); }
 
 .cc-page .cc-tooltabs {
     gap: 2px;
