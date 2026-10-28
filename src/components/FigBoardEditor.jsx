@@ -3,7 +3,7 @@ import { FretboardSVG } from './FretboardSVG';
 import { ConnectionPresetIcon } from './ConnectionPresetIcon';
 import { FretWindowThumb } from './FretWindowThumb';
 import { CONNECTION_PRESETS, useConnectionState } from '../hooks/useConnectionState';
-import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, getNotePosition, boardGeometry } from '../utils/fretboardCalculations';
+import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, generateMarkers, getNotePosition, boardGeometry } from '../utils/fretboardCalculations';
 import { createNoteClickHandler, createNoteMouseDownHandler, createConnectionDragEndHandler } from '../handlers/noteHandlers';
 import { createSvgClickHandler, createSvgMouseMoveHandler, createSvgMouseDownHandler, createSvgContextMenuHandler } from '../handlers/svgHandlers';
 import { figSvg } from '../utils/chordFig';
@@ -258,7 +258,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
             handleSvgContextMenu={handleSvgContext}
             handleSvgWheel={noOp}
             fretPath={generateFretPath(fretWin.start, fretWin.end)}
-            markers={[]}
+            markers={generateMarkers(fretWin.start, fretWin.end)}
             generateStringPathMemo={(i) => generateStringPath(i, geo.fretboardWidth)}
             notes={notes}
             notesElementRef={notesRef}
