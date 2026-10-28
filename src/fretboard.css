@@ -6742,8 +6742,8 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     font-size: 0.64em;
     /* 只有数字开头的后缀才缩小上标 */
     align-self: flex-start;
-    /* 顶到右上：上标位 */
-    margin: 2px 0 0 1px;
+    /* 顶到右上：上标位（贴记号顶线） */
+    margin: -1px 0 0 1px;
 }
 
 .csign-bass {
@@ -6789,7 +6789,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     font-size: 15px;
 }
 /* 上标里只有前导数字（7/9）放大；b/♯/m 等变化音保持小字 */
-.cc-beat .csign-sup .csign-num { font-size: 17px; }
+.cc-beat .csign-sup .csign-num { font-size: 19px; }
 .csign-sup .csign-num { font-size: 0.7em; }
 
 .cc-beat .csign-bass {
@@ -6807,7 +6807,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 .cc-beat .csign-sm.csign-sup .csign-sfx {
     font-size: 9.5px;
 }
-.cc-beat .csign-sm.csign-sup .csign-num { font-size: 11px; }
+.cc-beat .csign-sm.csign-sup .csign-num { font-size: 12.5px; }
 .csign-sm.csign-sup .csign-num { font-size: 0.68em; }
 
 /* 休止/延音字跟随放大，保持行内节奏一致 */
