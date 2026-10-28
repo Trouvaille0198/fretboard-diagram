@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { FretboardSVG } from './FretboardSVG';
 import { ConnectionPresetIcon } from './ConnectionPresetIcon';
 import { FretWindowThumb } from './FretWindowThumb';
@@ -7,6 +7,7 @@ import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, gen
 import { createNoteClickHandler, createNoteMouseDownHandler, createConnectionDragEndHandler } from '../handlers/noteHandlers';
 import { createSvgClickHandler, createSvgMouseMoveHandler, createSvgMouseDownHandler, createSvgContextMenuHandler } from '../handlers/svgHandlers';
 import { figSvg } from '../utils/chordFig';
+import { CONSTS } from '../constants';
 import { candidatesForChord, candidateToData, shapeFromBoard, builtinShapes, loadShapes, persistShapes } from '../utils/chordShapes';
 import { QUALITIES } from '../utils/chordLib';
 
@@ -45,6 +46,47 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   // 收窄 viewBox 裁掉板左右的大片空白(offsetX 边距区):品窗含 0 品时左侧留出开放弦音符,否则裁到第一品音符旁;右侧裁到末品音符旁
   const vbTrimL = fretWin.start === 0 ? 18 : 78;
   const vbTrimR = 68;
+
+  // 品窗容量：按渲染上限直接算（板 svg 的 CSS max-width = min(1180, 94vw) - 76）——
+  // 不做 DOM 测量：.figbe-board 是弹性容器，宽度跟着侧栏/弹窗 fit-content 变，量它是移动靶
+  const maxSpanOf = useCallback(() => {
+    const avail = Math.min(1180, window.innerWidth * 0.94) - 76; // 板 svg 可用像素宽
+    const worstTrim = 78 + 68; // viewBox 左右裁剪（按最保守）
+    return Math.max(2, Math.min(22, Math.floor((avail + worstTrim - 120) / CONSTS.fretWidth)));
+  }, []);
+  const maxSpanRef = useRef(14);
+  useEffect(() => {
+    // 挂载默认品窗：够宽 1-14，不够宽 = 能装下的最大品数；已有数据的高把位仍要覆盖
+    const apply = () => {
+      maxSpanRef.current = maxSpanOf();
+      const defSpan = Math.min(14, maxSpanRef.current);
+      setFretWin(prev => {
+        if (prev.end - prev.start >= defSpan) return prev;
+        const end = Math.min(22, Math.max(prev.start + defSpan, prev.end));
+        const start = Math.max(0, Math.min(prev.start, end - defSpan));
+        return { start, end };
+      });
+    };
+    apply();
+    window.addEventListener("resize", apply);
+    return () => window.removeEventListener("resize", apply);
+  }, [maxSpanOf]);
+
+  // 拖块回调：跨度超过容量时不缩放，窗口右移（1-7 拖长变 3-9 语义）
+  const applyFretWin = useCallback((w) => {
+    setFretWin(prev => {
+      let start = w.start ?? prev.start;
+      let end = w.end ?? prev.end;
+      const maxSpan = maxSpanRef.current;
+      if (end - start > maxSpan) {
+        // 宽度装不下更长的窗：不缩放，改为右滑——右缘顶到期望品，起点=末端-容量
+        end = Math.min(22, end);
+        start = Math.max(0, end - maxSpan);
+        end = start + maxSpan;
+      }
+      return { start, end };
+    });
+  }, []);
   const vbX = geo.svgViewBoxX + vbTrimL;
   const vbW = Math.max(200, geo.svgViewBoxWidth - vbTrimL - vbTrimR);
   // 音符标签 = 当前调唱名（do-re-mi 相对调根音），与小图"调内级数"同口径
@@ -268,8 +310,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
             connectionPreset={conn.connectionPreset}
           />
           <FretWindowThumb startFret={fretWin.start} endFret={fretWin.end}
-            onFretWindowChange={(w) => setFretWin(prev => ({ start: w.start ?? prev.start, end: w.end ?? prev.end }))}
-            svgRef={svgElementRef} />
+            onFretWindowChange={applyFretWin} svgRef={svgElementRef} />
         </div>
 
         <div className="figbe-side">

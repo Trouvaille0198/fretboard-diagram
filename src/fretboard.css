@@ -7605,7 +7605,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     padding: 14px 18px;
     width: fit-content;
     min-width: 480px;
-    max-width: min(1080px, 94vw);
+    max-width: min(1180px, 94vw);
     max-height: 92vh;
     overflow: hidden;
     box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
@@ -7658,7 +7658,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 
 /* fit-content 容器下百分比 max 会循环失效，用绝对上限：宽不超弹窗上限、高不超 92vh 减工具区 */
 .figbe-board svg {
-    max-width: calc(min(1080px, 94vw) - 76px);
+    max-width: calc(min(1180px, 94vw) - 76px);
     max-height: calc(92vh - 250px);
     width: auto;
     height: auto;
