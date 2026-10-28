@@ -12,6 +12,16 @@ export function TopNav({ mode }) {
 	const [theme, setTheme] = useState(() => localStorage.getItem("fretboard-theme") || "dark");
 	const [user, setUser] = useState(() => authUser()?.user ?? null);
 	const [loginOpen, setLoginOpen] = useState(false);
+	const [cloudFail, setCloudFail] = useState(false);
+
+	// 云端同步失败提示（红点）：静默失败曾造成数据事故，必须可见
+	useEffect(() => {
+		const onErr = () => setCloudFail(true);
+		const onOk = () => setCloudFail(false);
+		window.addEventListener("fretboard:cloud-error", onErr);
+		window.addEventListener("fretboard:cloud-ok", onOk);
+		return () => { window.removeEventListener("fretboard:cloud-error", onErr); window.removeEventListener("fretboard:cloud-ok", onOk); };
+	}, []);
 
 	// 登录态变化：刷新顶栏用户名；登录成功时把本地(游客期)曲目并入云端再拉回（updatedAt 新者胜）
 	useEffect(() => onAuthChange(() => {
@@ -64,9 +74,10 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v72">v72</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v73">v73</span>
 				{user ? (
-					<span className="top-nav-user" title={user}>
+					<span className="top-nav-user" title={user + (cloudFail ? "（⚠ 云同步失败：改动只存在本机，稍后会自动重试或重新登录）" : "")}>
+						{cloudFail ? <span className="top-nav-cloudfail" title="云同步失败：改动只存在本机">⚠</span> : null}
 						<span className="top-nav-user-name">{user}</span>
 						<button className="top-nav-icon" onClick={() => { logout(); }} title="退出登录（回到游客，本地数据保留）">⎋</button>
 					</span>
