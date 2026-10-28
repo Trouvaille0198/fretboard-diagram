@@ -251,11 +251,17 @@ export function ChordChartView({ songId }) {
 		return () => window.removeEventListener("fretboard:charts-synced", onSynced);
 	}, []);
 
-	// 正在编辑的曲被远端删除：退出到列表（别守着一具空壳）
+	// 正在编辑的曲被远端删除：退出到列表，并禁止卸载冲刷把它存回来（否则删除被本地复活）
+	const deletedByRemoteRef = useRef(false);
 	useEffect(() => {
 		const onDeleted = (e) => {
 			const d = e.detail || {};
-			if (d.id && d.id === songRef.current.id) window.location.hash = "#/chords";
+			if (d.id && d.id === songRef.current.id) {
+				deletedByRemoteRef.current = true;
+				clearTimeout(saveTimerRef.current);
+				saveTimerRef.current = null;
+				window.location.hash = "#/chords";
+			}
 		};
 		window.addEventListener("fretboard:charts-deleted", onDeleted);
 		return () => window.removeEventListener("fretboard:charts-deleted", onDeleted);
@@ -334,7 +340,7 @@ export function ChordChartView({ songId }) {
 	// 防抖窗口防丢：刷新 / 切后台 / 关页前立刻落盘（否则最后 0.8s 的编辑在重开后"被改回"）
 	useEffect(() => {
 		const flush = () => {
-			if (!saveTimerRef.current) return;
+			if (!saveTimerRef.current || deletedByRemoteRef.current) return;
 			clearTimeout(saveTimerRef.current);
 			saveTimerRef.current = null;
 			try { saveChart(songRef.current); } catch (e) { /* 尽力而为 */ }
@@ -354,6 +360,7 @@ export function ChordChartView({ songId }) {
 		timersRef.current.forEach(id => clearTimeout(id));
 		audioService.stopAll?.();
 		try {
+			if (deletedByRemoteRef.current) return; // 远端已删：卸载冲刷不得复活它
 			const stored = loadCharts().find(c => c.id === songRef.current.id);
 			if (!(stored && stored.updatedAt > (songRef.current.updatedAt || 0))) saveChart(songRef.current);
 		} catch (e) { /* 存不了就算了 */ }
