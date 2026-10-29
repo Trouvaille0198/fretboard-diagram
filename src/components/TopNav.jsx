@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useLanguage } from "../i18n";
 import { LoginModal } from "./LoginModal";
+import { Toast } from "./Toast";
 import { authUser, logout, onAuthChange, mergeLocalToCloud, pullCloud, subscribeCloud } from "../utils/authModel";
 import { loadCharts, persistCharts } from "../utils/chordChartModel";
 import { loadClips, persistClips } from "../utils/clipModel";
+import { onSyncStatus, pullAll, flushOutbox, resetCursors } from "../utils/syncEngine";
 
 // 顶部导航（8pu 式）：logo + 三模式文字 tab + 右侧主题/语言，常驻所有页面
 // mode: 'normal' | 'dynamic' | 'chords'
@@ -34,15 +36,32 @@ export function TopNav({ mode }) {
 		return () => { window.removeEventListener("fretboard:cloud-error", onErr); window.removeEventListener("fretboard:cloud-ok", onOk); };
 	}, []);
 
+	// 同步状态徽标（已同步 / 同步中 / 离线待同步 / 失败可重试）——同步是后台行为，用户得看得见
+	const [sync, setSync] = useState({ state: "idle", pending: 0, error: null });
+	useEffect(() => onSyncStatus(setSync), []);
+	const syncBadge = !user ? null
+		: sync.state === "syncing" ? { cls: "syncing", text: "同步中…" }
+		: sync.state === "offline" ? { cls: "offline", text: `离线待同步${sync.pending ? ` ${sync.pending}` : ""}` }
+		: sync.state === "error" ? { cls: "error", text: sync.error === "conflict" ? "版本冲突" : "同步失败" }
+		: sync.pending ? { cls: "syncing", text: `待同步 ${sync.pending}` }
+		: { cls: "ok", text: "已同步" };
+
+	// 全局轻提示（冲突副本等由 syncEngine 派发）
+	const [toast, setToast] = useState(null);
+	useEffect(() => {
+		const onToast = e => setToast({ msg: e.detail?.msg || "", key: Date.now() });
+		window.addEventListener("fretboard:toast", onToast);
+		return () => window.removeEventListener("fretboard:toast", onToast);
+	}, []);
+
 	// 登录态变化：刷新顶栏用户名；登录成功 → 本机有游客数据则询问是否并入，没有则直接拉云端
 	const [mergeAsk, setMergeAsk] = useState(null); // { user } 待询问；null 无
-	// 实时同步：登录期间订阅云端变更（其他浏览器/设备的写入），拉取合并并通知各页刷新
+	// 实时同步：登录期间订阅云端变更（其他浏览器/设备的写入）→ 增量拉取（?since=rev），不每次全量重拉
 	useEffect(() => {
 		if (!user) return;
 		const unsub = subscribeCloud(() => {
-			mergeLocalToCloud(loadCharts(), loadClips())
-				.then(({ charts, clips }) => {
-					persistCharts(charts); persistClips(clips);
+			pullAll()
+				.then(() => {
 					window.dispatchEvent(new CustomEvent("fretboard:charts-synced"));
 					window.dispatchEvent(new CustomEvent("fretboard:clips-synced"));
 				})
@@ -56,13 +75,14 @@ export function TopNav({ mode }) {
 		return unsub;
 	}, [user]);
 
-	// 已登录（token 从 localStorage 恢复，不经过 login 动作）时：挂载即静默合并云端——
+	// 已登录（token 从 localStorage 恢复，不经过 login 动作）时：挂载即静默对齐云端——
 	// 否则刷新页面会一直显示陈旧的本地列表，用户会以为数据丢了
 	useEffect(() => {
 		if (!authUser()) return;
-		mergeLocalToCloud(loadCharts(), loadClips())
-			.then(({ charts, clips }) => {
-				persistCharts(charts); persistClips(clips);
+		resetCursors();
+		pullAll()
+			.then(() => {
+				flushOutbox();
 				window.dispatchEvent(new CustomEvent("fretboard:charts-synced"));
 				window.dispatchEvent(new CustomEvent("fretboard:clips-synced"));
 			})
@@ -72,6 +92,7 @@ export function TopNav({ mode }) {
 		const au = authUser();
 		setUser(au?.user ?? null);
 		if (au) {
+			resetCursors(); // 新账号从零开始增量对齐
 			const charts = loadCharts();
 			const clips = loadClips();
 			if (charts.length || clips.length) setMergeAsk({ user: au.user, charts: charts.length, clips: clips.length });
@@ -82,6 +103,8 @@ export function TopNav({ mode }) {
 		pullCloud()
 			.then(({ charts, clips }) => {
 				persistCharts(charts); persistClips(clips);
+				resetCursors();
+				flushOutbox();
 				window.dispatchEvent(new CustomEvent("fretboard:charts-synced"));
 				window.dispatchEvent(new CustomEvent("fretboard:clips-synced"));
 			})
@@ -91,6 +114,8 @@ export function TopNav({ mode }) {
 		mergeLocalToCloud(loadCharts(), loadClips())
 			.then(({ charts, clips }) => {
 				persistCharts(charts); persistClips(clips);
+				resetCursors();
+				flushOutbox();
 				window.dispatchEvent(new CustomEvent("fretboard:charts-synced"));
 				window.dispatchEvent(new CustomEvent("fretboard:clips-synced"));
 			})
@@ -129,6 +154,7 @@ export function TopNav({ mode }) {
 	};
 
 	return (
+		<>
 		<header className="top-nav">
 			<button className="top-nav-logo" onClick={() => go(items[0])} title="返回普通编辑">
 				<span className="top-nav-logo-icon">🎸</span>
@@ -146,12 +172,19 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v1.0.2">v1.0.2</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v1.1.0">v1.1.0</span>
+				{syncBadge ? (
+					<button className={`top-nav-sync ${syncBadge.cls}`}
+						title={syncBadge.cls === "error" ? "云端同步出错，点此重试" : "云端同步状态"}
+						onClick={() => { flushOutbox(); pullAll(); }}>
+						{syncBadge.text}
+					</button>
+				) : null}
 				<button className="top-nav-icon cc-prefs-btn" title="偏好设置"
 					onClick={e => { e.stopPropagation(); setPrefsOpen(v => !v); }}>⚙</button>
 				{prefsOpen ? (
 					<div className="cc-prefs" onClick={e => e.stopPropagation()}>
-						<div className="cc-prefs-ver">v1.0.2</div>
+						<div className="cc-prefs-ver">v1.1.0</div>
 						<button onClick={toggleLang}>{lang === "zh" ? "Switch to English" : "切换为中文"}</button>
 						<button onClick={() => setTheme(x => (x === "dark" ? "light" : "dark"))}>
 							{theme === "dark" ? (tr.toLight ?? "浅色模式") : (tr.toDark ?? "深色模式")}
@@ -188,7 +221,7 @@ export function TopNav({ mode }) {
 							<h2>合并本机数据？</h2>
 							<p className="merge-ask-text">
 								检测到本机游客数据：{mergeAsk.charts ? mergeAsk.charts + " 首曲目" : ""}{mergeAsk.charts && mergeAsk.clips ? " · " : ""}{mergeAsk.clips ? mergeAsk.clips + " 个动图" : ""}。
-								合并到账号 <b>{mergeAsk.user}</b> 吗？（同名单条以更新时间新者为准）
+								合并到账号 <b>{mergeAsk.user}</b> 吗？（同名以本机版本为准）
 							</p>
 							<div className="merge-ask-btns">
 								<button className="btn-primary" onClick={doMergeLocal}>合并到账号</button>
@@ -198,7 +231,10 @@ export function TopNav({ mode }) {
 					</div>
 				) : null}
 
-			</div>
-		</header>
+				</div>
+			</header>
+			{toast ? <Toast key={toast.key} message={toast.msg} duration={4000} onClose={() => setToast(null)} /> : null}
+		</>
 	);
 }
+

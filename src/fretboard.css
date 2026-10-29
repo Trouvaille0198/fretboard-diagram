@@ -7908,3 +7908,25 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
         z-index: 50;
     }
 }
+/* ===== 云同步状态徽标（顶栏，登录后显示；syncEngine 派发）===== */
+.top-nav-sync {
+    font-size: var(--app-fs-2xs);
+    border: none;
+    border-radius: 10px;
+    padding: 3px 9px;
+    margin-right: 4px;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    background: transparent;
+    transition: background 0.15s, color 0.15s;
+}
+.top-nav-sync.ok { color: var(--app-text-soft); opacity: 0.75; }
+.top-nav-sync.ok:hover { opacity: 1; }
+.top-nav-sync.syncing { color: #7ec8ff; animation: sync-pulse 1.2s ease-in-out infinite; }
+.top-nav-sync.offline { color: #f0aa6c; }
+.top-nav-sync.error { color: #f08a84; }
+.top-nav-sync.error:hover { background: rgba(240, 138, 132, 0.12); }
+@keyframes sync-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+}
