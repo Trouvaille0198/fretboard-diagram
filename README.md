@@ -86,9 +86,11 @@ Fretboard Diagram Creator provides a complete set of fretboard diagram creation 
 
 ### 👤 User Authentication & Cloud Sync
 
-- **Login System**: Register / log in with a username to persist your data across sessions and devices
-- **Backend Storage**: Logged-in users' state is synced to the server (FastAPI + MongoDB)
+- **Login System**: Log in with your account to persist data across sessions and devices
+- **Backend Storage**: Local-first with cloud mirroring (Node + SQLite). Edits land in the browser first, then ship via an offline outbox with retry — nothing is lost on network drop or server restart; concurrent edits from two devices resolve to the cloud version with the local one preserved as a copy
 - **Guest Mode**: Full local functionality is available without logging in; data is stored in the browser
+
+See [CLOUD_SYNC.md](CLOUD_SYNC.md) for the sync protocol (server-assigned revs / content hashing / offline outbox / conflict handling).
 
 ### 🎵 Audio Playback Support (Optional)
 
