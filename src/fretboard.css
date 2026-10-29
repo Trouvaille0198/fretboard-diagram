@@ -37,15 +37,16 @@
     --app-radius-xs: 8px;
     --app-radius-pill: 999px;
 
-    /* 线/描边色阶（一次定义，主题可覆写） */
-    --app-line: var(--app-line);
-    --app-line-soft: var(--app-line-soft);
-    --app-line-strong: var(--app-line-strong);
-    --app-line-lighter: var(--app-line-lighter);
-    --app-sheen: var(--app-sheen);
-    --app-accent-09: var(--app-accent-09);
-    --app-accent-12: var(--app-accent-12);
-    --app-accent-45: var(--app-accent-45);
+    /* 线/描边色阶（一次定义，主题可覆写）。
+       注意：var() 自引用 = 循环引用 = 变量失效，所有用点回退初始值（页底变白的事故根因）——必须给真实值 */
+    --app-line: var(--app-border);
+    --app-line-soft: rgba(150, 200, 230, 0.08);
+    --app-line-strong: var(--app-border-strong);
+    --app-line-lighter: rgba(150, 200, 230, 0.06);
+    --app-sheen: rgba(255, 255, 255, 0.05);
+    --app-accent-09: rgba(243, 186, 98, 0.09);
+    --app-accent-12: rgba(243, 186, 98, 0.12);
+    --app-accent-45: rgba(243, 186, 98, 0.45);
 
     /* 字号阶（消除 10/10.5/11/11.5/12/12.5/13/14 八档并存） */
     --app-fs-2xs: 10px;
