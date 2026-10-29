@@ -191,6 +191,7 @@ export const en = {
         restHint: "Rest (0)",
         holdHint: "Hold (-)",
         splitHint: "Off-beat split / merge (Enter)",
+        curChordTip: "Current chord on this beat",
         clearHint: "Clear (Backspace)",
         beatLabel: "Beat",
         rBallad: "Arp",

@@ -61,6 +61,13 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 		<div className="cc-cp">
 			{/* 顶部动作条（8pu 同款） */}
 			<div className="cc-cp-menu">
+				{/* 当前拍和弦预览（✕ 左边）：谱面同款记号 + 音名，改没改一目了然 */}
+				{hasChord ? (
+					<span className="cc-cp-cur" title={ts.curChordTip ?? "该拍当前和弦"}>
+						<ChordSign chord={chord} display="degree" viewKey={key} />
+						<small>{formatName(chord, key)}</small>
+					</span>
+				) : null}
 				<button className="danger" onClick={() => onSetKind("empty")} disabled={!unit || unit.kind === "empty"} title={ts.clearHint ?? "删（⌫）"}><span>✕</span></button>
 				{onAttach ? (
 					<button className={`cc-cp-attach cc-cp-back ${hasAttach ? "has" : ""}`} disabled={!(hasChord || unit?.kind === "hold")}

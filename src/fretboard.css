@@ -3683,6 +3683,21 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border-bottom: 1px solid var(--app-border);
     margin-bottom: 8px;
 }
+/* 当前拍和弦预览（✕ 左侧）：谱面同款记号 + 音名小字 */
+.cc-cp-cur {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 2px 9px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: rgba(120, 160, 200, 0.08);
+    font-weight: 600;
+    min-height: 24px;
+    align-items: center;
+}
+.cc-cp-cur .csign { font-size: 15px; }
+.cc-cp-cur small { font-size: 11px; color: var(--app-text-soft); font-weight: 400; }
 
 .cc-cp-menu button {
     background: var(--cc-ctl-bg, var(--app-bg-secondary));
