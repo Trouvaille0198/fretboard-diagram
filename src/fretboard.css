@@ -895,10 +895,10 @@ button.color.level2.selected {
     color: var(--app-text-muted);
     border: 1px solid var(--app-border);
     border-radius: 999px;
-    padding: 6px 14px;
+    padding: 6px 16px;
     cursor: pointer;
     font-size: 14px;
-    min-width: 70px;
+    min-width: 0; /* 宽度跟内容走——原 70px 最小宽让短文字钮(♭/重置)虚胖 */
     height: 36px;
     display: inline-flex;
     align-items: center;
