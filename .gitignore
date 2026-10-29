@@ -7,3 +7,6 @@ dist
 __pycache__/
 server/data/
 server/data.db*
+
+# 认证服务数据库（部署时挂载，别进仓库）
+server-data/
