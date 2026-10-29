@@ -810,6 +810,12 @@ g.markers {
     align-items: center;
     gap: 10px;
     padding: 0;
+    flex-wrap: wrap; /* 极窄屏换行铺排，不再挤爆 */
+}
+@media (max-width: 640px) {
+    .color-palette-row { gap: 7px; }
+    button.color { width: 34px; height: 34px; border-radius: 10px; }
+    button.color.color-tint { width: 28px; height: 28px; border-radius: 8px; }
 }
 
 button.color {
@@ -3356,6 +3362,12 @@ g.drag-fx-layer circle[stroke-dasharray] {
     align-items: center;
     gap: 4px;
 }
+
+.top-nav-right { position: relative; /* ⚙ 偏好菜单定位基准 */ }
+.cc-prefs { position: absolute; top: calc(100% + 6px); right: 0; z-index: 300; background: var(--app-panel-strong); border: 1px solid var(--app-border-strong); border-radius: 10px; padding: 5px; min-width: 170px; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; }
+.cc-prefs-ver { font-size: 11px; color: var(--app-text-soft); padding: 4px 10px; border-bottom: 1px solid var(--app-border); margin-bottom: 4px; }
+.cc-prefs button { border: none; background: transparent; color: var(--app-text); text-align: left; padding: 7px 10px; font-size: 13px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+.cc-prefs button:hover { background: var(--app-panel-soft); }
 
 .top-nav-user { display: inline-flex; align-items: center; gap: 4px; }
 .top-nav-cloudfail { color: #ff8a80; font-size: 13px; animation: cloudfailPulse 1.2s ease-in-out infinite; }
