@@ -1,5 +1,5 @@
 import { updateNote, getNoteSplitMode, getSplitTargetFromPoint, getColorName, detectNoteAtPosition, calculateConnectionColor } from '../utils';
-import { adaptiveArcCurvature } from '../utils/connectionUtils';
+import { adaptiveArcCurvature, isSolidNoteData, isSemitoneSlidePair } from '../utils/connectionUtils';
 import { CONSTS } from '../constants';
 import { LEVEL1_COLORS } from '../colorConfig';
 
@@ -7,6 +7,7 @@ const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
 
 // 在两个音符之间创建/覆盖一条连线（拖拽松开时调用）
 // 预设决定形状、方向和粗细；重新连线同一对音符时也按当前预设覆盖样式
+// ghost=true：半音划音——从空音符（未着色）连到实音；样式仍走预设体系，颜色为 灰→实音色 渐变
 export function createConnectionBetweenNotes({
     startNoteId,
     endNoteId,
@@ -15,6 +16,7 @@ export function createConnectionBetweenNotes({
     connections,
     connectionPreset,
     useColor2Level,
+    ghost = false,
     setData
 }) {
     const startNoteElement = document.getElementById(startNoteId);
@@ -42,7 +44,8 @@ export function createConnectionBetweenNotes({
         startNoteData = { ...startNoteData, color: actualStartColorFromData || 'white' };
     }
 
-    if ((startNoteData.visibility || visibility) !== 'visible') {
+    // 半音划音的起点本来就是空音符（未着色），跳过起点可见性检查；终点是否实音由调用方校验
+    if (!ghost && (startNoteData.visibility || visibility) !== 'visible') {
         return false;
     }
 
@@ -103,7 +106,8 @@ export function createConnectionBetweenNotes({
         strokeDasharray: useDashedStyle ? '8,4' : undefined,
         arcCurvature,
         color: connectionColor,
-        gradientColors: gradientColors
+        gradientColors: gradientColors,
+        ghost: ghost || undefined
     };
 
     setData(prevData => {
@@ -118,12 +122,12 @@ export function createConnectionBetweenNotes({
     return true;
 }
 
-// 连线模式：在可见音符上按下即开始拖拽连线
+// 连线模式：按下音符即开始拖拽连线。
+// 实音（已着色）＝普通连线起点；空音符（未着色）也允许起拖＝半音划音手势，
+// 合法落点（同弦相邻一品的实音）在松手时校验；快速点按空音符不拖动仍是着色端点（click 照常触发）
 export function createNoteMouseDownHandler(params) {
     const {
         connectionMode,
-        data,
-        visibility,
         notes,
         setConnectionStartNote,
         setConnectionStartPosition,
@@ -132,11 +136,6 @@ export function createNoteMouseDownHandler(params) {
 
     return (event, noteId) => {
         if (!connectionMode || event.button !== 0) {
-            return;
-        }
-
-        const noteData = data[noteId] || { type: 'note', color: 'white', visibility: visibility };
-        if ((noteData.visibility || visibility) !== 'visible') {
             return;
         }
 
@@ -157,6 +156,7 @@ export function createNoteMouseDownHandler(params) {
 }
 
 // 拖拽连线松开：落在可见的目标音符上则生成连线，否则取消（挂在 window 上，拖出指板也能正确收尾）
+// 起点是空音符时按"半音划音"处理：落点必须是同弦相邻一品（±1 品）的实音，违规 toast 报错并取消
 export function createConnectionDragEndHandler(params) {
     const {
         connectionMode,
@@ -174,7 +174,8 @@ export function createConnectionDragEndHandler(params) {
         setMousePosition,
         setPreviewHoverNote,
         setUseColor2Level,
-        connectionDragActiveRef
+        connectionDragActiveRef,
+        toast
     } = params;
 
     return (event) => {
@@ -232,6 +233,17 @@ export function createConnectionDragEndHandler(params) {
             return;
         }
 
+        // 空音符起拖＝半音划音手势：落点必须是实音，且与起点同弦、相邻恰一品（开放弦按 0 品计）
+        const ghostDrag = !isSolidNoteData(data[connectionStartNote], visibility);
+        if (ghostDrag) {
+            const dropSolid = isSolidNoteData(data[dropNote.id], visibility);
+            if (!dropSolid || !isSemitoneSlidePair(connectionStartNote, dropNote.id)) {
+                toast?.('半音划音：只能从空音符连到同弦相邻一品（±1 品）的实音上', 'error');
+                clearPending();
+                return;
+            }
+        }
+
         createConnectionBetweenNotes({
             startNoteId: connectionStartNote,
             endNoteId: dropNote.id,
@@ -240,8 +252,12 @@ export function createConnectionDragEndHandler(params) {
             connections,
             connectionPreset,
             useColor2Level,
+            ghost: ghostDrag,
             setData
         });
+        if (ghostDrag) {
+            toast?.('已画半音划音（空音滑入实音，样式随连线预设）', 'success');
+        }
         clearPending();
     };
 }

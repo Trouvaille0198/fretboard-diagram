@@ -1,4 +1,5 @@
 import { detectNoteAtPosition } from '../utils';
+import { isSolidNoteData, isSemitoneSlidePair } from '../utils/connectionUtils';
 import { CONSTS } from '../constants';
 
 export function createSvgClickHandler(params) {
@@ -133,7 +134,11 @@ export function createSvgMouseMoveHandler(params) {
                 const hoveredVisibility = hoveredNoteData.visibility || visibility;
                 // 只有visible的note才能作为预览终点
                 if (hoveredVisibility === 'visible') {
-                    setPreviewHoverNote(hoveredNote.id);
+                    // 空音符起拖（半音划音）：目标还须是同弦相邻一品的实音才吸附——不吸附即"此处不可落"的即时反馈
+                    const ghostDrag = !isSolidNoteData(data[connectionStartNote], visibility);
+                    const ghostTargetOk = isSolidNoteData(hoveredNoteData, visibility)
+                        && isSemitoneSlidePair(connectionStartNote, hoveredNote.id);
+                    setPreviewHoverNote(!ghostDrag || ghostTargetOk ? hoveredNote.id : null);
                 } else {
                     setPreviewHoverNote(null);
                 }

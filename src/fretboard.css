@@ -1621,12 +1621,13 @@ g.note.preview-hover>circle {
     }
 
     .fretboard-stage svg {
-        /* SVG保持其原始宽度，允许超出容器 */
+        /* 手机屏宽有限：板占满行内剩余宽（减拖块22px）、等比缩放，品窗用右侧拖块调 */
         width: auto !important;
-        min-width: fit-content !important;
-        max-width: none !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
         display: block;
-        flex-shrink: 0;
     }
 
     /* 工具区域移动端适配（禁止横向滚动） */
@@ -4221,6 +4222,11 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 /* 移动端：左右边距全部收紧（寸土寸金） */
 @media (max-width: 640px) {
+    /* 编辑页（静图/动图）：板缩到屏宽（自然宽远超手机屏），菜单面板堆叠不挤板 */
+    .fretboard-stage svg { max-width: 100%; height: auto; }
+    .fretboard-stage .fwt { flex: 0 0 auto; }
+    .menu { padding: 12px 0; }
+
     /* 复制模式条：窄屏允许换行，长提示词在条内折行，不再把标题挤出屏 */
     .cc-copybar { flex-wrap: wrap; gap: 4px 8px; padding: 6px 10px; font-size: 12px; }
     .cc-copybar-state { white-space: normal; line-height: 1.5; }

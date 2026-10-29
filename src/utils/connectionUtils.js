@@ -1,6 +1,40 @@
 import { calculateConnectionColor, calculateArcPath, getPointOnPathAtDistance } from '../utils.js';
 import { CONSTS } from '../constants.js';
 
+// 音符是否为"实音"（板上真正点亮的端点）：visible/selected 且带一二级颜色。
+// 与动图内核 isNoteActive 同语义；空音符（无色圆圈）返回 false——半音划音的幽灵起点
+export function isSolidNoteData(noteData, globalVisibility) {
+    if (!noteData || typeof noteData !== 'object') return false;
+    const vis = noteData.visibility || globalVisibility;
+    if (vis !== 'visible' && vis !== 'selected') return false;
+    const hasColor1 = !!noteData.color && noteData.color !== 'white';
+    const hasColor2 = !!noteData.color2 && noteData.color2 !== null;
+    return hasColor1 || hasColor2;
+}
+
+// 音符 id → 品号（o-s2 开放弦=0；f5-s2=5；解析不出返回 null）
+export function fretOfNoteId(noteId) {
+    if (typeof noteId !== 'string') return null;
+    if (noteId.startsWith('o-s')) return 0;
+    const m = noteId.match(/^f(-?\d+)-s\d+$/);
+    return m ? parseInt(m[1], 10) : null;
+}
+
+// 音符 id → 弦号（f5-s2 / o-s3 → 2 / 3；解析不出返回 null）
+export function stringOfNoteId(noteId) {
+    if (typeof noteId !== 'string') return null;
+    const m = noteId.match(/-s(\d+)$/);
+    return m ? parseInt(m[1], 10) : null;
+}
+
+// 半音划音配对：同弦且品距恰为一品（±1，开放弦=0 品也参与）
+export function isSemitoneSlidePair(fromId, toId) {
+    const fs = stringOfNoteId(fromId), ts = stringOfNoteId(toId);
+    if (fs === null || ts === null || fs !== ts) return false;
+    const ff = fretOfNoteId(fromId), tf = fretOfNoteId(toId);
+    return ff !== null && tf !== null && Math.abs(ff - tf) === 1;
+}
+
 function measurePathLength(pathString) {
     const svgNS = 'http://www.w3.org/2000/svg';
     const tempPath = document.createElementNS(svgNS, 'path');
