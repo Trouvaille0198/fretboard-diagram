@@ -90,7 +90,7 @@ export function FretboardMenu({
       const sr = shellRef.current.getBoundingClientRect();
       const br = btnEl.getBoundingClientRect();
       const x = br.left + br.width / 2 - sr.left;
-      setTintAnchorX(Math.max(84, Math.min(sr.width - 84, x))); // 菜单半宽约 78px，钳在壳内不出屏
+      setTintAnchorX(Math.max(95, Math.min(sr.width - 95, x))); // 菜单宽约 178px（半宽 89），钳在壳内不出屏
     }
   };
 
