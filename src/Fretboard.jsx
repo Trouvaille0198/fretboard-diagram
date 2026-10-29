@@ -1063,14 +1063,14 @@ function Fretboard({ mode = 'normal' }) {
     return () => svg.removeEventListener('touchmove', guardTouchScroll);
   }, []);
 
-  // 拖拽连线松开：落在可见音符上生成连线，否则取消
+  // 拖拽连线松开：落在可见音符上生成连线，否则取消；空音符起拖按半音划音校验（同弦相邻一品的实音）
   const handleConnectionDragEnd = useCallback(createConnectionDragEndHandler({
     connectionMode, connectionStartNote, notes, data, visibility, svgElementRef,
     connections, connectionPreset, useColor2Level, setData,
     setConnectionStartNote, setConnectionStartPosition, setMousePosition,
-    setPreviewHoverNote, setUseColor2Level, connectionDragActiveRef
+    setPreviewHoverNote, setUseColor2Level, connectionDragActiveRef, toast: showToast
   }), [connectionMode, connectionStartNote, notes, data, visibility, svgElementRef,
-    connections, connectionPreset, useColor2Level, setData,
+    connections, connectionPreset, useColor2Level, setData, showToast,
     setConnectionStartNote, setConnectionStartPosition, setMousePosition,
     setPreviewHoverNote, setUseColor2Level]);
 
@@ -1226,6 +1226,15 @@ function Fretboard({ mode = 'normal' }) {
   const saveSVGMemo = useCallback(() => {
     saveSVG(selected, setSelected, data, updateNote, connectionToolbarVisible, setConnectionToolbarVisible, svgElementRef, inlineCSS, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility, horizontalCrop, verticalCrop, t);
   }, [selected, setSelected, data, connectionToolbarVisible, setConnectionToolbarVisible, displayMode, rootNote, enharmonic, startFret, endFret, includeMarkers, copyOnly, showNotes, setToastMessage, setToastType, visibility, setVisibility, horizontalCrop, verticalCrop, t]);
+
+  // 手机竖屏：挂载时品窗收到 ~7 品（全跨度塞进窄屏会让板高只剩 ~90px）；
+  // 用户仍可拖右侧拖块随时拉长（板会等比缩放）
+  useEffect(() => {
+    if (window.innerWidth > 640) return;
+    if (endFret - startFret <= 7) return;
+    setEndFret(Math.min(22, startFret + 7));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setFretWindowMemo = useCallback((fretWindow) => {
     setFretWindow(fretWindow, startFret, endFret, selected, setSelected, data, setData, updateNote, setToastMessage, setStartFret, setEndFret);

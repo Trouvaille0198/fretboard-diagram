@@ -451,8 +451,9 @@ export const FretboardSVG = React.memo(function FretboardSVG({
           const startNoteData = data[conn.startNoteId] || { type: 'note', color: 'white', visibility: visibility };
           const endNoteData = data[conn.endNoteId] || { type: 'note', color: 'white', visibility: visibility };
 
-          // 如果note被删除了（color是white且visibility不是visible），不渲染连线
-          const startIsDeleted = startNoteData.color === 'white' && startNoteData.visibility !== 'visible';
+          // 如果note被删除了（color是white且visibility不是visible），不渲染连线；
+          // 例外：半音划音（ghost）的起点本来就是空音符，只检查终点
+          const startIsDeleted = !conn.ghost && startNoteData.color === 'white' && startNoteData.visibility !== 'visible';
           const endIsDeleted = endNoteData.color === 'white' && endNoteData.visibility !== 'visible';
           if (startIsDeleted || endIsDeleted) {
             return null;
