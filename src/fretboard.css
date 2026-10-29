@@ -7940,6 +7940,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 .cc-trash-empty { text-align: center; color: var(--app-text-soft); padding: 28px 0; }
 
 /* ===== 云同步状态徽标（顶栏，登录后显示；syncEngine 派发）===== */
+
 .top-nav-sync {
     font-size: var(--app-fs-2xs);
     border: none;
@@ -7950,7 +7951,41 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     font-variant-numeric: tabular-nums;
     background: transparent;
     transition: background 0.15s, color 0.15s;
+    white-space: nowrap; /* 窄屏被挤压时绝不竖排（曾出现"已/同/步"三字叠排） */
+    flex-shrink: 0;
 }
+/* 窄屏顶栏寸土寸金：≤480px 徽标缩成 10px 状态圆点（title 仍有完整提示、点击仍可重试），
+   版本号让位隐藏，用户名过长截断——320px 实测三 tab + 徽标 + 图标零重叠 */
+@media (max-width: 480px) {
+    .top-nav-sync {
+        width: 10px;
+        height: 10px;
+        padding: 0;
+        margin: 0 8px 0 2px;
+        border-radius: 50%;
+        font-size: 0;
+        line-height: 0;
+    }
+    .top-nav-sync.ok { background: #6fd99c; box-shadow: 0 0 5px rgba(111, 217, 156, 0.45); }
+    .top-nav-sync.offline { background: #f0aa6c; }
+    .top-nav-sync.error { background: #f08a84; }
+    .top-nav-sync.error:hover { background: #f08a84; }
+    .top-nav-ver { display: none; }
+    .top-nav-tabs { min-width: max-content; } /* 容器不许被压到内容宽以下（曾压到 92px，末 tab 溢出压住徽标） */
+    .top-nav-user-name {
+        max-width: 64px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+.top-nav-sync.ok { color: var(--app-text-soft); opacity: 0.75; }
+.top-nav-sync.ok:hover { opacity: 1; }
+.top-nav-sync.syncing { color: #7ec8ff; animation: sync-pulse 1.2s ease-in-out infinite; }
+.top-nav-sync.offline { color: #f0aa6c; }
+.top-nav-sync.error { color: #f08a84; }
+.top-nav-sync.error:hover { background: rgba(240, 138, 132, 0.12); }
+
 .top-nav-sync.ok { color: var(--app-text-soft); opacity: 0.75; }
 .top-nav-sync.ok:hover { opacity: 1; }
 .top-nav-sync.syncing { color: #7ec8ff; animation: sync-pulse 1.2s ease-in-out infinite; }
