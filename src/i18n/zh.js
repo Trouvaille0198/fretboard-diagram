@@ -31,10 +31,10 @@ export const zh = {
     // 模式栏（ModeRail）
     rail: {
         label: "模式切换",
-        normal: "普通编辑",
-        dynamic: "动图编辑",
+        normal: "编辑",
+        dynamic: "动图",
         chords: "和弦谱",
-        normalShort: "普通",
+        normalShort: "编辑",
         dynamicShort: "动图",
         chordsShort: "和弦谱",
     },
@@ -69,7 +69,7 @@ export const zh = {
         tabMelody: "旋律",
         tabText: "文本",
         tabColor: "着色",
-        tabNA: "和弦谱无此类工具（8pu 的简谱/旋律功能页）",
+        tabNA: "和弦谱无此类工具",
         lyricsFor: "当前小节歌词",
         tintLabel: "小节标色",
         tintClear: "清除",

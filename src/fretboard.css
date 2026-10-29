@@ -808,13 +808,11 @@ g.markers {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding: 0;
-    flex-wrap: wrap; /* 极窄屏换行铺排，不再挤爆 */
+    flex-wrap: nowrap; /* 9 色恒一排：swatch 随面板宽等比缩。换行会把末位色块甩成孤行，看着像"多出来的颜色" */
 }
 @media (max-width: 640px) {
-    .color-palette-row { gap: 7px; }
-    button.color { width: 34px; height: 34px; border-radius: 10px; }
     button.color.color-tint { width: 28px; height: 28px; border-radius: 8px; }
 }
 
@@ -826,6 +824,14 @@ button.color {
     cursor: pointer;
     transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
     box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+/* 一层 9 色一行自适应：宽度 = (行宽 - 8 个间隙) / 9，上限 40px；窄屏自动缩小、绝不换行/溢出。
+   只作用一层调色盘行，异色变体按钮（color-tint）不受影响 */
+.color-palette-row button.color {
+    width: min(40px, calc((100% - 64px) / 9));
+    height: auto;
+    aspect-ratio: 1;
 }
 
 /* 淡色版本按钮样式 */
@@ -1082,6 +1088,8 @@ button.color.level2.selected {
 .piano-keys {
     display: flex;
     position: relative;
+    max-width: 100%;
+    overflow-x: auto; /* 窄屏滚动而非压缩白键——黑键绝对定位按白键实宽算，压了就错位 */
     border: 1px solid var(--app-border);
     border-radius: 18px;
     padding: 8px;
@@ -1098,6 +1106,7 @@ button.color.level2.selected {
 }
 
 .piano-key.white-key {
+    flex: 0 0 auto; /* 不许被 flex 压缩（黑键定位依赖 45px 定宽） */
     width: 45px;
     height: 130px;
     background: linear-gradient(180deg, #fefefe 0%, #dfe6ea 100%);
