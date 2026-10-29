@@ -191,6 +191,8 @@ export const en = {
         restHint: "Rest (0)",
         holdHint: "Hold (-)",
         splitHint: "Off-beat split / merge (Enter)",
+        lyricsToggle: "Lyrics",
+        lyricsToggleTip: "Show/hide the lyrics row: the score gets shorter when off (lyric data is kept and still exported)",
         compactLabel: "Compact",
         compactTip: "Compact mode: pair two beats per cell; two chords merge into a split pair, a split shows only its first half — denser score for reading (data untouched)",
         curChordTip: "Current chord on this beat",

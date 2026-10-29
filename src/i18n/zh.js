@@ -192,6 +192,8 @@ export const zh = {
         restHint: "休止（0）",
         holdHint: "延音（-）",
         splitHint: "反拍拆分 / 合并（Enter）",
+        lyricsToggle: "歌词",
+        lyricsToggleTip: "显示/隐藏歌词行：关掉后谱面高度变矮（歌词数据保留，不影响导出）",
         compactLabel: "简略",
         compactTip: "简略模式：两拍并成一格；两拍都有和弦时并成一对反拍，反拍只显示前半——谱面更紧凑，便于观看（不影响数据）",
         curChordTip: "该拍当前和弦",

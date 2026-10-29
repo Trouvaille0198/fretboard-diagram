@@ -4203,7 +4203,8 @@ g.drag-fx-layer circle[stroke-dasharray] {
 /* 谱面卡片（8pu 白卡）：撑满可视高度，像一页纸，而不是在空荡页面上飘一张小卡 */
 .cc-score {
     position: relative;
-    flex: 1;
+    /* 高度跟内容走（不再 flex 撑满视口）：隐藏歌词行后谱面会真的变矮，而不是留一块空白 */
+    flex: 0 0 auto;
     background: var(--app-panel);
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-md);

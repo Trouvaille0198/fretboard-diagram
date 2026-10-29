@@ -201,6 +201,14 @@ export function ChordChartView({ songId }) {
 		try { localStorage.setItem("fretboard-cc-compact", compactView ? "1" : "0"); } catch (e) { /* 忽略 */ }
 	}, [compactView]);
 
+	// 歌词显隐：关掉后整行歌词不渲染，谱面高度随之变矮（纯显示层，数据不动）
+	const [lyricsOn, setLyricsOn] = useState(() => {
+		try { return localStorage.getItem("fretboard-cc-lyrics") !== "0"; } catch (e) { return true; }
+	});
+	useEffect(() => {
+		try { localStorage.setItem("fretboard-cc-lyrics", lyricsOn ? "1" : "0"); } catch (e) { /* 忽略 */ }
+	}, [lyricsOn]);
+
 	const typeTimerRef = useRef(null);
 	const scoreRef = useRef(null);
 
@@ -369,7 +377,14 @@ export function ChordChartView({ songId }) {
 		if (!last) return;
 		const hasFig = last.slots.some(sl => sl.split ? sl.split.some(u => u && u.kind === "chord") : sl.kind === "chord");
 		if (!hasFig) return;
-		setSong(s => ({ ...s, measures: [...s.measures, createMeasure(s.timeSig || last.slots.length || 4)] }));
+		// 更新器里再判一次：同一批更新可能被多次调用（React StrictMode 双跑 effect），
+		// 幂等才能保证只补一节
+		setSong(s => {
+			const lastNow = s.measures[s.measures.length - 1];
+			const hasChordNow = lastNow && lastNow.slots.some(sl => sl.split ? sl.split.some(u => u && u.kind === "chord") : sl.kind === "chord");
+			if (!hasChordNow) return s;
+			return { ...s, measures: [...s.measures, createMeasure(s.timeSig || lastNow.slots.length || 4)] };
+		});
 	}, [song, editing]);
 
 	// 编辑历史（撤销/重做）：song 变化自动记录前值；800ms 内的连击（跟打修饰/歌词连输）合并为一步
@@ -1440,9 +1455,11 @@ export function ChordChartView({ songId }) {
 				<div className="cc-cell-slots">{compactView
 					? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => compactPairView(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null))
 					: m.slots.map((_, si) => slotView(mi, si))}</div>
-				<input key={`cl-${m.id}-${m.lyrics || ""}`} className={`cc-cell-lyrics ${m.lyrics ? "has" : ""}`} defaultValue={m.lyrics || ""}
-					readOnly={!editing} placeholder={editing ? "" : (ts.lyricsFor ?? "当前小节歌词")}
-					onBlur={e => patchMeasure(mi, x => ({ ...x, lyrics: e.target.value }))} />
+				{lyricsOn ? (
+					<input key={`cl-${m.id}-${m.lyrics || ""}`} className={`cc-cell-lyrics ${m.lyrics ? "has" : ""}`} defaultValue={m.lyrics || ""}
+						readOnly={!editing} placeholder={editing ? "" : (ts.lyricsFor ?? "当前小节歌词")}
+						onBlur={e => patchMeasure(mi, x => ({ ...x, lyrics: e.target.value }))} />
+				) : null}
 				{cellMenu === mi ? (
 					<div className="cc-mmenu" onClick={e => e.stopPropagation()}>
 						<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure ?? "插入小节"}</button>
@@ -1665,6 +1682,11 @@ export function ChordChartView({ songId }) {
 								title={ts.compactTip ?? "简略模式：两拍并成一格；两拍都有和弦时并成一对反拍，反拍只显示前半——谱面更紧凑，便于观看（不影响数据）"}
 								onClick={() => setCompactView(v => !v)}>
 								{ts.compactLabel ?? "简略"}
+							</button>
+							<button className={`cc-compact-btn${lyricsOn ? " on" : ""}`}
+								title={ts.lyricsToggleTip ?? "显示/隐藏歌词行：关掉后谱面高度变矮（歌词数据保留，不影响导出）"}
+								onClick={() => setLyricsOn(v => !v)}>
+								{ts.lyricsToggle ?? "歌词"}
 							</button>
 							{/* 生效调：谱中转调真正起作用时才出现，避免"改了却看不出" */}
 							{(() => {
