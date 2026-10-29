@@ -402,37 +402,52 @@ console.log("== chartPack：工程文件往返 ==");
 		JSON.stringify(qXmlBack.measures[0].slots.slice(0, 3).map(x => x?.chord?.quality)));
 }
 
-console.log("== chordChartModel：插入一拍 ==");
+console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 {
-	const { insertBeatAt } = await import("../src/utils/chordChartModel.js");
+	const { insertBeatInSong, createSong: newSong } = await import("../src/utils/chordChartModel.js");
 	const chT = (t) => chordFromDegreeToken(t);
-	const withChords = () => ({ ...createMeasure(4), slots: [
-		{ kind: "chord", chord: chT("1") }, { kind: "chord", chord: chT("4") },
-		{ kind: "rest" }, { kind: "chord", chord: chT("5") }
+	const beat = (t) => ({ kind: "chord", chord: chT(t) });
+	// 两小节 4/4：m0 = 1 4 1 4，m1 = rest 5 · ·（末小节挂反复终止线）
+	const song2 = () => ({ ...newSong("t"), measures: [
+		{ ...createMeasure(4), slots: [beat("1"), beat("4"), beat("1"), beat("4")] },
+		{ ...createMeasure(4), endBar: "repeatEnd", house: 2, slots: [{ kind: "rest" }, beat("5"), { kind: "empty" }, { kind: "empty" }] }
 	] });
-	const m1 = insertBeatAt(withChords(), 1);
-	A("长度不变（不增长小节）", m1.slots.length === 4);
-	A("光标处变成空拍", m1.slots[1].kind === "empty");
-	A("原光标起的拍右移", eq(m1.slots.slice(2).map(s => s.kind), ["chord", "rest"]));
-	A("末拍被挤出丢弃（5 消失）", m1.slots.every(s => !(s.kind === "chord" && s.chord.degree === 5)));
-	A("插入不改变原 measure（纯函数）", withChords().slots[1].chord.degree === 4);
+	const flat = (s) => s.measures.flatMap(m => m.slots.map(x => x.kind === "chord" ? `d${x.chord.degree}` : x.kind));
+	const src = song2();
+	const before = flat(src);
 
-	const m0 = insertBeatAt(withChords(), 0);
-	A("插在首拍：1/4 依次右移", eq(m0.slots.map(s => s.kind), ["empty", "chord", "chord", "rest"]));
+	const a = insertBeatInSong(song2(), 0, 1);
+	A("小节长度仍按拍号（4 拍/节）", a.measures[0].slots.length === 4 && a.measures[1].slots.length === 4);
+	A("光标处变成空拍", a.measures[0].slots[1].kind === "empty");
+	A("本小节后移一位", a.measures[0].slots[2].chord.degree === 4 && a.measures[0].slots[3].chord.degree === 1);
+	A("末拍溢出流到下一小节开头", a.measures[1].slots[0].chord.degree === 4 && a.measures[1].slots[1].kind === "rest" && a.measures[1].slots[2].chord.degree === 5);
+	A("全曲末尾溢出的拍追加新小节", a.measures.length === 3 && a.measures[2].slots.length === 1 && a.measures[2].slots[0].kind === "empty");
+	A("内容零丢失（展平序 = 原序+一个空拍）", eq(flat(a).filter(x => x !== "empty"), before.filter(x => x !== "empty")));
+	A("终止线/跳房子跟曲尾走", a.measures[2].endBar === "repeatEnd" && a.measures[2].house === 2 && a.measures[1].endBar === "single" && a.measures[1].house == null);
+	A("纯函数不改原 song", eq(flat(src), before) && before[0] === "d1");
 
-	const mEnd = insertBeatAt(withChords(), 99);
-	A("越界钳到末拍", mEnd.slots.length === 4 && mEnd.slots[3].kind === "empty" && mEnd.slots[2].kind === "rest");
+	const b = insertBeatInSong(song2(), 0, 0);
+	A("插在首拍：全曲右移一位", b.measures[0].slots[0].kind === "empty" && b.measures[0].slots[1].chord.degree === 1);
 
-	// 连续插入两拍：内容整体再右移一格
-	const twice = insertBeatAt(insertBeatAt(withChords(), 1), 1);
-	A("连插两拍累计右移", eq(twice.slots.map(s => s.kind), ["chord", "empty", "empty", "chord"]));
+	const c = insertBeatInSong(song2(), 99, 0);
+	A("小节越界原样返回（防御）", c.measures.length === 2 && eq(flat(c), before));
 
-	A("拍号 3/4 也按 3 拍处理", insertBeatAt(createMeasure(3), 1).slots.length === 3);
-	A("单拍小节不动（防御）", insertBeatAt({ ...createMeasure(2), slots: [{ kind: "empty" }] }, 0).slots.length === 1);
+	// 连续插两拍：内容整体后移两位（新末节是残节，再吸一拍不追加）
+	const twice = insertBeatInSong(insertBeatInSong(song2(), 0, 1), 0, 1);
+	A("连插两拍累计后移", twice.measures[0].slots[1].kind === "empty" && twice.measures[0].slots[2].kind === "empty" && twice.measures.length === 3 && twice.measures[2].slots.length === 2);
 
-	// 与右移语义配套：resizeMeasure 缩拍号后插入仍安全
-	const shrunk = resizeMeasure(withChords(), 2);
-	A("缩到 2 拍后插入仍 2 拍", insertBeatAt(shrunk, 1).slots.length === 2);
+	// 末小节插入：溢出直接落新小节，不下传
+	const d = insertBeatInSong(song2(), 1, 0);
+	A("末小节插入追加新小节", d.measures.length === 3 && d.measures[1].slots[0].kind === "empty" && d.measures[1].slots[1].kind === "rest" && d.measures[1].slots[2].chord.degree === 5 && d.measures[2].slots[0].kind === "empty" && d.measures[2].endBar === "repeatEnd");
+
+	// 3/4：按 3 拍容量流动；单拍残缺小节也能插（不溢出就原地变长）
+	const s3 = { ...newSong("t"), timeSig: 3, measures: [
+		{ ...createMeasure(3), slots: [beat("1"), beat("4"), beat("5")] },
+		{ ...createMeasure(3), slots: [{ kind: "empty" }] }
+	] };
+	const e3 = insertBeatInSong(s3, 0, 1);
+	A("3/4 按 3 拍流动", e3.measures[0].slots.length === 3 && e3.measures[0].slots[2].chord.degree === 4 && e3.measures[1].slots[0].chord.degree === 5 && e3.measures[1].slots.length === 2 && e3.measures.length === 2);
+	A("残缺末小节插拍原地变长不溢出", insertBeatInSong(s3, 1, 0).measures[1].slots.length === 2 && insertBeatInSong(s3, 1, 0).measures.length === 2);
 }
 
 

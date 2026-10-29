@@ -2,6 +2,7 @@
 // Clip = 帧序列（板面状态）+ 每步过渡规格（技法语义）
 
 import { sameContent, queuePush, queueDelete, setApplier, setPuller, setConflictHandler, outboxPending } from "./syncEngine.js";
+import { trashPut } from "./trashModel.js";
 
 const CLIPS_KEY = "fretboard-clips";
 
@@ -59,6 +60,9 @@ export function saveClip(clip) {
 }
 
 export function deleteClip(id) {
+	// 删除＝先进回收站（10 天可还原），不是立即丢弃
+	const target = loadClips().find(c => c.id === id);
+	if (target) trashPut("clips", target);
 	persistClips(loadClips().filter(c => c.id !== id));
 	queueDelete("clips", id);
 }

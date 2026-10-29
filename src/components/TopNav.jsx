@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "../i18n";
 import { LoginModal } from "./LoginModal";
 import { Toast } from "./Toast";
@@ -6,6 +7,7 @@ import { authUser, logout, onAuthChange, mergeLocalToCloud, pullCloud, subscribe
 import { loadCharts, persistCharts } from "../utils/chordChartModel";
 import { loadClips, persistClips } from "../utils/clipModel";
 import { onSyncStatus, pullAll, flushOutbox, resetCursors } from "../utils/syncEngine";
+import { trashPut } from "../utils/trashModel.js";
 
 // 顶部导航（8pu 式）：logo + 三模式文字 tab + 右侧主题/语言，常驻所有页面
 // mode: 'normal' | 'dynamic' | 'chords'
@@ -67,9 +69,17 @@ export function TopNav({ mode }) {
 				})
 				.catch(() => { /* 下次广播再试 */ });
 		}, (d) => {
-			// 远端删除：直接从本地剔除（merge 语义救不活它，服务端墓碑也会拦）
-			if (d.table === "charts") persistCharts(loadCharts().filter(c => c.id !== d.id));
-			if (d.table === "clips") persistClips(loadClips().filter(c => c.id !== d.id));
+			// 远端删除：数据先进本地回收站（云端 trash 有权威副本，这里兜底"另一端删了也能还原"），再从本地剔除
+			if (d.table === "charts") {
+				const removed = loadCharts().find(c => c.id === d.id);
+				if (removed) trashPut("charts", removed);
+				persistCharts(loadCharts().filter(c => c.id !== d.id));
+			}
+			if (d.table === "clips") {
+				const removed = loadClips().find(c => c.id === d.id);
+				if (removed) trashPut("clips", removed);
+				persistClips(loadClips().filter(c => c.id !== d.id));
+			}
 			window.dispatchEvent(new CustomEvent("fretboard:charts-deleted", { detail: d }));
 		});
 		return unsub;
@@ -156,9 +166,6 @@ export function TopNav({ mode }) {
 	return (
 		<>
 		<header className="top-nav">
-			<button className="top-nav-logo" onClick={() => go(items[0])} title="返回普通编辑">
-				<span className="top-nav-logo-icon">🎸</span>
-			</button>
 			<nav className="top-nav-tabs" aria-label={tr.label ?? "模式切换"}>
 				{items.map(it => (
 					<button
@@ -203,7 +210,7 @@ export function TopNav({ mode }) {
 				{loginOpen ? (
 					<LoginModal onLoggedIn={() => setLoginOpen(false)} onGuest={() => {}} onClose={() => setLoginOpen(false)} />
 				) : null}
-				{logoutAsk ? (
+				{logoutAsk ? createPortal(
 					<div className="login-modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setLogoutAsk(false); }}>
 						<div className="login-modal">
 							<h2>退出登录？</h2>
@@ -213,9 +220,8 @@ export function TopNav({ mode }) {
 								<button className="merge-ask-no" onClick={() => setLogoutAsk(false)}>取消</button>
 							</div>
 						</div>
-					</div>
-				) : null}
-				{mergeAsk ? (
+					</div>, document.body) : null}
+				{mergeAsk ? createPortal(
 					<div className="login-modal-overlay">
 						<div className="login-modal">
 							<h2>合并本机数据？</h2>
@@ -228,8 +234,7 @@ export function TopNav({ mode }) {
 								<button className="merge-ask-no" onClick={doNotMerge}>不合并（本机数据自动备份）</button>
 							</div>
 						</div>
-					</div>
-				) : null}
+					</div>, document.body) : null}
 
 				</div>
 			</header>

@@ -10,8 +10,8 @@
     --app-bg-secondary: #0e1820;
     --app-panel: rgba(13, 21, 28, 0.92);
     --app-panel-strong: rgba(16, 27, 35, 0.97);
-    --app-panel-soft: rgba(255, 255, 255, 0.05);
-    --app-input-bg: rgba(255, 255, 255, 0.05);
+    --app-panel-soft: var(--app-sheen);
+    --app-input-bg: var(--app-sheen);
     --app-input-bg-focus: rgba(255, 255, 255, 0.09);
     --app-border: rgba(150, 200, 230, 0.13);
     --app-border-strong: rgba(180, 218, 232, 0.28);
@@ -34,6 +34,25 @@
     --app-radius-lg: 18px;
     --app-radius-md: 14px;
     --app-radius-sm: 10px;
+    --app-radius-xs: 8px;
+    --app-radius-pill: 999px;
+
+    /* 线/描边色阶（一次定义，主题可覆写） */
+    --app-line: var(--app-line);
+    --app-line-soft: var(--app-line-soft);
+    --app-line-strong: var(--app-line-strong);
+    --app-line-lighter: var(--app-line-lighter);
+    --app-sheen: var(--app-sheen);
+    --app-accent-09: var(--app-accent-09);
+    --app-accent-12: var(--app-accent-12);
+    --app-accent-45: var(--app-accent-45);
+
+    /* 字号阶（消除 10/10.5/11/11.5/12/12.5/13/14 八档并存） */
+    --app-fs-2xs: 10px;
+    --app-fs-xs: 11px;
+    --app-fs-sm: 12px;
+    --app-fs-md: 13px;
+    --app-fs-lg: 14px;
     --background-color: var(--app-bg);
     --text-color: var(--app-text-muted);
     color-scheme: dark;
@@ -65,7 +84,7 @@ html[data-theme="light"] {
 html[data-theme="light"],
 html[data-theme="light"] body {
     background:
-        radial-gradient(ellipse 60% 50% at 0% 0%, rgba(243, 186, 98, 0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 0% 0%, var(--app-accent-09) 0%, transparent 60%),
         radial-gradient(ellipse 50% 40% at 100% 8%, rgba(90, 160, 220, 0.09) 0%, transparent 55%),
         radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.06) 0%, transparent 58%),
         linear-gradient(180deg, #eef2f7 0%, #f5f8fc 100%);
@@ -74,7 +93,7 @@ html[data-theme="light"] body {
 /* 日间模式：#app 同步亮色背景（否则内容限宽外露出夜色底，两侧出现黑条） */
 html[data-theme="light"] #app {
     background:
-        radial-gradient(ellipse 60% 50% at 0% 0%, rgba(243, 186, 98, 0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 0% 0%, var(--app-accent-09) 0%, transparent 60%),
         radial-gradient(ellipse 50% 40% at 100% 8%, rgba(90, 160, 220, 0.09) 0%, transparent 55%),
         radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.06) 0%, transparent 58%),
         linear-gradient(180deg, #eef2f7 0%, #f5f8fc 100%);
@@ -216,7 +235,7 @@ html {
     min-height: 100%;
     background:
         radial-gradient(ellipse 60% 50% at 0% 0%, rgba(243, 186, 98, 0.13) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 100% 8%, rgba(243, 186, 98, 0.09) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, var(--app-accent-09) 0%, transparent 55%),
         radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.07) 0%, transparent 58%),
         linear-gradient(180deg, #0b1318 0%, #060c10 100%);
 }
@@ -238,7 +257,7 @@ body {
     font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
     background:
         radial-gradient(ellipse 60% 50% at 0% 0%, rgba(243, 186, 98, 0.13) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 100% 8%, rgba(243, 186, 98, 0.09) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, var(--app-accent-09) 0%, transparent 55%),
         radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.07) 0%, transparent 58%),
         linear-gradient(180deg, #0b1318 0%, #060c10 100%);
 }
@@ -313,13 +332,13 @@ main {
     justify-content: center;
     width: 36px;
     height: 28px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     background: var(--app-panel-strong);
     border: 1px solid var(--app-border);
     box-shadow: var(--app-shadow-md), inset 0 1px 3px rgba(0, 0, 0, 0.22);
     backdrop-filter: blur(16px);
     padding: 0;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     font-weight: 700;
     color: var(--text-secondary, #aaa);
     cursor: pointer;
@@ -342,7 +361,7 @@ main {
     align-items: center;
     width: 56px;
     height: 28px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     background: var(--app-panel-strong);
     border: 1px solid var(--app-border);
     box-shadow: var(--app-shadow-md), inset 0 1px 3px rgba(0, 0, 0, 0.22);
@@ -380,7 +399,7 @@ main {
 }
 
 .theme-switch__icon {
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     line-height: 1;
     user-select: none;
 }
@@ -397,17 +416,17 @@ main {
 }
 
 .title-header .datetime {
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     color: var(--app-text-soft);
 }
 
 .title-header .selected-state-name {
     margin-top: 4px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     color: var(--app-success);
     font-weight: 600;
     padding: 6px 14px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     border: 1px solid rgba(136, 211, 159, 0.28);
     background: rgba(136, 211, 159, 0.1);
     display: inline-block;
@@ -709,8 +728,8 @@ g.note>text {
     width: 14px;
     height: 14px;
     transform: translateY(-50%) rotate(45deg);
-    border-top: 1px solid rgba(230, 237, 242, 0.08);
-    border-right: 1px solid rgba(230, 237, 242, 0.08);
+    border-top: 1px solid var(--app-line-soft);
+    border-right: 1px solid var(--app-line-soft);
     background: rgba(12, 20, 26, 0.9);
 }
 
@@ -738,7 +757,7 @@ g.note>text {
     min-width: 0;
     padding: 4px 6px;
     gap: 6px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 .menu-preset-button svg {
@@ -755,7 +774,7 @@ g.note>text {
     align-items: center;
     gap: 14px;
     padding-top: var(--m-panel-top);
-    border-top: 1px solid rgba(230, 237, 242, 0.08);
+    border-top: 1px solid var(--app-line-soft);
 }
 
 .menu-download-options {
@@ -790,14 +809,14 @@ g.note>text {
 
 .menu-download-button {
     min-width: 0;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-sheen);
     color: var(--app-text-muted);
     border-color: var(--app-border);
     box-shadow: none;
 }
 
 .menu-download-button:hover {
-    background: rgba(243, 186, 98, 0.12);
+    background: var(--app-accent-12);
     color: var(--app-text);
 }
 
@@ -883,7 +902,7 @@ button.color {
         width: 34px;
         flex: 0 0 auto;
     }
-    button.color.color-tint { width: 28px; height: 28px; border-radius: 8px; }
+    button.color.color-tint { width: 28px; height: 28px; border-radius: var(--app-radius-xs); }
     .color-palette-row::-webkit-scrollbar { height: 4px; }
     .color-palette-row::-webkit-scrollbar-thumb { background: rgba(230, 237, 242, 0.22); border-radius: 2px; }
     .color-palette-row::-webkit-scrollbar-track { background: transparent; }
@@ -893,7 +912,7 @@ button.color {
 button.color.color-tint {
     width: 32px;
     height: 32px;
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22);
 }
 
@@ -925,10 +944,10 @@ button.color.level2.selected {
     background: rgba(255, 255, 255, 0.04);
     color: var(--app-text-muted);
     border: 1px solid var(--app-border);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 6px 16px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     min-width: 0; /* 宽度跟内容走——原 70px 最小宽让短文字钮(♭/重置)虚胖 */
     height: 36px;
     display: inline-flex;
@@ -955,7 +974,7 @@ button.color.level2.selected {
     background: rgba(243, 186, 98, 0.14);
     border: 1px solid rgba(243, 186, 98, 0.38);
     color: var(--app-accent-text);
-    box-shadow: 0 0 0 1px rgba(243, 186, 98, 0.14), 0 4px 14px rgba(243, 186, 98, 0.12);
+    box-shadow: 0 0 0 1px rgba(243, 186, 98, 0.14), 0 4px 14px var(--app-accent-12);
 }
 
 
@@ -1027,13 +1046,13 @@ button.color.level2.selected {
 
 /* Enharmonic 按钮样式 */
 .enharmonic-button {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-sheen);
     color: var(--app-text-muted);
     border: 1px solid var(--app-border);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 0;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     font-weight: 600;
     line-height: 1;
     min-width: 36px;
@@ -1068,7 +1087,7 @@ button.color.level2.selected {
     padding: 12px 0 14px;
     background: transparent;
     border: none;
-    border-radius: 18px;
+    border-radius: var(--app-radius-lg);
     box-shadow: none;
 }
 
@@ -1162,7 +1181,7 @@ button.color.level2.selected {
     position: relative;
     /* 窄屏由组件 zoom 等比缩小（几何恒定，黑键定位不破） */
     border: 1px solid var(--app-border);
-    border-radius: 18px;
+    border-radius: var(--app-radius-lg);
     padding: 8px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
     height: 130px;
@@ -1233,7 +1252,7 @@ button.color.level2.selected {
 }
 
 .key-label {
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     font-weight: bold;
     color: var(--app-text-muted);
 }
@@ -1341,7 +1360,7 @@ svg.drag-connecting * {
 .toolbar-icon-btn.toolbar-preset-btn {
     gap: 5px;
     padding: 6px 8px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     color: var(--app-text-muted);
 }
 
@@ -1358,13 +1377,13 @@ svg.drag-connecting * {
 }
 
 .toolbar-icon-btn {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-sheen);
     color: var(--app-text-muted);
-    border: 1px solid rgba(230, 237, 242, 0.12);
-    border-radius: 10px;
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius-sm);
     padding: 6px 10px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     min-width: 32px;
     height: 32px;
     display: flex;
@@ -1378,7 +1397,7 @@ svg.drag-connecting * {
 }
 
 .toolbar-icon-btn:hover {
-    background: rgba(243, 186, 98, 0.12);
+    background: var(--app-accent-12);
     border-color: rgba(243, 186, 98, 0.28);
     color: var(--app-text);
     /* hover 不上浮：overflow 容器会裁顶 */
@@ -1412,8 +1431,8 @@ svg.drag-connecting * {
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
         rgba(11, 19, 24, 0.96);
-    border: 1px solid rgba(230, 237, 242, 0.12);
-    border-radius: 14px;
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius-md);
     box-shadow: var(--app-shadow-md);
     min-width: 100px;
     width: max-content;
@@ -1445,10 +1464,10 @@ svg.drag-connecting * {
     background-color: transparent;
     color: var(--app-text-muted);
     border: none;
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 6px 12px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     text-align: left;
     transition: background-color 0.2s;
     white-space: nowrap;
@@ -1456,7 +1475,7 @@ svg.drag-connecting * {
 }
 
 .toolbar-dropdown button:hover {
-    background-color: rgba(243, 186, 98, 0.12);
+    background-color: var(--app-accent-12);
     color: var(--app-text);
 }
 
@@ -1501,7 +1520,7 @@ svg.drag-connecting * {
     width: 100%;
     height: 6px;
     background: rgba(230, 237, 242, 0.18);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
 }
 
 .toolbar-slider-wrapper input[type="range"]::-moz-range-thumb {
@@ -1518,13 +1537,13 @@ svg.drag-connecting * {
     width: 100%;
     height: 6px;
     background: rgba(230, 237, 242, 0.18);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
 }
 
 .toolbar-slider-wrapper span {
     min-width: 35px;
     text-align: right;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     color: var(--app-text-muted);
 }
 
@@ -1549,7 +1568,7 @@ svg.drag-connecting * {
     left: 50%;
     width: 2px;
     margin-left: -1px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     background: rgba(230, 237, 242, 0.1);
 }
 
@@ -1559,7 +1578,7 @@ svg.drag-connecting * {
     width: 14px;
     height: 34px;
     border-radius: 6px;
-    background: rgba(230, 237, 242, 0.16);
+    background: var(--app-line-strong);
     border: 1px solid rgba(230, 237, 242, 0.22);
     cursor: ew-resize;
     display: flex;
@@ -1593,7 +1612,7 @@ svg.drag-connecting * {
     bottom: 2px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: var(--app-text-muted, #9fb2c0);
     opacity: 0.6;
     white-space: nowrap;
@@ -1871,20 +1890,20 @@ g.note.preview-hover>circle {
     align-items: center;
     gap: 6px;
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
 }
 
 .score-speed {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-sheen);
     color: var(--app-text-muted, #9fb2c0);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
-    border-radius: 10px;
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-sm);
     padding: 6px 8px;
 }
 
 .score-play {
-    border-color: rgba(243, 186, 98, 0.45);
+    border-color: var(--app-accent-45);
     color: var(--app-accent-text, #f3ba62);
 }
 
@@ -1899,7 +1918,7 @@ g.note.preview-hover>circle {
 .score-stage {
     position: relative;
     width: min(860px, 100%);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     border-radius: var(--app-radius-xl, 18px);
     background: var(--app-panel, rgba(15, 22, 28, 0.6));
     padding: 14px;
@@ -2019,7 +2038,7 @@ g.note.preview-hover>circle {
     align-items: center;
     gap: 12px;
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
 }
 
 /* 小节卡片 */
@@ -2030,7 +2049,7 @@ g.note.preview-hover>circle {
 }
 
 .score-measure {
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     border-radius: var(--app-radius-xl, 18px);
     background: var(--app-panel, rgba(15, 22, 28, 0.6));
     padding: 12px 14px;
@@ -2059,9 +2078,9 @@ g.note.preview-hover>circle {
     background: rgba(243, 186, 98, 0.1);
     border: 1px solid rgba(243, 186, 98, 0.3);
     color: var(--app-accent-text, #f3ba62);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 6px 14px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     font-weight: 600;
     cursor: pointer;
 }
@@ -2069,28 +2088,28 @@ g.note.preview-hover>circle {
 .score-chord-input {
     width: 120px;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(243, 186, 98, 0.45);
+    border: 1px solid var(--app-accent-45);
     color: var(--app-text, #e8eef4);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 6px 12px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     outline: none;
 }
 
 .score-add-frame {
     margin-left: auto;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px dashed rgba(230, 237, 242, 0.25);
+    background: var(--app-sheen);
+    border: 1px dashed var(--app-line-lighter);
     color: var(--app-text-muted, #9fb2c0);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 5px 12px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
 }
 
 .score-add-frame:hover {
     color: var(--app-accent-text, #f3ba62);
-    border-color: rgba(243, 186, 98, 0.45);
+    border-color: var(--app-accent-45);
 }
 
 /* 帧条 */
@@ -2131,7 +2150,7 @@ g.note.preview-hover>circle {
     display: flex;
     gap: 4px;
     padding: 4px 5px;
-    border-top: 1px solid rgba(230, 237, 242, 0.08);
+    border-top: 1px solid var(--app-line-soft);
     background: rgba(0, 0, 0, 0.35);
 }
 
@@ -2143,7 +2162,7 @@ g.note.preview-hover>circle {
     border: 1px solid rgba(230, 237, 242, 0.18);
     background: rgba(11, 19, 24, 0.9);
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -2161,10 +2180,10 @@ g.note.preview-hover>circle {
     top: 5px;
     min-width: 20px;
     height: 20px;
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     background: rgba(11, 19, 24, 0.85);
     color: #f3ba62;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     font-weight: 700;
     display: inline-flex;
     align-items: center;
@@ -2178,11 +2197,11 @@ g.note.preview-hover>circle {
     top: 5px;
     min-width: 24px;
     height: 22px;
-    border-radius: 8px;
-    border: 1px solid rgba(230, 237, 242, 0.25);
+    border-radius: var(--app-radius-xs);
+    border: 1px solid var(--app-line-lighter);
     background: rgba(11, 19, 24, 0.85);
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     font-weight: 700;
     cursor: pointer;
 }
@@ -2203,17 +2222,17 @@ g.note.preview-hover>circle {
 
 .score-fields input {
     flex: 1;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    background: var(--app-sheen);
+    border: 1px solid var(--app-border, var(--app-line));
     color: var(--app-text, #e8eef4);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 7px 12px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     outline: none;
 }
 
 .score-fields input:focus {
-    border-color: rgba(243, 186, 98, 0.45);
+    border-color: var(--app-accent-45);
 }
 
 .score-empty {
@@ -2272,7 +2291,7 @@ html[data-theme="light"] .fx-letter {
     max-width: 1560px;
     margin: 0 auto;
     padding: 10px 12px;
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     border-radius: var(--app-radius-xl, 18px);
     background: var(--app-panel, rgba(15, 22, 28, 0.6));
     box-sizing: border-box;
@@ -2281,7 +2300,7 @@ html[data-theme="light"] .fx-letter {
 
 .tl-empty {
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     align-items: center;
     gap: 12px;
 }
@@ -2295,12 +2314,12 @@ html[data-theme="light"] .fx-letter {
 }
 
 .tl-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    background: var(--app-sheen);
+    border: 1px solid var(--app-border, var(--app-line));
     color: var(--app-text-muted, #9fb2c0);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 5px 10px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
     white-space: nowrap;
 }
@@ -2313,7 +2332,7 @@ html[data-theme="light"] .fx-letter {
     min-width: 44px;
     height: 38px;
     font-size: 15px;
-    border-color: rgba(243, 186, 98, 0.45);
+    border-color: var(--app-accent-45);
     color: var(--app-accent-text, #f3ba62);
 }
 
@@ -2322,12 +2341,12 @@ html[data-theme="light"] .fx-letter {
 }
 
 .tl-speed {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-sheen);
     color: var(--app-text-muted, #9fb2c0);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
-    border-radius: 10px;
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-sm);
     padding: 4px 6px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 .tl-strip {
@@ -2345,7 +2364,7 @@ html[data-theme="light"] .fx-letter {
     flex-direction: column;
     gap: 6px;
     padding: 8px;
-    border: 1px solid rgba(230, 237, 242, 0.08);
+    border: 1px solid var(--app-line-soft);
     border-radius: 12px;
     min-width: 130px;
 }
@@ -2363,7 +2382,7 @@ html[data-theme="light"] .fx-letter {
     border: none;
     background: rgba(255, 255, 255, 0.08);
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     font-weight: 700;
     cursor: pointer;
 }
@@ -2377,9 +2396,9 @@ html[data-theme="light"] .fx-letter {
     background: rgba(243, 186, 98, 0.1);
     border: 1px solid rgba(243, 186, 98, 0.3);
     color: var(--app-accent-text, #f3ba62);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 3px 10px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     font-weight: 600;
     cursor: pointer;
     max-width: 90px;
@@ -2391,28 +2410,28 @@ html[data-theme="light"] .fx-letter {
 .tl-chord-input {
     width: 70px;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(243, 186, 98, 0.45);
+    border: 1px solid var(--app-accent-45);
     color: var(--app-text, #e8eef4);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 3px 10px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     outline: none;
 }
 
 .tl-add {
     margin-left: auto;
     background: transparent;
-    border: 1px dashed rgba(230, 237, 242, 0.25);
+    border: 1px dashed var(--app-line-lighter);
     color: var(--app-text-muted, #9fb2c0);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 3px 8px;
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     cursor: pointer;
 }
 
 .tl-add:hover {
     color: var(--app-accent-text, #f3ba62);
-    border-color: rgba(243, 186, 98, 0.45);
+    border-color: var(--app-accent-45);
 }
 
 .tl-frames {
@@ -2425,24 +2444,24 @@ html[data-theme="light"] .fx-letter {
 }
 
 .tl-frames .score-mini-board svg {
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
 }
 
 .tl-new-measure {
     flex: 0 0 auto;
     align-self: center;
     background: transparent;
-    border: 1px dashed rgba(230, 237, 242, 0.25);
+    border: 1px dashed var(--app-line-lighter);
     color: var(--app-text-muted, #9fb2c0);
     border-radius: 12px;
     padding: 10px 14px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
 }
 
 .tl-new-measure:hover {
     color: var(--app-accent-text, #f3ba62);
-    border-color: rgba(243, 186, 98, 0.45);
+    border-color: var(--app-accent-45);
 }
 
 .tl-fields {
@@ -2453,12 +2472,12 @@ html[data-theme="light"] .fx-letter {
 .tl-field {
     flex: 1;
     min-width: 80px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    background: var(--app-sheen);
+    border: 1px solid var(--app-border, var(--app-line));
     color: var(--app-text, #e8eef4);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     padding: 4px 8px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     outline: none;
 }
 
@@ -2475,7 +2494,7 @@ html[data-theme="light"] .fx-letter {
     align-items: center;
     gap: 6px;
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
 }
 
@@ -2499,7 +2518,7 @@ html[data-theme="light"] .tl-bar {
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
-    border-bottom: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border-bottom: 1px solid var(--app-border, var(--app-line));
     padding-bottom: 12px;
 }
 
@@ -2519,17 +2538,17 @@ html[data-theme="light"] .tl-bar {
     align-items: center;
     gap: 10px;
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
 }
 
 .sc-song-meta select,
 .sc-song-meta input[type="number"] {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-sheen);
     color: var(--app-text, #e8eef4);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
-    border-radius: 8px;
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-xs);
     padding: 3px 6px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 .sc-song-meta input[type="number"] {
@@ -2551,11 +2570,11 @@ html[data-theme="light"] .tl-bar {
 
 .sc-tab {
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     color: var(--app-text-muted, #9fb2c0);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 6px 16px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     cursor: pointer;
 }
 
@@ -2586,7 +2605,7 @@ html[data-theme="light"] .tl-bar {
 }
 
 .sc-measure {
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     border-radius: var(--app-radius-xl, 18px);
     background: var(--app-panel, rgba(15, 22, 28, 0.6));
     padding: 12px 14px;
@@ -2609,16 +2628,16 @@ html[data-theme="light"] .tl-bar {
     font-weight: 700;
     color: #10161c;
     background: var(--app-accent, #f3ba62);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
 }
 
 .sc-chord {
     background: rgba(243, 186, 98, 0.1);
     border: 1px solid rgba(243, 186, 98, 0.3);
     color: var(--app-accent-text, #f3ba62);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 5px 14px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     font-weight: 600;
     cursor: pointer;
     min-width: 48px;
@@ -2627,28 +2646,28 @@ html[data-theme="light"] .tl-bar {
 .sc-chord-input {
     width: 110px;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(243, 186, 98, 0.45);
+    border: 1px solid var(--app-accent-45);
     color: var(--app-text, #e8eef4);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 5px 12px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     outline: none;
 }
 
 .sc-add {
     margin-left: auto;
     background: transparent;
-    border: 1px dashed rgba(230, 237, 242, 0.25);
+    border: 1px dashed var(--app-line-lighter);
     color: var(--app-text-muted, #9fb2c0);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 4px 10px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
 }
 
 .sc-add:hover {
     color: var(--app-accent-text, #f3ba62);
-    border-color: rgba(243, 186, 98, 0.45);
+    border-color: var(--app-accent-45);
 }
 
 .sc-frames {
@@ -2667,17 +2686,17 @@ html[data-theme="light"] .tl-bar {
 .sc-field {
     flex: 1;
     min-width: 90px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    background: var(--app-sheen);
+    border: 1px solid var(--app-border, var(--app-line));
     color: var(--app-text, #e8eef4);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 7px 12px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     outline: none;
 }
 
 .sc-field:focus {
-    border-color: rgba(243, 186, 98, 0.45);
+    border-color: var(--app-accent-45);
 }
 
 /* 动态谱：大舞台 + 时间轴 */
@@ -2697,7 +2716,7 @@ html[data-theme="light"] .tl-bar {
 .sc-stage {
     position: relative;
     width: min(900px, 100%);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     border-radius: var(--app-radius-xl, 18px);
     background: var(--app-panel, rgba(15, 22, 28, 0.6));
     padding: 14px;
@@ -2719,14 +2738,14 @@ html[data-theme="light"] .tl-bar {
     align-items: center;
     gap: 12px;
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
 }
 
 .sc-timeline {
     display: flex;
     gap: 12px;
     align-items: stretch;
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     border-radius: var(--app-radius-xl, 18px);
     background: var(--app-panel, rgba(15, 22, 28, 0.6));
     padding: 10px 12px;
@@ -2745,7 +2764,7 @@ html[data-theme="light"] .tl-bar {
     min-width: 46px;
     height: 40px;
     border-radius: 12px;
-    border: 1px solid rgba(243, 186, 98, 0.45);
+    border: 1px solid var(--app-accent-45);
     background: rgba(243, 186, 98, 0.1);
     color: var(--app-accent-text, #f3ba62);
     font-size: 16px;
@@ -2757,12 +2776,12 @@ html[data-theme="light"] .tl-bar {
 }
 
 .sc-tl-controls select {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-sheen);
     color: var(--app-text-muted, #9fb2c0);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
-    border-radius: 10px;
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-sm);
     padding: 4px 6px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 .sc-tl-strip {
@@ -2778,7 +2797,7 @@ html[data-theme="light"] .tl-bar {
     flex-direction: column;
     gap: 6px;
     padding: 6px 8px;
-    border: 1px solid rgba(230, 237, 242, 0.08);
+    border: 1px solid var(--app-line-soft);
     border-radius: 12px;
 }
 
@@ -2791,18 +2810,18 @@ html[data-theme="light"] .tl-bar {
     gap: 6px;
     align-items: baseline;
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 .sc-tl-label b {
     color: var(--app-accent-text, #f3ba62);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 .sc-tl-frame {
     flex: 0 0 96px;
     border: 2px solid transparent;
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     overflow: hidden;
     cursor: pointer;
     background: rgba(0, 0, 0, 0.25);
@@ -2835,7 +2854,7 @@ html[data-theme="light"] .sc-timeline {
     flex-wrap: wrap;
     padding: 8px 12px;
     margin: 0 auto;
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     border-radius: var(--app-radius-xl, 18px);
     background: var(--app-panel, rgba(15, 22, 28, 0.6));
     position: relative;
@@ -2848,12 +2867,12 @@ html[data-theme="light"] .sc-timeline {
 }
 
 .dyn-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    background: var(--app-sheen);
+    border: 1px solid var(--app-border, var(--app-line));
     color: var(--app-text-muted, #9fb2c0);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 5px 10px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
     white-space: nowrap;
 }
@@ -2923,7 +2942,7 @@ html[data-theme="light"] .sc-timeline {
 }
 
 .dyn-framepos {
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     font-variant-numeric: tabular-nums;
     color: var(--app-text, #e8eef4);
     min-width: 34px;
@@ -2938,7 +2957,7 @@ html[data-theme="light"] .sc-timeline {
     padding: 8px 10px;
     margin: 0 auto 6px;
     max-width: 1080px;
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     border-radius: var(--app-radius-xl, 18px);
     background: var(--app-panel, rgba(15, 22, 28, 0.6));
 }
@@ -2970,7 +2989,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     flex: 0 0 auto;
     width: 168px;
     border: 2px solid transparent;
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     overflow: hidden;
     cursor: pointer;
     opacity: 0.75;
@@ -2990,7 +3009,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     flex: 0 0 auto;
     width: 64px;
     border: 2px dashed rgba(230, 237, 242, 0.45);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     background: rgba(46, 108, 202, 0.18);
     color: rgba(255, 255, 255, 0.88);
     font-size: 30px;
@@ -3018,7 +3037,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     height: 18px;
     line-height: 16px;
     padding: 0;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     border: none;
     border-radius: 5px;
     cursor: pointer;
@@ -3071,7 +3090,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     position: absolute;
     left: 5px;
     top: 4px;
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     font-weight: 700;
     color: var(--app-accent-text, #f3ba62);
     background: rgba(0, 0, 0, 0.55);
@@ -3102,14 +3121,14 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .dyn-sep {
     width: 1px;
     height: 20px;
-    background: var(--app-border, rgba(230, 237, 242, 0.12));
+    background: var(--app-border, var(--app-line));
 }
 
 .dyn-settings-sep {
     margin: 8px 0 4px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     opacity: 0.6;
-    border-top: 1px solid rgba(230, 237, 242, 0.12);
+    border-top: 1px solid var(--app-line);
     padding-top: 8px;
 }
 
@@ -3123,7 +3142,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
 }
 
@@ -3138,7 +3157,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     display: flex;
     gap: 14px;
     padding: 10px 14px;
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
     border-radius: 12px;
     background: var(--app-panel, rgba(15, 22, 28, 0.95));
     z-index: 60;
@@ -3148,18 +3167,18 @@ g.drag-fx-layer circle[stroke-dasharray] {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     color: var(--app-text-muted, #9fb2c0);
 }
 
 .dyn-settings input {
     width: 84px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
-    border-radius: 8px;
+    background: var(--app-sheen);
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-xs);
     color: var(--app-text, #e8eef4);
     padding: 4px 6px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 .dyn-badge {
@@ -3167,8 +3186,8 @@ g.drag-fx-layer circle[stroke-dasharray] {
     align-items: center;
     gap: 6px;
     padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 12.5px;
+    border-radius: var(--app-radius-pill);
+    font-size: var(--app-fs-md);
     color: var(--app-accent-text, #f3ba62);
     background: rgba(243, 186, 98, 0.14);
     border: 1px solid rgba(243, 186, 98, 0.4);
@@ -3247,19 +3266,19 @@ g.drag-fx-layer circle[stroke-dasharray] {
     left: 4px;
     z-index: 2;
     padding: 1px 8px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     background: rgba(243, 186, 98, 0.92);
     color: #20180a;
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     font-weight: 700;
 }
 
 .dock-clip-board {
     position: relative;
     cursor: pointer;
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     overflow: hidden;
-    border: 1px solid var(--app-border, rgba(230, 237, 242, 0.12));
+    border: 1px solid var(--app-border, var(--app-line));
 }
 
 .dock-clip-board:hover {
@@ -3278,7 +3297,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .dock-clip-name {
     flex: 1;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     color: var(--app-text-muted, #9fb2c0);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3290,9 +3309,9 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .dock-clip-name-input {
     flex: 1;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     box-sizing: border-box;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-sheen);
     border: 1px solid var(--app-accent, #f3ba62);
     border-radius: 7px;
     color: var(--app-text, #e8eef4);
@@ -3302,10 +3321,10 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 .dock-clip-frames {
     flex: 0 0 auto;
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     font-weight: 700;
     color: var(--app-accent-text, #f3ba62);
-    background: rgba(243, 186, 98, 0.12);
+    background: var(--app-accent-12);
     border-radius: 6px;
     padding: 1px 6px;
 }
@@ -3319,7 +3338,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     background: transparent;
     color: var(--app-text-muted, #9fb2c0);
     opacity: 0.45;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     line-height: 1;
     cursor: pointer;
     transition: opacity 0.15s, color 0.15s, background 0.15s;
@@ -3338,7 +3357,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 .dock-empty {
     color: var(--app-text-muted, #9fb2c0);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 6px 2px;
 }
 
@@ -3368,7 +3387,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     padding: 0;
     color: var(--app-text);
     font-weight: 700;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     letter-spacing: 0.5px;
 }
 
@@ -3429,18 +3448,18 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 .top-nav-right { position: relative; /* ⚙ 偏好菜单定位基准 */ }
-.cc-prefs { position: absolute; top: calc(100% + 6px); right: 0; z-index: 300; background: var(--app-panel-strong); border: 1px solid var(--app-border-strong); border-radius: 10px; padding: 5px; min-width: 170px; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; }
-.cc-prefs-ver { font-size: 11px; color: var(--app-text-soft); padding: 4px 10px; border-bottom: 1px solid var(--app-border); margin-bottom: 4px; }
-.cc-prefs button { border: none; background: transparent; color: var(--app-text); text-align: left; padding: 7px 10px; font-size: 13px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+.cc-prefs { position: absolute; top: calc(100% + 6px); right: 0; z-index: 300; background: var(--app-panel-strong); border: 1px solid var(--app-border-strong); border-radius: var(--app-radius-sm); padding: 5px; min-width: 170px; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; }
+.cc-prefs-ver { font-size: var(--app-fs-xs); color: var(--app-text-soft); padding: 4px 10px; border-bottom: 1px solid var(--app-border); margin-bottom: 4px; }
+.cc-prefs button { border: none; background: transparent; color: var(--app-text); text-align: left; padding: 7px 10px; font-size: var(--app-fs-md); border-radius: 7px; cursor: pointer; white-space: nowrap; }
 .cc-prefs button:hover { background: var(--app-panel-soft); }
 
 .top-nav-user { display: inline-flex; align-items: center; gap: 4px; }
-.top-nav-cloudfail { color: #ff8a80; font-size: 13px; animation: cloudfailPulse 1.2s ease-in-out infinite; }
+.top-nav-cloudfail { color: #ff8a80; font-size: var(--app-fs-md); animation: cloudfailPulse 1.2s ease-in-out infinite; }
 @keyframes cloudfailPulse { 50% { opacity: 0.45; } }
-.top-nav-user-name { font-size: 12.5px; color: var(--app-accent-text, #6fb0ff); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-nav-user-name { font-size: var(--app-fs-md); color: var(--app-accent-text, #6fb0ff); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .top-nav-ver {
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: var(--app-text-soft);
     opacity: 0.7;
     margin-right: 4px;
@@ -3456,10 +3475,10 @@ g.drag-fx-layer circle[stroke-dasharray] {
     justify-content: center;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     color: var(--app-text-muted);
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     transition: color 0.15s, background 0.15s;
 }
 
@@ -3479,7 +3498,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     flex-direction: column;
     background: var(--app-bg);
     color: var(--app-text);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
 }
 
 /* 工具栏（8pu 式两行）：上行 = 工具页签 + 播放/生成动图/更多；下行 = 页签对应的工具组 */
@@ -3540,7 +3559,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 .cc-tools-label {
     color: var(--app-accent-text);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     font-weight: 600;
     flex: none;
 }
@@ -3568,7 +3587,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     gap: 4px;
     cursor: pointer;
     color: var(--app-text-muted);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     white-space: nowrap;
 }
 
@@ -3589,7 +3608,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     min-width: 190px;
     background: var(--app-panel-strong);
     border: 1px solid var(--app-border-strong);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 5px;
     z-index: 300;
     box-shadow: 0 12px 34px rgba(0, 0, 0, 0.3);
@@ -3607,7 +3626,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border-radius: var(--cc-ctl-radius);
     font-size: var(--cc-ctl-fs, 12.5px);
     color: var(--app-text);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     padding: 7px 10px;
     cursor: pointer;
     text-align: left;
@@ -3675,7 +3694,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 .cc-cp-menu button small {
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
 }
 
 .cc-cp-menu button:hover:not(:disabled) {
@@ -3710,14 +3729,14 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border: 1px solid var(--app-border);
     border-radius: 7px;
     color: var(--app-text);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     cursor: pointer;
 }
 
 .cc-cp-accrow button.on {
     border-color: var(--app-accent);
     color: var(--app-accent-text);
-    background: rgba(243, 186, 98, 0.09);
+    background: var(--app-accent-09);
 }
 
 .cc-cp-accrow button:disabled {
@@ -3736,7 +3755,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border: 1px solid var(--app-border);
     border-radius: 7px;
     color: var(--app-text);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 6px 12px;
     cursor: pointer;
 }
@@ -3744,7 +3763,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cp-rhythms button.on {
     border-color: var(--app-accent);
     color: var(--app-accent-text);
-    background: rgba(243, 186, 98, 0.09);
+    background: var(--app-accent-09);
 }
 
 .cc-cp-tabs {
@@ -3765,7 +3784,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border: none;
     border-radius: 7px;
     color: var(--app-text-muted);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 5px 4px;
     cursor: pointer;
 }
@@ -3803,7 +3822,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     gap: 1px;
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     color: var(--app-text);
     cursor: pointer;
     padding: 6px 0 4px;
@@ -3823,7 +3842,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cp-deg.on {
     border-color: var(--app-accent);
     color: var(--app-accent-text);
-    background: rgba(243, 186, 98, 0.09);
+    background: var(--app-accent-09);
 }
 
 .cc-cp-accs {
@@ -3840,7 +3859,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border: 1px solid var(--app-border);
     border-radius: 5px;
     color: var(--app-text-muted);
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     cursor: pointer;
 }
 
@@ -3866,7 +3885,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border: 1px solid var(--app-border);
     border-radius: 7px;
     color: var(--app-text);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     padding: 5px 0;
     cursor: pointer;
     min-width: 34px;
@@ -3875,7 +3894,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cp-quals button.on {
     border-color: var(--app-accent);
     color: var(--app-accent-text);
-    background: rgba(243, 186, 98, 0.09);
+    background: var(--app-accent-09);
 }
 
 .cc-cp-quals button:disabled {
@@ -3899,7 +3918,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 .cc-cp-bass small {
     color: var(--app-text-soft);
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     margin-right: 2px;
 }
 
@@ -3910,7 +3929,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border: 1px solid var(--app-border);
     border-radius: 5px;
     color: var(--app-text-muted);
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
     cursor: pointer;
     padding: 0 3px;
 }
@@ -3937,7 +3956,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border: 1px solid var(--app-border);
     border-radius: 6px;
     color: var(--app-text-muted);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     cursor: pointer;
 }
 
@@ -3958,13 +3977,13 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 .cc-cp-typing {
     color: var(--app-accent-text);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     font-weight: 600;
 }
 
 .cc-cp-hint {
     color: var(--app-text-soft);
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
 }
 
 
@@ -3982,10 +4001,10 @@ g.drag-fx-layer circle[stroke-dasharray] {
     gap: 10px;
     background: var(--cc-accent-weak, rgba(61, 139, 255, 0.12));
     border: 1px solid var(--cc-accent, #3d8bff);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 7px 12px;
     margin-bottom: 12px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     color: var(--app-text);
     animation: ccModalIn 0.14s ease-out;
 }
@@ -4004,7 +4023,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border: 1px solid var(--app-border);
     border-radius: 4px;
     padding: 0 4px;
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: var(--app-text-soft);
 }
 
@@ -4053,9 +4072,9 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-guide {
     background: var(--app-panel-soft);
     border: 1px dashed var(--app-border-strong);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     color: var(--app-text-muted);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     line-height: 1.7;
     padding: 10px 14px;
     margin-bottom: 14px;
@@ -4085,7 +4104,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     padding: 7px 8px 6px;
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     color: var(--app-text);
     font-size: 15px;
     font-weight: 600;
@@ -4108,9 +4127,9 @@ g.drag-fx-layer circle[stroke-dasharray] {
     height: 36px;
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     color: var(--app-text-muted);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     cursor: pointer;
 }
 
@@ -4136,7 +4155,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     gap: 5px;
     color: var(--app-text-muted);
     white-space: nowrap;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 .cc-field select,
@@ -4147,7 +4166,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border-radius: 6px;
     color: var(--app-text);
     padding: 3px 6px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 .cc-field input[type="number"] {
@@ -4171,23 +4190,23 @@ g.drag-fx-layer circle[stroke-dasharray] {
     flex: 1;
     background: var(--app-panel);
     border: 1px solid var(--app-border);
-    border-radius: 14px;
+    border-radius: var(--app-radius-md);
     padding: 14px 10px 12px;
     min-width: 0;
 }
 
 /* ⚙ 设置面板：谱头摘要按钮 + 下拉面板（曲谱/和弦图两组，行式控件） */
-.cc-settings-btn { border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); background: var(--cc-panel-soft, rgba(230,237,242,0.05)); color: var(--cc-text, #dfe7ee); border-radius: var(--cc-radius, 8px); padding: 3px 10px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.cc-settings-btn { border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); background: var(--cc-panel-soft, rgba(230,237,242,0.05)); color: var(--cc-text, #dfe7ee); border-radius: var(--cc-radius, 8px); padding: 3px 10px; font-size: var(--app-fs-md); cursor: pointer; white-space: nowrap; }
 .cc-settings-btn:hover, .cc-settings-btn.on { border-color: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #6fb0ff); }
 .cc-settings { position: absolute; top: calc(100% + 6px); left: 0; z-index: 70; background: var(--cc-panel, #10161c); border: 1px solid var(--cc-line, rgba(230,237,242,0.16)); border-radius: 12px; padding: 10px 12px; min-width: 300px; max-width: min(420px, 92vw); box-shadow: 0 14px 40px rgba(0,0,0,0.45); display: flex; flex-direction: column; gap: 10px; }
 .cc-settings-group { display: flex; flex-direction: column; gap: 6px; }
 .cc-settings-group + .cc-settings-group { border-top: 1px solid var(--cc-line, rgba(230,237,242,0.12)); padding-top: 10px; }
-.cc-settings-label { font-size: 11px; color: var(--cc-muted, #9fb2c0); letter-spacing: 0.5px; }
+.cc-settings-label { font-size: var(--app-fs-xs); color: var(--cc-muted, #9fb2c0); letter-spacing: 0.5px; }
 /* 两列网格：标签列固定宽，所有行控件起点同一条线 */
-.cc-settings-row { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 8px; font-size: 13px; color: var(--cc-text, #dfe7ee); }
+.cc-settings-row { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 8px; font-size: var(--app-fs-md); color: var(--cc-text, #dfe7ee); }
 .cc-settings-k { color: var(--cc-muted, #9fb2c0); }
 .cc-settings-v { display: inline-flex; align-items: center; gap: 6px; }
-.cc-settings-row select, .cc-settings-row input[type="number"] { background: var(--cc-input, #0d1319); border: 1px solid var(--cc-line, rgba(230,237,242,0.2)); color: var(--cc-text, #dfe7ee); border-radius: 6px; padding: 2px 6px; font-size: 13px; }
+.cc-settings-row select, .cc-settings-row input[type="number"] { background: var(--cc-input, #0d1319); border: 1px solid var(--cc-line, rgba(230,237,242,0.2)); color: var(--cc-text, #dfe7ee); border-radius: 6px; padding: 2px 6px; font-size: var(--app-fs-md); }
 .cc-settings-row input[type="number"] { width: 64px; }
 .cc-settings-seg { display: inline-flex; border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); border-radius: 7px; overflow: hidden; }
 .cc-settings-seg { border-radius: var(--cc-ctl-radius); }
@@ -4312,7 +4331,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     .menu { padding: 12px 0; }
 
     /* 复制模式条：窄屏允许换行，长提示词在条内折行，不再把标题挤出屏 */
-    .cc-copybar { flex-wrap: wrap; gap: 4px 8px; padding: 6px 10px; font-size: 12px; }
+    .cc-copybar { flex-wrap: wrap; gap: 4px 8px; padding: 6px 10px; font-size: var(--app-fs-sm); }
     .cc-copybar-state { white-space: normal; line-height: 1.5; }
     .app-main { padding: 2px !important; }
     .cc-page .cc-body { padding: 2px; }
@@ -4324,7 +4343,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
     /* 拍格和弦记号全是固定 px（deg 24/num 19…），窄屏拍格变窄会溢出——整体等比缩（同钢琴 v125 zoom 方案） */
     .cc-beat .csign, .cc-beat .cc-glyph { zoom: 0.78; }
-    .cc-cell-lyrics { font-size: 10px; }
+    .cc-cell-lyrics { font-size: var(--app-fs-2xs); }
 }
 
 /* 641-800px（横屏手机/小平板）：拍格仍偏窄，记号轻缩一档 */
@@ -4334,12 +4353,12 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 .cc-line-no {
     color: var(--app-text-soft);
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
 }
 
 .cc-line-section {
     color: var(--app-accent);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     font-weight: 600;
     cursor: pointer;
     max-width: 90px;
@@ -4484,7 +4503,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 /* 跳房子：小节上方数字+短横 */
 .cc-house {
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     color: var(--app-accent-text);
     padding: 0 6px 0 2px;
     border-top: 1.5px solid var(--app-accent);
@@ -4497,7 +4516,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     flex: 0 0 44px;
     margin-left: 6px;
     border: 1.5px dashed var(--app-border-strong);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     background: transparent;
     color: var(--app-text-soft);
     font-size: 17px;
@@ -4543,7 +4562,7 @@ html[data-theme="light"] .cc-page {
     flex: 1;
     position: relative;
     border: 1.5px solid var(--cc-grid-ink);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     cursor: pointer;
     min-width: 0;
     display: flex;
@@ -4631,7 +4650,7 @@ html[data-theme="light"] .cc-page {
 }
 
 .cc-chordsign-compact {
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     font-weight: 600;
     white-space: nowrap;
 }
@@ -4647,7 +4666,7 @@ html[data-theme="light"] .cc-page {
 
 .cc-glyph.empty {
     opacity: 0.38;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     transition: opacity 0.12s;
 }
 
@@ -4677,7 +4696,7 @@ html[data-theme="light"] .cc-page {
     border: none;
     border-bottom: 1px dashed transparent;
     color: var(--app-text);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     padding: 3px 4px;
     text-align: center;
 }
@@ -4708,7 +4727,7 @@ html[data-theme="light"] .cc-page {
     min-width: 168px;
     background: var(--app-panel-strong);
     border: 1px solid var(--app-border-strong);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 5px;
     box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
     display: flex;
@@ -4721,7 +4740,7 @@ html[data-theme="light"] .cc-page {
     border: none;
     border-radius: 7px;
     color: var(--app-text);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     padding: 7px 10px;
     cursor: pointer;
     text-align: left;
@@ -4738,7 +4757,7 @@ html[data-theme="light"] .cc-page {
 
 .cc-mmenu-label {
     color: var(--app-text-soft);
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     padding: 6px 10px 2px;
 }
 
@@ -4754,7 +4773,7 @@ html[data-theme="light"] .cc-page {
     border: 1px solid var(--app-border);
     border-radius: 6px;
     color: var(--app-text);
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
     padding: 4px 8px;
     cursor: pointer;
 }
@@ -4784,7 +4803,7 @@ html[data-theme="light"] .cc-page {
 /* 输入中提示 */
 .cc-typing {
     color: var(--app-accent-text);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     font-weight: 600;
     margin-left: 8px;
 }
@@ -4792,7 +4811,7 @@ html[data-theme="light"] .cc-page {
 
 .cc-hint {
     color: var(--app-text-soft);
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
 }
 
 /* 右下角指板预览悬浮卡（8pu 无侧栏；舞台不占版面） */
@@ -4806,9 +4825,9 @@ html[data-theme="light"] .cc-page {
     gap: 6px;
     background: var(--app-panel-strong);
     border: 1px solid var(--app-border-strong);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     color: var(--app-text);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 6px 12px;
     cursor: pointer;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
@@ -4882,7 +4901,7 @@ html[data-theme="light"] .cc-page {
 
 .cc-stage-pos {
     color: var(--app-text-soft);
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-stage svg {
@@ -4892,7 +4911,7 @@ html[data-theme="light"] .cc-page {
 
 .cc-stage-empty {
     color: var(--app-text-soft);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     text-align: center;
     padding: 18px;
 }
@@ -4917,7 +4936,7 @@ html[data-theme="light"] .cc-page {
 
 .cc-panel-pos {
     color: var(--app-accent-text);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     font-weight: 600;
 }
 
@@ -4934,7 +4953,7 @@ html[data-theme="light"] .cc-page {
     border-radius: 6px;
     color: var(--app-text-muted);
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-panel-actions button:hover:not(:disabled) {
@@ -4960,7 +4979,7 @@ html[data-theme="light"] .cc-page {
 
 .cc-panel-title {
     color: var(--app-text-soft);
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-grid7 {
@@ -4984,7 +5003,7 @@ html[data-theme="light"] .cc-page {
 .cc-chip {
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     color: var(--app-text);
     cursor: pointer;
     padding: 7px 0 6px;
@@ -5013,13 +5032,13 @@ html[data-theme="light"] .cc-page {
 .cc-chip.sm {
     flex-direction: row;
     padding: 5px 11px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
 }
 
 .cc-chip.xs {
     display: inline-flex;
     padding: 1px 7px;
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-acc-group {
@@ -5034,7 +5053,7 @@ html[data-theme="light"] .cc-page {
 }
 
 .cc-chip-sub {
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: var(--app-text-soft);
 }
 
@@ -5044,7 +5063,7 @@ html[data-theme="light"] .cc-page {
 
 .cc-panel-preview {
     color: var(--app-accent-text);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     border-top: 1px dashed var(--app-border);
     padding-top: 8px;
 }
@@ -5170,7 +5189,7 @@ html[data-theme="light"] .cc-cell-tools {
     border: 1px solid var(--app-border-strong);
     border-radius: 50%;
     color: var(--app-text-muted);
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     line-height: 1;
     cursor: pointer;
     padding: 0;
@@ -5197,7 +5216,7 @@ html[data-theme="light"] .cc-cell-tools {
     left: 12px;
     bottom: 10px;
     z-index: 901;
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: var(--app-text-soft);
     opacity: 0.6;
     pointer-events: none;
@@ -5211,7 +5230,7 @@ html[data-theme="light"] .cc-cell-tools {
 }
 
 .cc-key-stepper b {
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     color: var(--cc-accent-text, #2f7ae8);
     background: var(--app-panel-soft);
     border: 1px solid var(--app-border-strong);
@@ -5228,7 +5247,7 @@ html[data-theme="light"] .cc-cell-tools {
     border: var(--cc-ctl-border, 1px solid var(--app-border));
     border-radius: var(--cc-ctl-radius);
     color: var(--app-text);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     cursor: pointer;
 }
 
@@ -5239,12 +5258,12 @@ html[data-theme="light"] .cc-cell-tools {
 
 .cc-key-stepper .cc-key-clear {
     color: var(--app-text-soft);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 /* 谱内转调标记 */
 .cc-keymark {
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
     color: var(--cc-accent-text, #2f7ae8);
     font-weight: 600;
     background: var(--app-panel-strong);
@@ -5268,7 +5287,7 @@ html[data-theme="light"] .cc-cell-tools {
 .cc-dyn-stage {
     background: var(--app-panel);
     border: 1px solid var(--app-border);
-    border-radius: 14px;
+    border-radius: var(--app-radius-md);
     padding: 16px;
     min-height: 300px;
     display: flex;
@@ -5302,9 +5321,9 @@ html[data-theme="light"] .cc-cell-tools {
 .cc-dyn-chord {
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     color: var(--app-text);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     font-weight: 600;
     padding: 8px 13px;
     cursor: pointer;
@@ -5321,7 +5340,7 @@ html[data-theme="light"] .cc-cell-tools {
 /* 工具行：文本/着色/不适用态 */
 .cc-tools-label2 {
     color: var(--app-text-muted);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     flex: none;
 }
 
@@ -5332,7 +5351,7 @@ html[data-theme="light"] .cc-cell-tools {
     border: 1px solid var(--app-border);
     border-radius: 7px;
     color: var(--app-text);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     padding: 6px 10px;
 }
 
@@ -5372,14 +5391,14 @@ html[data-theme="light"] .cc-cell-tools {
 
 .cc-tools-na {
     color: var(--app-text-soft);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 8px 2px;
 }
 
 /* 配图槽 */
 .cc-attach-img {
     max-width: 100%;
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     display: block;
 }
 
@@ -5393,9 +5412,9 @@ html[data-theme="light"] .cc-cell-tools {
     gap: 6px;
     background: transparent;
     border: 1.5px dashed var(--app-border-strong);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     color: var(--app-text-muted);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     cursor: pointer;
     padding: 16px 8px;
 }
@@ -5406,7 +5425,7 @@ html[data-theme="light"] .cc-cell-tools {
 }
 
 .cc-attach-add small {
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
     color: var(--app-text-soft);
 }
 
@@ -5477,7 +5496,7 @@ html[data-theme="light"] .cc-cell-tools {
     border: 1px solid var(--app-border);
     border-radius: 7px;
     color: var(--app-text-muted);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 4px 12px;
     cursor: pointer;
 }
@@ -5493,7 +5512,7 @@ html[data-theme="light"] .cc-cell-tools {
     background: transparent;
     border: none;
     color: var(--app-text-soft);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
     border-radius: 6px;
     width: 26px;
@@ -5523,7 +5542,7 @@ html[data-theme="light"] .cc-cell-tools {
     background: transparent;
     border: none;
     color: var(--app-text-soft);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     cursor: pointer;
     border-radius: 7px;
     padding: 6px 10px;
@@ -5541,8 +5560,8 @@ html[data-theme="light"] .cc-cell-tools {
     box-sizing: border-box;
     height: 32px;
     padding: 0 8px;
-    font-size: 12.5px;
-    border-radius: 8px;
+    font-size: var(--app-fs-md);
+    border-radius: var(--app-radius-xs);
     border: 1px solid var(--app-border);
     background: var(--app-bg-secondary);
     color: var(--app-text);
@@ -5550,7 +5569,7 @@ html[data-theme="light"] .cc-cell-tools {
 
 .cc-tabs-row .button.sm {
     height: 32px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 0 12px;
 }
 
@@ -5567,10 +5586,10 @@ html[data-theme="light"] .cc-cell-tools {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     padding: 0 9px;
     cursor: pointer;
     color: var(--app-text-muted);
@@ -5579,7 +5598,7 @@ html[data-theme="light"] .cc-cell-tools {
 .cc-freq-chord,
 .cc-freq-tool {
     height: 36px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
 }
 
 .cc-key-stepper button {
@@ -5592,7 +5611,7 @@ html[data-theme="light"] .cc-cell-tools {
     margin-left: 6px;
     color: var(--app-text-soft);
     font-weight: 400;
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
 }
 
 /* 和弦配图图例：一个和弦一张指法图 */
@@ -5604,7 +5623,7 @@ html[data-theme="light"] .cc-cell-tools {
     display: flex;
     align-items: baseline;
     gap: 8px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     font-weight: 700;
     color: var(--app-text);
     margin-bottom: 8px;
@@ -5613,7 +5632,7 @@ html[data-theme="light"] .cc-cell-tools {
 .cc-legend-title small {
     font-weight: 400;
     color: var(--app-text-soft);
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
 }
 
 .cc-legend-row {
@@ -5625,7 +5644,7 @@ html[data-theme="light"] .cc-cell-tools {
 .cc-legend-item {
     width: 118px;
     border: 1px dashed var(--app-border-strong);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 6px 6px 8px;
     text-align: center;
     background: var(--app-panel-soft);
@@ -5677,7 +5696,7 @@ html[data-theme="light"] .cc-cell-tools {
     color: var(--cc-text, #dfe7ee);
     border-radius: var(--cc-radius, 6px);
     padding: 3px 9px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     cursor: pointer;
 }
 
@@ -5704,7 +5723,7 @@ html[data-theme="light"] .cc-cell-tools {
     border: 1px solid var(--app-border);
     border-radius: 7px;
     color: var(--app-text-muted);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     padding: 4px 10px;
     cursor: pointer;
 }
@@ -5722,7 +5741,7 @@ html[data-theme="light"] .cc-cell-tools {
 .cc-modal-sub {
     color: var(--app-text-soft);
     font-weight: 400;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 /* 应用内对话框（替代原生 prompt/confirm/alert） */
@@ -5737,11 +5756,11 @@ html[data-theme="light"] .cc-cell-tools {
 
 .cc-dialog-input {
     width: 100%;
-    background: var(--app-panel-soft, rgba(255, 255, 255, 0.05));
+    background: var(--app-panel-soft, var(--app-sheen));
     border: 1px solid var(--app-border-strong);
     border-radius: 9px;
     color: var(--app-text);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     padding: 9px 11px;
     outline: none;
 }
@@ -5774,7 +5793,7 @@ html[data-theme="light"] .cc-cell-tools {
     gap: 1px;
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     color: var(--app-text);
     font-size: 16px;
     padding: 7px 0 5px;
@@ -5804,7 +5823,7 @@ html[data-theme="light"] .cc-cell-tools {
     border: 1px solid var(--app-border);
     border-radius: 7px;
     color: var(--app-text);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 5px 8px;
     cursor: pointer;
 }
@@ -5821,7 +5840,7 @@ html[data-theme="light"] .cc-cell-tools {
     gap: 6px;
     padding: 10px;
     background: var(--app-bg-secondary);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
 }
 
 .cc-ae-preview svg {
@@ -5830,7 +5849,7 @@ html[data-theme="light"] .cc-cell-tools {
 }
 
 .cc-ae-cap {
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     font-weight: 600;
     color: var(--cc-accent-text, #2f7ae8);
 }
@@ -5850,9 +5869,9 @@ html[data-theme="light"] .cc-cell-tools {
     gap: 4px;
     background: var(--app-bg-secondary);
     border: 1.5px solid var(--app-border);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     color: var(--app-text-muted);
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
     padding: 8px 6px;
     cursor: pointer;
 }
@@ -5894,13 +5913,13 @@ html[data-theme="light"] .cc-cell-tools {
     gap: 8px;
     background: var(--app-panel-strong);
     border: 1px solid var(--app-accent);
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     padding: 6px 8px 6px 16px;
     box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3);
 }
 
 .attach-bar-label {
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     font-weight: 600;
     color: var(--app-accent-text);
 }
@@ -5921,7 +5940,7 @@ html[data-theme="light"] .cc-cell-tools {
     padding: 26px 14px 22px;
     background: var(--app-bg-secondary);
     border: 1.5px solid var(--app-border);
-    border-radius: 14px;
+    border-radius: var(--app-radius-md);
     cursor: pointer;
     transition: border-color 0.14s, transform 0.14s, box-shadow 0.14s;
 }
@@ -5943,7 +5962,7 @@ html[data-theme="light"] .cc-cell-tools {
 }
 
 .cc-ap-item small {
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     color: var(--app-text-soft);
     text-align: center;
     line-height: 1.5;
@@ -5982,7 +6001,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 /* 段落标记：小节开头的文字（8pu 式），双击删除（悬停划线提示） */
 .cc-sectionmark {
     color: var(--cc-accent-text, #2f7ae8);
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
     font-weight: 700;
     cursor: pointer;
     user-select: none;
@@ -6031,16 +6050,16 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 .cc-display-seg button {
     padding: 6px 12px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: 7px;
 }
 
 .cc-preview-tabs button {
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     color: var(--app-text-muted);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     padding: 6px 16px;
     cursor: pointer;
 }
@@ -6083,7 +6102,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     border: var(--cc-ctl-border, 1px solid var(--app-border));
     border-radius: var(--cc-ctl-radius);
     color: var(--app-text-muted);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     padding: 6px 12px;
     cursor: pointer;
 }
@@ -6095,7 +6114,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 .cc-songs-btn small {
     color: var(--app-text-soft);
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     background: var(--app-panel-soft);
     border-radius: 20px;
     padding: 1px 7px;
@@ -6121,9 +6140,9 @@ html[data-theme="light"] .button.sm.edit-enter {
     width: 190px;
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     color: var(--app-text);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 7px 10px;
 }
 
@@ -6136,7 +6155,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     padding: 36px 12px;
     text-align: center;
     color: var(--app-text-soft);
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 .cc-songs-list {
@@ -6178,7 +6197,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     font-weight: 600;
     color: var(--app-text);
     white-space: nowrap;
@@ -6188,7 +6207,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 .cc-song-cur {
     flex: none;
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
     font-weight: 500;
     color: var(--cc-accent-text, #2f7ae8);
     border: 1px solid var(--cc-accent, #3d8bff);
@@ -6203,7 +6222,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     border: 1px solid var(--cc-accent, #3d8bff);
     border-radius: 7px;
     color: var(--app-text);
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     font-weight: 600;
     padding: 5px 8px;
 }
@@ -6218,7 +6237,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     flex-wrap: wrap;
     margin-top: 4px;
     color: var(--app-text-soft);
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-song-meta .cc-song-time {
@@ -6238,7 +6257,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 /* ============ 谱头：调 / 移调 / 谱中转调 / 生效调 ============ */
 .cc-transpose.on {
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
 }
 
 .cc-transpose.on select {
@@ -6254,7 +6273,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-effective {
     display: inline-flex;
     align-items: center;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     font-weight: 600;
     color: var(--cc-accent-text, #2f7ae8);
     background: var(--cc-accent-weak, rgba(61, 139, 255, 0.12));
@@ -6267,7 +6286,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-menu-item small {
     margin-left: 8px;
     color: var(--app-text-soft);
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
 }
 
 .cc-menu-item small.cc-menu-warn {
@@ -6289,7 +6308,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     width: 100%;
     resize: vertical;
     font-family: inherit;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     line-height: 1.5;
 }
 
@@ -6303,7 +6322,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     --cc-radius: 3px;
     --cc-radius-sm: 2px;
     --cc-ctl-h: 27px;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 /* —— 工具栏 —— */
@@ -6330,7 +6349,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 }
 
 .cc-page .cc-tooltabs button {
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     padding: 5px 12px 4px;
     border-radius: 0;
 }
@@ -6339,7 +6358,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-page .cc-preview-bar .button {
     height: var(--cc-ctl-h);
     padding: 0 10px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius);
     box-shadow: none;
 }
@@ -6349,7 +6368,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-page .cc-dyn-controls select {
     height: var(--cc-ctl-h);
     padding: 0 6px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius-sm);
 }
 
@@ -6359,11 +6378,11 @@ html[data-theme="light"] .button.sm.edit-enter {
 }
 
 .cc-page .cc-tools-label {
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-page .cc-iconbtn {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     gap: 3px;
 }
 
@@ -6376,7 +6395,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 }
 
 .cc-page .cc-key-stepper b {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     padding: 3px 7px;
     border-radius: var(--cc-radius-sm);
 }
@@ -6384,7 +6403,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-page .cc-key-stepper button {
     width: 26px;
     height: 24px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius-sm);
 }
 
@@ -6392,14 +6411,14 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-page .cc-songs-btn {
     height: var(--cc-ctl-h);
     padding: 0 10px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     gap: 6px;
     border-radius: var(--cc-radius);
 }
 
 .cc-page .cc-songs-btn small {
     border-radius: var(--cc-radius-sm);
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
     padding: 0 6px;
 }
 
@@ -6424,14 +6443,14 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 .cc-page .cc-songs-actions .button {
     height: var(--cc-ctl-h);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius);
     box-shadow: none;
 }
 
 .cc-page .cc-songs-search {
     height: var(--cc-ctl-h);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius-sm);
 }
 
@@ -6441,18 +6460,18 @@ html[data-theme="light"] .button.sm.edit-enter {
 }
 
 .cc-page .cc-song-name {
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 .cc-page .cc-song-cur {
     border-radius: var(--cc-radius-sm);
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     padding: 0 5px;
     line-height: 14px;
 }
 
 .cc-page .cc-song-meta {
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     gap: 10px;
     margin-top: 3px;
 }
@@ -6461,7 +6480,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     height: 24px;
     min-width: 28px;
     padding: 0 7px;
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
     border-radius: var(--cc-radius-sm);
     box-shadow: none;
 }
@@ -6492,13 +6511,13 @@ html[data-theme="light"] .button.sm.edit-enter {
 }
 
 .cc-page .cc-meta {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     gap: 4px;
 }
 
 .cc-page .cc-meta select,
 .cc-page .cc-meta input[type="number"] {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     border-radius: var(--cc-radius-sm);
 }
 
@@ -6508,11 +6527,11 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 .cc-page .cc-transpose,
 .cc-page .cc-keyhere {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-page .cc-effective {
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
     border-radius: var(--cc-radius-sm);
     padding: 1px 8px;
 }
@@ -6540,7 +6559,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 }
 
 .cc-page .cc-cell-lyrics {
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-page .cc-sectionmark,
@@ -6550,7 +6569,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 .cc-page .cc-keymark {
     border-radius: var(--cc-radius-sm);
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
     padding: 0 4px;
     line-height: 14px;
 }
@@ -6559,7 +6578,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-page .cc-freq-chord {
     border-radius: var(--cc-radius);
     padding: 5px 8px 4px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
 }
 
 .cc-page .cc-freq-chord small {
@@ -6578,12 +6597,12 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-page .cc-preview-tabs button {
     border-radius: var(--cc-radius-sm);
     padding: 4px 12px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
 }
 
 .cc-page .cc-display-seg button {
     padding: 4px 10px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     border-radius: var(--cc-radius-sm);
 }
 
@@ -6597,11 +6616,11 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-page .cc-menu-item {
     border-radius: var(--cc-radius-sm);
     padding: 5px 9px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
 }
 
 .cc-page .cc-menu-item small {
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
     margin-left: 6px;
 }
 
@@ -6616,11 +6635,11 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 .cc-page .cc-dialog-input {
     border-radius: var(--cc-radius-sm);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
 }
 
 .cc-page .cc-dialog-text {
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
 }
 
 /* 亮色下去掉卡片投影（扁平：靠 1px 边线分层，不靠阴影） */
@@ -6636,7 +6655,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 .cc-page .cc-modal .button {
     height: var(--cc-ctl-h);
     padding: 0 12px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius);
     box-shadow: none;
 }
@@ -6683,7 +6702,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     min-width: 48px;
     height: 30px;
     padding: 0 8px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius);
     white-space: nowrap;
 }
@@ -6695,7 +6714,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 .cc-page .cc-cp-accrow button {
     height: 30px;
     min-width: 56px;
-    font-size: 14px;
+    font-size: var(--app-fs-lg);
     border-radius: var(--cc-radius);
 }
 
@@ -6705,7 +6724,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 
 .cc-page .cc-cp-rhythms button {
     height: 30px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius);
     white-space: nowrap;
 }
@@ -6720,7 +6739,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     white-space: nowrap;
     /* 页签文字绝不折行（低音（转位）断成两行就是这个缺的） */
     padding: 7px 10px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius);
 }
 
@@ -6732,23 +6751,23 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     margin-left: 0;
     flex: none;
     padding: 7px 10px;
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     border-radius: var(--cc-radius);
     white-space: nowrap;
 }
 
 /* 变化音行（♭9 ♯9 ♭11 ♯11 ♭13 ♯13）：可叠加开关，样式沿用变音行 */
 .cc-page .cc-cp-altrow .cc-cp-typing {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 /* 拍格里变化音和弦名较长（57b9b13）：自适应缩小，不溢出拍格 */
 .cc-chordsign.long {
-    font-size: 13px;
+    font-size: var(--app-fs-md);
 }
 
 .cc-chordsign-compact.long {
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
 }
 
 /* —— 就地和弦面板 v24.2：质量/变音/变化音整理成带行标签的分组表 —— */
@@ -6769,7 +6788,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 .cc-page .cc-cp-qlabel {
-    font-size: 10.5px;
+    font-size: var(--app-fs-xs);
     color: var(--app-text-soft);
     text-align: right;
     padding-right: 2px;
@@ -6786,7 +6805,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     border: 1px solid var(--app-border);
     border-radius: var(--cc-radius);
     color: var(--app-text);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     white-space: nowrap;
     cursor: pointer;
 }
@@ -6810,13 +6829,13 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 .cc-page .cc-cp-qgroup .cc-cp-hint {
     grid-column: 5 / -1;
     /* 提示文字横跨剩余列 */
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
     color: var(--app-text-soft);
     white-space: nowrap;
 }
 
 .cc-page .cc-cp-qgroup .cc-cp-typing {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     color: var(--cc-accent-text);
     font-weight: 600;
     white-space: nowrap;
@@ -6928,7 +6947,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 .csign-sup .csign-num { font-size: 0.7em; }
 
 .cc-beat .csign-bass {
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-beat .csign-sm .csign-deg {
@@ -6936,13 +6955,13 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 .cc-beat .csign-sm .csign-sfx {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-beat .csign-sm.csign-sup .csign-sfx {
     font-size: 9.5px;
 }
-.cc-beat .csign-sm.csign-sup .csign-num { font-size: 12.5px; }
+.cc-beat .csign-sm.csign-sup .csign-num { font-size: var(--app-fs-md); }
 .csign-sm.csign-sup .csign-num { font-size: 0.68em; }
 
 /* 休止/延音字跟随放大，保持行内节奏一致 */
@@ -6960,7 +6979,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 .cc-freq-chord .csign-sup .csign-sfx {
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
 }
 
 .cc-dyn-chord .csign-deg {
@@ -6968,7 +6987,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 .cc-dyn-chord .csign-sfx {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-dyn-chord .csign-sup .csign-sfx {
@@ -7010,11 +7029,11 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     gap: 7px;
     height: 34px;
     padding: 0 12px 0 10px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     border: 1px solid var(--app-border-strong);
     background: var(--app-panel-strong);
     color: var(--app-text);
-    font-size: 12.5px;
+    font-size: var(--app-fs-md);
     font-weight: 600;
     letter-spacing: 0.3px;
     cursor: pointer;
@@ -7048,10 +7067,10 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     min-width: 18px;
     height: 18px;
     padding: 0 5px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     background: linear-gradient(145deg, rgba(243, 186, 98, 0.95), rgba(222, 157, 66, 0.95));
     color: #241a08;
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     font-weight: 700;
     display: inline-flex;
     align-items: center;
@@ -7080,7 +7099,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     max-height: calc(100vh - 110px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    border-radius: 14px;
+    border-radius: var(--app-radius-md);
     border: 1px solid var(--app-border-strong);
     background: var(--app-panel-strong);
     box-shadow: 0 14px 38px rgba(0, 0, 0, 0.3);
@@ -7121,13 +7140,13 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 
 .stitch-panel-title em {
     font-style: normal;
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     font-weight: 600;
     color: var(--app-accent-text);
-    background: rgba(243, 186, 98, 0.12);
+    background: var(--app-accent-12);
     border: 1px solid rgba(243, 186, 98, 0.3);
     padding: 1px 8px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
 }
 
 .stitch-panel-actions {
@@ -7138,11 +7157,11 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 .stitch-btn {
     height: 28px;
     padding: 0 12px;
-    border-radius: 999px;
+    border-radius: var(--app-radius-pill);
     border: 1px solid var(--app-border);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--app-sheen);
     color: var(--app-text-muted);
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.16s ease;
@@ -7185,7 +7204,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 /* 拼接预览：横向可滚（段多时保最小可读宽度），纵向按比例 */
 .stitch-preview {
     border: 1px solid var(--app-border);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     overflow-x: auto;
     overscroll-behavior-x: contain;
     background: var(--app-bg-secondary);
@@ -7257,7 +7276,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     border: 1px solid rgba(243, 186, 98, 0.5);
     background: rgba(10, 14, 20, 0.72);
     color: #ffd489;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     line-height: 1;
     cursor: pointer;
     display: flex;
@@ -7293,7 +7312,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 
 .stitch-panel-foot {
     padding: 8px 2px 2px;
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     color: var(--app-text-soft);
     text-align: center;
 }
@@ -7314,7 +7333,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 
 .stitch-empty p {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     font-weight: 600;
     color: var(--app-text-muted);
 }
@@ -7375,7 +7394,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     z-index: 60;
     background: var(--cc-panel, #10161c);
     border: 1px solid rgba(230, 237, 242, 0.22);
-    border-radius: 10px;
+    border-radius: var(--app-radius-sm);
     padding: 6px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
     white-space: nowrap;
@@ -7403,7 +7422,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     border: 1px solid var(--cc-border, rgba(230, 237, 242, 0.18));
     background: transparent;
     color: var(--cc-text, #c4d1db);
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     border-radius: 5px;
     padding: 1px 7px;
     cursor: pointer;
@@ -7427,7 +7446,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 
 .cc-figmodal-box {
     background: var(--cc-panel, #10161c);
-    border: 1px solid rgba(230, 237, 242, 0.16);
+    border: 1px solid var(--app-line-strong);
     border-radius: 12px;
     padding: 12px 14px;
     max-width: 92vw;
@@ -7439,7 +7458,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     color: #dfe7ee;
     margin-bottom: 8px;
 }
@@ -7461,7 +7480,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .cc-figeditor-stage svg {
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     background: rgba(255, 255, 255, 0.02);
 }
 
@@ -7480,7 +7499,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .cc-figeditor-row.hint {
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     color: #8ba0b0;
     max-width: 180px;
 }
@@ -7489,7 +7508,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     border: 1px solid rgba(230, 237, 242, 0.2);
     background: transparent;
     color: #c4d1db;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     border-radius: 6px;
     padding: 3px 9px;
     cursor: pointer;
@@ -7514,7 +7533,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .cc-figstart {
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     color: #8ba0b0;
     min-width: 40px;
     text-align: center;
@@ -7530,12 +7549,12 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 /* 挑选面板(形状候选) */
 .cc-figpicker {
     margin-top: 10px;
-    border-top: 1px solid rgba(230, 237, 242, 0.12);
+    border-top: 1px solid var(--app-line);
     padding-top: 8px;
 }
 
 .cc-figpicker-title {
-    font-size: 11.5px;
+    font-size: var(--app-fs-sm);
     color: #8ba0b0;
     margin-bottom: 6px;
 }
@@ -7551,9 +7570,9 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    border: 1px solid rgba(230, 237, 242, 0.16);
+    border: 1px solid var(--app-line-strong);
     background: transparent;
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     padding: 5px 7px;
     cursor: pointer;
 }
@@ -7564,12 +7583,12 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 
 .cc-figpick em {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: #f3ba62;
 }
 
 .cc-figpick small {
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: #8ba0b0;
     max-width: 64px;
     overflow: hidden;
@@ -7580,7 +7599,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 /* 存形状面板 */
 .cc-figsave {
     margin-top: 10px;
-    border-top: 1px solid rgba(230, 237, 242, 0.12);
+    border-top: 1px solid var(--app-line);
     padding-top: 8px;
     display: flex;
     flex-direction: column;
@@ -7591,7 +7610,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     color: #c4d1db;
     flex-wrap: wrap;
 }
@@ -7603,11 +7622,11 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     color: #dfe7ee;
     border-radius: 5px;
     padding: 2px 6px;
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
 }
 
 .cc-figsave-row .hint {
-    font-size: 11px;
+    font-size: var(--app-fs-xs);
     color: #8ba0b0;
 }
 
@@ -7618,8 +7637,8 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     left: 12px;
     z-index: 60;
     background: var(--background-color, #10161c);
-    border: 1px solid rgba(230, 237, 242, 0.16);
-    border-radius: 10px;
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-sm);
     padding: 10px 12px;
     max-width: 560px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
@@ -7630,7 +7649,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .attach-shapes-title {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     color: #9fb2c0;
     margin-bottom: 8px;
 }
@@ -7646,9 +7665,9 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    border: 1px solid rgba(230, 237, 242, 0.16);
+    border: 1px solid var(--app-line-strong);
     background: transparent;
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     padding: 5px 7px;
     cursor: pointer;
     color: inherit;
@@ -7660,12 +7679,12 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 
 .attach-shape em {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: #f3ba62;
 }
 
 .attach-shape small {
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: #8ba0b0;
     max-width: 64px;
     overflow: hidden;
@@ -7702,8 +7721,8 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 /* 宽度随板内容自适应：品窗短弹窗就窄，不留大空挡；上限防溢屏 */
 .figbe-box {
     background: var(--cc-panel, #10161c);
-    border: 1px solid rgba(230, 237, 242, 0.16);
-    border-radius: 14px;
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-md);
     padding: 14px 18px;
     width: fit-content;
     min-width: 480px;
@@ -7731,7 +7750,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .figbe-title {
-    font-size: 13px;
+    font-size: var(--app-fs-md);
     color: #dfe7ee;
     margin-right: auto;
     min-width: 0;
@@ -7778,13 +7797,13 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 
 .figbe-side-block {
     flex: 1 1 180px;
-    border: 1px solid rgba(230, 237, 242, 0.12);
-    border-radius: 10px;
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius-sm);
     padding: 10px 12px;
 }
 
 .figbe-side-title {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     color: #9fb2c0;
     margin-bottom: 8px;
 }
@@ -7813,7 +7832,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .figbe-shapes {
-    border-top: 1px solid rgba(230, 237, 242, 0.12);
+    border-top: 1px solid var(--app-line);
     padding-top: 8px;
     flex: 0 1 auto;
     overflow-y: auto;
@@ -7821,7 +7840,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .figbe-shapes-title {
-    font-size: 12px;
+    font-size: var(--app-fs-sm);
     color: #9fb2c0;
     margin-bottom: 6px;
 }
@@ -7837,9 +7856,9 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    border: 1px solid rgba(230, 237, 242, 0.16);
+    border: 1px solid var(--app-line-strong);
     background: transparent;
-    border-radius: 8px;
+    border-radius: var(--app-radius-xs);
     padding: 5px 7px;
     cursor: pointer;
     color: inherit;
@@ -7851,12 +7870,12 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 
 .figbe-shape em {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: #f3ba62;
 }
 
 .figbe-shape small {
-    font-size: 10px;
+    font-size: var(--app-fs-2xs);
     color: #8ba0b0;
     max-width: 64px;
     overflow: hidden;
@@ -7898,9 +7917,9 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
         width: 13px;
         height: 13px;
         transform: translateX(-50%) rotate(45deg);
-        border-top: 1px solid rgba(230, 237, 242, 0.08);
+        border-top: 1px solid var(--app-line-soft);
         border-right: none;
-        border-left: 1px solid rgba(230, 237, 242, 0.08);
+        border-left: 1px solid var(--app-line-soft);
     }
 
     /* 气泡要盖住下方指板区：.menu 的 isolate+transform 层叠上下文把 z:30 关住了，弹出期间整体提权 */
@@ -7908,6 +7927,17 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
         z-index: 50;
     }
 }
+
+/* ===== 回收站弹层（曲目列表页） ===== */
+.cc-trash-modal { max-width: 480px; }
+.cc-trash-list { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; }
+.cc-trash-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--app-border); border-radius: 9px; background: rgba(255, 255, 255, 0.03); }
+.cc-trash-kind { flex: none; font-size: 11px; padding: 2px 7px; border-radius: 6px; background: rgba(120, 160, 200, 0.14); color: var(--app-text-muted); }
+.cc-trash-kind.clips { background: rgba(243, 186, 98, 0.14); }
+.cc-trash-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-weight: 600; }
+.cc-trash-days { flex: none; font-size: 11px; color: var(--app-text-soft); }
+.cc-trash-empty { text-align: center; color: var(--app-text-soft); padding: 28px 0; }
+
 /* ===== 云同步状态徽标（顶栏，登录后显示；syncEngine 派发）===== */
 .top-nav-sync {
     font-size: var(--app-fs-2xs);

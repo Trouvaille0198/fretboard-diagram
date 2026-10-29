@@ -1,4 +1,5 @@
 import { sameContent, queuePush, queueDelete, setApplier, setPuller, setConflictHandler, outboxPending } from "./syncEngine.js";
+import { trashPut } from "./trashModel.js";
 
 // 和弦谱（8pu 式功能谱）歌曲模型与本地存储
 // song = { id, name, createdAt, updatedAt,
@@ -101,6 +102,9 @@ export function saveChart(song) {
 }
 
 export function deleteChart(id) {
+	// 删除＝先进回收站（10 天可还原），不是立即丢弃
+	const target = loadCharts().find(c => c.id === id);
+	if (target) trashPut("charts", target);
 	persistCharts(loadCharts().filter(c => c.id !== id));
 	queueDelete("charts", id); // 删除也走离线队列：断网时删除不会丢
 }
