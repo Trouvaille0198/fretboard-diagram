@@ -7,7 +7,6 @@ import { importMusicXml } from "../utils/musicxmlChart";
 import { saveClip } from "../utils/clipModel";
 import { trashList, trashPullCloud, trashRestoreCloud, trashPurgeCloud, trashClear, trashRemove, trashDaysLeft, TRASH_TTL_DAYS } from "../utils/trashModel";
 import { authUser } from "../utils/authModel";
-import { saveToRememberedDir, rememberedDirSupported } from "../utils/saveFile";
 import { Toast } from "./Toast";
 
 // 曲目列表页（#/chords）：顶上「和弦谱 · 和弦谱」tab 的落地面——先看库，点进某首才进编辑页。
@@ -111,19 +110,19 @@ export function ChartListPage() {
 		});
 	};
 
-	const exportChartById = async (id) => {
+	const exportChartById = (id) => {
 		const target = charts.find(c => c.id === id);
 		if (!target) return;
 		const blob = new Blob([packChart(target)], { type: "text/plain;charset=utf-8" });
 		const name = `${target.name || "chord-chart"}.fbchart`;
-		const saved = rememberedDirSupported() ? await saveToRememberedDir(name, blob) : null;
-		if (!saved) {
-			const a = document.createElement("a");
-			a.href = URL.createObjectURL(blob);
-			a.download = name;
-			a.click();
-			URL.revokeObjectURL(a.href);
-		}
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = name;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		setTimeout(() => URL.revokeObjectURL(url), 5000);
 		showToast((ts.exportedOne ?? "已导出「{n}」").replace("{n}", target.name || ""));
 	};
 

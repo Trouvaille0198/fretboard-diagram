@@ -356,7 +356,6 @@ function Fretboard({ mode = 'normal' }) {
     if (mode !== 'dynamic') return;
     // 预热导出模块：Ctrl+C 首次导出不再等 vite 按需编译（挂载即后台加载，与交互并行）
     import('./utils/animatedSvg').catch(() => {});
-    import('./utils/saveFile').catch(() => {});
     let entry = null;
     try { entry = JSON.parse(sessionStorage.getItem('fretboard-dynamic-entry') || 'null'); sessionStorage.removeItem('fretboard-dynamic-entry'); } catch (e) { /* 忽略 */ }
     let clipId = null;
@@ -1483,23 +1482,16 @@ function Fretboard({ mode = 'normal' }) {
       }
       const ext = format === 'svganim' ? 'svg' : (format === 'webm-mp4' ? 'mp4' : format);
       const name = `fretboard-${Date.now()}.${ext}`;
-      // 记忆式保存：首次弹一次目录选择，之后直接写入该目录（不再每次问路径）
-      const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
-      let savedTo = null;
-      if (rememberedDirSupported()) savedTo = await saveToRememberedDir(name, blob);
-      if (savedTo) {
-        showToast(`已保存到「${savedTo}」/${name}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-        showToast(`已导出 ${ext.toUpperCase()}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
-      }
+      // 直接走浏览器下载，不弹目录选择（Downloads 目录）
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast(`已导出 ${ext.toUpperCase()}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
     } catch (error) {
       console.error('导出失败:', error);
       showToast(`导出失败: ${error.message}`, 'error');
@@ -1508,25 +1500,18 @@ function Fretboard({ mode = 'normal' }) {
     }
   }, [showToast, buildExportBlob, cumulativeView]);
 
-  // 动画 SVG 落盘共用（Ctrl+C / Ctrl+Shift+C）：记忆目录优先，回落普通下载
+  // 动画 SVG 落盘共用（Ctrl+C / Ctrl+Shift+C）：直接下载
   const saveSvgBlobToDisk = useCallback(async (buildFn) => {
     try {
       showToast('生成动图 SVG…', 'info');
       setExporting('svganim');
       const svgBlob = await buildFn();
       const name = `fretboard-${Date.now()}.svg`;
-      const { saveToRememberedDir, rememberedDirSupported } = await import('./utils/saveFile');
-      let savedTo = null;
-      if (rememberedDirSupported()) savedTo = await saveToRememberedDir(name, svgBlob); // 与⬇导出同逻辑：有缓存目录直接用，没有弹一次记住
-      if (savedTo) {
-        showToast(`已保存「${savedTo}」/${name}（${(svgBlob.size / 1024).toFixed(0)} KB）`, 'success');
-      } else {
-        const url = URL.createObjectURL(svgBlob);
-        const a = document.createElement('a'); a.href = url; a.download = name;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-        showToast(`已下载 SVG（${(svgBlob.size / 1024).toFixed(0)} KB）`, 'success');
-      }
+      const url = URL.createObjectURL(svgBlob);
+      const a = document.createElement('a'); a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast(`已下载 SVG（${(svgBlob.size / 1024).toFixed(0)} KB）`, 'success');
     } catch (error) {
       showToast(`保存失败: ${error.message}`, 'error');
     } finally {

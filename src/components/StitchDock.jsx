@@ -195,15 +195,8 @@ export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, uni
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
       if (!blob) throw new Error('PNG 编码失败');
       const name = `fretboard-stitch-${Date.now()}.png`;
-      const { saveToRememberedDir, rememberedDirSupported } = await import('../utils/saveFile');
-      let savedTo = null;
-      if (rememberedDirSupported()) savedTo = await saveToRememberedDir(name, blob);
-      if (savedTo) {
-        showToast(`${L('toastSaved', '已保存到')}「${savedTo}」/${name}`, 'success');
-      } else {
-        downloadBlob(blob, name);
-        showToast(`${L('toastDownloaded', '已下载 PNG')}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
-      }
+      downloadBlob(blob, name);
+      showToast(`${L('toastDownloaded', '已下载 PNG')}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
     } catch (error) {
       showToast(`${L('toastSaveFail', '下载拼接图失败')}：${error.message}`, 'error');
     } finally {
