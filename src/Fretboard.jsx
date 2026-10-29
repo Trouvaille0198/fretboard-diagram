@@ -1926,7 +1926,21 @@ function Fretboard({ mode = 'normal' }) {
           svgElementRef.current
         )}
         <FretWindowThumb startFret={view.startFret} endFret={view.endFret}
-          onFretWindowChange={setFretWindowMemo} svgRef={svgElementRef} />
+          onFretWindowChange={w => {
+            // 与指法弹窗同语义：拖长超出可放宽度时不缩小板，改为窗口右滑（右缘顶到，左边删品）
+            const stageEl = svgElementRef.current && svgElementRef.current.parentElement;
+            if (!stageEl) { setFretWindowMemo(w); return; }
+            const capPx = Math.min(stageEl.clientWidth, window.innerWidth - 30) - 28; // 减拖块
+            const maxSpan = Math.max(2, Math.floor((capPx - 50) / CONSTS.fretWidth)); // 自然宽 = span*80+50(右缘已裁70)
+            let start = w.start ?? view.startFret;
+            let end = w.end ?? view.endFret;
+            if (end - start > maxSpan) {
+              end = Math.min(22, end);
+              start = Math.max(0, end - maxSpan);
+              end = start + maxSpan;
+            }
+            setFretWindowMemo({ start, end });
+          }} svgRef={svgElementRef} />
       </figure>
       </div>
 
