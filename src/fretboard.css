@@ -3305,10 +3305,12 @@ g.drag-fx-layer circle[stroke-dasharray] {
     font-size: 17px;
 }
 
-.top-nav-logo-text {
+.top-nav-logo-text { /* 已废弃：logo 文案移除 */
     opacity: 0.9;
 }
 
+.top-nav-tabs { min-width: 0; }
+.top-nav-tabs button { white-space: nowrap; }
 .top-nav-tabs {
     display: flex;
     align-items: stretch;
