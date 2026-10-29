@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { FretboardSVG } from './FretboardSVG';
+import { UiSelect } from './UiSelect';
 import { ConnectionPresetIcon } from './ConnectionPresetIcon';
 import { FretWindowThumb } from './FretWindowThumb';
 import { CONNECTION_PRESETS, useConnectionState } from '../hooks/useConnectionState';
@@ -373,10 +374,8 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
         <div className="figbe-shapes figbe-saveform">
           <div className="figbe-shapes-title">未识别质量 · 手动选择后存入</div>
           <div className="figbe-saveform-row">
-            <select defaultValue="" onChange={e => setSaveForm(f => ({ ...f, quality: e.target.value }))}>
-              <option value="">— 选择质量 —</option>
-              {QUALITIES.map(q => <option key={q} value={q}>{q || '三和弦'}</option>)}
-            </select>
+            <UiSelect value={saveForm.quality ?? ''} onChange={q => setSaveForm(f => ({ ...f, quality: q }))}
+              options={[{ value: '', label: '— 选择质量 —' }, ...QUALITIES.map(q => ({ value: q, label: q || '三和弦' }))]} />
             <button className="button sm accent" disabled={!saveForm.quality} onClick={() => {
               const shape = { ...saveForm.shape, quality: saveForm.quality, name: (saveForm.quality || '三和弦') + ' 形状' };
               const all = loadShapes(); all.push(shape); persistShapes(all);
