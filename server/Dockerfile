@@ -1,6 +1,6 @@
 # 认证服务镜像（Node + SQLite）：只装服务端必需的 better-sqlite3，库文件挂 /data
 # 用 bookworm-slim（glibc）：better-sqlite3 的预编译二进制基于 glibc，alpine(musl) 需现场编译
-FROM node:20-bookworm-slim
+FROM node:24-bookworm-slim
 
 WORKDIR /app
 
