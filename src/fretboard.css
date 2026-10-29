@@ -1579,6 +1579,11 @@ g.note.preview-hover>circle {
         width: min(100%, 420px);
     }
 
+    /* 下载选项组占满面板：menu-left 是 align-items:center 的纵向 flex（子元素按内容宽收缩），须显式拉伸 */
+    .menu-left { align-items: stretch; }
+    .menu-left .menu-section-panel { width: 100%; }
+    .menu-download-options { width: 100%; }
+
     .menu-download-panel {
         flex-direction: column;
         align-items: stretch;
