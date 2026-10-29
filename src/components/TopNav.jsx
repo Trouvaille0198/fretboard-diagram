@@ -146,12 +146,12 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v1.0.1">v1.0.1</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v1.0.2">v1.0.2</span>
 				<button className="top-nav-icon cc-prefs-btn" title="偏好设置"
 					onClick={e => { e.stopPropagation(); setPrefsOpen(v => !v); }}>⚙</button>
 				{prefsOpen ? (
 					<div className="cc-prefs" onClick={e => e.stopPropagation()}>
-						<div className="cc-prefs-ver">v1.0.1</div>
+						<div className="cc-prefs-ver">v1.0.2</div>
 						<button onClick={toggleLang}>{lang === "zh" ? "Switch to English" : "切换为中文"}</button>
 						<button onClick={() => setTheme(x => (x === "dark" ? "light" : "dark"))}>
 							{theme === "dark" ? (tr.toLight ?? "浅色模式") : (tr.toDark ?? "深色模式")}

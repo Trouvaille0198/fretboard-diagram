@@ -229,6 +229,18 @@ export function ChordChartView({ songId }) {
 	const keyAtFn = (mi) => keyAt(typeof mi === "number" ? mi : cursor.mi);
 	const songRef = useRef(song);
 	songRef.current = song;
+	// 落盘基线：savedAtRef = 本地最后一次落盘/采纳的版本号（updatedAt）；dirtyRef = 内存里有未落盘的编辑。
+	// song 里的 updatedAt 只在 loadCharts 时来自磁盘，本地保存不会回写它——拿它当"谁更新"的判据会误判：
+	// 保存过一次之后磁盘版本号永远比内存新，卸载冲刷会以为"远端更新过"而丢掉最后 800ms 的编辑。
+	const savedAtRef = useRef(song.updatedAt || 0);
+	const dirtyRef = useRef(false);
+	// 立即落盘（并同步落盘基线）：改名等"就该瞬间生效"的改动走这里
+	const persistNow = () => {
+		const saved = saveChart(songRef.current);
+		dirtyRef.current = false;
+		savedAtRef.current = saved.updatedAt || Date.now();
+		return saved;
+	};
 
 	const stopPlayback = useCallback(() => {
 		timersRef.current.forEach(id => clearTimeout(id));
@@ -254,11 +266,13 @@ export function ChordChartView({ songId }) {
 		const onSynced = () => {
 			setCharts(loadCharts());
 			// 实时跟进：云端版本比内存新（别的浏览器改了这首）且本页没有未落盘编辑 → 采纳远端
-			if (saveTimerRef.current) return;
+			if (dirtyRef.current) return;
 			const latest = loadCharts().find(c => c.id === songRef.current.id);
-			if (latest && (latest.updatedAt || 0) > (songRef.current.updatedAt || 0)) {
+			if (latest && (latest.updatedAt || 0) > (savedAtRef.current || 0)) {
 				suppressHistoryRef.current = true; // 采纳远端不算一步撤销
 				adoptedRef.current = latest; // 这版是云端来的，别原样回存
+				savedAtRef.current = latest.updatedAt || Date.now();
+				dirtyRef.current = false;
 				setSong(latest);
 				clearHistory(); // 远端结构与本地撤销栈不再对应
 			}
@@ -276,6 +290,7 @@ export function ChordChartView({ songId }) {
 				deletedByRemoteRef.current = true;
 				clearTimeout(saveTimerRef.current);
 				saveTimerRef.current = null;
+				dirtyRef.current = false; // 远端已删：内存里的版本不再算"待保存"
 				window.location.hash = "#/chords";
 			}
 		};
@@ -286,10 +301,12 @@ export function ChordChartView({ songId }) {
 	useEffect(() => {
 		const onStorage = (e) => {
 			if (e.key !== "fretboard-chordcharts") return;
-			if (saveTimerRef.current) return; // 本页还有未落盘的编辑：先让本地保存赢，下次再对齐远端
+			if (dirtyRef.current) return; // 本页还有未落盘的编辑：先让本地保存赢，下次再对齐远端
 			try {
 				const latest = loadCharts().find(c => c.id === songRef.current.id);
-				if (latest && latest.updatedAt > (songRef.current.updatedAt || 0)) {
+				if (latest && (latest.updatedAt || 0) > (savedAtRef.current || 0)) {
+					adoptedRef.current = latest; // 采纳来的版本别再原样回存
+					savedAtRef.current = latest.updatedAt || Date.now();
 					clearHistory(); // 采纳远端后旧撤销栈失效
 					setSong(latest);
 				}
@@ -343,10 +360,11 @@ export function ChordChartView({ songId }) {
 	// 自动保存（防抖）；卸载时冲刷最后 800ms 内的编辑
 	useEffect(() => {
 		if (song === adoptedRef.current) return;
+		dirtyRef.current = true; // 有未落盘的编辑
 		clearTimeout(saveTimerRef.current);
 		saveTimerRef.current = setTimeout(() => {
 			saveTimerRef.current = null;
-			const saved = saveChart(songRef.current);
+			const saved = persistNow();
 			setCharts(loadCharts());
 			setCurrentId(saved.id);
 		}, 800);
@@ -356,18 +374,23 @@ export function ChordChartView({ songId }) {
 	// 防抖窗口防丢：刷新 / 切后台 / 关页前立刻落盘（否则最后 0.8s 的编辑在重开后"被改回"）
 	useEffect(() => {
 		const flush = () => {
-			if (!saveTimerRef.current || deletedByRemoteRef.current) return;
+			if (!dirtyRef.current || deletedByRemoteRef.current) return;
 			clearTimeout(saveTimerRef.current);
 			saveTimerRef.current = null;
-			try { saveChart(songRef.current); } catch (e) { /* 尽力而为 */ }
+			try { persistNow(); } catch (e) { /* 尽力而为 */ }
 		};
 		const onVis = () => { if (document.visibilityState === "hidden") flush(); };
+		// 换路由（浏览器返回 / 顶栏切换 / 一键动图）时立刻落盘：hash 事件是同步的，
+		// 赶在 React 重渲染、目标页读取 localStorage 之前把改动写下去（否则列表读到的是旧值）
+		const onHash = () => flush();
 		window.addEventListener("beforeunload", flush);
 		window.addEventListener("pagehide", flush);
+		window.addEventListener("hashchange", onHash);
 		document.addEventListener("visibilitychange", onVis);
 		return () => {
 			window.removeEventListener("beforeunload", flush);
 			window.removeEventListener("pagehide", flush);
+			window.removeEventListener("hashchange", onHash);
 			document.removeEventListener("visibilitychange", onVis);
 		};
 	}, []);
@@ -377,8 +400,13 @@ export function ChordChartView({ songId }) {
 		audioService.stopAll?.();
 		try {
 			if (deletedByRemoteRef.current) return; // 远端已删：卸载冲刷不得复活它
+			// 有未落盘的编辑 → 必须存（哪怕磁盘版本号更大：那可能是本页自己上次保存留下的，
+			// 内存里的 updatedAt 不会跟着刷新，拿它当"远端更新过"的判据会把这批编辑丢掉）
+			if (dirtyRef.current) { persistNow(); return; }
 			const stored = loadCharts().find(c => c.id === songRef.current.id);
-			if (!(stored && stored.updatedAt > (songRef.current.updatedAt || 0))) saveChart(songRef.current);
+			if (!stored) return; // 磁盘上已被删（别的标签页删的）：不复活
+			if (stored.updatedAt >= (savedAtRef.current || 0)) return; // 磁盘已是最新/更新：不用再写一遍
+			saveChart(songRef.current);
 		} catch (e) { /* 存不了就算了 */ }
 	}, []);
 
@@ -1044,7 +1072,8 @@ export function ChordChartView({ songId }) {
 	// 回曲目列表页：先冲刷防抖中的保存，列表那边看到的就是最新内容
 	const goSongList = () => {
 		clearTimeout(saveTimerRef.current);
-		saveChart(songRef.current);
+		saveTimerRef.current = null;
+		persistNow();
 		window.location.hash = '#/chords';
 	};
 
@@ -1576,7 +1605,10 @@ export function ChordChartView({ songId }) {
 								</div>
 							) : null}
 						</div>
-						<input className="cc-score-title" value={song.name} readOnly={!editing} onChange={e => setSong(s => ({ ...s, name: e.target.value }))} />
+						<input className="cc-score-title" value={song.name} readOnly={!editing}
+							onChange={e => setSong(s => ({ ...s, name: e.target.value }))}
+							onBlur={() => { if (dirtyRef.current) persistNow(); }} // 改名瞬间落盘：点"回列表"时先失焦，立刻存住
+							onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); persistNow(); e.target.blur(); } }} />
 					</div>
 
 					{copyMode ? (

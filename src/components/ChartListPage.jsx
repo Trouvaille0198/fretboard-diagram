@@ -30,6 +30,12 @@ export function ChartListPage() {
 		return () => window.removeEventListener("fretboard:charts-synced", onSync);
 	}, []);
 
+	// 从编辑页返回时，编辑器的最后一刻冲刷可能刚写完 localStorage：本页初始 state 读到的还是旧值，
+	// 挂载后再读一次（编辑器卸载冲刷发生在本页挂载之后，见 ChordChartView 的 hashchange 冲刷）
+	useEffect(() => {
+		refresh();
+	}, []);
+
 	const newSong = () => {
 		const base = ts.newSong ?? "新歌";
 		const used = charts.filter(c => (c.name || "").startsWith(base)).length;
