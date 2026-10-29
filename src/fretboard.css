@@ -5245,15 +5245,57 @@ html[data-theme="light"] .cc-cell-tools {
     gap: 6px;
 }
 
-.cc-key-stepper b {
+/* 主音「1 = X」：可点下拉（原纯文本点了没反应） */
+.cc-key-stepper .cc-key-root {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--app-text-soft);
     font-size: var(--app-fs-md);
-    color: var(--cc-accent-text, #2f7ae8);
+}
+
+.cc-key-stepper .cc-key-root select {
+    height: var(--cc-ctl-h, 28px);
+    min-width: 46px;
+    padding: 0 4px;
     background: var(--app-panel-soft);
     border: 1px solid var(--app-border-strong);
     border-radius: 6px;
-    padding: 3px 8px;
-    min-width: 58px;
+    color: var(--cc-accent-text, #2f7ae8);
+    font-size: var(--app-fs-md);
+    font-weight: 600;
     text-align: center;
+    cursor: pointer;
+}
+
+/* 调式：大调/小调常驻分段按钮（原来只在已有转调标记后才冒出 m 复选框，全局调下无从选择） */
+.cc-key-stepper .cc-key-mode button,
+.cc-page .cc-key-stepper .cc-key-mode button {
+    width: auto;
+    height: var(--cc-ctl-h, 28px);
+    padding: 0 9px;
+    border-radius: 0;
+    font-size: var(--cc-ctl-fs, 12.5px);
+    color: var(--app-text-soft);
+}
+
+.cc-key-stepper .cc-key-mode button:first-child,
+.cc-page .cc-key-stepper .cc-key-mode button:first-child {
+    border-radius: var(--cc-ctl-radius) 0 0 var(--cc-ctl-radius);
+}
+
+.cc-key-stepper .cc-key-mode button:last-child,
+.cc-page .cc-key-stepper .cc-key-mode button:last-child {
+    border-left: 0;
+    border-radius: 0 var(--cc-ctl-radius) var(--cc-ctl-radius) 0;
+}
+
+.cc-key-stepper .cc-key-mode button.on,
+.cc-page .cc-key-stepper .cc-key-mode button.on {
+    background: var(--app-panel-soft);
+    border-color: var(--cc-accent, #3d8bff);
+    color: var(--cc-accent-text, #2f7ae8);
+    font-weight: 600;
 }
 
 .cc-key-stepper button {
@@ -5729,7 +5771,7 @@ html[data-theme="light"] .cc-cell-tools {
     padding: 6px 2px 2px;
 }
 
-.cc-cp-keyrow .cc-key-stepper b {
+.cc-cp-keyrow .cc-key-stepper .cc-key-root select {
     color: var(--cc-accent-text, #6fb0ff);
 }
 
@@ -6410,9 +6452,9 @@ html[data-theme="light"] .button.sm.edit-enter {
     gap: 4px;
 }
 
-.cc-page .cc-key-stepper b {
+.cc-page .cc-key-stepper .cc-key-root select {
     font-size: var(--app-fs-sm);
-    padding: 3px 7px;
+    height: 24px;
     border-radius: var(--cc-radius-sm);
 }
 
