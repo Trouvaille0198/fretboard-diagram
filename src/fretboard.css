@@ -630,6 +630,8 @@ g.note>text {
     flex-direction: column;
     gap: 18px;
     align-items: center;
+    overflow: visible;
+    margin-top: 20px; /* 顶部呼吸位：首行按钮 hover 光晕(box-shadow 外扩 18px)不再顶边被裁 */
     padding: 22px 24px;
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-xl);
@@ -1736,7 +1738,7 @@ g.note.preview-hover>circle {
         grid-template-columns: 28px repeat(3, minmax(0, 1fr));
     }
 
-    .menu-connection-panel {
+    .menu-connection-panel { padding-top: 22px; /* 容 hover 光晕 18px 上扩 */
         width: 100% !important;
         max-width: 100% !important;
         overflow-x: hidden !important;
@@ -4302,6 +4304,15 @@ g.drag-fx-layer circle[stroke-dasharray] {
     .cc-page .cc-cell-slots { gap: 3px; }
     .cc-page .cc-tooltabs button { padding: 5px 8px 4px; }
     .cc-score-head { gap: 4px; }
+
+    /* 拍格和弦记号全是固定 px（deg 24/num 19…），窄屏拍格变窄会溢出——整体等比缩（同钢琴 v125 zoom 方案） */
+    .cc-beat .csign, .cc-beat .cc-glyph { zoom: 0.78; }
+    .cc-cell-lyrics { font-size: 10px; }
+}
+
+/* 641-800px（横屏手机/小平板）：拍格仍偏窄，记号轻缩一档 */
+@media (min-width: 641px) and (max-width: 800px) {
+    .cc-beat .csign, .cc-beat .cc-glyph { zoom: 0.88; }
 }
 
 .cc-line-no {
