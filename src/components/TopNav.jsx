@@ -121,9 +121,8 @@ export function TopNav({ mode }) {
 
 	return (
 		<header className="top-nav">
-			<button className="top-nav-logo" onClick={() => go(items[0])} title="吉他指板动图工作台">
+			<button className="top-nav-logo" onClick={() => go(items[0])} title="返回普通编辑">
 				<span className="top-nav-logo-icon">🎸</span>
-				<span className="top-nav-logo-text">指板工坊</span>
 			</button>
 			<nav className="top-nav-tabs" aria-label={tr.label ?? "模式切换"}>
 				{items.map(it => (
