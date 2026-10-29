@@ -1100,9 +1100,10 @@ button.color.level2.selected {
 }
 
 .piano-keyboard {
-    display: inline-block;
-    max-width: 100%;
+    display: block; /* 占满整行宽度做 zoom 基准；inline-block 会收缩包裹形成"越缩越小"反馈回路 */
+    width: 100%;
 }
+.piano-keys { margin: 0 auto; width: max-content; }
 
 .piano-keys {
     display: flex;
@@ -1681,12 +1682,28 @@ g.note.preview-hover>circle {
         justify-content: center;
     }
 
-    .menu-tint-variants {
-        position: static;
+    /* 窄屏：淡色档位不常驻占位，点色块在当前色块正下方弹出气泡（left 由 JS 锚定） */
+    .menu-tint-variants.mobile-popup {
+        position: absolute;
+        top: calc(100% + 10px);
+        transform: translateX(-50%);
         flex-direction: row;
-        justify-content: center;
-        flex-wrap: wrap;
-        margin-bottom: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 16px;
+        z-index: 30;
+    }
+
+    .menu-left .menu-tint-variants.mobile-popup::after {
+        top: -7.5px;
+        right: auto;
+        left: 50%;
+        width: 13px;
+        height: 13px;
+        transform: translateX(-50%) rotate(45deg);
+        border-top: 1px solid rgba(230, 237, 242, 0.08);
+        border-right: none;
+        border-left: 1px solid rgba(230, 237, 242, 0.08);
     }
 
     .menu-left,
