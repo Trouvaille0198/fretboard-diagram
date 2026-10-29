@@ -812,9 +812,6 @@ g.markers {
     padding: 0;
     flex-wrap: nowrap; /* 9 色恒一排：swatch 随面板宽等比缩。换行会把末位色块甩成孤行，看着像"多出来的颜色" */
 }
-@media (max-width: 640px) {
-    button.color.color-tint { width: 28px; height: 28px; border-radius: 8px; }
-}
 
 button.color {
     width: 40px;
@@ -832,6 +829,22 @@ button.color {
     width: min(40px, calc((100% - 64px) / 9));
     height: auto;
     aspect-ratio: 1;
+}
+
+@media (max-width: 640px) {
+    .color-palette-row { gap: 5px; }
+    .color-palette-row button.color { width: min(40px, calc((100% - 40px) / 9)); }
+    button.color.color-tint { width: 28px; height: 28px; border-radius: 8px; }
+}
+@media (max-width: 360px) {
+    /* 极窄屏一排装不下 9 个可点击尺寸：改 5+4 两行居中网格（整齐两排，不是孤块） */
+    .color-palette-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        justify-items: center;
+        gap: 7px;
+    }
+    .color-palette-row button.color { width: min(40px, 100%); }
 }
 
 /* 淡色版本按钮样式 */
