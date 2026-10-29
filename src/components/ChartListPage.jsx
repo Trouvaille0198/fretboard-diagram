@@ -5,6 +5,8 @@ import { loadCharts, saveChart, deleteChart, createSong } from "../utils/chordCh
 import { packChart, unpackChartBundle, isChartPack } from "../utils/chartPack";
 import { importMusicXml } from "../utils/musicxmlChart";
 import { saveClip } from "../utils/clipModel";
+import { trashList, trashPullCloud, trashRestoreCloud, trashPurgeCloud, trashClear, trashRemove, trashDaysLeft, TRASH_TTL_DAYS } from "../utils/trashModel";
+import { authUser } from "../utils/authModel";
 import { saveToRememberedDir, rememberedDirSupported } from "../utils/saveFile";
 import { Toast } from "./Toast";
 
@@ -19,6 +21,40 @@ export function ChartListPage() {
 	const fileRef = useRef(null);
 	const [toast, setToast] = useState(null);
 	const showToast = (msg) => setToast({ msg, key: Date.now() });
+	const [trashOpen, setTrashOpen] = useState(false);
+	const [trashItems, setTrashItems] = useState([]);
+
+	// 回收站：打开时先读本地，登录用户再拉云端合并（云端是权威副本）
+	const openTrash = async () => {
+		setTrashOpen(true);
+		setTrashItems(trashList());
+		try { if (authUser()) setTrashItems(await trashPullCloud()); } catch (e) { /* 云端不可达：本地这份也能用 */ }
+	};
+	// 还原：云端先写回（清墓碑，否则本地的重新保存会被拦），再落本地
+	const restoreTrashItem = async (entry) => {
+		try { if (authUser()) await trashRestoreCloud(entry.tbl, entry.id); } catch (e) { /* 云端失败：本地照样还原 */ }
+		if (entry.tbl === "charts") saveChart(entry.item);
+		else saveClip(entry.item);
+		trashRemove(entry.tbl, entry.id);
+		setTrashItems(trashList());
+		refresh();
+		showToast((ts.trashRestored ?? "已还原「{n}」").replace("{n}", entry.name || ""));
+	};
+	// 永久删除单条（已在回收站，无需再确认）
+	const purgeTrashItem = async (entry) => {
+		try { if (authUser()) await trashPurgeCloud(entry.tbl, entry.id); } catch (e) { /* 云端失败：仅清本地 */ }
+		trashRemove(entry.tbl, entry.id);
+		setTrashItems(trashList());
+	};
+	// 清空（有确认弹窗，见 dialog confirm）
+	const clearTrash = async () => {
+		for (const entry of trashItems) {
+			try { if (authUser()) await trashPurgeCloud(entry.tbl, entry.id); } catch (e) { /* 尽力而为 */ }
+		}
+		trashClear();
+		setTrashItems([]);
+		showToast(ts.trashCleared ?? "回收站已清空");
+	};
 
 	const enter = (id) => { window.location.hash = '#/chords?id=' + id; };
 	const refresh = () => setCharts(loadCharts());
@@ -136,14 +172,14 @@ export function ChartListPage() {
 
 	const currentId = null; // 列表页没有"正在编辑"，进入即离开列表
 
-	return (
-		<div className="cc-page">
-			<header className="cc-toolbar">
-				<div className="cc-tabs-row">
-					<span className="cc-songs-page-title">{ts.songsPageTitle ?? "我的曲目"}</span>
-					<span className="cc-flex" />
-				</div>
-			</header>
+		return (
+			<div className="cc-page">
+				<header className="cc-toolbar">
+					<div className="cc-tabs-row">
+						<button className="button sm" onClick={openTrash} title={ts.trashTip ?? "删除的曲目在这里保留 10 天，可还原"}>🗑 {ts.trashBtn ?? "回收站"}</button>
+						<span className="cc-flex" />
+					</div>
+				</header>
 			<div className="cc-body cc-songs-page">
 				<ChartListPanel variant="page" charts={charts} currentId={currentId} t={t}
 					onOpen={enter}
@@ -153,6 +189,7 @@ export function ChartListPage() {
 					onDelete={removeChartById}
 					onExport={exportChartById}
 					onImport={() => fileRef.current?.click()}
+					onTrash={openTrash}
 					onImportCode={() => setDialog({
 						type: "prompt", multiline: true,
 						title: ts.importCode ?? "从分享码导入",
@@ -163,6 +200,47 @@ export function ChartListPage() {
 					onClose={() => { }} />
 			</div>
 			<input ref={fileRef} type="file" accept=".fbchart,.musicxml,.xml,.txt" style={{ display: "none" }} onChange={importFile} />
+			{trashOpen ? (
+				<div className="cc-modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) setTrashOpen(false); }}>
+					<div className="cc-modal cc-dialog cc-trash-modal">
+						<div className="cc-modal-head">
+							<span className="cc-modal-title">🗑 {ts.trashTitle ?? "回收站"}<small className="cc-modal-sub"> · {ts.trashSub ? ts.trashSub(TRASH_TTL_DAYS) : `删除后保留 ${TRASH_TTL_DAYS} 天`}</small></span>
+							<button className="cc-modal-x" onClick={() => setTrashOpen(false)}>✕</button>
+						</div>
+						<div className="cc-modal-body">
+							{trashItems.length === 0 ? (
+								<div className="cc-trash-empty">{ts.trashEmpty ?? "回收站是空的"}</div>
+							) : (
+								<div className="cc-trash-list">
+									{trashItems.map(entry => (
+										<div key={entry.tbl + "|" + entry.id} className="cc-trash-item">
+											<span className={"cc-trash-kind " + entry.tbl}>{entry.tbl === "clips" ? (ts.trashKindClip ?? "动图") : (ts.trashKindSong ?? "曲目")}</span>
+											<span className="cc-trash-name">{entry.name || entry.item?.name || "(未命名)"}</span>
+											<span className="cc-trash-days">{ts.trashDaysLeft ? ts.trashDaysLeft(trashDaysLeft(entry)) : `${trashDaysLeft(entry)} 天后删除`}</span>
+											<button className="button sm accent" onClick={() => restoreTrashItem(entry)}>{ts.trashRestore ?? "还原"}</button>
+											<button className="button sm danger" title={ts.trashPurge ?? "永久删除"}
+												onClick={() => purgeTrashItem(entry)}>✕</button>
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+						<div className="cc-modal-foot">
+							<button className="button sm" onClick={() => setTrashOpen(false)}>{ts.close ?? "关闭"}</button>
+							{trashItems.length > 0 ? (
+								<button className="button sm danger" onClick={() => {
+									setDialog({
+										type: "confirm",
+										title: ts.trashClearAll ?? "清空回收站",
+										text: ts.trashClearConfirm ?? "永久删除回收站里的全部条目？（不可还原）",
+										onOk: () => clearTrash()
+									});
+								}}>{ts.trashClearAll ?? "清空回收站"}</button>
+							) : null}
+						</div>
+					</div>
+				</div>
+			) : null}
 			{dialog ? (
 				<div className="cc-modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) setDialog(null); }}>
 					<div className="cc-modal cc-dialog">

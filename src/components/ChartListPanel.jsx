@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 
 // 曲目面板：一处看全部谱子（名称/调/拍号/速度/小节数/更新时间），并就地新建、重命名、复制、删除、导入导出。
 // 之前这些只能挤在工具行「⋯」菜单里的一个 <select>，且预览态不可用——所以看起来像"没有曲目列表"。
-export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, onDelete, onRename, onImport, onImportCode, onExport, onClose, t, variant }) {
+export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, onDelete, onRename, onImport, onImportCode, onExport, onTrash, onClose, t, variant }) {
 	const ts = t?.chords ?? {};
 	const [q, setQ] = useState("");
 	const [editingId, setEditingId] = useState(null);
@@ -46,7 +46,7 @@ export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, 
 						<button className="button sm accent" onClick={onNew}>＋ {ts.newSong ?? "新歌"}</button>
 						<button className="button sm" onClick={onImport}>⇪ {ts.importBtn ?? "导入文件"}</button>
 						<button className="button sm" onClick={onImportCode}>{ts.importCode ?? "从分享码导入"}</button>
-						<span className="cc-flex" />
+							<span className="cc-flex" />
 						<input className="cc-songs-search" value={q} onChange={e => setQ(e.target.value)} placeholder={ts.searchPh ?? "搜索曲目名"} />
 					</div>
 

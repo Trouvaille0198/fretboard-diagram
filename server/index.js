@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS charts (name TEXT NOT NULL, id TEXT NOT NULL, data TE
 CREATE TABLE IF NOT EXISTS clips  (name TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (name, id));
 CREATE TABLE IF NOT EXISTS tombstones (name TEXT NOT NULL, tbl TEXT NOT NULL, id TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (name, tbl, id));
 CREATE TABLE IF NOT EXISTS counters (name TEXT NOT NULL, tbl TEXT NOT NULL, rev INTEGER NOT NULL, PRIMARY KEY (name, tbl));
+-- 回收站：删除的曲目/动图先落这里，10 天后自动永久清除（可在此期间还原）
+CREATE TABLE IF NOT EXISTS trash (name TEXT NOT NULL, tbl TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (name, tbl, id));
 `);
 
 // 迁移：加 rev / hash 列（旧库自动补，data 不动）——SQLite 没有 ADD COLUMN IF NOT EXISTS，手工判断
@@ -185,10 +187,16 @@ const handleCollection = async (table, req, res, url, p, name) => {
 	if (m && req.method === "DELETE") {
 		const id = decodeURIComponent(m[1]);
 		const rev = nextRev(name, table);
+		// 删除＝先进回收站（10 天后可还原），不是立即丢弃——误删的救命绳
+		const row = db.prepare(`SELECT data FROM ${table} WHERE name = ? AND id = ?`).get(name, id);
+		if (row) {
+			db.prepare("INSERT OR REPLACE INTO trash (name, tbl, id, data, at) VALUES (?,?,?,?,?)")
+				.run(name, table, id, row.data, Date.now());
+		}
 		db.prepare(`DELETE FROM ${table} WHERE name = ? AND id = ?`).run(name, id);
 		db.prepare("INSERT OR REPLACE INTO tombstones (name, tbl, id, at, rev) VALUES (?, ?, ?, ?, ?)").run(name, table, id, Date.now(), rev);
 		broadcast("deleted", { table, id, rev, clientId });
-		json(res, 200, { ok: true, rev });
+		json(res, 200, { ok: true, rev, trashed: !!row });
 		return true;
 	}
 	return false;
@@ -214,6 +222,60 @@ const shouldBroadcast = (table, id, hash) => {
 const tombstoned = (name, tbl, id, updatedAt) => {
 	const t = db.prepare("SELECT at FROM tombstones WHERE name = ? AND tbl = ? AND id = ?").get(name, tbl, id);
 	return !!t && (updatedAt || 0) <= t.at;
+};
+
+
+// ===== 回收站：删除的曲目/动图先落 trash，10 天后自动永久清除，期间可还原 =====
+// 列表 GET /api/trash | 还原 POST /api/trash/restore {tbl,id} | 彻底删除 DELETE /api/trash/:tbl/:id
+const TRASH_TTL = 10 * 24 * 3600 * 1000; // 10 天
+const purgeExpiredTrash = () => {
+	const n = db.prepare("DELETE FROM trash WHERE at < ?").run(Date.now() - TRASH_TTL).changes;
+	return n;
+};
+const handleTrash = async (req, res, url, p, name) => {
+	if (!p.startsWith("/api/trash")) return false;
+	purgeExpiredTrash(); // 每次访问回收站顺手清过期条目
+	if (p === "/api/trash" && req.method === "GET") {
+		const items = db.prepare("SELECT tbl, id, data, at FROM trash WHERE name = ? ORDER BY at DESC")
+			.all(name)
+			.map(r => {
+				let payload = null;
+				try { payload = JSON.parse(r.data); } catch { /* 坏数据跳过 */ }
+				return { tbl: r.tbl, id: r.id, at: r.at, item: payload };
+			})
+			.filter(r => r.item);
+		json(res, 200, { items, ttl: TRASH_TTL });
+		return true;
+	}
+	if (p === "/api/trash/restore" && req.method === "POST") {
+		const body = await readBody(req);
+		const tbl = String(body.tbl || "");
+		const id = String(body.id || "");
+		if (!["charts", "clips"].includes(tbl) || !id) { json(res, 400, { error: "bad_request" }); return true; }
+		const row = db.prepare("SELECT data FROM trash WHERE name = ? AND tbl = ? AND id = ?").get(name, tbl, id);
+		if (!row) { json(res, 404, { error: "not_found" }); return true; }
+		// 还原 = 写回主表 + 清掉墓碑（墓碑会拦旧数据复活）+ 移出回收站
+		let item;
+		try { item = JSON.parse(row.data); } catch { json(res, 500, { error: "bad_data" }); return true; }
+		const rev = nextRev(name, tbl);
+		const stamped = { ...item, updatedAt: Date.now(), rev };
+		db.prepare(`INSERT OR REPLACE INTO ${tbl} (name, id, data, updated_at, rev, hash) VALUES (?,?,?,?,?,?)`)
+			.run(name, id, JSON.stringify(stamped), stamped.updatedAt, rev, hashItem(stamped));
+		db.prepare("DELETE FROM tombstones WHERE name = ? AND tbl = ? AND id = ?").run(name, tbl, id);
+		db.prepare("DELETE FROM trash WHERE name = ? AND tbl = ? AND id = ?").run(name, tbl, id);
+		broadcast("changed");
+		json(res, 200, { ok: true, item: stamped });
+		return true;
+	}
+	const m2 = /^\/api\/trash\/([^/]+)\/([^/]+)$/.exec(p);
+	if (m2 && req.method === "DELETE") {
+		const tbl = decodeURIComponent(m2[1]);
+		const id = decodeURIComponent(m2[2]);
+		db.prepare("DELETE FROM trash WHERE name = ? AND tbl = ? AND id = ?").run(name, tbl, id);
+		json(res, 200, { ok: true });
+		return true;
+	}
+	return false;
 };
 
 const server = http.createServer(async (req, res) => {
@@ -260,7 +322,11 @@ const server = http.createServer(async (req, res) => {
 	for (const table of ["charts", "clips"]) {
 		if (await handleCollection(table, req, res, url, p, name)) return; // 广播在 PUT/DELETE 内部（带内容去重）
 	}
+	if (await handleTrash(req, res, url, p, name)) return;
 	json(res, 404, { error: "not_found" });
 });
 
 server.listen(PORT, "127.0.0.1", () => console.log(`[auth-server] http://127.0.0.1:${PORT} db=${DB_FILE}`));
+
+// 回收站定时清理：过期 10 天的条目永久清除（访问回收站时也会顺手清一次，这里兜底无人访问的情况）
+setInterval(purgeExpiredTrash, 6 * 3600 * 1000).unref?.();
