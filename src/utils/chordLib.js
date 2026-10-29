@@ -238,7 +238,7 @@ export function chordSignParts(chord, display, viewKey) {
 	const head = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}`;
 	const triadMap = { "": "", m: "m" };
 	const triadOf = { m7: "m", m6: "m", m9: "m", "m7-5": "m" };
-	const extMap = { maj7: "maj7", "7": "7", m7: "7", "9": "9", m9: "9", maj9: "maj9", "m7-5": "7-5", add9: "add9", "6": "6", m6: "6", sus4: "sus4", sus2: "sus2", dim: "°", dim7: "°7", aug: "+", "5": "5" };
+	const extMap = { maj7: "maj7", "7": "7", m7: "7", "9": "9", m9: "9", maj9: "maj9", "m7-5": "7-5", add9: "add9", "6": "6", m6: "6", sus4: "sus4", sus2: "sus2", dim: "°", dim7: "dim7", aug: "+", "5": "5" };
 	let suffix;
 	if (triadMap[q] !== undefined) suffix = triadMap[q];
 	else if (extMap[q] !== undefined) suffix = (triadOf[q] || "") + extMap[q];
@@ -252,7 +252,11 @@ export function chordSignParts(chord, display, viewKey) {
 export function formatInline(chord, display, viewKey) {
 	const p = chordParts(chord, display, viewKey);
 	if (!p.sub) return p.main;
-	return p.main + p.sub.replace(/\s+/g, "").replace("dim", "°").replace("aug", "+");
+	const sub = p.sub.replace(/\s+/g, "");
+	// 数字谱：dim7 原样打出（用户要求"dim7 就是 dim7"），只有减三和弦压成 °；增和弦压成 +
+	// 罗马谱：° 是功能记号的惯例（vii°7），dim7 仍压成 °7
+	const q = display === "roman" ? sub.replace("dim", "°") : sub.replace(/dim(?!7)/, "°");
+	return p.main + q.replace("aug", "+");
 }
 
 // 8pu 式竖排记号分解：主行（级数+三和弦质量）+ 副行（扩展音/特殊质量/转位）
