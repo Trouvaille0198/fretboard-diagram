@@ -138,6 +138,31 @@ export function insertBeatInSong(song, mi, si) {
 	return { ...song, measures };
 }
 
+// 删除一拍：插入一拍的逆操作。(mi, si) 处的拍移除，从它起全曲的拍整体前移（跨小节流动），
+// 末小节补空拍补满拍号；末小节因此被掏空时自动缩掉（小节线/跳房子随内容回移——插入时的正向搬运在此还原）
+export function deleteBeatInSong(song, mi, si) {
+	const target = song.measures[mi];
+	if (!target) return song;
+	const cap = song.timeSig || target.slots.length || 4;
+	const measures = song.measures.map(m => ({ ...m, slots: m.slots.slice() }));
+	const at = Math.max(0, Math.min(target.slots.length - 1, si));
+	measures[mi].slots.splice(at, 1);
+	for (let k = mi + 1; k < measures.length; k++) {
+		while (measures[k - 1].slots.length < cap && measures[k].slots.length) {
+			measures[k - 1].slots.push(measures[k].slots.shift());
+		}
+	}
+	const last = measures[measures.length - 1];
+	while (last.slots.length < cap) last.slots.push({ kind: "empty" });
+	const prev = measures[measures.length - 2];
+	if (prev && last.slots.every(s => s.kind === "empty") && measures.length > 1) {
+		prev.endBar = last.endBar;
+		prev.house = last.house ?? prev.house;
+		measures.pop();
+	}
+	return { ...song, measures };
+}
+
 // 槽位导航：上下左右在 (小节, 槽) 网格上移动；返回 null = 越界
 export function moveCursor(song, cur, dmi, dsi) {
 	if (!cur) return null;

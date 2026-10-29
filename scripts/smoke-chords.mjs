@@ -402,6 +402,51 @@ console.log("== chartPack：工程文件往返 ==");
 		JSON.stringify(qXmlBack.measures[0].slots.slice(0, 3).map(x => x?.chord?.quality)));
 }
 
+console.log("== chordChartModel：删除一拍（插入的逆：全曲整体前移） ==");
+{
+	const { deleteBeatInSong, insertBeatInSong, createSong: newSong } = await import("../src/utils/chordChartModel.js");
+	const chT = (t) => chordFromDegreeToken(t);
+	const beat = (t) => ({ kind: "chord", chord: chT(t) });
+	const song2 = () => ({ ...newSong("t"), measures: [
+		{ ...createMeasure(4), slots: [beat("1"), beat("4"), beat("1"), beat("4")] },
+		{ ...createMeasure(4), endBar: "repeatEnd", house: 2, slots: [{ kind: "rest" }, beat("5"), { kind: "empty" }, { kind: "empty" }] }
+	] });
+	const flat = (s) => s.measures.flatMap(m => m.slots.map(x => x.kind === "chord" ? `d${x.chord.degree}` : x.kind));
+	const src = song2();
+
+	// 逆操作恒等：插一拍再删同一拍 = 原曲
+	const ins = insertBeatInSong(song2(), 0, 1);
+	const back = deleteBeatInSong(ins, 0, 1);
+	A("插入→删除同一位置 = 回到原曲", eq(flat(back), flat(src)) && back.measures.length === 2);
+	A("小节线/跳房子随内容还原", back.measures[1].endBar === "repeatEnd" && back.measures[1].house === 2);
+
+	// 直接删：m0 删第 2 拍（d4），后面整体前移，末尾补空拍
+	const a = deleteBeatInSong(song2(), 0, 1);
+	A("小节长度仍按拍号", a.measures[0].slots.length === 4 && a.measures[1].slots.length === 4);
+	A("该位变成后一拍（d1），原 d1 前移", a.measures[0].slots[1].chord.degree === 1 && a.measures[0].slots[0].chord.degree === 1);
+	A("下一小节首拍(rest)流上来补位", a.measures[0].slots[3].kind === "rest");
+	A("全曲末尾补空拍", a.measures[1].slots[3].kind === "empty");
+	A("内容零丢失（删掉的拍除外）", eq(flat(a).filter((x, i) => i < 7), flat(src).filter((x, i) => i !== 1).filter((x, i) => i < 7)));
+	A("纯函数不改原 song", flat(src)[1] === "d4");
+
+	// 末小节被掏空 → 自动缩掉（3 小节歌删到末节全空）
+	const song3 = () => ({ ...newSong("t"), measures: [
+		{ ...createMeasure(4), slots: [beat("1"), beat("4"), beat("1"), beat("4")] },
+		{ ...createMeasure(4), slots: [beat("5"), beat("6"), beat("1"), beat("4")] },
+		{ ...createMeasure(4), endBar: "final", slots: [{ kind: "empty" }, { kind: "empty" }, { kind: "empty" }, { kind: "empty" }] }
+	] });
+	const b = deleteBeatInSong(song3(), 1, 1);
+	A("删中间拍：后面拍前移（d6 补位）", b.measures[1].slots[0].chord.degree === 5 && b.measures[1].slots[1].chord.degree === 1);
+	A("本就全空的末节被吸空后缩掉", b.measures.length === 2 && b.measures[1].endBar === "final");
+	const c = deleteBeatInSong(song3(), 0, 1);
+	A("末节被掏空自动缩掉", c.measures.length === 2 && c.measures[1].endBar === "final");
+	A("缩掉后终止线回移到新末节", c.measures[1].slots.every(s => s.kind === "empty") === false || c.measures.length === 2);
+
+	// 越界防御
+	const d = deleteBeatInSong(song2(), 99, 0);
+	A("小节越界原样返回（防御）", d.measures.length === 2);
+}
+
 console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 {
 	const { insertBeatInSong, createSong: newSong } = await import("../src/utils/chordChartModel.js");
