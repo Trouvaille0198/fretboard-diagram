@@ -832,14 +832,19 @@ button.color {
 }
 
 @media (max-width: 640px) {
-    /* 窄屏不缩不换行：保持 34px 色块，超宽横向滚动 */
+    /* 窄屏不缩不换行：34px 色块。行宽随内容（8 色 321px）且上限容器宽：
+       装得下 → fit-content 居中；装不下 → 收缩回全宽出横向滚动（fit-content 在溢出方向自动失效） */
     .color-palette-row {
         flex-wrap: nowrap;
-        justify-content: flex-start; /* 居中+溢出会裁掉左端够不到，滚动必须从头排起 */
+        justify-content: center;
         gap: 7px;
         overflow-x: auto;
         scrollbar-width: thin;
         padding-bottom: 2px;
+        margin-left: auto;
+        margin-right: auto;
+        width: fit-content;
+        max-width: 100%;
         -webkit-overflow-scrolling: touch;
     }
     .color-palette-row button.color {
@@ -4280,6 +4285,13 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 /* 移动端：左右边距全部收紧（寸土寸金） */
 @media (max-width: 640px) {
+    /* 窄屏下载/复制选项：双列网格紧凑排布（一排 7 项需 465px 放不下；双列比原来的 3 行紧凑） */
+    .menu-left { width: 100% !important; max-width: 100% !important; }
+    .menu-download-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 6px; }
+    .menu-download-row .menu-checkbox { padding: 2px 3px; border-radius: 6px; background: rgba(255,255,255,0.04); gap: 3px; white-space: nowrap; justify-content: flex-start; }
+    .menu-download-row .menu-checkbox span { font-size: 11px; }
+    .menu-download-row .menu-checkbox input { width: 12px; height: 12px; margin: 0; flex: none; }
+
     /* 编辑页（静图/动图）：板缩到屏宽（自然宽远超手机屏），菜单面板堆叠不挤板 */
     .fretboard-stage svg { max-width: 100%; height: auto; }
     .fretboard-stage .fwt { flex: 0 0 auto; }
