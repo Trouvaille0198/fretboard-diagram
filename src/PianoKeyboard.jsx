@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CONSTS } from './constants';
 import './fretboard.css';
 
@@ -36,9 +36,22 @@ function PianoKeyboard({ enharmonic, selectedNote, onNoteSelect }) {
     }
   };
 
+  // 窄屏自适应：整琴固定几何(总宽 343)，放不下时等比缩小（zoom 参与布局，黑键定位数学不变）
+  const wrapRef = useRef(null);
+  const [zoom, setZoom] = useState(1);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const calc = () => setZoom(Math.min(1, el.clientWidth / 343));
+    calc();
+    const ro = new ResizeObserver(calc);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <div className="piano-keyboard">
-      <div className="piano-keys">
+    <div className="piano-keyboard" ref={wrapRef}>
+      <div className="piano-keys" style={{ zoom }}>
         {/* 渲染白键 */}
         {whiteKeys.map((key, index) => {
           const isSelected = selectedNote === key.noteIndex;
