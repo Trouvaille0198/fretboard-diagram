@@ -15,6 +15,15 @@ export function TopNav({ mode }) {
 	const [loginOpen, setLoginOpen] = useState(false);
 	const [cloudFail, setCloudFail] = useState(false);
 	const [logoutAsk, setLogoutAsk] = useState(false);
+	const [prefsOpen, setPrefsOpen] = useState(false);
+
+	// ⚙ 偏好菜单点外关闭
+	useEffect(() => {
+		if (!prefsOpen) return;
+		const close = e => { if (!e.target.closest(".cc-prefs, .cc-prefs-btn")) setPrefsOpen(false); };
+		document.addEventListener("mousedown", close);
+		return () => document.removeEventListener("mousedown", close);
+	}, [prefsOpen]);
 
 	// 云端同步失败提示（红点）：静默失败曾造成数据事故，必须可见
 	useEffect(() => {
@@ -138,6 +147,17 @@ export function TopNav({ mode }) {
 			</nav>
 			<div className="top-nav-right">
 				<span className="top-nav-ver" title="界面版本：刷新后应显示 v1.0.1">v1.0.1</span>
+				<button className="top-nav-icon cc-prefs-btn" title="偏好设置"
+					onClick={e => { e.stopPropagation(); setPrefsOpen(v => !v); }}>⚙</button>
+				{prefsOpen ? (
+					<div className="cc-prefs" onClick={e => e.stopPropagation()}>
+						<div className="cc-prefs-ver">v1.0.1</div>
+						<button onClick={toggleLang}>{lang === "zh" ? "Switch to English" : "切换为中文"}</button>
+						<button onClick={() => setTheme(x => (x === "dark" ? "light" : "dark"))}>
+							{theme === "dark" ? (tr.toLight ?? "浅色模式") : (tr.toDark ?? "深色模式")}
+						</button>
+					</div>
+				) : null}
 				{user ? (
 					<span className="top-nav-user" title={user + (cloudFail ? "（⚠ 云同步失败：改动只存在本机，稍后会自动重试或重新登录）" : "")}>
 						{cloudFail ? <span className="top-nav-cloudfail" title="云同步失败：改动只存在本机">⚠</span> : null}
@@ -177,13 +197,7 @@ export function TopNav({ mode }) {
 						</div>
 					</div>
 				) : null}
-				<button className="top-nav-icon" onClick={toggleLang} title={lang === "zh" ? "Switch to English" : "切换为中文"}>
-					{lang === "zh" ? "En" : "中"}
-				</button>
-				<button className="top-nav-icon" onClick={() => setTheme(x => (x === "dark" ? "light" : "dark"))}
-					title={theme === "dark" ? (tr.toLight ?? "浅色") : (tr.toDark ?? "深色")}>
-					{theme === "dark" ? "☀" : "☾"}
-				</button>
+
 			</div>
 		</header>
 	);

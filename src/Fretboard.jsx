@@ -515,11 +515,13 @@ function Fretboard({ mode = 'normal' }) {
     ? (playSteps.stage.cropBox || { x: geoView.svgViewBoxX, y: geoView.svgViewBoxY, w: geoView.svgViewBoxWidth, h: geoView.svgViewBoxHeight })
     : null;
   const baseScale = geoView.svgWidth / geoView.svgViewBoxWidth; // 板面固有缩放（宽 attr / viewBox 宽），裁剪前后视觉密度一致
-  const svgWidth = playVB ? Math.round(playVB.w * baseScale) : geoView.svgWidth;
+  // 静态板右缘死边距裁掉（最右品后 ~40 单位空白），播放舞台（裁剪框数学）不裁
+  const staticTrim = playVB ? 0 : 40;
+  const svgWidth = playVB ? Math.round(playVB.w * baseScale) : geoView.svgWidth - staticTrim;
   const svgHeight = playVB ? Math.round(playVB.h * baseScale) : geoView.svgHeight;
   const svgViewBoxX = playVB ? playVB.x : geoView.svgViewBoxX;
   const svgViewBoxY = playVB ? playVB.y : geoView.svgViewBoxY;
-  const svgViewBoxWidth = playVB ? playVB.w : geoView.svgViewBoxWidth;
+  const svgViewBoxWidth = playVB ? playVB.w : geoView.svgViewBoxWidth - staticTrim;
   const svgViewBoxHeight = playVB ? playVB.h : geoView.svgViewBoxHeight;
   const fretboardWidth = geoView.fretboardWidth;
 
@@ -1713,10 +1715,6 @@ function Fretboard({ mode = 'normal' }) {
       ) : null}
       <div className="title-header">
         <div className="title-header-inner">
-          <h1>
-            Fretboard Diagram Generator
-          </h1>
-          <div className="datetime">{currentDateTime}</div>
           {dynamic.isDynamic && (
             <div
               className="dyn-badge"
