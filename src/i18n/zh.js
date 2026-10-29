@@ -192,6 +192,7 @@ export const zh = {
         restHint: "休止（0）",
         holdHint: "延音（-）",
         splitHint: "反拍拆分 / 合并（Enter）",
+        curChordTip: "该拍当前和弦",
         clearHint: "清空（⌫）",
         beatLabel: "拍",
         rBallad: "分解",
