@@ -1101,13 +1101,13 @@ button.color.level2.selected {
 
 .piano-keyboard {
     display: inline-block;
+    max-width: 100%;
 }
 
 .piano-keys {
     display: flex;
     position: relative;
-    max-width: 100%;
-    overflow-x: auto; /* 窄屏滚动而非压缩白键——黑键绝对定位按白键实宽算，压了就错位 */
+    /* 窄屏由组件 zoom 等比缩小（几何恒定，黑键定位不破） */
     border: 1px solid var(--app-border);
     border-radius: 18px;
     padding: 8px;
@@ -1124,7 +1124,7 @@ button.color.level2.selected {
 }
 
 .piano-key.white-key {
-    flex: 0 0 auto; /* 不许被 flex 压缩（黑键定位依赖 45px 定宽） */
+    flex: 0 0 auto;
     width: 45px;
     height: 130px;
     background: linear-gradient(180deg, #fefefe 0%, #dfe6ea 100%);
