@@ -247,8 +247,6 @@ export function FretboardMenu({
                   <span>{tm.stitchUnify ?? '统一色系'}</span>
                 </label>
               )}
-            </div>
-            <div className="menu-download-row">
               <label className="menu-checkbox">
                 <input
                   type="checkbox"
