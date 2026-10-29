@@ -91,20 +91,48 @@ export function outboxPending(table) {
 	return loadOutbox().filter(e => !table || e.table === table);
 }
 
+// 版本号账本（都只增不减）：
+//   ackedRev —— 本标签页自己上一次 PUT 被服务端确认的 rev（内容链里确实包含这一版）
+//   seenRev  —— 见过的最高 rev（自己的确认 + 拉到的远端版本，取 max）
+// queuePush 算 baseRev 的规则（诚实性是底线，baseRev 必须如实回答"内容基于哪一版"）：
+//   基线 = item.rev（调用方内存里的版本，多数时候就是真实基线）；
+//   仅当"自己的确认账(ackedRev)更高、且没见过比它更新的远端版本(seenRev ≤ ackedRev)"时才领到 ackedRev
+//   —— 这是同页连续编辑场景：内存 rev 因 ack 尚未回流而过期，但内容链确实包含自己刚确认的那版。
+//   若远端曾推进到比自己确认更高的版本（seenRev > ackedRev），说明别的设备改过而本内容没基于它，
+//   此时绝不虚报，让服务端按真实基线判 409 → 冲突副本（真分歧就该这么处理）。
+// 账本存 localStorage（fretboard-sync-revs）：同浏览器的多个标签页共享同一个离线队列，
+// B 标签代发拿到 ack 时 A 标签的内存无从知晓——账本落盘后 A 也能看到（storage 事件还会推给各标签）。
+// 条目：{ "table|id": { a: 自己确认过的 rev, s: 见过的最高 rev } }
+const LEDGER_KEY = "fretboard-sync-revs";
+const loadLedger = () => { try { return JSON.parse(localStorage.getItem(LEDGER_KEY) || "{}") || {}; } catch (e) { return {}; } };
+const saveLedger = (l) => { try { localStorage.setItem(LEDGER_KEY, JSON.stringify(l)); } catch (e) { /* 配额满：内存语义退化也能工作 */ } };
+function ledgerBump(k, field, rev) {
+	const n = Number(rev) || 0;
+	if (!n) return;
+	const l = loadLedger();
+	const e = l[k] || (l[k] = {});
+	if (n > (e[field] || 0)) { e[field] = n; saveLedger(l); }
+}
+const ledgerGet = (k) => { const e = loadLedger()[k] || {}; return { acked: e.a || 0, seen: e.s || 0 }; };
+
 // 入队一次下发（同一 id 只保留最新一条）
 export function queuePush(table, item) {
 	if (!authUser()) return;      // 游客：纯本地，不入队
 	const list = loadOutbox();
 	const i = list.findIndex(e => e.table === table && e.id === item.id);
+	const k = `${table}|${item.id}`;
+	let baseRev = Number(item.rev) || 0;
+	const { acked: own, seen } = ledgerGet(k);
+	if (own > baseRev && seen <= own) baseRev = own;
 	const entry = {
 		table, id: item.id, item, op: "put",
-		baseRev: item.baseRev != null ? item.baseRev : (item.rev || 0),
+		baseRev,
 		hash: contentHash(item),
 		tries: 0, nextAt: 0, at: Date.now()
 	};
 	if (i >= 0) {
-		// 已在队列里：保留原来的 baseRev（还是基于同一版改的），内容换成最新的
-		list[i] = { ...list[i], ...entry, baseRev: list[i].baseRev, tries: 0, nextAt: 0 };
+		// 已在队列里：内容换成最新的；baseRev 按上面规则重算（同一内容链，基线不变或前进）
+		list[i] = { ...list[i], ...entry, tries: 0, nextAt: 0 };
 	} else {
 		list.push(entry);
 	}
@@ -228,6 +256,10 @@ export async function flushOutbox() {
 					saved = res && res.item;
 				}
 				if (saved) {
+					// 记两本账：自己确认过的版本（内容链包含它）+ 见过的最高版本
+					const k0 = `${entry.table}|${entry.id}`;
+					ledgerBump(k0, "a", saved.rev);
+					ledgerBump(k0, "s", saved.rev);
 					const a = appliers.get(entry.table);
 					if (a) { try { a(saved); } catch (e) { /* 落地失败不影响清队列 */ } }
 					window.dispatchEvent(new CustomEvent("fretboard:cloud-ack", { detail: { table: entry.table, id: entry.id, item: saved } }));
@@ -307,6 +339,9 @@ export async function pullSince(table) {
 	if (!res.ok) throw new Error("http_" + res.status);
 	const data = await res.json().catch(() => ({}));
 	if (data.rev != null) setCursor(table, data.rev);
+	// 拉到的远端版本只进"见过的最高版本"账（不进自己的确认账）——
+	// 本内容若没基于它，queuePush 就不能虚报这个基线，让真分歧走 409
+	(data.items || []).forEach(i => ledgerBump(`${table}|${i.id}`, "s", i.rev));
 	return data;
 }
 
