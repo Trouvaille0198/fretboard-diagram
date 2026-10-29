@@ -12,7 +12,7 @@ const FIG_SIZES = [112, 144, 176];
 import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken } from "../utils/chordLib";
 import { ChordSign } from "./ChordSign";
 import {
-	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong
+	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong, deleteBeatInSong
 } from "../utils/chordChartModel";
 import { buildPlayPlan } from "../utils/chartPlayback";
 import { remoteIsNewer } from "../utils/syncEngine";
@@ -705,6 +705,19 @@ export function ChordChartView({ songId }) {
 		showToast(ts.insertBeatToast ?? "已插入一拍，后面的拍整体后移");
 	};
 
+	// 删除一拍：插入一拍的逆操作——光标处的拍移除，后面的拍整体前移（跨小节流动），末尾补空拍
+	const removeBeat = (mi = cursor.mi, si = cursor.si) => {
+		const m = song.measures[mi];
+		if (!m) return;
+		const at = Math.max(0, Math.min(m.slots.length - 1, si));
+		commitTyped();
+		const next = deleteBeatInSong(songRef.current, mi, at);
+		setSong(next);
+		// 末小节可能被自动缩掉：光标钳回仍存在的小节
+		setCursor({ mi: Math.min(mi, next.measures.length - 1), si: at, half: null });
+		showToast(ts.delBeatToast ?? "已删除一拍，后面的拍整体前移");
+	};
+
 	const removeMeasure = (mi) => {
 		if (song.measures.length <= 1) return;
 		setSong(s => ({ ...s, measures: s.measures.filter((_, i) => i !== mi) }));
@@ -1339,10 +1352,10 @@ export function ChordChartView({ songId }) {
 					onBlur={e => patchMeasure(mi, x => ({ ...x, lyrics: e.target.value }))} />
 				{cellMenu === mi ? (
 					<div className="cc-mmenu" onClick={e => e.stopPropagation()}>
-						<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure ?? "后插小节"}</button>
-						<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
-						<button onClick={() => { duplicateMeasure(mi); setCellMenu(null); }}>⧉ {ts.dupMeasure ?? "复制小节"}</button>
+						<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure ?? "插入小节"}</button>
 						<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure ?? "删除小节"}</button>
+						<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
+						<button className="danger" onClick={() => { removeBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.delBeatTip ?? "删除光标处的拍：后面的拍整体前移（跨小节流动），末尾补空拍；末小节被掏空自动缩掉"}>⇤ {ts.delBeat ?? "删除一拍"}</button>
 						<div className="cc-menu-sep" />
 						<div className="cc-mmenu-label">{ts.barlineLabel ?? "小节线"}</div>
 						<div className="cc-mmenu-row">
