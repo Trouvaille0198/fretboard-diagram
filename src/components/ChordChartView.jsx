@@ -4,6 +4,7 @@ import { ScoreBoard } from "./ScorePieces";
 import { ChordPopup } from "./ChordPopup";
 import { FigView } from "./ChordFig.jsx";
 import { FigBoardEditor } from "./FigBoardEditor.jsx";
+import { UiSelect } from "./UiSelect";
 import { Toast } from "./Toast";
 import audioService from "../services/audioService";
 
@@ -36,38 +37,6 @@ const END_BARS = [
 	{ v: "repeatEnd", label: ":‖", name: "反复结束" },
 	{ v: "final", label: "⏨", name: "终止" }
 ];
-
-// 主音选择：按钮 + 应用内 12 音网格（原生 select 的弹出列表走浏览器默认白底，不跟深色主题；
-// 网格竖排在按钮下方、不走绝对定位——小节工具行是 overflow-x 容器，绝对弹层会被裁）
-function KeyRootPicker({ cur, minor, ts, onPick }) {
-	const [open, setOpen] = useState(false);
-	const boxRef = useRef(null);
-	useEffect(() => {
-		if (!open) return;
-		const onDown = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
-		const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
-		document.addEventListener("mousedown", onDown);
-		document.addEventListener("keydown", onKey);
-		return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
-	}, [open]);
-	return (
-		<span className="cc-key-picker" ref={boxRef}>
-			<button type="button" className={`cc-key-root-btn${open ? " on" : ""}`}
-				title={ts.keyRootTip ?? "主音：点开选 12 个音（♭/♯ 相对升降）"}
-				onClick={() => setOpen(v => !v)}>
-				<span>1 =</span><b>{PC_KEY[cur]}{minor ? "m" : ""}</b><i>▾</i>
-			</button>
-			{open ? (
-				<span className="cc-key-menu" role="listbox">
-					{PC_KEY.map((k, pc) => (
-						<button key={pc} type="button" role="option" aria-selected={pc === cur} className={pc === cur ? "on" : ""}
-							onClick={() => { onPick(pc); setOpen(false); }}>{k}</button>
-					))}
-				</span>
-			) : null}
-		</span>
-	);
-}
 
 // 和弦谱页（8pu 式和弦谱复刻）：格子谱面 + 键盘编辑 + 播放 + 移调 + MusicXML + 一键动图
 export function ChordChartView({ songId }) {
@@ -224,6 +193,14 @@ export function ChordChartView({ songId }) {
 	});
 	useEffect(() => { try { localStorage.setItem("fretboard-figopts", JSON.stringify(figOpts)); } catch (e) { /* 忽略 */ } }, [figOpts]);
 
+	// 简略模式：每两拍并成一格展示（双和弦并成反拍对；本身是反拍的只留前半）——谱面更紧凑，纯显示层不动数据
+	const [compactView, setCompactView] = useState(() => {
+		try { return localStorage.getItem("fretboard-cc-compact") === "1"; } catch (e) { return false; }
+	});
+	useEffect(() => {
+		try { localStorage.setItem("fretboard-cc-compact", compactView ? "1" : "0"); } catch (e) { /* 忽略 */ }
+	}, [compactView]);
+
 	const typeTimerRef = useRef(null);
 	const scoreRef = useRef(null);
 
@@ -232,17 +209,32 @@ export function ChordChartView({ songId }) {
 	useEffect(() => {
 		const el = scoreRef.current;
 		if (!el || typeof ResizeObserver === "undefined") return;
+		// 量"可用宽度"必须用父容器：谱面自身的 clientWidth 受网格最小内容宽影响——
+		// 每行小节数一多，网格撑出的最小宽度就把自身宽度钉住，观察器永远收不到变窄信号
+		// （简略模式窄屏曾因此卡在宽屏的行数、横向溢出）
+		const box = el.parentElement || el;
 		const calc = () => {
 			const slotsPer = (songRef.current.timeSig || 4) * 2; // 每小节拍格数（半拍制）
-			const minMeasure = slotsPer * 40 + 40; // 单小节最小宽（拍格 ~40px + 小节呼吸位）
-			const per = Math.max(2, Math.min(8, Math.floor(el.clientWidth / minMeasure)));
+			// 简略模式每格装两拍、小节只占一半宽 → 每行多放一倍小节，谱面整体更紧凑
+			const minMeasure = (slotsPer * 40 + 40) / (compactView ? 2 : 1);
+			const per = Math.max(2, Math.min(8, Math.floor(box.clientWidth / minMeasure)));
 			setAutoPer(p => (p === per ? p : per));
 		};
 		calc();
 		const ro = new ResizeObserver(calc);
+		ro.observe(box);
 		ro.observe(el);
-		return () => ro.disconnect();
-	}, [song.timeSig]);
+		// 后台标签页的渲染管线被挂起，ResizeObserver 不回调（切回前台才会补）；
+		// window resize 与 visibilitychange 是普通 DOM 事件，可兜住后台改窗口大小/切回的场景
+		window.addEventListener("resize", calc);
+		const onVis = () => { if (!document.hidden) calc(); };
+		document.addEventListener("visibilitychange", onVis);
+		return () => {
+			ro.disconnect();
+			window.removeEventListener("resize", calc);
+			document.removeEventListener("visibilitychange", onVis);
+		};
+	}, [song.timeSig, compactView]);
 	const popupRef = useRef(null);
 	const timersRef = useRef([]);
 	const saveTimerRef = useRef(null);
@@ -528,7 +520,10 @@ export function ChordChartView({ songId }) {
 		const setMode = (m2) => { if (!!m2 !== minor) setKey(cur, m2); }; // 点当前调式 = 无操作（不产生空的撤销步）
 		return (
 			<span className="cc-key-stepper">
-				<KeyRootPicker cur={cur} minor={minor} ts={ts} onPick={pc => setKey(pc, minor)} />
+				<UiSelect value={cur} options={PC_KEY.map((k, pc) => ({ value: pc, label: k }))} onChange={pc => setKey(pc, minor)}
+					className="cc-key-root" menuClassName="ui-grid" title={ts.keyRootTip ?? "主音：点开选 12 个音（♭/♯ 相对升降）"}>
+					<span>1 =</span><b>{PC_KEY[cur]}{minor ? "m" : ""}</b><i className="ui-select-arrow">▾</i>
+				</UiSelect>
 				<span className="cc-key-mode" role="group" title={ts.keyModeTip ?? "调式：大调 / 小调（调内和弦与音名随之改变）"}>
 					<button type="button" className={!minor ? "on" : ""} onClick={() => setMode(false)}>{ts.keyMajor ?? "大调"}</button>
 					<button type="button" className={minor ? "on" : ""} onClick={() => setMode(true)}>{ts.keyMinor ?? "小调"}</button>
@@ -1336,6 +1331,53 @@ export function ChordChartView({ songId }) {
 		);
 	};
 
+	// ===== 简略模式：两拍并一格的配对逻辑 =====
+	// 每拍取"该显示的那一个单元"：本身就是反拍(split)的只留前半；空的不要。
+	// 两拍都有和弦 → 并成一对反拍（左右两半）；否则只展示第一个有内容的。
+	const compactPairUnits = (mi, siA, siB) => {
+		const slots = song.measures[mi].slots;
+		const one = (sl, si) => {
+			if (!sl) return [];
+			if (sl.split) return [{ u: sl.split[0], si, half: 0 }];
+			return sl.kind !== "empty" ? [{ u: sl, si, half: null }] : [];
+		};
+		const A = one(slots[siA], siA);
+		const B = siB != null ? one(slots[siB], siB) : [];
+		const isChord = (x) => !!x && x.u.kind === "chord" && !!x.u.chord;
+		if (A.length && B.length && isChord(A[0]) && isChord(B[0])) return [A[0], B[0]];
+		return [...A, ...B].slice(0, 1);
+	};
+
+	const compactPairView = (mi, siA, siB) => {
+		const units = compactPairUnits(mi, siA, siB);
+		const pair = siB != null ? [siA, siB] : [siA];
+		const isCur = editing && cursor.mi === mi && pair.includes(cursor.si);
+		const playingHere = playing && playing.mi === mi && pair.includes(playing.si);
+		const first = units[0] || { si: siA, half: null };
+		return (
+			<div
+				key={siA}
+				className={`cc-beat cc-beat-pair ${units.length > 1 ? "paired" : ""} ${isCur ? "cur" : ""} ${playingHere ? "playing" : ""}`}
+				data-mi={mi}
+				data-si={siA}
+				onMouseEnter={() => { hoverBeatRef.current = { mi, si: siA, half: null }; }}
+				onMouseLeave={() => { const h = hoverBeatRef.current; if (h && h.mi === mi && h.si === siA) hoverBeatRef.current = null; }}
+				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi: first.si, si: first.si, half: first.half }); setPopupOpen(true); }}
+			>
+				{units.length > 1 ? <span className="cc-beat-splitmark" title={ts.splitTip ?? "两拍并一格（简略模式）"}>╱</span> : null}
+				<div className={`cc-beat-units ${units.length > 1 ? "halved" : ""}`}>
+					{units.map(({ u, si, half }, i) => (
+						<div key={i} className={`cc-beat-unit ${isCur && cursor.si === si && (half == null || cursor.half === half) ? "cur" : ""}`}
+							onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half }); setPopupOpen(true); }}>
+							{beatContent(u, units.length > 1, mi, si, half)}
+							{u.rhythm ? <span className="cc-rhythm-mark">{u.rhythm === "ballad" ? "∼" : u.rhythm === "block" ? "▮" : u.rhythm === "waltz" ? "③" : ""}</span> : null}
+						</div>
+					))}
+				</div>
+			</div>
+		);
+	};
+
 	const cellView = (m, mi, rowHasFig) => {
 		const inSel = selRange != null && mi >= selRange[0] && mi <= selRange[1];
 		return (
@@ -1381,21 +1423,23 @@ export function ChordChartView({ songId }) {
 				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格上方，拍格自身不受图影响，记号永远同线） */}
 				{figOpts.mode === "inline" ? (
 					<div className={`cc-cell-figs${rowHasFig ? " pad" : ""}`}>
-						{m.slots.map((sl, si) => {
-							const us = sl.split || [sl];
-							return (
-								<div className="cc-cell-figslot" key={si}>
-									{us.map((u, h) => (((u.kind === "chord" && u.chord) || u.kind === "hold") && u.fig ? (
-										<FigView key={h} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
-											opts={{ ...figOpts, compact: !!sl.split, size: sl.split ? 44 : 64 }}
-											onClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, sl.split ? h : null); }} />
-									) : null))}
-								</div>
-							);
-						})}
+						{(compactView
+							? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => ({ key: k * 2, units: compactPairUnits(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null) }))
+							: m.slots.map((sl, si) => ({ key: si, units: (sl.split || [sl]).map((u, h) => ({ u, si, half: sl.split ? h : null })) }))
+						).map(({ key, units }) => (
+							<div className={`cc-cell-figslot${units.length > 1 ? " paired" : ""}`} key={key}>
+								{units.map(({ u, si, half }, i) => (((u.kind === "chord" && u.chord) || u.kind === "hold") && u.fig ? (
+									<FigView key={i} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
+										opts={{ ...figOpts, compact: units.length > 1, size: units.length > 1 ? 44 : 64 }}
+										onClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} />
+								) : null))}
+							</div>
+						))}
 					</div>
 				) : null}
-				<div className="cc-cell-slots">{m.slots.map((_, si) => slotView(mi, si))}</div>
+				<div className="cc-cell-slots">{compactView
+					? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => compactPairView(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null))
+					: m.slots.map((_, si) => slotView(mi, si))}</div>
 				<input key={`cl-${m.id}-${m.lyrics || ""}`} className={`cc-cell-lyrics ${m.lyrics ? "has" : ""}`} defaultValue={m.lyrics || ""}
 					readOnly={!editing} placeholder={editing ? "" : (ts.lyricsFor ?? "当前小节歌词")}
 					onBlur={e => patchMeasure(mi, x => ({ ...x, lyrics: e.target.value }))} />
@@ -1464,9 +1508,8 @@ export function ChordChartView({ songId }) {
 					{editing ? (
 						<>
 							<button className={`button sm play ${playing ? "on" : ""}`} onClick={() => (playing ? stopPlayback() : startPlayback())} title={ts.playFromCursor ?? "播放 · 从光标小节起；Ctrl+Space 从头"}>{playing ? "⏹" : "▶"}</button>
-							<select value={speed} onChange={e => onSpeedChange(Number(e.target.value))} title={ts.speedLabel ?? "速度"}>
-								{[0.5, 0.75, 1, 1.25, 1.5].map(x => <option key={x} value={x}>{x}×</option>)}
-							</select>
+							<UiSelect value={speed} onChange={onSpeedChange} title={ts.speedLabel ?? "速度"}
+							options={[0.5, 0.75, 1, 1.25, 1.5].map(x => ({ value: x, label: x + "×" }))} />
 							<label className="cc-iconbtn" title={ts.metronome ?? "节拍器"}><input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} />{ts.metronome ?? "节拍器"}</label>
 							<span className="cc-more-wrap">
 								<button className="button sm cc-more-btn" onClick={() => setMenuOpen(v => !v)} title={ts.more ?? "更多"}>⋯</button>
@@ -1520,17 +1563,15 @@ export function ChordChartView({ songId }) {
 									⇥ {ts.insertBeat ?? "插入一拍"} <kbd>Ins</kbd>
 								</button>
 								<span className="cc-sep" />
-								<select value={song.measures[cursor.mi]?.endBar || "single"} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, endBar: e.target.value }))} title={ts.barlineLabel ?? "小节线"}>
-									{END_BARS.map(b => <option key={b.v} value={b.v}>{b.name}</option>)}
-								</select>
+								<UiSelect value={song.measures[cursor.mi]?.endBar || "single"} title={ts.barlineLabel ?? "小节线"}
+									onChange={v => patchMeasure(cursor.mi, x => ({ ...x, endBar: v }))}
+									options={END_BARS.map(b => ({ value: b.v, label: b.name }))} />
 								<label className="cc-iconbtn" title={ts.repeatStart ?? "反复开始"}>
 									<input type="checkbox" checked={!!song.measures[cursor.mi]?.repeatStart} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, repeatStart: e.target.checked }))} />‖:
 								</label>
-								<select value={song.measures[cursor.mi]?.house || "0"} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, house: e.target.value === "0" ? null : Number(e.target.value) }))} title={ts.houseLabel ?? "跳房子"}>
-									<option value="0">{ts.houseNone ?? "无房子"}</option>
-									<option value="1">1.</option>
-									<option value="2">2.</option>
-								</select>
+								<UiSelect value={song.measures[cursor.mi]?.house || 0} title={ts.houseLabel ?? "跳房子"}
+									onChange={v => patchMeasure(cursor.mi, x => ({ ...x, house: v === 0 ? null : Number(v) }))}
+									options={[{ value: 0, label: ts.houseNone ?? "无房子" }, { value: 1, label: "1." }, { value: 2, label: "2." }]} />
 								<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn ?? "段落"}</button>
 								<span className="cc-sep" />
 								<label className="cc-field">{ts.keyChange ?? "转调"}（{ts.keyChangeFrom ?? "本小节起"}）</label>
@@ -1592,9 +1633,8 @@ export function ChordChartView({ songId }) {
 					</div>
 					<div className="cc-dyn-controls">
 						<button className={`button ${playing ? "on" : ""}`} onClick={() => (playing ? stopPlayback() : startPlayback())}>{playing ? "⏹ " + (ts.stop ?? "停止") : "▶ " + (ts.playAll ?? "播放")}</button>
-						<select value={speed} onChange={e => onSpeedChange(Number(e.target.value))} title={ts.speedLabel ?? "速度"}>
-							{[0.5, 0.75, 1, 1.25, 1.5].map(x => <option key={x} value={x}>{x}×</option>)}
-						</select>
+						<UiSelect value={speed} onChange={onSpeedChange} title={ts.speedLabel ?? "速度"}
+							options={[0.5, 0.75, 1, 1.25, 1.5].map(x => ({ value: x, label: x + "×" }))} />
 						<label className="cc-iconbtn" title={ts.metronome ?? "节拍器"}><input type="checkbox" checked={metronome} onChange={e => setMetronome(e.target.checked)} />{ts.metronome ?? "节拍器"}</label>
 					</div>
 					<div className="cc-dyn-strip">
@@ -1621,6 +1661,11 @@ export function ChordChartView({ songId }) {
 								onClick={() => setSettingsOpen(v => !v)}>
 								⚙ 1 = {PC_KEY[song.key?.root ?? 0]}{song.key?.minor ? "m" : ""} · {song.timeSig ?? 4}/4 · ♩={song.bpm ?? 72}
 							</button>
+							<button className={`cc-compact-btn${compactView ? " on" : ""}`}
+								title={ts.compactTip ?? "简略模式：两拍并成一格；两拍都有和弦时并成一对反拍，反拍只显示前半——谱面更紧凑，便于观看（不影响数据）"}
+								onClick={() => setCompactView(v => !v)}>
+								{ts.compactLabel ?? "简略"}
+							</button>
 							{/* 生效调：谱中转调真正起作用时才出现，避免"改了却看不出" */}
 							{(() => {
 								const ek = keyAt(cursor.mi);
@@ -1634,17 +1679,16 @@ export function ChordChartView({ songId }) {
 										<div className="cc-settings-label">{ts.gSong ?? "曲谱"}</div>
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.keyLabel ?? "调"}</span>
 											<span className="cc-settings-v">1 =
-												<select value={song.key?.root ?? 0} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { root: Number(e.target.value), minor: !!s.key?.minor } }))}>
-													{PC_KEY.map((k, pc) => <option key={pc} value={pc}>{k}</option>)}
-												</select>
+												<UiSelect value={song.key?.root ?? 0} disabled={!editing} menuClassName="ui-grid"
+													onChange={root => setSong(s => ({ ...s, key: { root, minor: !!s.key?.minor } }))}
+													options={PC_KEY.map((k, pc) => ({ value: pc, label: k }))} />
 												<label className="cc-iconbtn" title={ts.minor ?? "小调"}><input type="checkbox" checked={!!song.key?.minor} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { root: s.key?.root ?? 0, minor: e.target.checked } }))} />m</label>
 											</span>
 										</div>
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.timeSigLabel ?? "拍号"}</span>
 											<span className="cc-settings-v">
-												<select value={song.timeSig} disabled={!editing} onChange={e => setTimeSig(Number(e.target.value))}>
-													{[2, 3, 4, 6].map(b => <option key={b} value={b}>{b}/4</option>)}
-												</select>
+												<UiSelect value={song.timeSig} disabled={!editing} onChange={v => setTimeSig(Number(v))}
+													options={[2, 3, 4, 6].map(b => ({ value: b, label: b + "/4" }))} />
 											</span>
 										</div>
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.bpmLabel ?? "速度"}</span>
