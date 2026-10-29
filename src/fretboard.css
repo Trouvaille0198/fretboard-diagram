@@ -832,19 +832,24 @@ button.color {
 }
 
 @media (max-width: 640px) {
-    .color-palette-row { gap: 5px; }
-    .color-palette-row button.color { width: min(40px, calc((100% - 40px) / 9)); }
-    button.color.color-tint { width: 28px; height: 28px; border-radius: 8px; }
-}
-@media (max-width: 360px) {
-    /* 极窄屏一排装不下 9 个可点击尺寸：改 5+4 两行居中网格（整齐两排，不是孤块） */
+    /* 窄屏不缩不换行：保持 34px 色块，超宽横向滚动 */
     .color-palette-row {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        justify-items: center;
+        flex-wrap: nowrap;
+        justify-content: flex-start; /* 居中+溢出会裁掉左端够不到，滚动必须从头排起 */
         gap: 7px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        padding-bottom: 2px;
+        -webkit-overflow-scrolling: touch;
     }
-    .color-palette-row button.color { width: min(40px, 100%); }
+    .color-palette-row button.color {
+        width: 34px;
+        flex: 0 0 auto;
+    }
+    button.color.color-tint { width: 28px; height: 28px; border-radius: 8px; }
+    .color-palette-row::-webkit-scrollbar { height: 4px; }
+    .color-palette-row::-webkit-scrollbar-thumb { background: rgba(230, 237, 242, 0.22); border-radius: 2px; }
+    .color-palette-row::-webkit-scrollbar-track { background: transparent; }
 }
 
 /* 淡色版本按钮样式 */
