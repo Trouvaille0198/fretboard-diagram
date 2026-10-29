@@ -333,6 +333,22 @@ export function ChordChartView({ songId }) {
 		return () => window.removeEventListener("fretboard:cloud-ack", onAck);
 	}, []);
 
+	// 谱尾自动留空位：最后一小节里有和弦图就自动补一个空小节——输入到谱尾永远有地方继续。
+	// 刚发生过"小节数变少"的这一次变化不补（用户删掉谱尾空小节/删除一拍缩掉末节的意图要尊重，
+	// 不能转眼又长回来）；之后任何新编辑落进末小节，空位照常补出。
+	const prevMCountRef = useRef(song.measures.length);
+	useEffect(() => {
+		const n = song.measures.length;
+		const shrank = n < prevMCountRef.current;
+		prevMCountRef.current = n;
+		if (shrank || !editing) return;
+		const last = song.measures[n - 1];
+		if (!last) return;
+		const hasFig = last.slots.some(sl => sl.split ? sl.split.some(u => u && u.kind === "chord") : sl.kind === "chord");
+		if (!hasFig) return;
+		setSong(s => ({ ...s, measures: [...s.measures, createMeasure(s.timeSig || last.slots.length || 4)] }));
+	}, [song, editing]);
+
 	// 编辑历史（撤销/重做）：song 变化自动记录前值；800ms 内的连击（跟打修饰/歌词连输）合并为一步
 	useEffect(() => {
 		if (prevSongRef.current && prevSongRef.current !== song) {
@@ -1356,6 +1372,7 @@ export function ChordChartView({ songId }) {
 						<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure ?? "删除小节"}</button>
 						<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
 						<button className="danger" onClick={() => { removeBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.delBeatTip ?? "删除光标处的拍：后面的拍整体前移（跨小节流动），末尾补空拍；末小节被掏空自动缩掉"}>⇤ {ts.delBeat ?? "删除一拍"}</button>
+						<button onClick={() => { setCellMenu(null); promptSection(mi); }}>¶ {ts.sectionBtn ?? "段落标记"}</button>
 						<div className="cc-menu-sep" />
 						<div className="cc-mmenu-label">{ts.barlineLabel ?? "小节线"}</div>
 						<div className="cc-mmenu-row">
@@ -1380,7 +1397,6 @@ export function ChordChartView({ songId }) {
 							))}
 						</div>
 						<div className="cc-menu-sep" />
-						<button onClick={() => { setCellMenu(null); promptSection(mi); }}>¶ {ts.sectionBtn ?? "段落标记"}</button>
 						<div className="cc-mmenu-label">{ts.keyChange ?? "转调"}（{ts.keyChangeFrom ?? "本小节起"}）</div>
 						<div className="cc-mmenu-row">{keyStepper(mi)}</div>
 						<div className="cc-mmenu-label">{ts.tintLabel ?? "小节标色"}</div>
