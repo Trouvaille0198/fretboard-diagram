@@ -15,6 +15,25 @@ services:
     networks:
       - fretboard-network
 
+  # 认证/同步服务（Node + SQLite；/api 全走这里，nginx 反代）
+  # 数据库文件挂 ./server-data 到容器 /data；备份 = 拷走该目录
+  auth:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: fretboard-auth
+    restart: unless-stopped
+    volumes:
+      - ./server-data:/data
+    environment:
+      - FRETB_DB=/data/data.db
+      - FRETB_HOST=0.0.0.0
+      - PORT=8787
+    expose:
+      - "8787"
+    networks:
+      - fretboard-network
+
   # 后端服务
   backend:
     build:

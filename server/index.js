@@ -326,7 +326,9 @@ const server = http.createServer(async (req, res) => {
 	json(res, 404, { error: "not_found" });
 });
 
-server.listen(PORT, "127.0.0.1", () => console.log(`[auth-server] http://127.0.0.1:${PORT} db=${DB_FILE}`));
+// 监听地址：默认只听本机回环（本机运行最安全）；容器部署时设 FRETB_HOST=0.0.0.0，由同网络的反向代理转发
+const HOST = process.env.FRETB_HOST || "127.0.0.1";
+server.listen(PORT, HOST, () => console.log(`[auth-server] http://${HOST}:${PORT} db=${DB_FILE}`));
 
 // 回收站定时清理：过期 10 天的条目永久清除（访问回收站时也会顺手清一次，这里兜底无人访问的情况）
 setInterval(purgeExpiredTrash, 6 * 3600 * 1000).unref?.();
