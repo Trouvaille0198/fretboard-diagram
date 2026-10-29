@@ -20,7 +20,6 @@ import { buildSongClip, stageFrame } from "../utils/chartFrames";
 import { exportMusicXml, importMusicXml } from "../utils/musicxmlChart";
 import { packChart, unpackChartBundle, chartShareCode, isChartPack } from "../utils/chartPack";
 import { saveClip } from "../utils/clipModel";
-import { saveToRememberedDir, rememberedDirSupported } from "../utils/saveFile";
 
 const PC_KEY = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 // 小节标色（着色页签）：段落视觉标记
@@ -1034,17 +1033,17 @@ export function ChordChartView({ songId }) {
 
 	// ============ 导入导出 / 动图 ============
 
-	// 落盘：优先写记忆目录，否则浏览器下载
+	// 落盘：直接走浏览器下载（进系统下载目录），不弹目录选择
 	const downloadText = async (text, name, mime) => {
 		const blob = new Blob([text], { type: mime });
-		const saved = rememberedDirSupported() ? await saveToRememberedDir(name, blob) : null;
-		if (!saved) {
-			const a = document.createElement("a");
-			a.href = URL.createObjectURL(blob);
-			a.download = name;
-			a.click();
-			URL.revokeObjectURL(a.href);
-		}
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = name;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		setTimeout(() => URL.revokeObjectURL(url), 5000);
 	};
 
 	// 工程文件（.fbchart）：无损、体积约 MusicXML 的 1/18 —— 主导出通道
