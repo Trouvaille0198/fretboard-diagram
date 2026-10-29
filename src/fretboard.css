@@ -1704,6 +1704,12 @@ g.note.preview-hover>circle {
         z-index: 30;
     }
 
+    /* 气泡要盖住下方指板区：.menu 的 isolate+transform 层叠上下文把它关住了，
+       弹出期间整体提权（:has 仅此用途，弹出消失即还原） */
+    .menu:has(.menu-tint-variants.mobile-popup) {
+        z-index: 50;
+    }
+
     .menu-left .menu-tint-variants.mobile-popup::after {
         top: -7.5px;
         right: auto;
