@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScoreBoard, TransitionFx, exportSheetImage } from './ScorePieces';
+import { UiSelect } from './UiSelect';
 import { deriveMeasures, flattenFrames, readMeasureMeta, writeMeasureMeta, chordDisplay } from '../utils/songStructure';
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -195,10 +196,9 @@ export function SongScoreView({
 				<button className="button sc-back" onClick={onExit}>← {ts.back ?? 'Back'}</button>
 				<h1 className="sc-title">{directoryName || ts.untitled || 'Untitled'}</h1>
 				<div className="sc-song-meta">
-					<label>1 = <select value={rootNote ?? 0} disabled><option>{keyName}</option></select></label>
-					<label><select className="sc-beats" value={beatsPerBar} onChange={e => songPatch({ beatsPerBar: parseInt(e.target.value, 10) })}>
-						{[2, 3, 4, 6].map(b => <option key={b} value={b}>{b}/4</option>)}
-					</select></label>
+					<label>1 = <UiSelect value={rootNote ?? 0} disabled options={[{ value: rootNote ?? 0, label: keyName }]} /></label>
+					<label><UiSelect className="sc-beats" value={beatsPerBar} onChange={v => songPatch({ beatsPerBar: parseInt(v, 10) })}
+						options={[2, 3, 4, 6].map(b => ({ value: b, label: `${b}/4` }))} /></label>
 					<label className="sc-bpm">♩=
 						<input type="number" min="30" max="240" value={bpm}
 							onChange={e => songPatch({ bpm: parseInt(e.target.value, 10) || 70 })} />
@@ -252,11 +252,8 @@ export function SongScoreView({
 								const entry = startIdx >= 0 && startIdx < flat.length - 1 ? flat[startIdx] : flat[0];
 								if (entry) { setCursorFrameId(entry.frame.id); setPlaying(true); }
 							}}>{playing ? '⏹' : '▶'}</button>
-							<select value={speed} onChange={e => setSpeed(parseFloat(e.target.value))}>
-								<option value={0.5}>0.5×</option>
-								<option value={1}>1×</option>
-								<option value={2}>2×</option>
-							</select>
+							<UiSelect value={speed} onChange={v => setSpeed(parseFloat(v))}
+								options={[{ value: 0.5, label: "0.5×" }, { value: 1, label: "1×" }, { value: 2, label: "2×" }]} />
 						</div>
 						<div className="sc-tl-strip" ref={sheetRef}>
 							{measures.map((measure, m) => {
