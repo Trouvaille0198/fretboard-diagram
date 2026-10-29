@@ -55,12 +55,12 @@ export function FretboardMenu({
 
   // 窄屏（≤640px）：淡色变体不常驻占位，点色块才在其正下方弹出气泡菜单（桌面端仍常驻调色盘左侧）
   const shellRef = useRef(null);
-  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 640px)').matches);
+  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 800px)').matches);
   const [tintMenuOpen, setTintMenuOpen] = useState(false);
   const [tintAnchorX, setTintAnchorX] = useState(null); // 弹出菜单中心相对 palette-shell 的 x（px）
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
+    const mq = window.matchMedia('(max-width: 800px)');
     const fn = e => { setNarrow(e.matches); if (!e.matches) setTintMenuOpen(false); };
     mq.addEventListener('change', fn);
     return () => mq.removeEventListener('change', fn);

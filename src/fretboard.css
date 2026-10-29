@@ -996,14 +996,16 @@ button.color.level2.selected {
 /* Enharmonic 按钮样式 */
 .enharmonic-button {
     background: rgba(255, 255, 255, 0.05);
-    color: var(--app-text);
+    color: var(--app-text-muted);
     border: 1px solid var(--app-border);
     border-radius: 999px;
     padding: 0;
     cursor: pointer;
-    font-size: 16px;
-    min-width: 32px;
-    width: 32px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+    min-width: 36px;
+    width: 36px;
     height: 36px;
     display: inline-flex;
     align-items: center;
@@ -1690,36 +1692,6 @@ g.note.preview-hover>circle {
     .menu-palette-shell {
         width: 100%;
         justify-content: center;
-    }
-
-    /* 窄屏：淡色档位不常驻占位，点色块在当前色块正下方弹出气泡（left 由 JS 锚定） */
-    .menu-tint-variants.mobile-popup {
-        position: absolute;
-        top: calc(100% + 10px);
-        transform: translateX(-50%);
-        flex-direction: row;
-        align-items: center;
-        padding: 10px 12px;
-        border-radius: 16px;
-        z-index: 30;
-    }
-
-    /* 气泡要盖住下方指板区：.menu 的 isolate+transform 层叠上下文把它关住了，
-       弹出期间整体提权（:has 仅此用途，弹出消失即还原） */
-    .menu:has(.menu-tint-variants.mobile-popup) {
-        z-index: 50;
-    }
-
-    .menu-left .menu-tint-variants.mobile-popup::after {
-        top: -7.5px;
-        right: auto;
-        left: 50%;
-        width: 13px;
-        height: 13px;
-        transform: translateX(-50%) rotate(45deg);
-        border-top: 1px solid rgba(230, 237, 242, 0.08);
-        border-right: none;
-        border-left: 1px solid rgba(230, 237, 242, 0.08);
     }
 
     .menu-left,
@@ -7864,4 +7836,35 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     color: #dfe7ee;
     border-radius: 5px;
     padding: 2px 6px;
+}
+/* ≤800px：淡色档位改"点色块弹气泡"（桌面左挂面板在 641-800px 会伸出屏幕外，实测 780px 仍出界）
+   —— 阈值须与 FretboardMenu.jsx 的 matchMedia 同步 */
+@media (max-width: 800px) {
+    .menu-tint-variants.mobile-popup {
+        position: absolute;
+        top: calc(100% + 10px);
+        transform: translateX(-50%);
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 16px;
+        z-index: 30;
+    }
+
+    .menu-left .menu-tint-variants.mobile-popup::after {
+        top: -7.5px;
+        right: auto;
+        left: 50%;
+        width: 13px;
+        height: 13px;
+        transform: translateX(-50%) rotate(45deg);
+        border-top: 1px solid rgba(230, 237, 242, 0.08);
+        border-right: none;
+        border-left: 1px solid rgba(230, 237, 242, 0.08);
+    }
+
+    /* 气泡要盖住下方指板区：.menu 的 isolate+transform 层叠上下文把 z:30 关住了，弹出期间整体提权 */
+    .menu:has(.menu-tint-variants.mobile-popup) {
+        z-index: 50;
+    }
 }
