@@ -826,7 +826,7 @@ button.color {
 /* 一层 9 色一行自适应：宽度 = (行宽 - 8 个间隙) / 9，上限 40px；窄屏自动缩小、绝不换行/溢出。
    只作用一层调色盘行，异色变体按钮（color-tint）不受影响 */
 .color-palette-row button.color {
-    width: min(40px, calc((100% - 64px) / 9));
+    width: min(40px, calc((100% - 64px) / 8));
     height: auto;
     aspect-ratio: 1;
 }

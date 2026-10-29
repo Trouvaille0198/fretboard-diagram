@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { LEVEL1_COLORS } from '../colorConfig';
 
-const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
+// 调色盘不展示中性灰（gray）：与单色点(mono)同为灰色系易混淆，按需求收掉。
+// 颜色本身保留——旧图的灰音符渲染、SVG 导入映射、连线取色都照常工作
+const LEVEL1_PALETTE_ORDER = Object.keys(LEVEL1_COLORS).filter(name => name !== 'gray');
 
 // 第一层颜色的快捷键映射
 const LEVEL1_SHORTCUTS = {
@@ -60,7 +62,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPale
   return (
     <div className="color-selector" ref={paletteRef}>
       <div className="color-palette-row">
-        {LEVEL1_COLOR_ORDER.map(colorName => (
+        {LEVEL1_PALETTE_ORDER.map(colorName => (
           <button
             key={colorName}
             title={tp.tintTitle ? tp.tintTitle(colorName, LEVEL1_SHORTCUTS[colorName]) : (LEVEL1_SHORTCUTS[colorName] ? `${colorName} (${LEVEL1_SHORTCUTS[colorName]})` : colorName)}
