@@ -38,6 +38,38 @@ const END_BARS = [
 	{ v: "final", label: "⏨", name: "终止" }
 ];
 
+// 主音选择：按钮 + 应用内 12 音网格（原生 select 的弹出列表走浏览器默认白底，不跟深色主题；
+// 网格竖排在按钮下方、不走绝对定位——小节工具行是 overflow-x 容器，绝对弹层会被裁）
+function KeyRootPicker({ cur, minor, ts, onPick }) {
+	const [open, setOpen] = useState(false);
+	const boxRef = useRef(null);
+	useEffect(() => {
+		if (!open) return;
+		const onDown = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+		const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+		document.addEventListener("mousedown", onDown);
+		document.addEventListener("keydown", onKey);
+		return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+	}, [open]);
+	return (
+		<span className="cc-key-picker" ref={boxRef}>
+			<button type="button" className={`cc-key-root-btn${open ? " on" : ""}`}
+				title={ts.keyRootTip ?? "主音：点开选 12 个音（♭/♯ 相对升降）"}
+				onClick={() => setOpen(v => !v)}>
+				<span>1 =</span><b>{PC_KEY[cur]}{minor ? "m" : ""}</b><i>▾</i>
+			</button>
+			{open ? (
+				<span className="cc-key-menu" role="listbox">
+					{PC_KEY.map((k, pc) => (
+						<button key={pc} type="button" role="option" aria-selected={pc === cur} className={pc === cur ? "on" : ""}
+							onClick={() => { onPick(pc); setOpen(false); }}>{k}</button>
+					))}
+				</span>
+			) : null}
+		</span>
+	);
+}
+
 // 和弦谱页（8pu 式和弦谱复刻）：格子谱面 + 键盘编辑 + 播放 + 移调 + MusicXML + 一键动图
 export function ChordChartView({ songId }) {
 	const { t } = useLanguage();
@@ -497,12 +529,7 @@ export function ChordChartView({ songId }) {
 		const setMode = (m2) => { if (!!m2 !== minor) setKey(cur, m2); }; // 点当前调式 = 无操作（不产生空的撤销步）
 		return (
 			<span className="cc-key-stepper">
-				<label className="cc-key-root" title={ts.keyRootTip ?? "主音：点开选 12 个音（♭/♯ 相对升降）"}>
-					<span>1 =</span>
-					<select value={cur} onChange={e => setKey(Number(e.target.value), minor)}>
-						{PC_KEY.map((k, pc) => <option key={pc} value={pc}>{k}</option>)}
-					</select>
-				</label>
+				<KeyRootPicker cur={cur} minor={minor} ts={ts} onPick={pc => setKey(pc, minor)} />
 				<span className="cc-key-mode" role="group" title={ts.keyModeTip ?? "调式：大调 / 小调（调内和弦与音名随之改变）"}>
 					<button type="button" className={!minor ? "on" : ""} onClick={() => setMode(false)}>{ts.keyMajor ?? "大调"}</button>
 					<button type="button" className={minor ? "on" : ""} onClick={() => setMode(true)}>{ts.keyMinor ?? "小调"}</button>
