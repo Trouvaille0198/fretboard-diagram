@@ -179,7 +179,7 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v1.1.0">v1.1.0</span>
+				<span className="top-nav-ver" title="界面版本：刷新后应显示 v1.1.1">v1.1.1</span>
 				{syncBadge ? (
 					<button className={`top-nav-sync ${syncBadge.cls}`}
 						title={syncBadge.cls === "error" ? "云端同步出错，点此重试" : "云端同步状态"}
@@ -191,7 +191,7 @@ export function TopNav({ mode }) {
 					onClick={e => { e.stopPropagation(); setPrefsOpen(v => !v); }}>⚙</button>
 				{prefsOpen ? (
 					<div className="cc-prefs" onClick={e => e.stopPropagation()}>
-						<div className="cc-prefs-ver">v1.1.0</div>
+						<div className="cc-prefs-ver">v1.1.1</div>
 						<button onClick={toggleLang}>{lang === "zh" ? "Switch to English" : "切换为中文"}</button>
 						<button onClick={() => setTheme(x => (x === "dark" ? "light" : "dark"))}>
 							{theme === "dark" ? (tr.toLight ?? "浅色模式") : (tr.toDark ?? "深色模式")}

@@ -315,6 +315,24 @@ export function ChordChartView({ songId }) {
 		return () => window.removeEventListener("storage", onStorage);
 	}, []);
 
+	// 下发确认（cloud-ack）后把新版本号领回内存 song。不领的话内存 rev 停在旧值，
+	// 下一次保存带过期 baseRev —— 服务端判"基于旧版本修改"给 409，同页连续编辑
+	// 全部自己跟自己冲突，炸出一串"冲突副本"（内容其实只有自己一个人在改）。
+	useEffect(() => {
+		const onAck = (e) => {
+			const d = e.detail || {};
+			if (d.table !== "charts" || !d.item || d.item.id !== songRef.current.id) return;
+			const nr = Number(d.item.rev) || 0;
+			if (nr <= (Number(songRef.current.rev) || 0)) return;
+			const next = { ...songRef.current, rev: nr };
+			adoptedRef.current = next;      // 只是版本号前进，不算编辑：不触发自动保存
+			suppressHistoryRef.current = true; // 也不进撤销栈
+			setSong(next);
+		};
+		window.addEventListener("fretboard:cloud-ack", onAck);
+		return () => window.removeEventListener("fretboard:cloud-ack", onAck);
+	}, []);
+
 	// 编辑历史（撤销/重做）：song 变化自动记录前值；800ms 内的连击（跟打修饰/歌词连输）合并为一步
 	useEffect(() => {
 		if (prevSongRef.current && prevSongRef.current !== song) {
