@@ -39,6 +39,7 @@ export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, 
 			<div className={page ? "cc-songs-page-box-inner" : "cc-modal cc-songs"}>
 				<div className="cc-modal-head">
 					<span className="cc-modal-title">{ts.songsTitle ?? "曲目"}<small className="cc-modal-sub"> · {charts.length} {ts.songsUnit ?? "首"}</small></span>
+					{onTrash ? <button className="cc-trash-entry" onClick={onTrash} title={ts.trashTip ?? "删除的曲目在这里保留 10 天，可还原"}>🗑 {ts.trashBtn ?? "回收站"}</button> : null}
 					{page ? null : <button className="cc-modal-x" onClick={onClose}>✕</button>}
 				</div>
 				<div className="cc-modal-body">
