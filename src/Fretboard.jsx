@@ -516,7 +516,7 @@ function Fretboard({ mode = 'normal' }) {
     : null;
   const baseScale = geoView.svgWidth / geoView.svgViewBoxWidth; // 板面固有缩放（宽 attr / viewBox 宽），裁剪前后视觉密度一致
   // 静态板右缘死边距裁掉（最右品后 ~40 单位空白），播放舞台（裁剪框数学）不裁
-  const staticTrim = playVB ? 0 : 40;
+  const staticTrim = playVB ? 0 : 70; // viewBox 右死区固定 80 单位(=offsetX+半品余量)，裁 70 留 10 安全边
   const svgWidth = playVB ? Math.round(playVB.w * baseScale) : geoView.svgWidth - staticTrim;
   const svgHeight = playVB ? Math.round(playVB.h * baseScale) : geoView.svgHeight;
   const svgViewBoxX = playVB ? playVB.x : geoView.svgViewBoxX;
