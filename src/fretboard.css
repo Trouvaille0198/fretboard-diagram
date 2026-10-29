@@ -833,14 +833,15 @@ button.color {
 
 @media (max-width: 640px) {
     /* 窄屏不缩不换行：34px 色块。行宽随内容（8 色 321px）且上限容器宽：
-       装得下 → fit-content 居中；装不下 → 收缩回全宽出横向滚动（fit-content 在溢出方向自动失效） */
+       装得下 → fit-content 居中；装不下 → 收缩回全宽出横向滚动（fit-content 在溢出方向自动失效）。
+       上下留白 ≥ 选中光圈(2px ring + 发光)与 hover 缩放的出界量——overflow 容器不留白会裁选中态 */
     .color-palette-row {
         flex-wrap: nowrap;
         justify-content: center;
         gap: 7px;
         overflow-x: auto;
         scrollbar-width: thin;
-        padding-bottom: 2px;
+        padding: 7px 4px 4px;
         margin-left: auto;
         margin-right: auto;
         width: fit-content;
@@ -1596,8 +1597,18 @@ g.note.preview-hover>circle {
     }
 
     .menu-global-actions {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: 28px repeat(3, minmax(0, 1fr));
+        gap: 5px;
     }
+
+    .menu-global-actions .button { min-width: 0; padding: 0 4px; font-size: 11.5px; height: 32px; }
+    .menu-global-actions .enharmonic-button { width: 28px; min-width: 28px; height: 32px; font-size: 13px; }
+}
+
+@media (max-width: 640px) {
+    .menu-global-actions { grid-template-columns: 28px repeat(3, minmax(0, 1fr)); gap: 4px; }
+    .menu-global-actions .button { min-width: 0; padding: 0 3px; font-size: 11px; height: 30px; }
+    .menu-global-actions .enharmonic-button { width: 28px; min-width: 28px; height: 30px; font-size: 12px; }
 }
 
 /* 通用响应式 - 确保 SVG 在所有屏幕上自适应 */
@@ -1721,7 +1732,7 @@ g.note.preview-hover>circle {
         padding: 8px 0 12px !important;
         margin: 0;
         justify-content: center;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 28px repeat(3, minmax(0, 1fr));
     }
 
     .menu-connection-panel {
