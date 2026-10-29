@@ -12,9 +12,10 @@ const FIG_SIZES = [112, 144, 176];
 import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken } from "../utils/chordLib";
 import { ChordSign } from "./ChordSign";
 import {
-	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatAt
+	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong
 } from "../utils/chordChartModel";
 import { buildPlayPlan } from "../utils/chartPlayback";
+import { remoteIsNewer } from "../utils/syncEngine";
 import { buildSongClip, stageFrame } from "../utils/chartFrames";
 import { exportMusicXml, importMusicXml } from "../utils/musicxmlChart";
 import { packChart, unpackChartBundle, chartShareCode, isChartPack } from "../utils/chartPack";
@@ -265,13 +266,12 @@ export function ChordChartView({ songId }) {
 	useEffect(() => {
 		const onSynced = () => {
 			setCharts(loadCharts());
-			// 实时跟进：云端版本比内存新（别的浏览器改了这首）且本页没有未落盘编辑 → 采纳远端
+			// 实时跟进：存储里的版本比内存新（别的浏览器改了这首）且本页没有未落盘编辑 → 采纳远端
 			if (dirtyRef.current) return;
 			const latest = loadCharts().find(c => c.id === songRef.current.id);
-			if (latest && (latest.updatedAt || 0) > (savedAtRef.current || 0)) {
+			if (remoteIsNewer(latest, songRef.current)) {
 				suppressHistoryRef.current = true; // 采纳远端不算一步撤销
 				adoptedRef.current = latest; // 这版是云端来的，别原样回存
-				savedAtRef.current = latest.updatedAt || Date.now();
 				dirtyRef.current = false;
 				setSong(latest);
 				clearHistory(); // 远端结构与本地撤销栈不再对应
@@ -304,9 +304,8 @@ export function ChordChartView({ songId }) {
 			if (dirtyRef.current) return; // 本页还有未落盘的编辑：先让本地保存赢，下次再对齐远端
 			try {
 				const latest = loadCharts().find(c => c.id === songRef.current.id);
-				if (latest && (latest.updatedAt || 0) > (savedAtRef.current || 0)) {
+				if (remoteIsNewer(latest, songRef.current)) {
 					adoptedRef.current = latest; // 采纳来的版本别再原样回存
-					savedAtRef.current = latest.updatedAt || Date.now();
 					clearHistory(); // 采纳远端后旧撤销栈失效
 					setSong(latest);
 				}
@@ -677,15 +676,15 @@ export function ChordChartView({ songId }) {
 		return { ...s, measures };
 	});
 
-	// 插入一拍：光标处插入空拍并停在那里，后面的拍整体右移，本小节末拍被挤出丢弃
+	// 插入一拍：光标处插入空拍并停在那里；从该拍起全曲的拍整体后移（跨小节流动），内容一个不丢
 	const insertBeat = (mi = cursor.mi, si = cursor.si) => {
-		const n = song.measures[mi]?.slots.length || 0;
-		if (n < 2) return;
-		const at = Math.min(si, n - 1);
+		const m = song.measures[mi];
+		if (!m) return;
+		const at = Math.max(0, Math.min(m.slots.length - 1, si));
 		commitTyped();
-		patchMeasure(mi, m => insertBeatAt(m, at));
+		setSong(s => insertBeatInSong(s, mi, at));
 		setCursor({ mi, si: at, half: null });
-		showToast(ts.insertBeatToast ?? "已插入一拍，本小节末拍被挤出");
+		showToast(ts.insertBeatToast ?? "已插入一拍，后面的拍整体后移");
 	};
 
 	const removeMeasure = (mi) => {
@@ -1323,7 +1322,7 @@ export function ChordChartView({ songId }) {
 				{cellMenu === mi ? (
 					<div className="cc-mmenu" onClick={e => e.stopPropagation()}>
 						<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure ?? "后插小节"}</button>
-						<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体右移，本小节末拍被挤出（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
+						<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
 						<button onClick={() => { duplicateMeasure(mi); setCellMenu(null); }}>⧉ {ts.dupMeasure ?? "复制小节"}</button>
 						<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure ?? "删除小节"}</button>
 						<div className="cc-menu-sep" />
@@ -1437,7 +1436,7 @@ export function ChordChartView({ songId }) {
 								<button className="button sm" onClick={() => duplicateMeasure(cursor.mi)}>⧉ {ts.dupMeasure ?? "复制"}</button>
 								<button className="button sm danger" onClick={() => removeMeasure(cursor.mi)} disabled={song.measures.length <= 1}>✕ {ts.delMeasure ?? "删除"}</button>
 								<button className="button sm" onClick={() => insertBeat(cursor.mi, cursor.si)}
-									title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体右移，本小节末拍被挤出（Insert / Shift+Enter）"}>
+									title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>
 									⇥ {ts.insertBeat ?? "插入一拍"} <kbd>Ins</kbd>
 								</button>
 								<span className="cc-sep" />

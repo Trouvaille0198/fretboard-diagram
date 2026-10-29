@@ -19,10 +19,11 @@ import { FretboardDock } from './components/FretboardDock';
 import { TransitionFx, ScoreBoard, boardGeometry, renderBoardImage, buildNotes } from './components/ScorePieces';
 import { DynamicToolbar } from './components/DynamicToolbar';
 import { useDynamicMode } from './hooks/useDynamicMode';
-import { TECHNIQUES, loadClips, pullClips, deleteClip, renameClip } from './utils/clipModel';
+import { TECHNIQUES, loadClips, deleteClip, renameClip } from './utils/clipModel';
 import { loadStitch, persistStitch, newStitchId, unifySchemeOf } from './utils/stitchModel';
 import { StitchDock } from './components/StitchDock';
-import { isLoggedIn } from './utils/api';
+import { authUser } from './utils/authModel';
+import { pullAll } from './utils/syncEngine';
 import { exportGifAnimation, exportWebmAnimation } from './utils/animatedExport';
 import { Toast } from './components/Toast';
 import { createPortal } from 'react-dom';
@@ -1312,13 +1313,16 @@ function Fretboard({ mode = 'normal' }) {
     }).catch(() => {});
   }, []);
 
-  // 登录状态下从云端拉动图（服务端优先合并）
+  // 登录状态下从云端增量拉动图（服务端版本优先合并）
+  // 旧实现在这里调 pullClips()/isLoggedIn()——那两个都走已废弃的旧协议：
+  // pullClips 打的是服务端不存在的 /api/data/clips（404 被吞），isLoggedIn 读的
+  // 是旧 token 键（永远 false）。等于动图堆从来没从云端拉下来过。
   useEffect(() => {
     let cancelled = false;
-    if (isLoggedIn()) {
-      pullClips().then(merged => {
-        if (!cancelled) setClips(merged);
-      }).catch(() => {});
+    if (authUser()) {
+      pullAll()
+        .then(() => { if (!cancelled) setClips(loadClips()); })
+        .catch(() => {});
     }
     return () => { cancelled = true; };
   }, []);
