@@ -39,7 +39,6 @@ export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, 
 			<div className={page ? "cc-songs-page-box-inner" : "cc-modal cc-songs"}>
 				<div className="cc-modal-head">
 					<span className="cc-modal-title">{ts.songsTitle ?? "曲目"}<small className="cc-modal-sub"> · {charts.length} {ts.songsUnit ?? "首"}</small></span>
-					{onTrash ? <button className="cc-trash-entry" onClick={onTrash} title={ts.trashTip ?? "删除的曲目在这里保留 10 天，可还原"}>🗑 {ts.trashBtn ?? "回收站"}</button> : null}
 					{page ? null : <button className="cc-modal-x" onClick={onClose}>✕</button>}
 				</div>
 				<div className="cc-modal-body">
@@ -47,6 +46,7 @@ export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, 
 						<button className="button sm accent" onClick={onNew}>＋ {ts.newSong ?? "新歌"}</button>
 						<button className="button sm" onClick={onImport}>⇪ {ts.importBtn ?? "导入文件"}</button>
 						<button className="button sm" onClick={onImportCode}>{ts.importCode ?? "从分享码导入"}</button>
+						{onTrash ? <button className="button sm" onClick={onTrash} title={ts.trashTip ?? "删除的曲目在这里保留 10 天，可还原"}>🗑 {ts.trashBtn ?? "回收站"}</button> : null}
 							<span className="cc-flex" />
 						<input className="cc-songs-search" value={q} onChange={e => setQ(e.target.value)} placeholder={ts.searchPh ?? "搜索曲目名"} />
 					</div>
