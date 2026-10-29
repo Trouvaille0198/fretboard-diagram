@@ -483,28 +483,35 @@ export function ChordChartView({ songId }) {
 		patchCurrentUnit(patch);
 	};
 
-	// 转调步进器：♭/♯ 相对升降半音 + 小调开关 + 清除（回原调）；mi 为空用光标小节
+	// 转调步进器：主音下拉 + 大调/小调 + ♭/♯ 相对升降半音 + 清除（回原调）；mi 为空用光标小节
 	// 调回到与歌曲原调相同时自动清掉标记，不留"1 = C"这种冗余的同调转调
 	const keyStepper = (mi) => {
 		const target = mi != null ? mi : cursor.mi;
 		const m = song.measures[target] || {};
 		const cur = m.keyRoot ?? (song.key?.root ?? 0);
-		const minor = m.keyRoot != null ? !!m.keyMinor : song.key.minor;
+		const minor = m.keyRoot != null ? !!m.keyMinor : !!song.key?.minor;
 		const setKey = (root, m2) => patchMeasure(target, x => {
 			const sameAsSong = root === (song.key?.root ?? 0) && !!m2 === !!song.key?.minor;
 			return { ...x, keyRoot: sameAsSong ? null : root, keyMinor: sameAsSong ? undefined : m2 };
 		});
+		const setMode = (m2) => { if (!!m2 !== minor) setKey(cur, m2); }; // 点当前调式 = 无操作（不产生空的撤销步）
 		return (
 			<span className="cc-key-stepper">
-				<b>1 = {PC_KEY[cur]}{minor ? "m" : ""}</b>
-				<button title={ts.keyDownSemi ?? "降半音（降调）"} onClick={() => setKey((cur + 11) % 12, minor)}>♭</button>
-				<button title={ts.keyUpSemi ?? "升半音（升调）"} onClick={() => setKey((cur + 1) % 12, minor)}>♯</button>
-				{m.keyRoot != null ? (<>
-					<label className="cc-iconbtn" title={ts.keyMinorTip ?? "小调（调内和弦与音名随之改变）"}>
-						<input type="checkbox" checked={minor} onChange={e => setKey(cur, e.target.checked)} />m
-					</label>
-					<button className="cc-key-clear" title={ts.keyClear ?? "清除转调（回原调）"} onClick={() => patchMeasure(target, x => ({ ...x, keyRoot: null, keyMinor: undefined }))}>×</button>
-				</>) : null}
+				<label className="cc-key-root" title={ts.keyRootTip ?? "主音：点开选 12 个音（♭/♯ 相对升降）"}>
+					<span>1 =</span>
+					<select value={cur} onChange={e => setKey(Number(e.target.value), minor)}>
+						{PC_KEY.map((k, pc) => <option key={pc} value={pc}>{k}</option>)}
+					</select>
+				</label>
+				<span className="cc-key-mode" role="group" title={ts.keyModeTip ?? "调式：大调 / 小调（调内和弦与音名随之改变）"}>
+					<button type="button" className={!minor ? "on" : ""} onClick={() => setMode(false)}>{ts.keyMajor ?? "大调"}</button>
+					<button type="button" className={minor ? "on" : ""} onClick={() => setMode(true)}>{ts.keyMinor ?? "小调"}</button>
+				</span>
+				<button type="button" title={ts.keyDownSemi ?? "降半音（降调）"} onClick={() => setKey((cur + 11) % 12, minor)}>♭</button>
+				<button type="button" title={ts.keyUpSemi ?? "升半音（升调）"} onClick={() => setKey((cur + 1) % 12, minor)}>♯</button>
+				{m.keyRoot != null ? (
+					<button type="button" className="cc-key-clear" title={ts.keyClear ?? "清除转调（回原调）"} onClick={() => patchMeasure(target, x => ({ ...x, keyRoot: null, keyMinor: undefined }))}>×</button>
+				) : null}
 			</span>
 		);
 	};
