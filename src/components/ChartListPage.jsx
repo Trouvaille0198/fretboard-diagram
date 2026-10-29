@@ -174,12 +174,7 @@ export function ChartListPage() {
 
 		return (
 			<div className="cc-page">
-				<header className="cc-toolbar">
-					<div className="cc-tabs-row">
-						<button className="button sm" onClick={openTrash} title={ts.trashTip ?? "删除的曲目在这里保留 10 天，可还原"}>🗑 {ts.trashBtn ?? "回收站"}</button>
-						<span className="cc-flex" />
-					</div>
-				</header>
+	
 			<div className="cc-body cc-songs-page">
 				<ChartListPanel variant="page" charts={charts} currentId={currentId} t={t}
 					onOpen={enter}

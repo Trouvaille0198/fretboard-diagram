@@ -7960,3 +7960,17 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     0%, 100% { opacity: 0.55; }
     50% { opacity: 1; }
 }
+
+/* 回收站入口（曲目面板头部右侧）：ghost 风格小字按钮，低调但可发现 */
+.cc-trash-entry {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: var(--app-text-soft);
+    font-size: 12.5px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 7px;
+    transition: color 0.15s, background 0.15s;
+}
+.cc-trash-entry:hover { color: var(--app-text); background: var(--app-panel-soft, rgba(255,255,255,0.06)); }
