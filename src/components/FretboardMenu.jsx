@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CONSTS } from '../constants';
 import PianoKeyboard from '../PianoKeyboard';
 import { ColorPalette } from './ColorPalette';
@@ -53,6 +53,52 @@ export function FretboardMenu({
   const showLevel2TintVariants = inTintMode && selectedColorLevel === 2 && colorName;
   const level2TintVariants = showLevel2TintVariants ? generateTintVariants(getLevel2Color(colorName)) : [];
 
+  // 窄屏（≤640px）：淡色变体不常驻占位，点色块才在其正下方弹出气泡菜单（桌面端仍常驻调色盘左侧）
+  const shellRef = useRef(null);
+  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 640px)').matches);
+  const [tintMenuOpen, setTintMenuOpen] = useState(false);
+  const [tintAnchorX, setTintAnchorX] = useState(null); // 弹出菜单中心相对 palette-shell 的 x（px）
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const fn = e => { setNarrow(e.matches); if (!e.matches) setTintMenuOpen(false); };
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
+  }, []);
+
+  // 弹出打开时：点面板外/滚动色块行 → 关闭
+  useEffect(() => {
+    if (!narrow || !tintMenuOpen) return undefined;
+    const onDown = e => { if (!e.target.closest('.menu-tint-variants, .color-palette-row')) setTintMenuOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    const row = shellRef.current?.querySelector('.color-palette-row');
+    const close = () => setTintMenuOpen(false);
+    row?.addEventListener('scroll', close);
+    return () => { document.removeEventListener('mousedown', onDown); row?.removeEventListener('scroll', close); };
+  }, [narrow, tintMenuOpen]);
+
+  // 点调色盘色块：选中基色；窄屏下弹出/收起该色的淡色档位菜单（点已选中的同色块 = 开关）
+  const handlePaletteTintOpen = (level, color, btnEl) => {
+    const wasSelected = selectedColorLevel === level &&
+      (typeof selectedColor === 'object' ? selectedColor.name === color : selectedColor === color);
+    onOpenTintPalette(level, color);
+    if (!narrow) return;
+    if (color === 'trans') { setTintMenuOpen(false); return; }
+    const willOpen = !(wasSelected && tintMenuOpen);
+    setTintMenuOpen(willOpen);
+    if (willOpen && btnEl && shellRef.current) {
+      const sr = shellRef.current.getBoundingClientRect();
+      const br = btnEl.getBoundingClientRect();
+      const x = br.left + br.width / 2 - sr.left;
+      setTintAnchorX(Math.max(84, Math.min(sr.width - 84, x))); // 菜单半宽约 78px，钳在壳内不出屏
+    }
+  };
+
+  const pickVariant = (level, color) => {
+    onSelectColor(level, colorName, color);
+    if (narrow) setTintMenuOpen(false);
+  };
+
   // 小调状态
   const [isMinor, setIsMinor] = useState(false);
 
@@ -64,10 +110,14 @@ export function FretboardMenu({
       {/* 左侧：颜色+两行工具栏 */}
       <div className="menu-left">
         {/* 淡色版本和调色板在同一区域 */}
-        <div className="menu-palette-shell">
-          {/* 异色版本绝对定位在左侧，不占用布局空间 */}
-          {(showLevel1TintVariants || showLevel2TintVariants) && (
-            <div className="menu-tint-variants">
+        <div className="menu-palette-shell" ref={shellRef}>
+          {/* 桌面：异色版本绝对定位在左侧，不占用布局空间；
+              窄屏：不常驻，点色块后在当前色块正下方弹出（mobile-popup，锚点由 JS 算） */}
+          {(showLevel1TintVariants || showLevel2TintVariants) && (!narrow || tintMenuOpen) && (
+            <div
+              className={`menu-tint-variants${narrow ? ' mobile-popup' : ''}`}
+              style={narrow ? { left: (tintAnchorX ?? '50%') + 'px' } : undefined}
+            >
               {/* 第一层淡色版本显示在最左侧，纵向排列 */}
               {showLevel1TintVariants && level1TintVariants.map((color, index) => {
                 const isSelected = selectedColorLevel === 1 &&
@@ -78,7 +128,7 @@ export function FretboardMenu({
                     key={index}
                     className={`color color-tint ${isSelected ? 'selected' : ''}`}
                     style={{ backgroundColor: color }}
-                    onClick={() => onSelectColor(1, colorName, color)}
+                    onClick={() => pickVariant(1, color)}
                     title={tm.tintVariantTitle ? tm.tintVariantTitle(index + 1) : `Tint ${index + 1}`}
                   />
                 );
@@ -94,7 +144,7 @@ export function FretboardMenu({
                     key={index}
                     className={`color color-tint level2 ${isSelected ? 'selected' : ''}`}
                     style={{ borderColor: color, borderWidth: '6px', borderStyle: 'solid' }}
-                    onClick={() => onSelectColor(2, colorName, color)}
+                    onClick={() => pickVariant(2, color)}
                     title={tm.tintVariantTitle ? tm.tintVariantTitle(index + 1) : `Tint ${index + 1}`}
                   />
                 );
@@ -106,7 +156,7 @@ export function FretboardMenu({
             selectedColorLevel={selectedColorLevel}
             selectedColor={selectedColor}
             onSelectColor={onSelectColor}
-            onOpenTintPalette={onOpenTintPalette}
+            onOpenTintPalette={handlePaletteTintOpen}
             onReplaceAllTintNotes={onReplaceAllTintNotes}
             onCycleTintColor={onCycleTintColor}
             t={t}

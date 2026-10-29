@@ -65,7 +65,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPale
             key={colorName}
             title={tp.tintTitle ? tp.tintTitle(colorName, LEVEL1_SHORTCUTS[colorName]) : (LEVEL1_SHORTCUTS[colorName] ? `${colorName} (${LEVEL1_SHORTCUTS[colorName]})` : colorName)}
             className={`color ${colorName} ${selectedColorLevel === 1 && actualColorName === colorName ? 'selected' : ''}`}
-            onClick={() => onOpenTintPalette && onOpenTintPalette(1, colorName)}
+            onClick={(e) => onOpenTintPalette && onOpenTintPalette(1, colorName, e.currentTarget)}
             onContextMenu={(e) => handleContextMenu(e, colorName)}
           />
         ))}
