@@ -418,7 +418,7 @@ main {
 .title-header .selected-state-name:hover {
     background: rgba(136, 211, 159, 0.16);
     border-color: rgba(136, 211, 159, 0.42);
-    transform: translateY(-1px);
+    /* hover 不上浮：overflow 容器会裁顶 */
 }
 
 
@@ -697,9 +697,10 @@ g.note>text {
 
 /* 连线预设：三个按钮并排，点一下直接选中想要的形状和方向 */
 .menu-connection-presets {
-    display: grid;
+    display: flex;
     align-items: center;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 8px;
     width: 100%;
 }
@@ -910,7 +911,7 @@ button.color.level2.selected {
     background: rgba(243, 186, 98, 0.11);
     border-color: rgba(243, 186, 98, 0.32);
     color: var(--app-text);
-    transform: translateY(-1px);
+    /* 不再 translateY 上浮：多个父容器带 overflow-x:hidden，上移 1px 会被裁掉顶缘 */
     box-shadow: 0 0 0 1px rgba(243, 186, 98, 0.16), 0 6px 18px rgba(243, 186, 98, 0.10);
 }
 
@@ -1017,7 +1018,7 @@ button.color.level2.selected {
 .enharmonic-button:hover {
     background: rgba(243, 186, 98, 0.14);
     border-color: rgba(243, 186, 98, 0.34);
-    transform: translateY(-1px);
+    /* hover 不上浮：overflow 容器会裁顶 */
 }
 
 .enharmonic-button:active {
@@ -1337,7 +1338,7 @@ svg.drag-connecting * {
     background: rgba(243, 186, 98, 0.12);
     border-color: rgba(243, 186, 98, 0.28);
     color: var(--app-text);
-    transform: translateY(-1px);
+    /* hover 不上浮：overflow 容器会裁顶 */
 }
 
 .toolbar-icon-btn:active {
@@ -7004,7 +7005,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 .stitch-fab.pinned {
     border-color: var(--app-accent);
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(243, 186, 98, 0.2);
-    transform: translateY(-1px);
+    /* hover 不上浮：overflow 容器会裁顶 */
 }
 
 .stitch-fab.empty {
