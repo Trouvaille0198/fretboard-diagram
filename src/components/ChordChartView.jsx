@@ -11,7 +11,9 @@ import audioService from "../services/audioService";
 // 指法小图尺寸档位（汇总行可切）
 const FIG_SIZES = [112, 144, 176];
 import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken } from "../utils/chordLib";
+import { createPortal } from "react-dom";
 import { ChordSign } from "./ChordSign";
+import { KeyPicker } from "./KeyPicker";
 import {
 	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong, deleteBeatInSong
 } from "../utils/chordChartModel";
@@ -521,34 +523,18 @@ export function ChordChartView({ songId }) {
 		patchCurrentUnit(patch);
 	};
 
-	// 转调步进器：主音下拉 + 大调/小调 + ♭/♯ 相对升降半音 + 清除（回原调）；mi 为空用光标小节
-	// 调回到与歌曲原调相同时自动清掉标记，不留"1 = C"这种冗余的同调转调
+	// 转调选择器：UI 全部在 KeyPicker 组件里（全应用唯一实现，⚙设置的全局调也用它）。mi 为空用光标小节。
+	// 转回原调 = 写入一个"等于原调的标记"来结束转调段（旧实现遇到同调就清标记，
+	// 导致歌中途没法转回原调——"清除"和"标记原调"两个语义打架）；× 才是清除（跟随前段/回原调）。
 	const keyStepper = (mi) => {
 		const target = mi != null ? mi : cursor.mi;
 		const m = song.measures[target] || {};
 		const cur = m.keyRoot ?? (song.key?.root ?? 0);
 		const minor = m.keyRoot != null ? !!m.keyMinor : !!song.key?.minor;
-		const setKey = (root, m2) => patchMeasure(target, x => {
-			const sameAsSong = root === (song.key?.root ?? 0) && !!m2 === !!song.key?.minor;
-			return { ...x, keyRoot: sameAsSong ? null : root, keyMinor: sameAsSong ? undefined : m2 };
-		});
-		const setMode = (m2) => { if (!!m2 !== minor) setKey(cur, m2); }; // 点当前调式 = 无操作（不产生空的撤销步）
 		return (
-			<span className="cc-key-stepper">
-				<UiSelect value={cur} options={PC_KEY.map((k, pc) => ({ value: pc, label: k }))} onChange={pc => setKey(pc, minor)}
-					className="cc-key-root" menuClassName="ui-grid" title={ts.keyRootTip ?? "主音：点开选 12 个音（♭/♯ 相对升降）"}>
-					<span>1 =</span><b>{PC_KEY[cur]}{minor ? "m" : ""}</b><i className="ui-select-arrow">▾</i>
-				</UiSelect>
-				<span className="cc-key-mode" role="group" title={ts.keyModeTip ?? "调式：大调 / 小调（调内和弦与音名随之改变）"}>
-					<button type="button" className={!minor ? "on" : ""} onClick={() => setMode(false)}>{ts.keyMajor ?? "大调"}</button>
-					<button type="button" className={minor ? "on" : ""} onClick={() => setMode(true)}>{ts.keyMinor ?? "小调"}</button>
-				</span>
-				<button type="button" title={ts.keyDownSemi ?? "降半音（降调）"} onClick={() => setKey((cur + 11) % 12, minor)}>♭</button>
-				<button type="button" title={ts.keyUpSemi ?? "升半音（升调）"} onClick={() => setKey((cur + 1) % 12, minor)}>♯</button>
-				{m.keyRoot != null ? (
-					<button type="button" className="cc-key-clear" title={ts.keyClear ?? "清除转调（回原调）"} onClick={() => patchMeasure(target, x => ({ ...x, keyRoot: null, keyMinor: undefined }))}>×</button>
-				) : null}
-			</span>
+			<KeyPicker root={cur} minor={minor} marked={m.keyRoot != null}
+				onChange={(root, m2) => patchMeasure(target, x => ({ ...x, keyRoot: root, keyMinor: m2 }))}
+				onClear={() => patchMeasure(target, x => ({ ...x, keyRoot: null, keyMinor: undefined }))} />
 		);
 	};
 
@@ -914,6 +900,9 @@ export function ChordChartView({ songId }) {
 
 	useEffect(() => {
 		const onKey = (e) => {
+			// 指法图编辑弹窗打开时全部键位归它（Backspace/Ctrl+D 在那里有专属语义，
+			// 走到这里会误删弹窗底下的拍/小节——表现为"按键被外部覆盖"）
+			if (figTargetRef.current != null) return;
 			if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT" || e.target.isContentEditable) return;
 			if (dialog) { if (e.key === "Escape") { e.preventDefault(); setDialog(null); } return; }
 			if (!editing) {
@@ -1245,6 +1234,8 @@ export function ChordChartView({ songId }) {
 	};
 	// 弹窗编辑该拍的指法小图(裁剪版普通编辑器:点音亮灭/连线/品数滑块,无色板钢琴)
 	const [figTarget, setFigTarget] = useState(null); // { mi, si, half }
+	const figTargetRef = useRef(null);
+	figTargetRef.current = figTarget; // 键盘守卫在 effect 里读（声明位置靠后，回调执行时已初始化）
 	const editFig = (mi, si, half) => {
 		setPopupOpen(false);
 		setFigTarget({ mi, si, half });
@@ -1700,11 +1691,9 @@ export function ChordChartView({ songId }) {
 									<div className="cc-settings-group">
 										<div className="cc-settings-label">{ts.gSong ?? "曲谱"}</div>
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.keyLabel ?? "调"}</span>
-											<span className="cc-settings-v">1 =
-												<UiSelect value={song.key?.root ?? 0} disabled={!editing} menuClassName="ui-grid"
-													onChange={root => setSong(s => ({ ...s, key: { root, minor: !!s.key?.minor } }))}
-													options={PC_KEY.map((k, pc) => ({ value: pc, label: k }))} />
-												<label className="cc-iconbtn" title={ts.minor ?? "小调"}><input type="checkbox" checked={!!song.key?.minor} disabled={!editing} onChange={e => setSong(s => ({ ...s, key: { root: s.key?.root ?? 0, minor: e.target.checked } }))} />m</label>
+											<span className="cc-settings-v">
+												<KeyPicker root={song.key?.root ?? 0} minor={!!song.key?.minor} marked={false} disabled={!editing}
+													onChange={(root, minor) => setSong(s0 => ({ ...s0, key: { root, minor } }))} />
 											</span>
 										</div>
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.timeSigLabel ?? "拍号"}</span>
@@ -1813,7 +1802,7 @@ export function ChordChartView({ songId }) {
 
 			{figTarget != null ? (() => {
 				const u = unitAt(figTarget.mi, figTarget.si, figTarget.half);
-				return (
+				return createPortal(
 					<div className="figbe-mask" onMouseDown={e => { if (e.target === e.currentTarget) setFigTarget(null); }}>
 						<div className="figbe-box">
 							<FigBoardEditor
@@ -1825,7 +1814,8 @@ export function ChordChartView({ songId }) {
 								onAutoSave={figData => patchUnit(figTarget.mi, figTarget.si, figTarget.half, { fig: figData || undefined })}
 								onClose={() => setFigTarget(null)} />
 						</div>
-					</div>
+					</div>,
+					document.body
 				);
 			})() : null}
 
