@@ -5417,7 +5417,7 @@ html[data-theme="light"] .cc-cell-tools {
     font-weight: 600;
 }
 
-.cc-key-stepper button {
+.cc-key-stepper > button {
     width: var(--cc-ctl-h, 28px);
     height: var(--cc-ctl-h, 28px);
     background: var(--cc-ctl-bg, var(--app-bg-secondary));
@@ -5782,6 +5782,9 @@ html[data-theme="light"] .cc-cell-tools {
     width: 30px;
     height: 28px;
     font-size: 13.5px;
+}
+.cc-key-stepper .cc-key-root {
+    flex: 0 0 auto;
 }
 
 /* 步进器本体不许被外层 flex 压缩（在 .cc-mmenu-row / .cc-settings-v 里都要完整一行）：
@@ -6587,11 +6590,30 @@ html[data-theme="light"] .button.sm.edit-enter {
     border-radius: var(--cc-radius-sm);
 }
 
-.cc-page .cc-key-stepper button:not(.cc-key-mode) {
+.cc-page .cc-key-stepper > button:not(.cc-key-mode) {
     width: 26px;
     height: 24px;
     font-size: var(--app-fs-md);
     border-radius: var(--cc-radius-sm);
+}
+
+/* 主音触发器是 .ui-select 的子按钮，不吃上面的 26px 钉宽（旧样式把"1 = C ▾"挤到按钮外） */
+.cc-key-stepper .cc-key-root .ui-select-btn {
+    width: auto;
+    min-width: 0;
+}
+
+/* 悬浮菜单：绝对定位在触发器下方，不挤占同行兄弟组件 */
+.ui-select.menu-absolute {
+    position: relative;
+}
+.ui-select.menu-absolute .ui-select-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 60;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
+    min-width: 240px;
 }
 
 /* 调式单按钮（大调/小调，点击切换）：文字钮，宽度跟内容 */
