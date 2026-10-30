@@ -15,7 +15,8 @@ import { createPortal } from "react-dom";
 import { ChordSign } from "./ChordSign";
 import { KeyPicker } from "./KeyPicker";
 import {
-	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong, deleteBeatInSong
+	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong, deleteBeatInSong,
+	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText
 } from "../utils/chordChartModel";
 import { buildPlayPlan } from "../utils/chartPlayback";
 import { remoteIsNewer } from "../utils/syncEngine";
@@ -529,12 +530,15 @@ export function ChordChartView({ songId }) {
 	const keyStepper = (mi) => {
 		const target = mi != null ? mi : cursor.mi;
 		const m = song.measures[target] || {};
-		const cur = m.keyRoot ?? (song.key?.root ?? 0);
-		const minor = m.keyRoot != null ? !!m.keyMinor : !!song.key?.minor;
+		const spell = m.keyRoot != null
+			? { letter: m.keyLetter ?? keySpellOf(m.keyRoot).letter, acc: m.keyAcc ?? 0 }
+			: { letter: song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter, acc: song.key?.acc ?? 0 };
 		return (
-			<KeyPicker root={cur} minor={minor} marked={m.keyRoot != null}
-				onChange={(root, m2) => patchMeasure(target, x => ({ ...x, keyRoot: root, keyMinor: m2 }))}
-				onClear={() => patchMeasure(target, x => ({ ...x, keyRoot: null, keyMinor: undefined }))} />
+			<KeyPicker letter={spell.letter} acc={spell.acc} minor={!!m.keyMinor} marked={m.keyRoot != null}
+				onChange={(letter, acc, minor) => patchMeasure(target, x => ({
+					...x, keyRoot: keyPcOf(letter, acc), keyLetter: letter, keyAcc: acc, keyMinor: minor
+				}))}
+				onClear={() => patchMeasure(target, x => ({ ...x, keyRoot: null, keyLetter: undefined, keyAcc: undefined, keyMinor: undefined }))} />
 		);
 	};
 
@@ -1421,7 +1425,7 @@ export function ChordChartView({ songId }) {
 								{m.section}
 							</span>
 						) : null}
-						{m.keyRoot != null ? <span className="cc-keymark">1 = {PC_KEY[m.keyRoot]}{m.keyMinor ? "m" : ""}</span> : null}
+						{m.keyRoot != null ? <span className="cc-keymark">{keyLabelText(m.keyLetter ?? keySpellOf(m.keyRoot).letter, m.keyAcc ?? 0, !!m.keyMinor)}</span> : null}
 					</div>
 				) : null}
 				{m.repeatStart ? <span className="cc-bardots start" /> : null}
@@ -1667,7 +1671,7 @@ export function ChordChartView({ songId }) {
 							{/* 所有设置统一收纳：⚙ 按钮开面板（曲谱:调/拍号/BPM + 和弦图:方向/度数/尺寸/展示） */}
 							<button className={`cc-settings-btn${settingsOpen ? " on" : ""}`} title={ts.settingsTip ?? "设置：调 / 拍号 / 速度 / 和弦图"}
 								onClick={() => setSettingsOpen(v => !v)}>
-								⚙ 1 = {PC_KEY[song.key?.root ?? 0]}{song.key?.minor ? "m" : ""} · {song.timeSig ?? 4}/4 · ♩={song.bpm ?? 72}
+								⚙ {keyLabelText(song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter, song.key?.acc ?? 0, !!song.key?.minor)} · {song.timeSig ?? 4}/4 · ♩={song.bpm ?? 72}
 							</button>
 							<button className={`cc-compact-btn${compactView ? " on" : ""}`}
 								title={ts.compactTip ?? "简略模式：两拍并成一格；两拍都有和弦时并成一对反拍，反拍只显示前半——谱面更紧凑，便于观看（不影响数据）"}
@@ -1692,8 +1696,9 @@ export function ChordChartView({ songId }) {
 										<div className="cc-settings-label">{ts.gSong ?? "曲谱"}</div>
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.keyLabel ?? "调"}</span>
 											<span className="cc-settings-v">
-												<KeyPicker root={song.key?.root ?? 0} minor={!!song.key?.minor} marked={false} disabled={!editing}
-													onChange={(root, minor) => setSong(s0 => ({ ...s0, key: { root, minor } }))} />
+												<KeyPicker letter={song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter} acc={song.key?.acc ?? 0}
+													minor={!!song.key?.minor} marked={false} disabled={!editing}
+													onChange={(letter, acc, minor) => setSong(s0 => ({ ...s0, key: { root: keyPcOf(letter, acc), letter, acc, minor } }))} />
 											</span>
 										</div>
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.timeSigLabel ?? "拍号"}</span>

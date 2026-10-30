@@ -36,6 +36,25 @@ export function createMeasure(timeSig) {
 	};
 }
 
+
+// ===== 调的拼写（音名 + 升降号）=====
+// 调的显示与存储分离：root（0-11 音高，供换算/播放）+ letter（0-6 主音音名）+ acc（-1/0/1 升降号）。
+// 老数据只有 root：按升号拼写推导（1→C♯、3→D♯、6→F♯、8→G♯、10→A♯），自然音同名。
+export const KEY_LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
+const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
+export function keyPcOf(letter, acc) {
+  return (LETTER_PC[letter] + (acc || 0) + 120) % 12;
+}
+const PC_TO_LETTER = { 0: 0, 2: 1, 4: 2, 5: 3, 7: 4, 9: 5, 11: 6 };
+export function keySpellOf(rootPc) {
+  const spelled = { 1: [0, 1], 3: [1, 1], 6: [3, 1], 8: [4, 1], 10: [5, 1] }[rootPc];
+  if (spelled) return { letter: spelled[0], acc: spelled[1] };
+  return { letter: PC_TO_LETTER[rootPc] ?? 0, acc: 0 };
+}
+export function keyLabelText(letter, acc, minor) {
+  return "1 = " + KEY_LETTERS[letter] + (acc > 0 ? "♯" : acc < 0 ? "♭" : "") + (minor ? "m" : "");
+}
+
 export function createSong(name = "未命名") {
 	return {
 		id: newChartId(),
