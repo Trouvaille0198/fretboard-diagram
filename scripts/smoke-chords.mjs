@@ -206,7 +206,7 @@ console.log("== chordLib：变化音与新质量 ==");
 		&& formatInline({ degree: 1, quality: "maj9" }, "degree", C) === "1maj9"
 		&& formatInline({ degree: 2, quality: "m7-5" }, "degree", C) === "2m7-5");
 	A("token 解析认 m7-5", eq(chordFromDegreeToken("2m7-5"), { degree: 2, acc: 0, quality: "m7-5", bass: null }));
-	A("ALT_ORDER 覆盖 11 种（5/9/11/13 × 降原升）", eq(ALT_ORDER, ["b5", "#5", "b9", "9", "#9", "b11", "11", "#11", "b13", "13", "#13"]));
+	A("ALT_ORDER 覆盖 11 种（自然在前、变音随后）", eq(ALT_ORDER, ["b5", "#5", "9", "b9", "#9", "11", "b11", "#11", "13", "b13", "#13"]));
 	// 记号结构化分解（UI 把级数装框用）：级数 / 质量后缀 / 转位 三段互不粘连
 	const { chordSignParts } = await import("../src/utils/chordLib.js");
 	A("signParts：57b9b13 分层", eq(chordSignParts(c7b9b13, "degree", C), { degree: "5", suffix: "7b9b13", bass: "" }));
@@ -221,9 +221,10 @@ console.log("== chordLib：变化音与新质量 ==");
 		A("自然变化音 pcs：C7(9,13)", eq(chordPcs({ degree: 1, quality: "7", alt: ["9", "13"] }, C).pcs, [0, 2, 4, 7, 9, 10]));
 		A("b5/#5 pcs：C7b5 / C7#5", eq(chordPcs({ degree: 1, quality: "7", alt: ["b5"] }, C).pcs, [0, 4, 6, 10])
 			&& eq(chordPcs({ degree: 1, quality: "7", alt: ["#5"] }, C).pcs, [0, 4, 8, 10]));
-		A("显示规则：全变音连写、含自然音括号", formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["b9", "b13"] }) === "57b9b13"
-			&& formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["9", "13"] }) === "57(9,13)"
-			&& formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["b9", "13"] }) === "57(b9,13)");
+		A("显示规则：一律直连（完整精确）", formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["b9", "b13"] }) === "57b9b13"
+			&& formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["9", "13"] }) === "57913"
+			&& formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["b9", "13"] }) === "57b913"
+			&& formatDegree({ degree: 5, acc: 0, quality: "7", bass: null, alt: ["9", "b9", "b13"] }) === "579b9b13");
 		A("强力和弦 5：pcs 与记号", eq(chordPcs({ degree: 1, quality: "5" }, C).pcs, [0, 7])
 			&& formatInline({ degree: 1, acc: 0, quality: "5", bass: null }, "degree", C) === "15");
 }
