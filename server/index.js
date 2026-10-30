@@ -46,11 +46,20 @@ for (const t of ["charts", "clips"]) {
 if (!hasCol("tombstones", "rev")) db.exec("ALTER TABLE tombstones ADD COLUMN rev INTEGER NOT NULL DEFAULT 0");
 
 const hashPass = (pass, salt) => crypto.scryptSync(pass, salt, 32).toString("hex");
-// 固定账号 seed：不存在则建（改密码 = 删 users 行 + 重启；也可用环境变量 FRETB_USER/FRETB_PASS 覆盖）
-if (!db.prepare("SELECT 1 FROM users WHERE name = ?").get(FIXED_USER)) {
+// 固定账号 seed：users 表为空才建（改密码 = 删 users 行 + 重启；凭据走环境变量，
+// 没配 FRETB_PASS 时生成随机密码并落 credentials.txt——源码绝不写默认密码，仓库公开=泄露）
+if (!db.prepare("SELECT 1 FROM users LIMIT 1").get()) {
 	const salt = crypto.randomBytes(16).toString("hex");
+	const pass = FIXED_PASS || crypto.randomBytes(12).toString("base64url");
 	db.prepare("INSERT INTO users (name, salt, hash, created_at) VALUES (?, ?, ?, ?)")
-		.run(FIXED_USER, salt, hashPass(FIXED_PASS, salt), Date.now());
+		.run(FIXED_USER, salt, hashPass(pass, salt), Date.now());
+	if (!FIXED_PASS) {
+		const credFile = path.join(path.dirname(DB_FILE), "credentials.txt");
+		fs.writeFileSync(credFile, `${FIXED_USER} / ${pass}\n`, { mode: 0o600 });
+		console.log(`[auth-server] 首次启动：随机密码已写入 ${credFile}（也可用 FRETB_USER/FRETB_PASS 环境变量指定）`);
+	} else {
+		console.log(`[auth-server] 账号 ${FIXED_USER} 已按环境变量初始化`);
+	}
 }
 
 const issueToken = (name) => {
