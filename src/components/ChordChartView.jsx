@@ -1384,7 +1384,7 @@ export function ChordChartView({ songId }) {
 				data-si={siA}
 				onMouseEnter={() => { hoverBeatRef.current = { mi, si: siA, half: null }; }}
 				onMouseLeave={() => { const h = hoverBeatRef.current; if (h && h.mi === mi && h.si === siA) hoverBeatRef.current = null; }}
-				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi: first.si, si: first.si, half: first.half }); setPopupOpen(true); }}
+				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si: first.si, half: first.half }); setPopupOpen(true); }}
 			>
 				{units.length > 1 ? <span className="cc-beat-splitmark" title={ts.splitTip ?? "两拍并一格（简略模式）"}>╱</span> : null}
 				<div className={`cc-beat-units ${units.length > 1 ? "halved" : ""}`}>
