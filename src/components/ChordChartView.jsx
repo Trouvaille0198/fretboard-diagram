@@ -530,11 +530,23 @@ export function ChordChartView({ songId }) {
 	const keyStepper = (mi) => {
 		const target = mi != null ? mi : cursor.mi;
 		const m = song.measures[target] || {};
-		const spell = m.keyRoot != null
-			? { letter: m.keyLetter ?? keySpellOf(m.keyRoot).letter, acc: m.keyAcc ?? 0 }
-			: { letter: song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter, acc: song.key?.acc ?? 0 };
+		// 生效调拼写：从全局调出发，前面所有转调标记一路带到本小节——
+		// 选择器必须显示"此刻实际生效的调"。旧实现显示全局调：B 大调的歌转到 E 后，
+		// 后面小节的选择器仍显示 1=B，用户点 B 被 UiSelect 判"值没变"直接忽略，永远转不回来。
+		let spell = {
+			letter: song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter,
+			acc: song.key?.acc ?? 0,
+		};
+		let effMinor = !!song.key?.minor;
+		for (let i = 0; i <= target; i++) {
+			const mm = song.measures[i];
+			if (mm && mm.keyRoot != null) {
+				spell = { letter: mm.keyLetter ?? keySpellOf(mm.keyRoot).letter, acc: mm.keyAcc ?? 0 };
+				effMinor = !!mm.keyMinor;
+			}
+		}
 		return (
-			<KeyPicker letter={spell.letter} acc={spell.acc} minor={!!m.keyMinor} marked={m.keyRoot != null}
+			<KeyPicker letter={spell.letter} acc={spell.acc} minor={effMinor} marked={m.keyRoot != null}
 				onChange={(letter, acc, minor) => patchMeasure(target, x => ({
 					...x, keyRoot: keyPcOf(letter, acc), keyLetter: letter, keyAcc: acc, keyMinor: minor
 				}))}
