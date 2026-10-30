@@ -30,7 +30,7 @@ export const CHORD_INTERVALS = {
 // 变化音（extension alterations）：叠在质量之上，可多个共存 —— 57b9b13、1M7#11 这类
 // 体系 = 音级 5/9/11/13 × 降/原/升；记法用 ASCII（b/#），与级数变音一致
 // 5 音层的 b5/#5 与 11 层的 #11/b13 在 pitch class 上等音（+6/+8），但记法与八度落位不同
-export const ALT_ORDER = ["b5", "#5", "b9", "9", "#9", "b11", "11", "#11", "b13", "13", "#13"];
+export const ALT_ORDER = ["b5", "#5", "9", "b9", "#9", "11", "b11", "#11", "13", "b13", "#13"];
 export const ALT_INTERVALS = {
 	b5: 6, "#5": 8,
 	b9: 13, "9": 14, "#9": 15,
@@ -318,13 +318,12 @@ function chordIntervals(chord, key) {
 }
 
 // 变化音文本（规范序）；无则空串。
-// 全带变音记号时直接连写（7b9b13，通行记法）；含自然音级时括号+逗号（7(9,13)），避免 7913 歧义
+// 一律直接连写（用户要求完整精确：5+7+9+b9+b13 → 579b9b13），不加括号不省略
 export function altText(chord) {
 	if (!chord || !Array.isArray(chord.alt) || !chord.alt.length) return "";
 	const toks = ALT_ORDER.filter(t => chord.alt.includes(t));
 	if (!toks.length) return "";
-	const allAccidental = toks.every(t => t.startsWith("b") || t.startsWith("#"));
-	return allAccidental ? toks.join("") : `(${toks.join(",")})`;
+	return toks.join("");
 }
 
 // 转位低音 pitch class（无 bass 即根音）
