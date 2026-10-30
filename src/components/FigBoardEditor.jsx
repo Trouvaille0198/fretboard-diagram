@@ -10,7 +10,7 @@ import { createSvgClickHandler, createSvgMouseMoveHandler, createSvgMouseDownHan
 import { figSvg } from '../utils/chordFig';
 import { CONSTS } from '../constants';
 import { candidatesForChord, candidateToData, shapeFromBoard, builtinShapes, loadShapes, persistShapes } from '../utils/chordShapes';
-import { QUALITIES } from '../utils/chordLib';
+import { QUALITIES, formatName, degreePc } from '../utils/chordLib';
 
 const noOp = () => { };
 
@@ -90,8 +90,11 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   }, []);
   const vbX = geo.svgViewBoxX + vbTrimL;
   const vbW = Math.max(200, geo.svgViewBoxWidth - vbTrimL - vbTrimR);
-  // 音符标签 = 当前调唱名（do-re-mi 相对调根音），与小图"调内级数"同口径
-  const keyRoot = viewKey?.root ?? 0;
+  // 音符标签 = 相对"当前和弦根音"的级数（do 落在和弦根音上）——画 Dm 时 D 是 1，
+  // 不是相对调根音（旧实现用调根音，画 Dm 时音名全错位）
+  const keyRoot = useMemo(() => (chord
+    ? degreePc(chord.degree, chord.acc || 0, viewKey || { root: 0, minor: false })
+    : (viewKey?.root ?? 0)), [chord, viewKey]);
   const notes = useMemo(() => generateNotes(
     fretWin.start, fretWin.end, data, 'solfege', keyRoot, 1, 'transparent',
     (f, s) => computeNoteName(f, s, 1), computeNoteIndex, solfegeRelKey
@@ -159,9 +162,15 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     window.addEventListener('pointercancel', stop);
     return () => { window.removeEventListener('pointerup', stop); window.removeEventListener('pointercancel', stop); };
   }, []);
-  // 退格/Delete 熄灭悬停音(普通编辑同款语义;连线随端点消失一并清理)
+  // Ctrl+D = 清空画板（普通编辑器同键位=重置；数据走自动保存链路，外层撤销可回）
   React.useEffect(() => {
     const onKey = (e) => {
+      if (e.ctrlKey && e.code === 'KeyD') {
+        e.preventDefault();
+        e.stopPropagation();
+        setData({});
+        return;
+      }
       if (e.code !== 'Backspace' && e.code !== 'Delete') return;
       if (!hoverNote) return;
       const n = dataRef.current[hoverNote];
@@ -236,7 +245,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   return (
     <div className="figbe">
       <div className="figbe-top">
-        <span className="figbe-title">指法图</span>
+        <span className="figbe-title">指法图{chord ? ` · ${formatName(chord, viewKey || { root: 0, minor: false })}` : ""}</span>
         {chord ? <button className="button sm" onClick={() => setShapesOpen(v => !v)}>形状库</button> : null}
         <button className="button sm" onClick={openSave}>存为形状</button>
         <button className="button sm danger" onClick={() => { onAutoSave && onAutoSave(null); onClose(); }}>删除</button>

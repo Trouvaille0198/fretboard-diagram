@@ -4747,7 +4747,8 @@ html[data-theme="light"] .cc-page {
     top: 8px;
     right: 2px;
     z-index: 400;
-    min-width: 168px;
+    /* 340px：转调选择器一行放得下（主音+调式+♭♯+清除≈300px），不挤成竖排 */
+    min-width: 340px;
     background: var(--app-panel-strong);
     border: 1px solid var(--app-border-strong);
     border-radius: var(--app-radius-sm);
@@ -5777,10 +5778,20 @@ html[data-theme="light"] .cc-cell-tools {
     font-size: var(--app-fs-lg);
 }
 
-.cc-key-stepper button {
+.cc-key-stepper > button:not(.cc-key-mode) {
     width: 30px;
     height: 28px;
     font-size: 13.5px;
+}
+
+/* 步进器本体不许被外层 flex 压缩（在 .cc-mmenu-row / .cc-settings-v 里都要完整一行）：
+   width:max-content 让主音触发器永远按内容宽展开，不会被收缩成竖排 */
+.cc-key-stepper {
+    flex: 0 0 auto;
+    width: max-content;
+}
+.cc-key-stepper .cc-key-root {
+    min-width: 72px;
 }
 
 .cc-legend-label small {
@@ -6576,11 +6587,33 @@ html[data-theme="light"] .button.sm.edit-enter {
     border-radius: var(--cc-radius-sm);
 }
 
-.cc-page .cc-key-stepper button {
+.cc-page .cc-key-stepper button:not(.cc-key-mode) {
     width: 26px;
     height: 24px;
     font-size: var(--app-fs-md);
     border-radius: var(--cc-radius-sm);
+}
+
+/* 调式单按钮（大调/小调，点击切换）：文字钮，宽度跟内容 */
+.cc-key-stepper .cc-key-mode {
+    width: auto;
+    min-width: 0;
+    height: 24px;
+    padding: 0 10px;
+    font-size: var(--app-fs-sm);
+    background: var(--app-bg-secondary);
+    border: 1px solid var(--app-border);
+    border-radius: var(--cc-radius-sm);
+    color: var(--app-text);
+    white-space: nowrap;
+}
+.cc-key-stepper .cc-key-mode.minor,
+.cc-key-stepper .cc-key-mode:active {
+    border-color: var(--cc-accent);
+    color: var(--cc-accent-text);
+}
+.cc-key-stepper .cc-key-mode:hover {
+    border-color: var(--cc-accent);
 }
 
 /* —— 曲目入口 / 面板 —— */
@@ -7902,7 +7935,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     padding: 14px 18px;
     width: fit-content;
     min-width: 480px;
-    max-width: min(1180px, 94vw);
+    max-width: calc(100vw - 16px);
     max-height: 92vh;
     overflow: hidden;
     box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
@@ -7946,20 +7979,20 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .figbe-board {
-    flex: 0 0 auto;
+    /* 可收缩：容器宽由弹窗上限决定，svg 100% 跟随——页面放大/窄屏都装得下，绝不溢出 */
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
 }
 
-/* fit-content 容器下百分比 max 会循环失效，用绝对上限：宽不超弹窗上限、高不超 92vh 减工具区 */
 .figbe-board svg {
-    max-width: calc(min(1180px, 94vw) - 76px);
+    max-width: 100%;
     max-height: calc(92vh - 250px);
     width: auto;
     height: auto;
-    flex: 0 0 auto;
 }
 
 .figbe-side {
