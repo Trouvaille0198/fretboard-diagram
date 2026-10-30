@@ -193,7 +193,7 @@ function encodeChord(chord) {
 function encodeUnit(u) {
 	if (!u) return TAG_EMPTY;
 	if (u.kind === "rest") return TAG_REST;
-	if (u.kind === "hold") return u.fig ? [TAG_HOLD, ["f", encodeFrame(u.fig)]] : TAG_HOLD;
+	if (u.kind === "hold") return TAG_HOLD;
 	if (u.kind === "chord" && u.chord) {
 		const arr = encodeChord(u.chord);
 		if (isRaw(arr)) return arr; // raw 已含全部字段（含 alt）
@@ -201,7 +201,8 @@ function encodeUnit(u) {
 		if (Array.isArray(u.chord.alt) && u.chord.alt.length) arr.push([...u.chord.alt]);
 		if (u.rhythm) arr.push(u.rhythm);
 		if (u.image) arr.push(encodeImage(u.image));
-		if (u.fig) arr.push(["f", encodeFrame(u.fig)]);
+		// fig 用对象标签（不用数组）：旧版解码器把未知数组一律当变化音，会读出 alt:["f"] 垃圾；对象则被旧版整体忽略
+		if (u.fig) arr.push({ f: encodeFrame(u.fig) });
 		return arr;
 	}
 	return TAG_EMPTY;
@@ -216,6 +217,8 @@ function encodeSlot(slot) {
 		if (stray) return [TAG_SPLIT_RAW, slot];
 		return [TAG_SPLIT, encodeUnit(a), encodeUnit(slot.split[1])];
 	}
+	// 延音拍带指法图：裸 TAG_HOLD 表达不了 extras，整槽原样带走（旧版解码器同样认识 TAG_SPLIT_RAW，逐字还原）
+	if (slot.kind === "hold" && slot.fig) return [TAG_SPLIT_RAW, slot];
 	return encodeUnit(slot);
 }
 
@@ -266,22 +269,17 @@ function decodeUnit(v) {
 	if (v === TAG_HOLD) return { kind: "hold" };
 	if (!Array.isArray(v)) return { kind: "empty" };
 	if (v[0] === TAG_SPLIT) return null; // 由 decodeSlot 处理
-	if (v[0] === TAG_HOLD) {
-		const h = { kind: "hold" };
-		if (Array.isArray(v[1]) && v[1][0] === "f") h.fig = decodeFrame(v[1][1]);
-		return h;
-	}
 	if (v[0] !== TAG_CHORD) return { kind: "empty" };
 	if (v[1] === "raw") return { kind: "chord", chord: v[2] };
 	const u = {
 		kind: "chord",
 		chord: { degree: v[1], acc: v[2] || 0, quality: v[3] || "", bass: decodeBass(v[4]) }
 	};
-	// 位置无关的 extras：字符串=节奏型，["b"/"c",..]=动图配图，["f",..]=拍级指法图，纯字符串数组=变化音
+	// 位置无关的 extras：字符串=节奏型，["b"/"c",..]=动图配图，{f:..}=拍级指法图，纯字符串数组=变化音
 	for (const extra of v.slice(5)) {
 		if (typeof extra === "string") u.rhythm = extra;
 		else if (Array.isArray(extra) && (extra[0] === "b" || extra[0] === "c")) u.image = decodeImage(extra);
-		else if (Array.isArray(extra) && extra[0] === "f") u.fig = decodeFrame(extra[1]);
+		else if (extra && typeof extra === "object" && !Array.isArray(extra) && "f" in extra) u.fig = decodeFrame(extra.f);
 		else if (Array.isArray(extra)) u.chord.alt = extra.filter(t => typeof t === "string");
 	}
 	if (Array.isArray(u.chord.alt) && !u.chord.alt.length) delete u.chord.alt;
