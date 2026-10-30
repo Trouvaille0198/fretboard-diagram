@@ -10,7 +10,7 @@ import audioService from "../services/audioService";
 
 // 指法小图尺寸档位（汇总行可切）
 const FIG_SIZES = [112, 144, 176];
-import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken } from "../utils/chordLib";
+import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken, degreePc } from "../utils/chordLib";
 import { createPortal } from "react-dom";
 import { ChordSign } from "./ChordSign";
 import { KeyPicker } from "./KeyPicker";
@@ -1243,6 +1243,34 @@ export function ChordChartView({ songId }) {
 
 	// 常用和弦（8pu 式）：按本谱出现频率 top6；空歌给调内默认进行
 	// 配图体系：一个和弦（拍格实例）一张指法图——unit.image；复制/复制小节随槽位一起带走
+	// 空指法图自动带入：在当前小节之前找"实际音高 + 质量"都相同的和弦（按 resolved pc 匹配，
+	// 转调段自动隔离——B 段的 4maj7 不会带入 D 段的 4maj7），取最近的一个指法图。
+	// 相同和弦的按法往往相似，画过一次后面直接改，提效。
+	const prevSameChordFig = (mi, si, half, chord) => {
+		if (!chord || chord.degree == null) return null;
+		const rootPc = degreePc(chord.degree, chord.acc || 0, keyAt(mi));
+		const q = chord.quality || "";
+		const curPos = si * 2 + (half ?? 0);
+		let found = null;
+		for (let m = 0; m <= mi; m++) {
+			const mm = song.measures[m];
+			if (!mm) continue;
+			const slots = mm.slots || [];
+			for (let s = 0; s < slots.length; s++) {
+				if (m === mi && s * 2 >= curPos) break; // 到达当前位置：后面的不算"前面"
+				const sl = slots[s];
+				const units = sl.split ? sl.split : [sl];
+				for (let h = 0; h < units.length; h++) {
+					const u = units[h];
+					if (u.kind !== "chord" || !u.chord || !u.fig || !Object.keys(u.fig).length) continue;
+					const uRoot = degreePc(u.chord.degree, u.chord.acc || 0, keyAt(m));
+					if (uRoot === rootPc && (u.chord.quality || "") === q) found = u.fig; // 一直取到当前位置前最后一个
+				}
+			}
+		}
+		return found;
+	};
+
 	const unitAt = (mi, si, half) => {
 		const slot = song.measures[mi]?.slots[si];
 		if (!slot) return null;
@@ -1819,11 +1847,15 @@ export function ChordChartView({ songId }) {
 
 			{figTarget != null ? (() => {
 				const u = unitAt(figTarget.mi, figTarget.si, figTarget.half);
+				// 指法图为空时自动带入前面同和弦的指法（见 prevSameChordFig）
+				const preFig = (!u?.fig || !Object.keys(u.fig).length) && u?.chord
+					? prevSameChordFig(figTarget.mi, figTarget.si, figTarget.half, u.chord)
+					: null;
 				return createPortal(
 					<div className="figbe-mask" onMouseDown={e => { if (e.target === e.currentTarget) setFigTarget(null); }}>
 						<div className="figbe-box">
 							<FigBoardEditor
-								initialData={u?.fig}
+								initialData={(u?.fig && Object.keys(u.fig).length) ? u.fig : (preFig || undefined)}
 								chord={u?.chord}
 								viewKey={keyAt(figTarget.mi)}
 								figOpts={figOpts}
