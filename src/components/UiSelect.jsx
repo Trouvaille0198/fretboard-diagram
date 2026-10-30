@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from "react";
 //   value / options([{value,label}] 或原始值) / onChange(value)
 //   disabled / title / ariaLabel / className(触发器附加类) / menuClassName(列表附加类)
 //   children = 自定义触发器内容（默认「当前项 + ▾」）
-export function UiSelect({ value, options, onChange, disabled = false, title, ariaLabel, className = "", menuClassName = "", children }) {
+//   menuAbsolute = 菜单绝对定位悬浮在触发器下方（默认原地展开——工具栏 overflow 容器里悬浮会被裁；
+//                  但在转调选择器这类紧凑行里，原地展开会把兄弟组件挤开，用悬浮）
+export function UiSelect({ value, options, onChange, disabled = false, title, ariaLabel, className = "", menuClassName = "", menuAbsolute = false, children }) {
 	const [open, setOpen] = useState(false);
 	const [active, setActive] = useState(-1);
 	const boxRef = useRef(null);
@@ -47,7 +49,7 @@ export function UiSelect({ value, options, onChange, disabled = false, title, ar
 	};
 
 	return (
-		<span className={`ui-select${open ? " open" : ""}${disabled ? " disabled" : ""}${className ? " " + className : ""}`} ref={boxRef}>
+		<span className={`ui-select${open ? " open" : ""}${disabled ? " disabled" : ""}${menuAbsolute ? " menu-absolute" : ""}${className ? " " + className : ""}`} ref={boxRef}>
 			<button ref={btnRef} type="button" className="ui-select-btn" title={title} aria-label={ariaLabel} aria-haspopup="listbox"
 				aria-expanded={open} disabled={disabled} onClick={() => setOpen(v => !v)} onKeyDown={onKey}>
 				{children ?? (<><span className="ui-select-label">{cur ? cur.label : ""}</span><i className="ui-select-arrow">▾</i></>)}

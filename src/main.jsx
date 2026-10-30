@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import './fretboard.css?v=155';
+import './fretboard.css?v=156';
 
 const root = ReactDOM.createRoot(document.getElementById('app'));
 root.render(

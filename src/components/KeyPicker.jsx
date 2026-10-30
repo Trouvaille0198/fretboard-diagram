@@ -17,7 +17,7 @@ const PC = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 export function KeyPicker({ root, minor, marked, onChange, onClear, disabled, title }) {
 	return (
 		<span className="cc-key-stepper" role="group" aria-label={title}>
-			<UiSelect value={root} disabled={disabled} menuClassName="ui-grid" className="cc-key-root"
+			<UiSelect value={root} disabled={disabled} menuClassName="ui-grid" className="cc-key-root" menuAbsolute
 				options={PC.map((k, pc) => ({ value: pc, label: k }))}
 				title="主音：点开选 12 个音"
 				onChange={pc => onChange(pc, minor)}>
