@@ -250,9 +250,10 @@ console.log("== chartPack：工程文件往返 ==");
 		m.tint = i % 3 === 0 ? "blue" : null;
 		m.slots = m.slots.map((_, si) => {
 			if (i === 20 && si === 0) return { kind: "rest" };
-			if (i === 20 && si === 1) return { kind: "hold" };
+			if (i === 20 && si === 1) return { kind: "hold", fig: { custom: "延音上的图" } };
 			if (i === 18 && si === 0) {
-				const d = { kind: "chord", chord: { degree: 1, acc: 0, quality: "M7", bass: null } };
+				// 与 toggleSplit 产物同形：split[0] 就是正拍本身，fig 槽位与 split[0] 同有
+				const d = { kind: "chord", chord: { degree: 1, acc: 0, quality: "M7", bass: null }, fig: { custom: "正半拍图" } };
 				return { ...d, split: [{ ...d }, { kind: "chord", chord: { degree: 5, acc: 0, quality: "7", bass: { degree: 3, acc: 0 } } }] };
 			}
 			if (i === 19 && si === 0) return { kind: "chord", chord: { degree: 2, acc: 0, quality: "m7", bass: null }, split: [{ kind: "chord", chord: { degree: 2, acc: 0, quality: "m7", bass: null } }, { kind: "empty" }] };
@@ -260,6 +261,8 @@ console.log("== chartPack：工程文件往返 ==");
 			if (i % 6 === 1 && si === 1) u.rhythm = "ballad";
 			if (i < 2) u.image = { kind: "board", frame: { startFret: 1, endFret: 6, notes: [{ noteId: "o-s0", s: 0, f: 1 }], visibility: [true, false] } };
 			if (i === 2) u.image = { kind: "clip", id: "clip-xyz" };
+			if (i === 3 && si === 0) u.fig = { data: { "o-s0": { type: "note", color: { name: "navy", custom: null }, color2: null, visibility: "visible" } }, startFret: 1, endFret: 5, rootNote: 9 };
+			if (i === 4 && si === 0) u.fig = { custom: "旧版手绘", notes: [1, 2, 3] };
 			return u;
 		});
 		s.measures.push(m);
@@ -305,6 +308,11 @@ console.log("== chartPack：工程文件往返 ==");
 	A("节奏型被带上", back.measures[7].slots[1].rhythm === "ballad");
 	A("质量记忆被带上", back.qualityMemory?.["1"] === "M7");
 	A("谱中转调被带上", back.measures[12].keyRoot === 2 && back.measures[12].keyMinor === false);
+	A("拍级指法图被带上（帧规范形）", deepDiff(back.measures[3].slots[0].fig, s.measures[3].slots[0].fig).length === 0,
+		deepDiff(back.measures[3].slots[0].fig, s.measures[3].slots[0].fig).join(" / "));
+	A("拍级指法图被带上（未知形状原样）", deepDiff(back.measures[4].slots[0].fig, s.measures[4].slots[0].fig).length === 0);
+	A("延音拍上的指法图被带上", deepDiff(back.measures[20].slots[1].fig, s.measures[20].slots[1].fig).length === 0);
+	A("反拍正半拍的指法图被带上", deepDiff(back.measures[18].slots[0].split[0].fig, s.measures[18].slots[0].split[0].fig).length === 0);
 	A("反拍拆分带低音往返", eq(back.measures[18].slots[0].split[1].chord.bass, { degree: 3, acc: 0 }));
 	A("显示设置（记谱/等音/每行/色系）", back.display === "name" && back.enharmonic === -1 && back.rowsPerLine === 3 && back.colorScheme === "crimson");
 	A("小节 id 保持（React key 稳定）", back.measures.every((m, i) => m.id === s.measures[i].id));
@@ -400,6 +408,11 @@ console.log("== chartPack：工程文件往返 ==");
 		&& qXmlBack.measures[0].slots[1]?.chord?.quality === "m7-5"
 		&& qXmlBack.measures[0].slots[2]?.chord?.quality === "dim7",
 		JSON.stringify(qXmlBack.measures[0].slots.slice(0, 3).map(x => x?.chord?.quality)));
+	// 外部软件（MuseScore 等）的歌词写在 <note><lyric><text>（自家导出的在方向词里）：两条都要认
+	const extLyrXml = `<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>x</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>2</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time></attributes><harmony><root><root-step>C</root-step></root><kind>major</kind></harmony><note><rest/><duration>2</duration><type>quarter</type></note><harmony><root><root-step>G</root-step></root><kind>major</kind></harmony><note><rest/><duration>2</duration><type>quarter</type><lyric number="1"><text>一</text></lyric></note><harmony><root><root-step>A</root-step></root><kind>minor</kind></harmony><note><rest/><duration>2</duration><type>quarter</type><lyric number="1"><text>二</text></lyric></note><note><rest/><duration>2</duration><type>quarter</type></note></measure></part></score-partwise>`;
+	const extLyrBack = importMusicXml(extLyrXml, "ext");
+	A("外部 MusicXML <lyric> 歌词导入", extLyrBack?.measures?.[0]?.lyrics === "一 二", JSON.stringify(extLyrBack?.measures?.[0]?.lyrics));
+	A("自家 MusicXML 歌词往返保留", importMusicXml(exportMusicXml({ ...altXmlSong, measures: altXmlSong.measures.map((m, i) => i === 0 ? { ...m, lyrics: "词 甲 乙" } : m) }, () => C), "x").measures[0].lyrics === "词 甲 乙");
 }
 
 console.log("== chordChartModel：删除一拍（插入的逆：全曲整体前移） ==");

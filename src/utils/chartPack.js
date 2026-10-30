@@ -13,9 +13,10 @@
 //            K:[转调根音, 小调], T:标色, p:[槽位…] }
 // slot（tag 编码，省掉 "kind"/"chord"/"degree" 这类重复键名）：
 //   0=空 | 1=休止 | 2=延音 | 3=和弦 | 4=反拍拆分
-//   和弦 [3, degree, acc, quality, bass, rhythm, image]，尾部空值裁掉
+//   和弦 [3, degree, acc, quality, bass, rhythm, image, fig]，尾部空值裁掉
 //   bass：无→0；acc=0→度数数字；带变音→[度数, acc]
 //   image：{kind:'board',frame}→["b",frame]；{kind:'clip',id}→["c",id]
+//   fig：拍级黑点指法图→["f",frame]（形状不合帧规范时原样 raw 带走）
 // 和弦若带非规范字段，退化为 [3,"raw",原对象] 原样保存，保证不丢东西。
 
 import LZString from "lz-string";
@@ -192,14 +193,15 @@ function encodeChord(chord) {
 function encodeUnit(u) {
 	if (!u) return TAG_EMPTY;
 	if (u.kind === "rest") return TAG_REST;
-	if (u.kind === "hold") return TAG_HOLD;
+	if (u.kind === "hold") return u.fig ? [TAG_HOLD, ["f", encodeFrame(u.fig)]] : TAG_HOLD;
 	if (u.kind === "chord" && u.chord) {
 		const arr = encodeChord(u.chord);
 		if (isRaw(arr)) return arr; // raw 已含全部字段（含 alt）
-		// 可选 extras 按类型自辨（解码不依赖位置）：字符串数组=变化音，字符串=节奏型，tagged=配图
+		// 可选 extras 按类型自辨（解码不依赖位置）：字符串数组=变化音，字符串=节奏型，tagged=配图/指法图
 		if (Array.isArray(u.chord.alt) && u.chord.alt.length) arr.push([...u.chord.alt]);
 		if (u.rhythm) arr.push(u.rhythm);
 		if (u.image) arr.push(encodeImage(u.image));
+		if (u.fig) arr.push(["f", encodeFrame(u.fig)]);
 		return arr;
 	}
 	return TAG_EMPTY;
@@ -264,16 +266,22 @@ function decodeUnit(v) {
 	if (v === TAG_HOLD) return { kind: "hold" };
 	if (!Array.isArray(v)) return { kind: "empty" };
 	if (v[0] === TAG_SPLIT) return null; // 由 decodeSlot 处理
+	if (v[0] === TAG_HOLD) {
+		const h = { kind: "hold" };
+		if (Array.isArray(v[1]) && v[1][0] === "f") h.fig = decodeFrame(v[1][1]);
+		return h;
+	}
 	if (v[0] !== TAG_CHORD) return { kind: "empty" };
 	if (v[1] === "raw") return { kind: "chord", chord: v[2] };
 	const u = {
 		kind: "chord",
 		chord: { degree: v[1], acc: v[2] || 0, quality: v[3] || "", bass: decodeBass(v[4]) }
 	};
-	// 位置无关的 extras：字符串=节奏型，["b"/"c",..]=配图，纯字符串数组=变化音
+	// 位置无关的 extras：字符串=节奏型，["b"/"c",..]=动图配图，["f",..]=拍级指法图，纯字符串数组=变化音
 	for (const extra of v.slice(5)) {
 		if (typeof extra === "string") u.rhythm = extra;
 		else if (Array.isArray(extra) && (extra[0] === "b" || extra[0] === "c")) u.image = decodeImage(extra);
+		else if (Array.isArray(extra) && extra[0] === "f") u.fig = decodeFrame(extra[1]);
 		else if (Array.isArray(extra)) u.chord.alt = extra.filter(t => typeof t === "string");
 	}
 	if (Array.isArray(u.chord.alt) && !u.chord.alt.length) delete u.chord.alt;

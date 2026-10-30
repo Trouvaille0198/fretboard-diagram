@@ -247,8 +247,9 @@ export function importMusicXml(text, fallbackName = "导入谱") {
 			else if (placement === "below" && !measure.lyrics) measure.lyrics = w;
 			else if (!measure.section) measure.section = w;
 		});
-		// 和声骨架：按音符时值推算落点（divisions 为一拍的时值单位）
+		// 和声骨架：按音符时值推算落点（divisions 为一拍的时值单位）；顺路收集标准歌词 <note><lyric><text>
 		let pos = 0;
+		const noteLyrics = [];
 		m.children.forEach(c => {
 			if (c.tag === "harmony") {
 				const chord = harmonyToChord(c, key);
@@ -274,8 +275,13 @@ export function importMusicXml(text, fallbackName = "导入谱") {
 			} else if (c.tag === "note") {
 				const dur = num(kid(c, "duration") && kid(c, "duration").text, divisions);
 				pos += dur / divisions;
+				// 外部软件（MuseScore 等）的歌词在 <note><lyric><text>：聚合成小节歌词（自家导出的在方向词里，作兜底）
+				const lyrNode = kid(kid(c, "lyric"), "text");
+				const w = lyrNode && lyrNode.text.trim();
+				if (w) noteLyrics.push(w);
 			}
 		});
+		if (noteLyrics.length) measure.lyrics = noteLyrics.join(" ");
 		song.measures.push(measure);
 	});
 
