@@ -90,11 +90,14 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   }, []);
   const vbX = geo.svgViewBoxX + vbTrimL;
   const vbW = Math.max(200, geo.svgViewBoxWidth - vbTrimL - vbTrimR);
-  // 音符标签 = 相对"当前和弦根音"的级数（do 落在和弦根音上）——画 Dm 时 D 是 1，
-  // 不是相对调根音（旧实现用调根音，画 Dm 时音名全错位）
-  const keyRoot = useMemo(() => (chord
-    ? degreePc(chord.degree, chord.acc || 0, viewKey || { root: 0, minor: false })
-    : (viewKey?.root ?? 0)), [chord, viewKey]);
+  // 音符标签 = 相对"当前小节生效调"的级数（1 = 当前调的主音）——
+  // 全局 1=B 时 B 是 1；小节有转调 1=E 时该段 1 就是 E（viewKey = keyAt(小节)，已跟随转调）。
+  // 不跟和弦根音走（和弦是调内级数记法，音名体系只认调）。
+  // 关键：generateNotes 的 rootNote 与 computeNoteIndex 必须同一坐标系。
+  // computeNoteIndex 返回"音名表索引"——CONSTS.notes 以低音 E 开头（E=0、F=1、F#=2…B=7、C=8），
+  // 即索引 = 真实音高(pc，C=0) - 4。直接传真实 pc 当 rootNote（旧实现）会让所有音名整体
+  // 偏移 4 个半音（B 被当成 C，品1 F 标成 4、品7 B 标成 7）。
+  const keyRoot = useMemo(() => (((viewKey?.root ?? 0) - 4) % 12 + 12) % 12, [viewKey]);
   const notes = useMemo(() => generateNotes(
     fretWin.start, fretWin.end, data, 'solfege', keyRoot, 1, 'transparent',
     (f, s) => computeNoteName(f, s, 1), computeNoteIndex, solfegeRelKey

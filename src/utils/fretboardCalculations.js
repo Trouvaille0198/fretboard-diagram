@@ -58,7 +58,8 @@ export function generateNotes(
 				// 如果用户手动编辑了文本，优先使用编辑的文本
 				displayName = noteData.noteText;
 			} else if (displayMode === "solfege" && rootNote !== null) {
-				// 唱名模式（需要选中根音）
+				// 唱名模式（需要选中根音）——-1 抵消 computeNoteIndex 内部的 +1，
+				// 让空弦得到自己的真实音名索引（E = 0）
 				const noteIndex = computeNoteIndex(-1, j);
 				displayName = noteToSolfege(noteIndex, rootNote, enharmonic);
 			} else {
