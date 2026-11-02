@@ -39,6 +39,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
   const svgElementRef = useRef(null);
   const [hoverNote, setHoverNote] = useState(null); // 退格熄灭用(与普通编辑同语义:点亮靠点,熄灭靠退格)
+  const [hoveredConnectionId, setHoveredConnectionId] = useState(null); // 退格删连线用(普通编辑同语义:hover连线优先于音符)
   // 连线状态/预设(与普通编辑同一 hook)
   const conn = useConnectionState();
   const connectionDragActiveRef = useRef(false);
@@ -176,6 +177,17 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
         return;
       }
       if (e.code !== 'Backspace' && e.code !== 'Delete') return;
+      // hover 在连线上 → 只删该连线（普通编辑器同语义）；否则 hover 在音符上 → 删音符（连带其连线）
+      if (hoveredConnectionId) {
+        e.preventDefault();
+        setData(prev => {
+          if (!prev.connections || !prev.connections[hoveredConnectionId]) return prev;
+          const connections = { ...prev.connections };
+          delete connections[hoveredConnectionId];
+          return { ...prev, connections };
+        });
+        return;
+      }
       if (!hoverNote) return;
       const n = dataRef.current[hoverNote];
       if (!n || (n.visibility !== 'visible' && n.visibility !== 'selected')) return;
@@ -193,7 +205,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [hoverNote]);
+  }, [hoverNote, hoveredConnectionId]);
 
   // 连线拖拽结束挂 window
   React.useEffect(() => {
@@ -375,7 +387,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
             setPreviewHoverNote={conn.setPreviewHoverNote}
             setUseColor2Level={conn.setUseColor2Level}
             setHoveredNoteId={setHoverNote}
-            setHoveredConnectionId={noOp}
+            setHoveredConnectionId={setHoveredConnectionId}
             computeNoteNameMemo={(f, s) => computeNoteName(f, s, 1)}
             connections={data.connections || {}}
             getNotePositionMemo={getNotePositionMemo}
