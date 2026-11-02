@@ -70,9 +70,40 @@ export function boardFigData(data, chord, viewKey) {
 	return { points, links, startFret, window, rootPc, fail: false };
 }
 
+// ============ 编辑器品窗 ============
+
+// 已点亮(visible/selected)的按弦物理品号列表(空弦不算)——与 serializeBoard/boardFigData 同口径,熄灭的不算"有音符"
+export function pressedFrets(data) {
+	return Object.entries(data || {}).map(([id, n]) => {
+		if (!n || (n.visibility !== "visible" && n.visibility !== "selected")) return null;
+		const m = /^f(-?\d+)-s\d$/.exec(id);
+		return m ? +m[1] + 1 : null;
+	}).filter(v => v && v > 0);
+}
+
+// 指法图编辑器品窗({start,end}:显示品位 = start+1..end,start=0 带开放弦列)——有音符的部分永远居中:
+//   音符两侧等量留白铺到 defSpan;左侧撞琴枕(起品 <1)时右侧也等量收回,音符仍在正中——
+//   原先只把 start 夹到 0、右边照铺,开放/低把位和弦(C/G/Am 这些最常见的)就成了 14 品大板堆在最左;
+//   收到比 minSpan 还短时只能往右补(左边已是琴枕);右侧顶到 22 品则整体左移。无点亮按弦音 → 0..defSpan 空板。
+export function fitFretWindow(data, defSpan = 14, minSpan = 5) {
+	const pressed = pressedFrets(data);
+	if (!pressed.length) return { start: 0, end: defSpan };
+	const min = Math.min(...pressed), max = Math.max(...pressed);
+	const pad = Math.max(0, Math.floor((defSpan - (max - min + 1)) / 2));
+	let s = min - pad, e = max + pad;
+	if (s < 1) { e -= 1 - s; s = 1; }
+	const mn = Math.min(minSpan, defSpan);
+	if (e - s + 1 < mn) e = s + mn - 1;
+	if (e > 22) { s = Math.max(1, s - (e - 22)); e = 22; }
+	return { start: s - 1, end: e };
+}
+
 // ============ 渲染 ============
 
 // 小图几何(与 figSvg 同源):cell/网格矩形/坐标映射,编辑器点击交互用
+// opts.boxW/boxH(px,成对给):跨拍拉宽——图要撑满一个已知宽高的盒子时,弦轴/品轴各自定格距(cellS/cellF),
+// 格子只在宽度方向拉开、高度不变;点径/字号/线宽等"视觉尺寸"取两轴较紧的一侧(cell),与不拉宽时完全一致。
+// 盒宽不够自然纵横比所需(拉宽变成压扁)时忽略盒子,退回原比例——拉宽只做加法,绝不压扁。
 export function figGeometry(fig, opts = {}) {
 	const compact = !!opts.compact;
 	const horizontal = opts.orientation === "h";
@@ -81,15 +112,28 @@ export function figGeometry(fig, opts = {}) {
 	// 品数侧的边距要容下"白点半径 0.40c + 间隙 + 两位品数宽(~0.7c)"——品数贴网格摆会被边缘音白点盖住(白字叠白点)
 	const padLc = horizontal ? 0.88 : 1.3, padRc = 0.5;
 	const padTc = horizontal ? 0.5 : 0.88, padBc = horizontal ? 1.0 : 0.5;
-	const cell = size / (5 + (horizontal ? padTc + padBc : padLc + padRc));
-	const spanS = 5 * cell, spanF = nFrets * cell;
-	const gridW = horizontal ? spanF : spanS;
-	const gridH = horizontal ? spanS : spanF;
-	const W = Math.round(horizontal ? spanF + (padLc + padRc) * cell : size);
-	const H = Math.round(horizontal ? size : spanF + (padTc + padBc) * cell);
-	const L = padLc * cell, T = padTc * cell;
+	// 两轴总格数(含边距):x 轴 / y 轴
+	const unitsX = horizontal ? nFrets + padLc + padRc : 5 + padLc + padRc;
+	const unitsY = horizontal ? 5 + padTc + padBc : nFrets + padTc + padBc;
+	let cellS, cellF, cell, W, H;
+	const boxOk = opts.boxW != null && opts.boxH != null && opts.boxW >= opts.boxH * unitsX / unitsY - 0.5;
+	if (boxOk) {
+		W = Math.round(opts.boxW); H = Math.round(opts.boxH);
+		const cellX = W / unitsX, cellY = H / unitsY;
+		cellS = horizontal ? cellY : cellX; // 弦轴:h 在 y、v 在 x
+		cellF = horizontal ? cellX : cellY; // 品轴:h 在 x、v 在 y
+		cell = Math.min(cellX, cellY);
+	} else {
+		cell = size / (5 + (horizontal ? padTc + padBc : padLc + padRc));
+		cellS = cellF = cell;
+		W = Math.round(horizontal ? nFrets * cell + (padLc + padRc) * cell : size);
+		H = Math.round(horizontal ? size : nFrets * cell + (padTc + padBc) * cell);
+	}
+	const spanS = 5 * cellS, spanF = nFrets * cellF;
+	// 边距按所在轴的格距走:x 轴边距(品数位/右留白)×x 轴格距,y 轴同理
+	const L = padLc * (horizontal ? cellF : cellS), T = padTc * (horizontal ? cellS : cellF);
 	const pt = (fo, so) => horizontal ? { x: L + fo, y: T + so } : { x: L + so, y: T + fo };
-	return { horizontal, nFrets, cell, spanS, spanF, W, H, L, T, pt, startFret: fig.startFret };
+	return { horizontal, nFrets, cell, cellS, cellF, spanS, spanF, W, H, L, T, pt, startFret: fig.startFret };
 }
 
 // 点击命中:svg 内像素坐标(px,py,已按 viewBox 换算) → { string, fret }(品窗格位,含空弦列) | null
@@ -109,7 +153,8 @@ export function figHitTest(geom, px, py) {
 // opts: { orientation 'v'(默认,琴头在上)| 'h'(普通图方向,琴头在左、品窗横向拉开),
 //         size 主轴px(默认 v:宽56 / h:高64), compact 半拍简版, degMode 'chord'|'scale'|'none',
 //         key({root,minor},degMode='scale' 必须), editGrid 编辑态(全格白点),
-//         theme {line, fret, dot, ink, link} }
+//         theme {line, fret, dot, ink, link},
+//         boxW/boxH 撑满指定盒子(px,成对):内嵌图行跨拍拉宽用,只拉开弦/品格距、点径字号不变(见 figGeometry) }
 export function figSvg(fig, opts = {}) {
 	const compact = !!opts.compact;
 	const horizontal = opts.orientation === "h";
@@ -120,13 +165,13 @@ export function figSvg(fig, opts = {}) {
 	const nFrets = fig.window || 4;
 	const showNut = fig.startFret <= 1;
 
-	// 正方格(品距=弦距)。两轴:
+	// 正方格(品距=弦距;boxW/boxH 拉宽时品距/弦距各算,cell 取紧轴只管视觉尺寸)。两轴:
 	//   弦轴:6 弦 = 5 格距;品轴:nFrets 格。
 	//   v(琴头在上):弦轴=x、品轴=y;h(琴头在左):弦轴=y、品轴=x —— 网格矩形随方向转置。
 	// pad(×cell):v = 左(品数)+顶(×/○ 与琴枕);h = 左(×/○ 与琴枕)+底(品数)。
 	// 几何与 hitTest 同源(figGeometry),编辑器点击反算才与渲染完全一致
 	const G = figGeometry(fig, opts);
-	const cell = G.cell, spanS = G.spanS, spanF = G.spanF;
+	const cell = G.cell, cellF = G.cellF, spanS = G.spanS, spanF = G.spanF;
 	const W = G.W, H = G.H, L = G.L, R = L + (horizontal ? spanF : spanS);
 	const T = G.T, B = T + (horizontal ? spanS : spanF);
 	const offS = (i) => spanS * i / 5;
@@ -156,8 +201,8 @@ export function figSvg(fig, opts = {}) {
 	}
 	// 音符坐标:品格中心(品轴)+ 弦位(弦轴)
 	const posOf = (p) => {
-		// 空弦音(品0)落在品轴负向外(琴枕外)的小黑点位;按弦音=各自品格中心
-		const fo = p.fret === 0 ? -0.35 * cell : (p.fret - fig.startFret + 0.5) * cell;
+		// 空弦音(品0)落在品轴负向外(琴枕外)的小黑点位;按弦音=各自品格中心——品轴偏移按品轴格距(拉宽时与弦轴不同)
+		const fo = p.fret === 0 ? -0.35 * cellF : (p.fret - fig.startFret + 0.5) * cellF;
 		return pt(Math.min(spanF, fo), offS(p.string));
 	};
 	// 连线(压点下层):两端各沿垂直于两音连线的方向起落(cubic)——切线正对圆心,
@@ -214,7 +259,7 @@ export function figSvg(fig, opts = {}) {
 		for (let i = 0; i < nFrets; i++) {
 			if (compact && i > 0) break;
 			if ((fig.startFret + i) % 2 === 0) continue; // 只标奇数品(教材惯例,偶数品留白)
-			const center = (i + 0.5) * cell;
+			const center = (i + 0.5) * cellF; // 品轴格距(拉宽时≠弦轴)
 			let anchor;
 			if (horizontal) {
 				// h(琴头在左):品数在网格下方——基线沉到边缘音白点底(spanS+rDeg)+0.5c,字顶(基线上方 0.42c)才清得开白点

@@ -7,15 +7,12 @@ import { CONNECTION_PRESETS, useConnectionState } from '../hooks/useConnectionSt
 import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, generateMarkers, getNotePosition, boardGeometry } from '../utils/fretboardCalculations';
 import { createNoteClickHandler, createNoteMouseDownHandler, createConnectionDragEndHandler } from '../handlers/noteHandlers';
 import { createSvgClickHandler, createSvgMouseMoveHandler, createSvgMouseDownHandler, createSvgContextMenuHandler } from '../handlers/svgHandlers';
-import { figSvg } from '../utils/chordFig';
+import { figSvg, fitFretWindow, boardFigData } from '../utils/chordFig';
 import { CONSTS } from '../constants';
 import { candidatesForChord, candidateToData, shapeFromBoard, builtinShapes, loadShapes, persistShapes } from '../utils/chordShapes';
 import { QUALITIES, formatName, degreePc } from '../utils/chordLib';
 
 const noOp = () => { };
-
-// 已按弦的物理品号列表(id f<i>-s<n> 的 i+1;空弦不算)——品窗收敛/居中都按它算
-const pressedFretsOf = (d) => Object.keys(d || {}).map(id => { const m = /^f(-?\d+)-s\d$/.exec(id); return m ? +m[1] + 1 : null; }).filter(v => v && v > 0);
 
 // 唱名（首调,相对当前调根音）:全半音表——小调自然音级(b3/b6/b7)自动落对,与小图"调内级数"体系同口径
 const SOLFEGE_REL = { 0: '1', 1: '#1', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7' };
@@ -26,7 +23,7 @@ const solfegeRelKey = (noteIndex, rootNote) => SOLFEGE_REL[((noteIndex - rootNot
 // 音符恒为 mono 单色点(无色板)、工具区只有连线预设(无钢琴/下载/异色)。
 // 编辑实时自动保存(数据变化即落盘到该拍 unit.fig,无需手动确认)；
 // 顶条：形状库候选(该拍和弦匹配) / 存为形状 / 关闭。
-export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClose, showToast, figOpts }) {
+export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClose, showToast, figOpts, recentFigs }) {
   const [data, setData] = useState(() => (initialData && Object.keys(initialData).length ? JSON.parse(JSON.stringify(initialData)) : {}));
   const dataRef = useRef(data);
   dataRef.current = data;
@@ -37,13 +34,8 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     return canon(a) === canon(b);
   };
 
-  // 品窗：按初始数据最低/最高按弦品收敛；空 = 0-5
-  const [fretWin, setFretWin] = useState(() => {
-    const pressed = pressedFretsOf(initialData);
-    return pressed.length
-      ? { start: Math.max(0, Math.min(...pressed) - 1), end: Math.min(22, Math.max(...pressed) + 2) }
-      : { start: 0, end: 5 };
-  });
+  // 品窗：按已点亮音居中铺窗(fitFretWindow,默认 14 品);挂载后按视口容量再铺一次
+  const [fretWin, setFretWin] = useState(() => fitFretWindow(initialData));
 
   const svgElementRef = useRef(null);
   const [hoverNote, setHoverNote] = useState(null); // 退格熄灭用(与普通编辑同语义:点亮靠点,熄灭靠退格)
@@ -65,37 +57,34 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     return Math.max(2, Math.min(22, Math.floor((avail + worstTrim - 120) / CONSTS.fretWidth)));
   }, []);
   const maxSpanRef = useRef(14);
+  // 数据 → 品窗（挂载 / 应用形状 / 还原同一口径）：默认跨度 = 14 与视口容量取小，音符居中（见 fitFretWindow）
+  const fitWindow = useCallback((d) => fitFretWindow(d, Math.min(14, maxSpanRef.current)), []);
   useEffect(() => {
-    // 挂载默认品窗：够宽 1-14，不够宽 = 能装下的最大品数；已有数据的高把位仍要覆盖
-    const apply = () => {
-      maxSpanRef.current = maxSpanOf();
-      const defSpan = Math.min(14, maxSpanRef.current);
-      setFretWin(prev => {
-        if (prev.end - prev.start >= defSpan) return prev;
-        // 收敛窗补到默认跨度时以有值的品位为中心两侧均分（显示品位 = start+1..end，中心 = start+(span+1)/2）——
-        // 原先 start 不动只往右补，和弦全堆在板左缘；低/高把位顶到 0/22 品才贴边。无数据沿用原起点
-        const pressed = pressedFretsOf(dataRef.current);
-        let start = pressed.length ? Math.round((Math.min(...pressed) + Math.max(...pressed)) / 2 - (defSpan + 1) / 2) : prev.start;
-        start = Math.max(0, Math.min(start, 22 - defSpan));
-        return { start, end: start + defSpan };
-      });
-    };
-    apply();
-    window.addEventListener("resize", apply);
-    return () => window.removeEventListener("resize", apply);
-  }, [maxSpanOf]);
+    // 挂载：先按视口定容量，再按数据铺窗（有音符的部分居中）；resize 只刷新容量，不动用户已拖好的窗
+    maxSpanRef.current = maxSpanOf();
+    setFretWin(fitWindow(dataRef.current));
+    const onResize = () => { maxSpanRef.current = maxSpanOf(); };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [maxSpanOf, fitWindow]);
 
-  // 拖块回调：跨度超过容量时不缩放，窗口右移（1-7 拖长变 3-9 语义）
+  // 拖块回调：跨度超过容量时不缩放，窗口整体平移——
+  //   右把手拉长(默认,锚右缘)：1-7 拖长变 3-9；左把手拉低(anchor='start',锚左缘)：9-16 往左拉变 5-12
   const applyFretWin = useCallback((w) => {
     setFretWin(prev => {
       let start = w.start ?? prev.start;
       let end = w.end ?? prev.end;
       const maxSpan = maxSpanRef.current;
       if (end - start > maxSpan) {
-        // 宽度装不下更长的窗：不缩放，改为右滑——右缘顶到期望品，起点=末端-容量
-        end = Math.min(22, end);
-        start = Math.max(0, end - maxSpan);
-        end = start + maxSpan;
+        if (w.anchor === 'start') {
+          start = Math.max(0, start);
+          end = start + maxSpan;
+        } else {
+          // 宽度装不下更长的窗：不缩放，改为右滑——右缘顶到期望品，起点=末端-容量
+          end = Math.min(22, end);
+          start = Math.max(0, end - maxSpan);
+          end = start + maxSpan;
+        }
       }
       return { start, end };
     });
@@ -214,16 +203,16 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     return () => { window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp); };
   }, [handleConnDragEnd]);
 
-  // —— 形状库 / 存形状 ——
-  const [shapesOpen, setShapesOpen] = useState(false);
+  // —— 底部面板双页签：默认"最近同和弦"，形状库按钮切换 ——
+  const [panelTab, setPanelTab] = useState('recent'); // 'recent' | 'shapes'
   const [saveForm, setSaveForm] = useState(null);
   const [shapesVer, setShapesVer] = useState(0); // 增删改名后 bump,候选列表重算
   const [candMenu, setCandMenu] = useState(null); // 右键候选菜单 {shape, x, y, confirmDelete}
   const [renameForm, setRenameForm] = useState(null); // 重命名表单 {id, name}
   const renameInputRef = useRef(null);
-  const candidates = useMemo(() => (shapesOpen && chord
+  const candidates = useMemo(() => (panelTab === 'shapes' && chord
     ? candidatesForChord(chord, viewKey || { root: 0, minor: false }, [...builtinShapes(), ...loadShapes()])
-    : []), [shapesOpen, chord, viewKey, shapesVer]);
+    : []), [panelTab, chord, viewKey, shapesVer]);
   // 候选面板开着时:点面板外/按 Esc 收菜单
   useEffect(() => {
     if (!candMenu) return;
@@ -233,19 +222,6 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     document.addEventListener('keydown', esc);
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
   }, [candMenu]);
-
-  // 数据 → 品窗：低位收敛窗，不足默认跨度时以品位为中心补齐（与挂载逻辑同口径）
-  const fitWindow = useCallback((d) => {
-    const pressed = pressedFretsOf(d);
-    const defSpan = Math.min(14, maxSpanRef.current);
-    if (!pressed.length) return { start: 0, end: defSpan };
-    const min = Math.min(...pressed), max = Math.max(...pressed);
-    const t0 = Math.max(0, min - 1), t1 = Math.min(22, max + 2);
-    if (t1 - t0 >= defSpan) return { start: t0, end: t1 };
-    let start = Math.round((min + max) / 2 - (defSpan + 1) / 2);
-    start = Math.max(0, Math.min(start, 22 - defSpan));
-    return { start, end: start + defSpan };
-  }, []);
 
   // 最近一次应用的形状候选：换把位按钮的轮换基准（ref 供逻辑读，state 驱动按钮显隐）
   const lastCandRef = useRef(null);
@@ -260,6 +236,15 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   }, [fitWindow]);
   const applyCandidate = (c) => {
     applyCand(c); // 面板保持打开:连续试多个候选不用反复点「形状库」,收起用顶栏按钮
+  };
+
+  // 应用"最近同和弦"的既有指法：整板覆盖 + 品窗居中（与形状候选同口径）；面板保持打开
+  const applyRecent = (figData) => {
+    const d = JSON.parse(JSON.stringify(figData || {}));
+    setData(d);
+    lastCandRef.current = null;
+    setLastCand(null);
+    setFretWin(fitWindow(d));
   };
 
   // 换把位 = 同一形状不变、整体升八度（根品 +12）：在该形状自己的各八度位间循环（到底回绕最低位）
@@ -344,7 +329,8 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     <div className="figbe">
       <div className="figbe-top">
         <span className="figbe-title">指法图{chord ? ` · ${formatName(chord, viewKey || { root: 0, minor: false })}` : ""}</span>
-        {chord ? <button className="button sm" onClick={() => setShapesOpen(v => !v)}>形状库</button> : null}
+        {chord ? <button className="button sm" title={panelTab === 'recent' ? '查看形状库候选（按当前和弦匹配）' : '查看本曲同和弦的既有指法'}
+          onClick={() => setPanelTab(t => (t === 'recent' ? 'shapes' : 'recent'))}>{panelTab === 'recent' ? '形状库' : '最近同和弦'}</button> : null}
         <button className="button sm" onClick={openSave}>存为形状</button>
         {positions ? <button className="button sm" onClick={cyclePos}
           title={`形状不变，整体升高八度（当前 @${lastCand.rootFret} 品 → 下一个 @${(positions.same.find(c => c.rootFret > lastCand.rootFret) ?? positions.same[0]).rootFret} 品，到底回绕）`}>换把位</button> : null}
@@ -356,6 +342,9 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
       <div className="figbe-body">
         <div className="figbe-board">
+          {/* 左把手：拉起点（往左拉出低把位）；右把手：拉终点（拖长/拖短）——两边都能伸 */}
+          <FretWindowThumb edge="start" startFret={fretWin.start} endFret={fretWin.end}
+            onFretWindowChange={applyFretWin} svgRef={svgElementRef} />
           <FretboardSVG
             svgElementRef={svgElementRef}
             svgWidth={geo.svgWidth}
@@ -466,7 +455,19 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
         </div>
       </div>
 
-      {shapesOpen ? (
+      {panelTab === 'recent' ? (
+        <div className="figbe-shapes">
+          <div className="figbe-shapes-title">{(recentFigs || []).length ? `${recentFigs.length} 个同和弦指法 · 点击应用（按当前和弦的 Root 换算，永远是同一组唱名）` : '本曲暂无相同和弦的指法图（先在别处给这个和弦配个图，或切「形状库」挑一个）'}</div>
+          <div className="figbe-shapes-list">
+            {(recentFigs || []).map((item, i) => (
+              <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={`第${item.mi + 1}小节（点击应用）`}>
+                <span dangerouslySetInnerHTML={{ __html: figSvg(boardFigData(item.fig, chord, viewKey || { root: 0, minor: false }), { degMode: 'chord', size: 44 }) }} />
+                <em>{`第${item.mi + 1}小节`}</em>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
         <div className="figbe-shapes">
           <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选 · 点击应用，右键重命名/删除` : '暂无形状'}</div>
           <div className="figbe-shapes-list">
@@ -480,7 +481,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
             ))}
           </div>
         </div>
-      ) : null}
+      )}
 
       {candMenu ? (
         <div className="figbe-cmenu" style={{ left: Math.min(candMenu.x, window.innerWidth - 180), top: Math.min(candMenu.y, window.innerHeight - 110) }}>

@@ -1,5 +1,6 @@
 import { sameContent, queuePush, queueDelete, setApplier, setPuller, setConflictHandler, outboxPending } from "./syncEngine.js";
 import { trashPut } from "./trashModel.js";
+import { degreePc } from "./chordLib.js";
 
 // 和弦谱（8pu 式功能谱）歌曲模型与本地存储
 // song = { id, name, createdAt, updatedAt,
@@ -8,6 +9,7 @@ import { trashPut } from "./trashModel.js";
 //   colorScheme: 动图生成用的色系名（LEVEL1_COLORS 键）,
 //   measures: [measure] }
 // measure = { id, section?: 段落标记, lyrics?: 按小节歌词, lyricsBold?: [[start,end),...](加粗区间,升序合并不重叠),
+//   repeatTimes?: 反复遍数(>1,配合 endBar='repeatEnd';缺省=标准 2 遍),
 //   repeatStart?: true(小节前有反复开始线), endBar: 'single'|'double'|'repeatEnd'|'final',
 //   house?: 1|2(跳房子), slots: [slot] × 拍数 }
 // slot = { kind: 'empty'|'chord'|'rest'|'hold', chord?: 和弦对象, split?: [子槽,子槽](反拍拆分), rhythm?: 节奏型 }
@@ -74,6 +76,31 @@ export function toggleBoldRange(ranges, s, e, len) {
 	const lo = Math.min(s, ...overlap.map(([a]) => a));
 	const hi = Math.max(e, ...overlap.map(([, b]) => b));
 	return normalizeBoldRanges([...rest, [lo, hi]], len);
+}
+
+
+// ===== 同和弦既有指法（编辑器默认面板"最近同和弦"）=====
+// 全曲收集与给定和弦(解析根音 pc + 质量)相同的指法图；靠后的小节(=最近画过)在前,内容去重。
+// keyAtMi:按小节取生效调(谱内转调自动隔离——B 段的 4maj7 不会匹配 D 段的 4maj7)
+export function collectSameChordFigs(measures, rootPc, quality, keyAtMi) {
+	const seen = new Set();
+	const list = [];
+	for (let m = (measures || []).length - 1; m >= 0; m--) {
+		const mm = measures[m];
+		(mm.slots || []).forEach(sl => {
+			(sl.split ? sl.split : [sl]).forEach(u => {
+				if (!u || u.kind !== "chord" || !u.chord || !u.fig || !Object.keys(u.fig).length) return;
+				let uRoot = null;
+				try { uRoot = degreePc(u.chord.degree, u.chord.acc || 0, keyAtMi ? keyAtMi(m) : { root: 0, minor: false }); } catch (e) { /* 坏数据跳过 */ }
+				if (uRoot !== rootPc || (u.chord.quality || "") !== quality) return;
+				const sig = JSON.stringify(u.fig);
+				if (seen.has(sig)) return;
+				seen.add(sig);
+				list.push({ fig: u.fig, mi: m });
+			});
+		});
+	}
+	return list;
 }
 
 

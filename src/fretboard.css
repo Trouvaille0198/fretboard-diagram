@@ -4360,7 +4360,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     .cc-page .cc-body { padding: 2px; }
     .cc-page .cc-score { padding: 6px 6px 6px; }
     .cc-cell { padding: 4px 5px 2px 5px; }
-    .cc-page .cc-cell-slots { gap: 3px; }
+    .cc-page { --cc-beat-gap: 3px; }
     .cc-page .cc-tooltabs button { padding: 5px 8px 4px; }
     .cc-score-head { gap: 4px; }
 
@@ -4570,21 +4570,25 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 /* 拍格 */
-/* 图行按拍分格：每格与正下方拍格同宽对齐（gap 与 slots 一致），图在自己拍的格内居中 */
+/* 图行与拍格同轨：grid 列数=槽位数(--cc-fig-n 由 JSX 按小节给)、列距=拍距(--cc-beat-gap 与 .cc-cell-slots 同源)，
+   每个图显式落在自己拍的列上(grid-column 内联)。右邻槽位没图时图 span 跨过去(见 ChordChartView 图行注释)，
+   跨拍图([data-span]) svg 撑满整段：几何按实测段宽重算(figSvg boxW/boxH)，只加宽不加高，弦/品格距拉开 */
 /* pad：同行有图时全行占位（空小节也留同高带），记号才同线；整行无图(:empty 无 pad)不占高 */
 /* 图行高度单一来源 --cc-fig-h：svg 高 / pad 占位高(+4 下边距) / 小节线起点(再 +4 格上内边距) 三处同步。
-   图宽随之按比例长；窄拍格下 max-width:100% 夹住，相邻图至少隔 5px 行距 + 图内左右留白 */
-.cc-page { --cc-fig-h: 144px; }
-.cc-cell-figs { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 4px; min-height: 0; }
+   图宽随之按比例长；窄拍格下 max-width:100% 夹住，相邻图至少隔一个拍距 + 图内左右留白 */
+.cc-page { --cc-fig-h: 144px; --cc-beat-gap: 5px; }
+.cc-cell-figs { display: grid; grid-template-columns: repeat(var(--cc-fig-n, 4), minmax(0, 1fr)); align-items: start; gap: var(--cc-beat-gap); margin-bottom: 4px; min-height: 0; }
 .cc-cell-figs:empty:not(.pad) { display: none; }
 .cc-cell-figs.pad { min-height: calc(var(--cc-fig-h) + 4px); }
-.cc-cell-figslot { flex: 1; display: flex; gap: 2px; min-width: 0; position: relative; }
+.cc-cell-figslot { display: flex; gap: 2px; min-width: 0; position: relative; }
 /* 占位带空槽：极淡虚线框（同行有图才出现），双击开编辑配图——空隙变功能槽 */
 .cc-cell-figslot .cc-figview { flex: 1; display: flex; justify-content: center; min-width: 0; }
 .cc-cell-figs svg { height: var(--cc-fig-h); width: auto; max-width: 100%; display: block; }
 /* 单图档再放大：溢出拍格两侧各 10%——溢出的只是 svg 透明边距(左品数位/右留白)，不遮点；
    相邻图之间仍有对方品数 + 空隙分隔。flex:none 免被拍格当 flex 容器压回去；双图档两图挤一格，溢出会互叠，维持 100% */
 .cc-cell-figslot:not(.paired) .cc-figview svg { max-width: 120%; flex: none; }
+/* 跨拍图：svg 几何已按整段宽生成，宽度直接撑满(纵横比与段盒一致，不变形)，不再溢出 */
+.cc-cell-figslot[data-span] .cc-figview svg { width: 100%; max-width: 100%; }
 
 .cc-cell-slots {
     display: flex;
@@ -6823,7 +6827,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 .cc-page .cc-cell-slots {
     min-height: 58px;
-    gap: 5px;
+    gap: var(--cc-beat-gap); /* 拍距单一来源：内嵌图行 grid 列距同用，图与拍格列对列对齐 */
 }
 
 .cc-page .cc-cell {

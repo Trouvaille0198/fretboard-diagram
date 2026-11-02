@@ -570,6 +570,21 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("候选连线进 data.connections", linked.connections && Object.values(linked.connections)[0].startNoteId === "f0-s1");
 }
 
+// ===== 同和弦既有指法收集（编辑器"最近同和弦"默认面板） =====
+{
+	const { collectSameChordFigs, createMeasure } = await import("../src/utils/chordChartModel.js");
+	const mk = (degree, quality, fig, acc = 0) => { const m = createMeasure(4); m.slots[0] = { kind: "chord", chord: { degree, acc, quality, bass: null }, ...(fig ? { fig } : {}) }; return m; };
+	const fA = { "f1-s1": { visibility: "visible" } };
+	const fB = { "f3-s1": { visibility: "visible" } };
+	const fC = { "f5-s1": { visibility: "visible" } };
+	const KEYC = { root: 0, minor: false };
+	const ms = [mk(1, "maj7", fA), mk(1, "maj7", fB), mk(2, "m", fC), mk(1, "maj7", fA), mk(1, "maj7")];
+	const got = collectSameChordFigs(ms, 0, "maj7", () => KEYC);
+	A("同和弦指法收集: 匹配+去重+最近在前", got.length === 2 && got[0].mi === 3 && JSON.stringify(got[0].fig) === JSON.stringify(fA) && got[1].mi === 1 && JSON.stringify(got[1].fig) === JSON.stringify(fB));
+	A("同和弦指法收集: 质量不同不匹配", collectSameChordFigs(ms, 2, "m", () => KEYC).length === 1);
+	A("同和弦指法收集: 转调隔离(换调后全不匹配)", collectSameChordFigs(ms, 0, "maj7", () => ({ root: 2, minor: false })).length === 0);
+}
+
 // ===== 指法小图渲染几何(figSvg/figGeometry/figHitTest 同源一致性) =====
 {
 	const { boardFigData, figSvg, figGeometry, figHitTest, degreeLabel } = await import("../src/utils/chordFig.js");
@@ -601,6 +616,44 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("调内 vs 和弦内:点径全等、点数同、仅数字不同", dotRadii(sS).join(",") === dotRadii(sC).join(",") && degTexts(sC).join(",") === "5,b3,R,5,R" && degTexts(sS).length === degTexts(sC).length);
 	A("调内渲染:数字跟着调走(G 大调 → 6,4,2,6,2)", degTexts(figSvg(fa, { degMode: "scale", key: { root: 7, minor: false } })).join(",") === "6,4,2,6,2");
 	A("调内渲染:缺 key 不崩、无度数素点", !degTexts(figSvg(fa, { degMode: "scale" })).length);
+
+	// 跨拍拉宽(boxW/boxH):内嵌图行右邻空槽时图撑满整段——两轴格距独立,只加宽不加高;
+	// 点径/字号取紧轴 → 与不拉宽时的渲染尺寸(CSS 缩放到同一高度后)完全一致;盒宽不够自然比例 → 忽略盒子(绝不压扁)
+	const gh0 = figGeometry(fa, { orientation: "h" });
+	const wide = figGeometry(fa, { orientation: "h", boxW: 300, boxH: 144 });
+	A("拉宽:svg 尺寸=盒宽高", wide.W === 300 && wide.H === 144);
+	A("拉宽(h):品轴格距拉开、弦轴格距=原几何等比放到盒高", wide.cellF > wide.cellS * 2 && Math.abs(wide.cellS - gh0.cell * 144 / gh0.H) < 0.01);
+	const svgWide = figSvg(fa, { orientation: "h", boxW: 300, boxH: 144, degMode: "chord" });
+	const mW = svgWide.match(/width="(\d+)" height="(\d+)"/);
+	A("拉宽:渲染尺寸与几何一致", +mW[1] === 300 && +mW[2] === 144);
+	const rNatural = +dotRadii(figSvg(fa, { orientation: "h", degMode: "chord" }))[0] * 144 / gh0.H;
+	A("拉宽:点径不变(紧轴定视觉尺寸)", Math.abs(+dotRadii(svgWide)[0] - rNatural) < 0.05);
+	A("拉宽:度数标注照常", degTexts(svgWide).join(",") === "5,b3,R,5,R");
+	const gv1 = figGeometry(fa, { boxW: 400, boxH: 144 });
+	A("拉宽(v):弦轴格距拉开、品轴格距按盒高定", gv1.W === 400 && gv1.H === 144 && gv1.cellS > gv1.cellF * 2 && Math.abs(gv1.cellF - 144 / (fa.window + 1.38)) < 0.01);
+	const guarded = figGeometry(fa, { orientation: "h", boxW: 50, boxH: 144 });
+	A("拉宽守卫:盒宽不够自然比例 → 忽略盒子退回原几何", guarded.W === gh0.W && guarded.H === gh0.H);
+	A("回归:不传盒子时 cellS/cellF 恒等 cell", gh0.cellS === gh0.cell && gh0.cellF === gh0.cell && figSvg(fa, {}) === figSvg(fa, { boxW: null, boxH: null }));
+}
+
+// ===== 编辑器品窗(fitFretWindow):打开已有指法图有音符的部分永远居中——撞琴枕时右侧等量收回,不再 14 品大板堆左缘 =====
+{
+	const { fitFretWindow } = await import("../src/utils/chordFig.js");
+	const N = () => ({ visibility: "visible" });
+	// fig(1,2,3) = 1/2/3 品各一个音;W = 铺窗后的显示品位区间 "起-末"
+	const fig = (...frets) => Object.fromEntries(frets.map((f, i) => [`f${f - 1}-s${i}`, N()]));
+	const W = (d, span = 14) => { const w = fitFretWindow(d, span); return `${w.start + 1}-${w.end}`; };
+	A("品窗:C(1-3品) 贴枕→右侧等量收回、最短5品 = 1-5", W(fig(1, 2, 3)) === "1-5");
+	A("品窗:Am(1-2品) = 1-5", W(fig(1, 2)) === "1-5");
+	A("品窗:3-5品 → 1-7(两侧各留 2 品,音符正中)", W(fig(3, 4, 5)) === "1-7");
+	A("品窗:5-7品 → 1-11(居中)", W(fig(5, 6, 7)) === "1-11");
+	A("品窗:8-10品 → 3-15(铺满默认跨度且居中)", W(fig(8, 9, 10)) === "3-15");
+	A("品窗:17-19品 右缘顶 22 → 10-22", W(fig(17, 18, 19)) === "10-22");
+	A("品窗:空板 → 1-14", W({}) === "1-14");
+	A("品窗:熄灭(transparent)的音不算有音符", W({ "f6-s0": { visibility: "transparent" }, "f0-s1": N(), "f1-s2": N() }) === "1-5");
+	A("品窗:宽图 1-16 品全覆盖不截音", W(fig(1, 16)) === "1-16");
+	A("品窗:窄视口 defSpan=8 → 7-9品 = 5-11", W(fig(7, 8, 9), 8) === "5-11");
+	A("品窗:defSpan=4 最短跨度跟着容量缩 → C = 1-4", W(fig(1, 2, 3), 4) === "1-4");
 }
 
 console.log(fail ? `\n✗ ${fail}/${n} 断言失败` : `\n✓ 全部 ${n} 项断言通过`);
