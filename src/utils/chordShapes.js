@@ -146,17 +146,18 @@ export function candidatesForChord(chord, key, shapes) {
 			out.push(mkCandidate(shape, shape.rootString, shape.rootFret || 0, rootPc));
 			return;
 		}
-		// 可移动形状：在根音弦上找目标 pc 的各品（0=开放把 E/A 型合法）
+		// 可移动形状：在根音弦上找目标 pc 的各品（0=开放把 E/A 型合法）——扫满全板 22 品，
+		// 高八度把位(根品+12)也出候选，换把位才有"不同八度把位"可循环
 		const s = shape.rootString;
-		for (let T = 0; T <= 13; T++) {
+		for (let T = 0; T <= 22; T++) {
 			if (pcOf(s, T) !== rootPc) continue;
-			// 校验：全部按弦品 ∈ [0,15]，且无非根音落在品 0（品 0 只有根音本身合法——空弦音高固定）
+			// 校验：全部按弦品 ∈ [0,22]，且无非根音落在品 0（品 0 只有根音本身合法——空弦音高固定）
 			const rel = shape.rel;
 			let ok = true;
 			for (let i = 0; i < 6 && ok; i++) {
 				if (rel[i] === null) continue;
 				const f = T + rel[i];
-				if (f < 0 || f > 15) { ok = false; break; }
+				if (f < 0 || f > 22) { ok = false; break; }
 				if (f === 0 && rel[i] !== 0) ok = false; // 平移出的"空弦位"音高不对,非法
 			}
 			if (ok) out.push(mkCandidate(shape, s, T, rootPc));

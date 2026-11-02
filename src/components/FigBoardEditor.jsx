@@ -217,9 +217,22 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   // —— 形状库 / 存形状 ——
   const [shapesOpen, setShapesOpen] = useState(false);
   const [saveForm, setSaveForm] = useState(null);
+  const [shapesVer, setShapesVer] = useState(0); // 增删改名后 bump,候选列表重算
+  const [candMenu, setCandMenu] = useState(null); // 右键候选菜单 {shape, x, y, confirmDelete}
+  const [renameForm, setRenameForm] = useState(null); // 重命名表单 {id, name}
+  const renameInputRef = useRef(null);
   const candidates = useMemo(() => (shapesOpen && chord
     ? candidatesForChord(chord, viewKey || { root: 0, minor: false }, [...builtinShapes(), ...loadShapes()])
-    : []), [shapesOpen, chord, viewKey]);
+    : []), [shapesOpen, chord, viewKey, shapesVer]);
+  // 候选面板开着时:点面板外/按 Esc 收菜单
+  useEffect(() => {
+    if (!candMenu) return;
+    const close = (e) => { if (!e.target.closest('.figbe-cmenu')) setCandMenu(null); };
+    const esc = (e) => { if (e.key === 'Escape') setCandMenu(null); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [candMenu]);
 
   // 数据 → 品窗：低位收敛窗，不足默认跨度时以品位为中心补齐（与挂载逻辑同口径）
   const fitWindow = useCallback((d) => {
@@ -245,21 +258,25 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     setLastCand(c);
     setFretWin(fitWindow(d));
   }, [fitWindow]);
-  const applyCandidate = (c) => { applyCand(c); setShapesOpen(false); };
+  const applyCandidate = (c) => {
+    applyCand(c); // 面板保持打开:连续试多个候选不用反复点「形状库」,收起用顶栏按钮
+  };
 
-  // 换把位：按把位序列循环到下一个"不同把位"（同把位的不同形状不算换把——那在形状库里点选）
+  // 换把位 = 同一形状不变、整体升八度（根品 +12）：在该形状自己的各八度位间循环（到底回绕最低位）
   const positions = useMemo(() => {
     if (!lastCand || !chord) return null;
-    const cands = candidatesForChord(chord, viewKey || { root: 0, minor: false }, [...builtinShapes(), ...loadShapes()]);
-    const frets = [...new Set(cands.map(c => c.rootFret))].sort((a, b) => a - b);
-    return frets.length >= 2 ? { cands, frets } : null;
+    const same = candidatesForChord(chord, viewKey || { root: 0, minor: false }, [...builtinShapes(), ...loadShapes()])
+      .filter(c => c.shape.id === lastCand.shape.id)
+      .sort((a, b) => a.rootFret - b.rootFret);
+    return same.length >= 2 ? { same } : null;
   }, [lastCand, chord, viewKey]);
   const cyclePos = () => {
     if (!positions || !lastCandRef.current) return;
-    const { cands, frets } = positions;
-    const i = frets.indexOf(lastCandRef.current.rootFret);
-    const nextFret = frets[(i + 1 + frets.length) % frets.length] ?? frets[0];
-    applyCand(cands.find(c => c.rootFret === nextFret) ?? cands[0]);
+    const i = positions.same.findIndex(c => c.rootFret === lastCandRef.current.rootFret);
+    const next = positions.same[(i + 1) % positions.same.length] ?? positions.same[0];
+    const up = next.rootFret > (lastCandRef.current?.rootFret ?? 0);
+    applyCand(next);
+    showToast && up && showToast(`同一形状整体升高八度 → @${next.rootFret} 品`, 'info');
   };
 
   // 还原：回到打开本编辑器时的指法（形状覆盖多少次都回到最初）
@@ -269,6 +286,29 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     lastCandRef.current = null;
     setLastCand(null);
     setFretWin(fitWindow(d));
+    // 还原是破坏性操作,当场落盘——不赌 300ms 防抖(计时器可能被随后的重渲染/关弹窗吞掉,还原就丢了)
+    onAutoSave && onAutoSave(serializeBoard(d));
+  };
+
+  // —— 形状管理（右键候选：重命名 / 删除；内置形状只读）——
+  const openCandMenu = (e, shape) => {
+    e.preventDefault();
+    setCandMenu({ shape, x: e.clientX, y: e.clientY, confirmDelete: false });
+  };
+  const doRename = () => {
+    const v = (renameInputRef.current?.value || '').trim();
+    setRenameForm(null);
+    if (!v || !renameForm) return;
+    persistShapes(loadShapes().map(s => (s.id === renameForm.id ? { ...s, name: v } : s)));
+    setShapesVer(v => v + 1);
+    showToast && showToast(`已重命名：${v}`, 'success');
+  };
+  const doDelete = (shape) => {
+    persistShapes(loadShapes().filter(s => s.id !== shape.id));
+    if (lastCandRef.current?.shape.id === shape.id) { lastCandRef.current = null; setLastCand(null); }
+    setShapesVer(v => v + 1);
+    setCandMenu(null);
+    showToast && showToast(`已删除形状：${shape.name}`, 'success');
   };
 
   const openSave = () => {
@@ -284,20 +324,21 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   };
 
   // —— 自动保存：数据一变（防抖 300ms）就落盘到该拍；首次挂载不触发 ——
+  const serializeBoard = useCallback((d) => {
+    const out = {};
+    Object.entries(d || {}).forEach(([id, n]) => {
+      if (id === 'connections') { if (Object.keys(n || {}).length) out.connections = n; return; }
+      if (id.startsWith('conn-')) return;
+      if (n && (n.visibility === 'visible' || n.visibility === 'selected')) out[id] = n;
+    });
+    return Object.keys(out).some(k => k !== 'connections') ? out : null;
+  }, []);
   const autoSaveRef = useRef(false);
   React.useEffect(() => {
     if (!autoSaveRef.current) { autoSaveRef.current = true; return; }
-    const t = setTimeout(() => {
-      const out = {};
-      Object.entries(data).forEach(([id, n]) => {
-        if (id === 'connections') { if (Object.keys(n || {}).length) out.connections = n; return; }
-        if (id.startsWith('conn-')) return;
-        if (n && (n.visibility === 'visible' || n.visibility === 'selected')) out[id] = n;
-      });
-      onAutoSave && onAutoSave(Object.keys(out).some(k => k !== 'connections') ? out : null);
-    }, 300);
+    const t = setTimeout(() => { onAutoSave && onAutoSave(serializeBoard(dataRef.current)); }, 300);
     return () => clearTimeout(t);
-  }, [data, onAutoSave]);
+  }, [data, onAutoSave, serializeBoard]);
 
   return (
     <div className="figbe">
@@ -306,7 +347,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
         {chord ? <button className="button sm" onClick={() => setShapesOpen(v => !v)}>形状库</button> : null}
         <button className="button sm" onClick={openSave}>存为形状</button>
         {positions ? <button className="button sm" onClick={cyclePos}
-          title={`当前 @${lastCand.rootFret} 品 · 切到下一个把位（${positions.frets.join(' → ')} 品循环）`}>换把位</button> : null}
+          title={`形状不变，整体升高八度（当前 @${lastCand.rootFret} 品 → 下一个 @${(positions.same.find(c => c.rootFret > lastCand.rootFret) ?? positions.same[0]).rootFret} 品，到底回绕）`}>换把位</button> : null}
         {!sameAsOriginal(data, originalRef.current) ? <button className="button sm" onClick={restoreOriginal}
           title="还原为打开本编辑器时的指法——形状覆盖多少次都回到最初">还原</button> : null}
         <button className="button sm danger" onClick={() => { onAutoSave && onAutoSave(null); onClose(); }}>删除</button>
@@ -427,15 +468,41 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
       {shapesOpen ? (
         <div className="figbe-shapes">
-          <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选 · 点击应用` : '暂无形状'}</div>
+          <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选 · 点击应用，右键重命名/删除` : '暂无形状'}</div>
           <div className="figbe-shapes-list">
             {candidates.map((c, i) => (
-              <button key={i} className="figbe-shape" onClick={() => applyCandidate(c)} title={`${c.shape.name} @${c.rootFret}品`}>
+              <button key={i} className="figbe-shape" onClick={() => applyCandidate(c)}
+                onContextMenu={e => openCandMenu(e, c.shape)} title={`${c.shape.name} @${c.rootFret}品`}>
                 <span dangerouslySetInnerHTML={{ __html: figSvg({ points: c.points.map(p => ({ string: p.string, fret: p.fret })), links: [], startFret: Math.min(...c.points.filter(p => p.fret > 0).map(p => p.fret), 13), window: 4, rootPc: c.rootPc, fail: false }, { degMode: 'none', size: 44 }) }} />
                 <em>{c.rootFret === 0 ? '开放把' : c.rootFret + '品'}</em>
                 <small>{c.shape.name}</small>
               </button>
             ))}
+          </div>
+        </div>
+      ) : null}
+
+      {candMenu ? (
+        <div className="figbe-cmenu" style={{ left: Math.min(candMenu.x, window.innerWidth - 180), top: Math.min(candMenu.y, window.innerHeight - 110) }}>
+          <button disabled={candMenu.shape.builtin} title={candMenu.shape.builtin ? '内置形状不可修改' : ''}
+            onClick={() => { setRenameForm({ id: candMenu.shape.id, name: candMenu.shape.name }); setCandMenu(null); }}>重命名</button>
+          {candMenu.confirmDelete ? (
+            <button className="danger" onClick={() => doDelete(candMenu.shape)}>确认删除？</button>
+          ) : (
+            <button className="danger" disabled={candMenu.shape.builtin} title={candMenu.shape.builtin ? '内置形状不可删除' : ''}
+              onClick={() => setCandMenu(m => ({ ...m, confirmDelete: true }))}>删除</button>
+          )}
+        </div>
+      ) : null}
+
+      {renameForm ? (
+        <div className="figbe-shapes figbe-saveform">
+          <div className="figbe-shapes-title">重命名形状</div>
+          <div className="figbe-saveform-row">
+            <input ref={renameInputRef} autoFocus className="cc-dialog-input" defaultValue={renameForm.name}
+              onKeyDown={e => { if (e.key === 'Enter') doRename(); if (e.key === 'Escape') setRenameForm(null); }} />
+            <button className="button sm accent" onClick={doRename}>确定</button>
+            <button className="button sm" onClick={() => setRenameForm(null)}>取消</button>
           </div>
         </div>
       ) : null}
