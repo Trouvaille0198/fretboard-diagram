@@ -7980,7 +7980,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
-    z-index: 90;
+    z-index: 1300; /* 盖过吸顶 .top-nav(1200):页面一滚动顶栏就压住弹窗顶条,形状库/换把位/还原/完成全点不到 */
     display: flex;
     align-items: center;
     justify-content: center;

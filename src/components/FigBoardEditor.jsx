@@ -247,14 +247,19 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   }, [fitWindow]);
   const applyCandidate = (c) => { applyCand(c); setShapesOpen(false); };
 
-  // 换把位：同和弦的全部候选按把位从低到高循环（跨形状——同唱名的其它按法）
-  const cyclePos = () => {
-    const cur = lastCandRef.current;
-    if (!cur || !chord) return;
+  // 换把位：按把位序列循环到下一个"不同把位"（同把位的不同形状不算换把——那在形状库里点选）
+  const positions = useMemo(() => {
+    if (!lastCand || !chord) return null;
     const cands = candidatesForChord(chord, viewKey || { root: 0, minor: false }, [...builtinShapes(), ...loadShapes()]);
-    if (cands.length < 2) return;
-    const idx = cands.findIndex(c => c.shape.id === cur.shape.id && c.rootFret === cur.rootFret);
-    applyCand(cands[(idx + 1 + cands.length) % cands.length] ?? cands[0]);
+    const frets = [...new Set(cands.map(c => c.rootFret))].sort((a, b) => a - b);
+    return frets.length >= 2 ? { cands, frets } : null;
+  }, [lastCand, chord, viewKey]);
+  const cyclePos = () => {
+    if (!positions || !lastCandRef.current) return;
+    const { cands, frets } = positions;
+    const i = frets.indexOf(lastCandRef.current.rootFret);
+    const nextFret = frets[(i + 1 + frets.length) % frets.length] ?? frets[0];
+    applyCand(cands.find(c => c.rootFret === nextFret) ?? cands[0]);
   };
 
   // 还原：回到打开本编辑器时的指法（形状覆盖多少次都回到最初）
@@ -300,8 +305,8 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
         <span className="figbe-title">指法图{chord ? ` · ${formatName(chord, viewKey || { root: 0, minor: false })}` : ""}</span>
         {chord ? <button className="button sm" onClick={() => setShapesOpen(v => !v)}>形状库</button> : null}
         <button className="button sm" onClick={openSave}>存为形状</button>
-        {lastCand ? <button className="button sm" onClick={cyclePos}
-          title={`当前 @${lastCand.rootFret} 品 · 同和弦的其它按法按把位从低到高循环`}>换把位</button> : null}
+        {positions ? <button className="button sm" onClick={cyclePos}
+          title={`当前 @${lastCand.rootFret} 品 · 切到下一个把位（${positions.frets.join(' → ')} 品循环）`}>换把位</button> : null}
         {!sameAsOriginal(data, originalRef.current) ? <button className="button sm" onClick={restoreOriginal}
           title="还原为打开本编辑器时的指法——形状覆盖多少次都回到最初">还原</button> : null}
         <button className="button sm danger" onClick={() => { onAutoSave && onAutoSave(null); onClose(); }}>删除</button>
