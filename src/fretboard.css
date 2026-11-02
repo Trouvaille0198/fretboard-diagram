@@ -4479,6 +4479,16 @@ g.drag-fx-layer circle[stroke-dasharray] {
     padding-right: 12px;
 }
 
+/* 右缘线（双线/终止/反复结束）与左侧小节线同口径：有图行时从图行下方起笔——
+   top:0 会贯通整个小节格，被和弦图行拉高到谱面上方 */
+.cc-cell:has(.cc-cell-figs.pad)::after { top: calc(var(--cc-fig-h) + 8px); }
+
+/* 反复双点居中于拍格行（有图行时避开图行:图高+8 边距 + 拍格半高 29px） */
+.cc-cell:has(.cc-cell-figs.pad) .cc-bardots { top: calc(var(--cc-fig-h) + 37px); }
+
+/* ×N 标识：有图行时落到拍格行右上（结束圆点上方），无图行贴小节顶 */
+.cc-cell:has(.cc-cell-figs.pad) .cc-repeat-times { top: calc(var(--cc-fig-h) + 12px); }
+
 /* 记号区让位（padding 不改列宽） */
 .cc-cell.rep-start {
     padding-left: 12px;
