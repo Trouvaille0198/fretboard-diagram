@@ -172,7 +172,8 @@ export function figSvg(fig, opts = {}) {
 	// (闷音/空弦不画 ×/○ —— 传统黑点图不带圈叉标记;闷音直接不显示)
 	// 点 + 度数(点径=格距固定比例)
 	const degMode = opts.degMode || "none";
-	const rDeg = 0.48 * cell, rPlain = 0.35 * cell;
+	// 带度数的点 0.40 格:相邻弦的点之间留 0.2 格空隙(0.44 时 R 5 ♭3 三点相贴)
+	const rDeg = 0.40 * cell, rPlain = 0.35 * cell;
 	fig.points.forEach(p => {
 		const { x, y } = posOf(p);
 		let deg = "";
@@ -182,8 +183,12 @@ export function figSvg(fig, opts = {}) {
 		const r = deg ? rDeg : rPlain;
 		svg += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${r.toFixed(2)}" fill="${th.dot}"/>`;
 		if (deg) {
-			const fs = r * (deg.length > 1 ? 1.02 : 1.22);
-			svg += `<text x="${x.toFixed(2)}" y="${(y + fs * 0.36).toFixed(2)}" font-size="${fs.toFixed(2)}" font-weight="700" fill="${th.ink}" text-anchor="middle">${deg}</text>`;
+			// 变化音用 ASCII b/#(与调内写法一致):♭/♯ 在 Segoe UI 等正文字体里没有字形,会掉到衬线符号字体——
+			// 又细又宽还带空隙,与粗体数字不搭;整段普通字体同字号,数字也不会被挤小
+			const label = deg.replace(/♭/g, "b").replace(/♯/g, "#");
+			// 字号按字数顶满点径不溢出:单字 1.9r(大写高≈点径 2/3),双字 1.5r(最宽的 #4 墨迹宽≈点径 85%),更多按比例缩
+			const fs = r * (label.length === 1 ? 1.9 : label.length === 2 ? 1.5 : 3 / label.length);
+			svg += `<text x="${x.toFixed(2)}" y="${(y + fs * 0.36).toFixed(2)}" font-size="${fs.toFixed(2)}" font-weight="700" fill="${th.ink}" text-anchor="middle">${label}</text>`;
 		}
 	});
 	// 编辑态:全部格位铺白点暗圆(点击目标)
