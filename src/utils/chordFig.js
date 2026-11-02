@@ -78,8 +78,9 @@ export function figGeometry(fig, opts = {}) {
 	const horizontal = opts.orientation === "h";
 	const nFrets = fig.window || 4;
 	const size = opts.size ?? (compact ? 40 : 56);
-	const padLc = horizontal ? 0.88 : 1.0, padRc = 0.5;
-	const padTc = horizontal ? 0.5 : 0.88, padBc = horizontal ? 0.6 : 0.5;
+	// 品数侧的边距要容下"白点半径 0.40c + 间隙 + 两位品数宽(~0.7c)"——品数贴网格摆会被边缘音白点盖住(白字叠白点)
+	const padLc = horizontal ? 0.88 : 1.3, padRc = 0.5;
+	const padTc = horizontal ? 0.5 : 0.88, padBc = horizontal ? 1.0 : 0.5;
 	const cell = size / (5 + (horizontal ? padTc + padBc : padLc + padRc));
 	const spanS = 5 * cell, spanF = nFrets * cell;
 	const gridW = horizontal ? spanF : spanS;
@@ -215,11 +216,12 @@ export function figSvg(fig, opts = {}) {
 			const center = (i + 0.5) * cell;
 			let anchor;
 			if (horizontal) {
-				const o = pt(center, spanS + 0.46 * cell);
+				// h(琴头在左):品数在网格下方——基线沉到边缘音白点底(spanS+rDeg)+0.5c,字顶(基线上方 0.42c)才清得开白点
+				const o = pt(center, spanS + rDeg + 0.50 * cell);
 				anchor = { x: o.x, y: o.y, ta: "middle" };
 			} else {
-				// v(琴头上):品数在网格左侧 —— x=弦轴负向外偏, y=品轴中心(+文字垂直居中补偿)
-				const o = pt(center + 0.19 * cell, -0.18 * cell);
+				// v(琴头上):品数在网格左侧,退到边缘音白点(rDeg)之外再留间隙;x=弦轴负向外偏, y=品轴中心(+文字垂直居中补偿)
+				const o = pt(center + 0.19 * cell, -(rDeg + 0.10 * cell));
 				anchor = { x: o.x, y: o.y, ta: "end" };
 			}
 			svg += `<text x="${anchor.x.toFixed(2)}" y="${anchor.y.toFixed(2)}" font-size="${fs}" font-weight="600" fill="${th.dot}" text-anchor="${anchor.ta}">${fig.startFret + i}</text>`;
