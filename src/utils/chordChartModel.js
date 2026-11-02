@@ -7,7 +7,7 @@ import { trashPut } from "./trashModel.js";
 //   display: 'degree'|'name', enharmonic: 1, rowsPerLine: 每行小节数,
 //   colorScheme: 动图生成用的色系名（LEVEL1_COLORS 键）,
 //   measures: [measure] }
-// measure = { id, section?: 段落标记, lyrics?: 按小节歌词,
+// measure = { id, section?: 段落标记, lyrics?: 按小节歌词, lyricsBold?: [[start,end),...](加粗区间,升序合并不重叠),
 //   repeatStart?: true(小节前有反复开始线), endBar: 'single'|'double'|'repeatEnd'|'final',
 //   house?: 1|2(跳房子), slots: [slot] × 拍数 }
 // slot = { kind: 'empty'|'chord'|'rest'|'hold', chord?: 和弦对象, split?: [子槽,子槽](反拍拆分), rhythm?: 节奏型 }
@@ -34,6 +34,46 @@ export function createMeasure(timeSig) {
 		house: null,
 		slots: Array.from({ length: timeSig }, () => ({ kind: "empty" }))
 	};
+}
+
+
+// ===== 歌词加粗区间（lyricsBold）=====
+// 区间 = [start, end) 字符下标,end 独占;存放前一律过 normalizeBoldRanges(裁界/去空/升序/合并重叠相邻)。
+
+export function normalizeBoldRanges(ranges, len = Infinity) {
+	const clamped = (ranges || [])
+		.map(r => [Math.max(0, Math.min(r[0], len)), Math.max(0, Math.min(r[1], len))])
+		.filter(([a, b]) => b > a)
+		.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+	const out = [];
+	clamped.forEach(([a, b]) => {
+		const last = out[out.length - 1];
+		if (last && a <= last[1]) last[1] = Math.max(last[1], b); // 重叠/相邻并段
+		else out.push([a, b]);
+	});
+	return out;
+}
+
+// 切换 [s,e) 的加粗:整段已在粗区间内 → 去粗(裁剪分割);否则并粗(与重叠区间合并)
+export function toggleBoldRange(ranges, s, e, len) {
+	if (!(e > s)) return normalizeBoldRanges(ranges, len);
+	const norm = normalizeBoldRanges(ranges, len);
+	if (norm.some(([a, b]) => s >= a && e <= b)) {
+		const out = [];
+		norm.forEach(([a, b]) => {
+			if (b <= s || a >= e) out.push([a, b]);
+			else {
+				if (a < s) out.push([a, s]);
+				if (b > e) out.push([e, b]);
+			}
+		});
+		return out;
+	}
+	const overlap = norm.filter(([a, b]) => a < e && b > s);
+	const rest = norm.filter(([a, b]) => !(a < e && b > s));
+	const lo = Math.min(s, ...overlap.map(([a]) => a));
+	const hi = Math.max(e, ...overlap.map(([, b]) => b));
+	return normalizeBoldRanges([...rest, [lo, hi]], len);
 }
 
 

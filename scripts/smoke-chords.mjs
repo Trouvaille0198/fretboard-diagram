@@ -244,6 +244,7 @@ console.log("== chartPack：工程文件往返 ==");
 		const m = createMeasure(3);
 		m.section = i === 0 ? "主歌1" : i === 8 ? "副歌" : null;
 		m.lyrics = i < 4 ? `歌词${i}` : "";
+		m.lyricsBold = i === 0 ? [[0, 2]] : undefined;
 		m.repeatStart = i === 8;
 		m.endBar = i === 23 ? "final" : i === 15 ? "repeatEnd" : i === 5 ? "double" : "single";
 		m.house = i === 16 ? 1 : null;
@@ -308,6 +309,17 @@ console.log("== chartPack：工程文件往返 ==");
 	A("休止/延音不被压成空拍", back.measures[20].slots[0].kind === "rest" && back.measures[20].slots[1].kind === "hold");
 	A("节奏型被带上", back.measures[7].slots[1].rhythm === "ballad");
 	A("质量记忆被带上", back.qualityMemory?.["1"] === "M7");
+	A("歌词加粗区间被带上", JSON.stringify(back.measures[0].lyricsBold) === "[[0,2]]");
+	// 加粗区间纯逻辑（ChordChartView Ctrl+B 同款）
+	{
+		const { toggleBoldRange, normalizeBoldRanges } = await import("../src/utils/chordChartModel.js");
+		A("加粗:添加并合并重叠", JSON.stringify(toggleBoldRange([[0, 2]], 1, 4)) === "[[0,4]]");
+		A("加粗:整段已粗则去粗", JSON.stringify(toggleBoldRange([[1, 3]], 1, 3)) === "[]");
+		A("加粗:中段去粗分割保留两端", JSON.stringify(toggleBoldRange([[0, 4]], 1, 3)) === "[[0,1],[3,4]]");
+		A("加粗:部分粗+未粗 → 并粗", JSON.stringify(toggleBoldRange([[0, 2]], 1, 4)) === "[[0,4]]");
+		A("加粗:越界裁剪+去空", JSON.stringify(normalizeBoldRanges([[2, 9], [5, 3]], 5)) === "[[2,5]]");
+		A("加粗:零宽无效", JSON.stringify(toggleBoldRange([], 2, 2, 5)) === "[]");
+	}
 	A("谱中转调被带上", back.measures[12].keyRoot === 2 && back.measures[12].keyMinor === false);
 	A("拍级指法图被带上（帧规范形）", deepDiff(back.measures[3].slots[0].fig, s.measures[3].slots[0].fig).length === 0,
 		deepDiff(back.measures[3].slots[0].fig, s.measures[3].slots[0].fig).join(" / "));
