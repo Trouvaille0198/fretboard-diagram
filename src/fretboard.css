@@ -4748,6 +4748,16 @@ html[data-theme="light"] .cc-page {
     opacity: 1;
 }
 
+/* 整行都没有歌词：该行歌词带压成细条，省一行高——
+   输入框仍在（悬停见虚线、点击可补词），词一落地（blur 落库）该行自动恢复全高 */
+.cc-page .cc-line.no-lyrics .cc-cell-lyrics {
+    margin-top: 0;
+    padding: 0 4px;
+    height: 14px;
+    line-height: 14px;
+    font-size: var(--app-fs-xs);
+}
+
 /* 小节「⋯」操作按钮与菜单 */
 
 .cc-mmenu {

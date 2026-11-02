@@ -1812,8 +1812,10 @@ export function ChordChartView({ songId }) {
 							const first = ri * per;
 							// 同行任一小节有图：全行图行占位（无图小节空占位带），保证全行记号同一条线
 							const rowHasFig = row.some(mm => mm.slots.some(sl => (sl.split || [sl]).some(u => u && u.fig)));
+							// 整行无歌词：歌词带压成细条省行高——输入框仍在（点击可补词，词落地离焦即恢复全高）
+							const rowHasLyrics = row.some(mm => (mm.lyrics || "").trim());
 							return (
-								<div className="cc-line" key={ri}>
+								<div className={`cc-line${rowHasLyrics ? "" : " no-lyrics"}`} key={ri}>
 									{/* 行号：叠在行首小节格左上角小字，不占独立列 */}
 									<span className="cc-line-no cc-line-no-float">{first + 1}</span>
 									{/* 网格轨道按行内小节数固定：末行不满时列宽仍与他行像素级一致（加行入口在谱面底部按钮，不占格） */}
