@@ -11,6 +11,11 @@ import audioService from "../services/audioService";
 // 指法小图尺寸档位（汇总行可切）
 const FIG_SIZES = [112, 144, 176];
 
+// 该拍单元真的画得出指法图（和弦/延音拍 + 至少一个可见音；与 FigView 的判定同口径）——
+// 空 fig 对象画不出东西，它的槽位算"没图"，左邻的图可以跨过来拉宽
+const figVisible = (u) => !!(u && ((u.kind === "chord" && u.chord) || u.kind === "hold") && u.fig
+	&& Object.keys(u.fig).some(k => !k.startsWith("conn") && k !== "connections" && (u.fig[k] || {}).visibility === "visible"));
+
 // 歌词加粗区间 → 富文本 span（.cc-lyrics-rich 覆盖层用）；区间先裁到当前文本长度
 function richLyric(text, ranges) {
 	const t = text || "";
@@ -32,7 +37,7 @@ import { ChordSign } from "./ChordSign";
 import { KeyPicker } from "./KeyPicker";
 import {
 	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong, deleteBeatInSong,
-	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText, normalizeBoldRanges, toggleBoldRange
+	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText, normalizeBoldRanges, toggleBoldRange, collectSameChordFigs
 } from "../utils/chordChartModel";
 import { buildPlayPlan } from "../utils/chartPlayback";
 import { remoteIsNewer } from "../utils/syncEngine";
@@ -262,6 +267,34 @@ export function ChordChartView({ songId }) {
 			document.removeEventListener("visibilitychange", onVis);
 		};
 	}, [song.timeSig, compactView]);
+
+	// 内嵌图行跨拍拉宽用的实测几何：各拍数下的拍格宽(byN[拍数])、拍距(gap)、图高(--cc-fig-h，窄屏断点会降到 108)。
+	// 图 svg 要按"跨过的那段槽位"的真实像素宽重算几何，只能量 DOM；每次渲染都量——插拍/删拍只改小节内拍数、
+	// 容器宽度不变，ResizeObserver 感知不到；量到的值没变就原样返回 prev，不触发重渲染，不会循环
+	const [figMetrics, setFigMetrics] = useState(null);
+	const measureFigMetrics = useCallback(() => {
+		const el = scoreRef.current;
+		if (!el) return;
+		const slotsEl = el.querySelector(".cc-cell-slots");
+		const gap = slotsEl ? parseFloat(getComputedStyle(slotsEl).columnGap) || 0 : 0;
+		const figH = parseFloat(getComputedStyle(el).getPropertyValue("--cc-fig-h")) || 144;
+		const byN = {};
+		el.querySelectorAll(".cc-cell").forEach(cell => {
+			const beats = cell.querySelectorAll(".cc-beat");
+			if (beats.length && byN[beats.length] == null) byN[beats.length] = Math.round(beats[0].getBoundingClientRect().width * 100) / 100;
+		});
+		setFigMetrics(prev => (prev && prev.gap === gap && prev.figH === figH && JSON.stringify(prev.byN) === JSON.stringify(byN) ? prev : { gap, figH, byN }));
+	}, []);
+	useLayoutEffect(() => { if (figOpts.mode === "inline") measureFigMetrics(); }); // 每次渲染后同步量，首帧即拉宽、无闪跳
+	useEffect(() => {
+		// 窗口缩放不经 React 重渲染（每行小节数没变时），靠观察器补量
+		const el = scoreRef.current;
+		if (!el || figOpts.mode !== "inline" || typeof ResizeObserver === "undefined") return;
+		const ro = new ResizeObserver(measureFigMetrics);
+		ro.observe(el);
+		window.addEventListener("resize", measureFigMetrics);
+		return () => { ro.disconnect(); window.removeEventListener("resize", measureFigMetrics); };
+	}, [figOpts.mode, measureFigMetrics]);
 	const popupRef = useRef(null);
 	const timersRef = useRef([]);
 	const saveTimerRef = useRef(null);
@@ -1491,22 +1524,38 @@ export function ChordChartView({ songId }) {
 					<span className="cc-repeat-times" title={`此反复段共 ${m.repeatTimes} 遍`}>×{m.repeatTimes}</span>
 				) : null}
 				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格上方，拍格自身不受图影响，记号永远同线） */}
-				{figOpts.mode === "inline" ? (
-					<div className={`cc-cell-figs${rowHasFig ? " pad" : ""}`}>
-						{(compactView
-							? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => ({ key: k * 2, units: compactPairUnits(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null) }))
-							: m.slots.map((sl, si) => ({ key: si, units: (sl.split || [sl]).map((u, h) => ({ u, si, half: sl.split ? h : null })) }))
-						).map(({ key, units }) => (
-							<div className={`cc-cell-figslot${units.length > 1 ? " paired" : ""}`} key={key}>
-								{units.map(({ u, si, half }, i) => (((u.kind === "chord" && u.chord) || u.kind === "hold") && u.fig ? (
-									<FigView key={i} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
-										opts={{ ...figOpts, compact: units.length > 1, size: units.length > 1 ? 44 : 64 }}
-										onClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} />
-								) : null))}
-							</div>
-						))}
-					</div>
-				) : null}
+				{figOpts.mode === "inline" ? (() => {
+					// 图行是与拍格同轨的 grid（列数=槽位数、列距=拍距），每个图显式落在自己拍的列上。
+					// 跨拍拉宽：图右边相邻的槽位没图（空拍/休止/无图延音）时，图 span 跨过去撑满"自己+右侧空槽"整段宽——
+					// 只加宽不加高（svg 按实测段宽重算几何，弦/品格距拉开、点径字号不变，更清晰）；被跨的空槽不渲染。不跨小节。
+					// 双图档（简略模式两拍并一格各有图）两图挤一格，不参与拉宽
+					const groups = compactView
+						? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => ({ key: k * 2, units: compactPairUnits(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null) }))
+						: m.slots.map((sl, si) => ({ key: si, units: (sl.split || [sl]).map((u, h) => ({ u, si, half: sl.split ? h : null })) }));
+					const flags = groups.map(g => g.units.some(({ u }) => figVisible(u)));
+					const beatW = figMetrics ? figMetrics.byN[groups.length] : null;
+					return (
+						<div className={`cc-cell-figs${rowHasFig ? " pad" : ""}`} style={{ "--cc-fig-n": groups.length }}>
+							{groups.map(({ key, units }, gi) => {
+								if (!flags[gi]) return null;
+								let span = 1;
+								while (gi + span < groups.length && !flags[gi + span]) span++;
+								const paired = units.length > 1;
+								const boxW = !paired && span > 1 && beatW ? span * beatW + (span - 1) * figMetrics.gap : undefined;
+								return (
+									<div className={`cc-cell-figslot${paired ? " paired" : ""}`} key={key}
+										style={{ gridColumn: `${gi + 1} / span ${span}` }} data-span={span > 1 ? span : undefined}>
+										{units.map(({ u, si, half }, i) => (figVisible(u) ? (
+											<FigView key={i} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
+												opts={{ ...figOpts, compact: paired, size: paired ? 44 : 64, boxW, boxH: boxW ? figMetrics.figH : undefined }}
+												onClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} />
+										) : null))}
+									</div>
+								);
+							})}
+						</div>
+					);
+				})() : null}
 				<div className="cc-cell-slots">{compactView
 					? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => compactPairView(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null))
 					: m.slots.map((_, si) => slotView(mi, si))}</div>
@@ -1904,23 +1953,28 @@ export function ChordChartView({ songId }) {
 
 
 
-			{figTarget != null ? (() => {
-				const u = unitAt(figTarget.mi, figTarget.si, figTarget.half);
-				// 指法图为空时自动带入前面同和弦的指法（见 prevSameChordFig）
-				const preFig = (!u?.fig || !Object.keys(u.fig).length) && u?.chord
-					? prevSameChordFig(figTarget.mi, figTarget.si, figTarget.half, u.chord)
-					: null;
-				return createPortal(
-					<div className="figbe-mask" onMouseDown={e => { if (e.target === e.currentTarget) setFigTarget(null); }}>
-						<div className="figbe-box">
-							<FigBoardEditor
-								initialData={(u?.fig && Object.keys(u.fig).length) ? u.fig : (preFig || undefined)}
-								chord={u?.chord}
-								viewKey={keyAt(figTarget.mi)}
-								figOpts={figOpts}
-								showToast={showToast}
-								onAutoSave={figData => patchUnit(figTarget.mi, figTarget.si, figTarget.half, { fig: figData || undefined })}
-								onClose={() => setFigTarget(null)} />
+		{figTarget != null ? (() => {
+			const u = unitAt(figTarget.mi, figTarget.si, figTarget.half);
+			// 指法图为空时自动带入前面同和弦的指法（见 prevSameChordFig）
+			const preFig = (!u?.fig || !Object.keys(u.fig).length) && u?.chord
+				? prevSameChordFig(figTarget.mi, figTarget.si, figTarget.half, u.chord)
+				: null;
+			// 全曲同和弦的既有指法（最近在前,内容去重）——编辑器默认面板"最近同和弦"展示
+			const sameFigs = u?.chord && u.chord.degree != null
+				? collectSameChordFigs(song.measures, degreePc(u.chord.degree, u.chord.acc || 0, keyAt(figTarget.mi)), u.chord.quality || "", keyAt)
+				: [];
+			return createPortal(
+				<div className="figbe-mask" onMouseDown={e => { if (e.target === e.currentTarget) setFigTarget(null); }}>
+					<div className="figbe-box">
+						<FigBoardEditor
+							initialData={(u?.fig && Object.keys(u.fig).length) ? u.fig : (preFig || undefined)}
+							chord={u?.chord}
+							viewKey={keyAt(figTarget.mi)}
+							figOpts={figOpts}
+							recentFigs={sameFigs}
+							showToast={showToast}
+							onAutoSave={figData => patchUnit(figTarget.mi, figTarget.si, figTarget.half, { fig: figData || undefined })}
+							onClose={() => setFigTarget(null)} />
 						</div>
 					</div>,
 					document.body
