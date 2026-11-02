@@ -200,7 +200,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                     0 0 0 0.9 0"/>
         </filter>
         {/* 渐变定义 */}
-        {Object.values(connections).map(conn => {
+        {Object.entries(connections).map(([connId, conn]) => {
           // 如果连线使用渐变（color以gradient-开头），创建渐变定义
           if (conn.color && conn.color.startsWith('gradient-')) {
             // 如果没有gradientColors，尝试从conn中获取
@@ -259,7 +259,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
 
             return (
               <linearGradient
-                key={conn.id}
+                key={connId}
                 id={gradientId}
                 x1={gradientX1}
                 y1={gradientY1}
@@ -438,7 +438,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
 
       {/* 连线渲染 - 放在最后，确保在最上层 */}
       <g className="connections">
-        {Object.values(connections).map(conn => {
+        {Object.entries(connections).map(([connId, conn]) => {
           const startCenter = getNotePositionMemo(conn.startNoteId);
           const endCenter = getNotePositionMemo(conn.endNoteId);
 
@@ -543,9 +543,9 @@ export const FretboardSVG = React.memo(function FretboardSVG({
           });
 
           return (
-            <g key={conn.id}>
+            <g key={connId}>
               <ArrowMarkers
-                idPrefix={conn.id}
+                idPrefix={connId}
                 arrowLength={arrowLength}
                 startColor={startArrowColor}
                 endColor={endArrowColor}
@@ -561,11 +561,11 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                markerStart={hasArrowStart ? `url(#arrowhead-start-${conn.id})` : undefined}
-                markerEnd={hasArrowEnd ? `url(#arrowhead-end-${conn.id})` : undefined}
-                onClick={(e) => handleConnectionClickMemo(e, conn.id)}
-                onContextMenu={(e) => handleConnectionContextMenuMemo(e, conn.id)}
-                onMouseEnter={() => setHoveredConnectionId(conn.id)}
+                markerStart={hasArrowStart ? `url(#arrowhead-start-${connId})` : undefined}
+                markerEnd={hasArrowEnd ? `url(#arrowhead-end-${connId})` : undefined}
+                onClick={(e) => handleConnectionClickMemo(e, connId)}
+                onContextMenu={(e) => handleConnectionContextMenuMemo(e, connId)}
+                onMouseEnter={() => setHoveredConnectionId(connId)}
                 onMouseLeave={() => setHoveredConnectionId(null)}
                 style={{
                   cursor: 'pointer',
