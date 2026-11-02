@@ -544,9 +544,9 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("候选排序: 把位低在前", f[0].rootFret <= f[f.length - 1].rootFret || f[f.length - 1].rootFret === 0);
 
 	const c0 = candidatesForChord(ch(1, ""), KEY, shapes); // C 大三
-	A("C 和弦候选 5 个(开放@3/A型@3/E型@8 + 高把位 A型@15/E型@20)", c0.length === 5 && c0.some(c => c.shape.open && c.rootFret === 3));
+	A("C 和弦候选: 可移动 A型/E型 各两档 + 开放形状原位@3与平移@15", c0.length >= 6 && c0.some(c => !c.shape.open && c.shape.name === "A型 三和弦" && c.rootFret === 3) && c0.some(c => !c.shape.open && c.shape.name === "E型 三和弦" && c.rootFret === 8) && c0.some(c => c.shape.open && c.rootFret === 3) && c0.some(c => c.shape.open && c.rootFret === 15));
 	const g0 = candidatesForChord(ch(5, ""), KEY, shapes); // G
-	A("开放形状只在同根音时出现(G 不带开放C)", g0.every(c => !c.shape.open || c.shape.rootPc === 7));
+	A("开放形状也能平移(G 含开放C的平移候选@10/@22)", g0.some(c => c.shape.open && c.rootFret === 10) && g0.some(c => c.shape.open && c.rootFret === 22));
 
 	A("推断: 大三", inferQuality([0, 4, 7]) === "");
 	A("推断: m7", inferQuality([0, 3, 7, 10]) === "m7");
