@@ -10,13 +10,29 @@ import audioService from "../services/audioService";
 
 // 指法小图尺寸档位（汇总行可切）
 const FIG_SIZES = [112, 144, 176];
+
+// 歌词加粗区间 → 富文本 span（.cc-lyrics-rich 覆盖层用）；区间先裁到当前文本长度
+function richLyric(text, ranges) {
+	const t = text || "";
+	const segs = normalizeBoldRanges(ranges, t.length);
+	const out = [];
+	let i = 0;
+	segs.forEach(([a, b], k) => {
+		if (a > i) out.push(<span key={`p${k}`}>{t.slice(i, a)}</span>);
+		out.push(<b key={`b${k}`}>{t.slice(a, b)}</b>);
+		i = b;
+	});
+	if (i < t.length) out.push(<span key="tail">{t.slice(i)}</span>);
+	return out;
+}
+
 import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken, degreePc } from "../utils/chordLib";
 import { createPortal } from "react-dom";
 import { ChordSign } from "./ChordSign";
 import { KeyPicker } from "./KeyPicker";
 import {
 	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong, deleteBeatInSong,
-	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText
+	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText, normalizeBoldRanges, toggleBoldRange
 } from "../utils/chordChartModel";
 import { buildPlayPlan } from "../utils/chartPlayback";
 import { remoteIsNewer } from "../utils/syncEngine";
@@ -1492,9 +1508,32 @@ export function ChordChartView({ songId }) {
 					? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => compactPairView(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null))
 					: m.slots.map((_, si) => slotView(mi, si))}</div>
 				{lyricsOn ? (
-					<input key={`cl-${m.id}-${m.lyrics || ""}`} className={`cc-cell-lyrics ${m.lyrics ? "has" : ""}`} defaultValue={m.lyrics || ""}
-						readOnly={!editing} placeholder={editing ? "" : (ts.lyricsFor ?? "当前小节歌词")}
-						onBlur={e => patchMeasure(mi, x => ({ ...x, lyrics: e.target.value }))} />
+					<span key={`clw-${m.id}-${m.lyrics}`} className={`cc-lyrics-wrap${m.lyrics ? " has" : ""}`}>
+						<input className={`cc-cell-lyrics${m.lyrics ? " has" : ""}${m.lyricsBold?.length ? " has-b" : ""}`} defaultValue={m.lyrics || ""}
+							readOnly={!editing} placeholder={editing ? "" : (ts.lyricsFor ?? "当前小节歌词")}
+							onKeyDown={e => {
+								// Ctrl+B 加粗:有选中 → 切换选中段;无选中 → 整句切换。渲染走覆盖层(.cc-lyrics-rich),输入文字透明只留光标
+								if (!((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === "b" || e.key === "B"))) return;
+								e.preventDefault();
+								const inp = e.target;
+								const len = (m.lyrics || "").length;
+								if (!len) return;
+								const hasSel = inp.selectionEnd > inp.selectionStart;
+								const s = hasSel ? inp.selectionStart : 0;
+								const t = hasSel ? inp.selectionEnd : len;
+								const next = toggleBoldRange(m.lyricsBold || [], s, t, len);
+								patchMeasure(mi, x => ({ ...x, lyricsBold: next.length ? next : undefined }));
+							}}
+							onBlur={e => patchMeasure(mi, x => {
+								const v = e.target.value;
+								// 歌词被改后旧区间可能越界/悬空:裁剪;清空歌词则连加粗一起清
+								const lb = v.trim() && x.lyricsBold?.length ? normalizeBoldRanges(x.lyricsBold, v.length) : undefined;
+								return { ...x, lyrics: v, lyricsBold: lb };
+							})} />
+						{m.lyricsBold?.length ? (
+							<span className="cc-lyrics-rich" aria-hidden="true">{richLyric(m.lyrics, m.lyricsBold)}</span>
+						) : null}
+					</span>
 				) : null}
 				{cellMenu === mi ? (
 					<div className="cc-mmenu" onClick={e => e.stopPropagation()}>

@@ -4369,6 +4369,8 @@ g.drag-fx-layer circle[stroke-dasharray] {
     .cc-cell-lyrics { font-size: var(--app-fs-2xs); }
     /* 窄屏图被拍格宽度夹住（~40px），行高再高也只是留白——维持原 108，不多占竖向空间 */
     .cc-page { --cc-fig-h: 108px; }
+    /* 歌词加粗覆盖层跟随窄屏歌词字号（.cc-cell-lyrics 同款降档） */
+    .cc-page .cc-lyrics-rich { font-size: var(--app-fs-2xs); }
 }
 
 /* 641-800px（横屏手机/小平板）：拍格仍偏窄，记号轻缩一档 */
@@ -4722,7 +4724,7 @@ html[data-theme="light"] .cc-page {
 .cc-cell-lyrics { margin-top: auto; }
 .cc-cell-lyrics {
     width: 100%;
-    margin-top: 10px;
+    margin-top: 0; /* 外边距在 .cc-lyrics-wrap 上:覆盖层 inset:0 才与输入文字同高(粗字不悬空) */
     background: transparent;
     border: none;
     border-bottom: 1px dashed transparent;
@@ -4751,11 +4753,29 @@ html[data-theme="light"] .cc-page {
 /* 整行都没有歌词：该行歌词带压成细条，省一行高——
    输入框仍在（悬停见虚线、点击可补词），词一落地（blur 落库）该行自动恢复全高 */
 .cc-page .cc-line.no-lyrics .cc-cell-lyrics {
-    margin-top: 0;
     padding: 0 4px;
     height: 14px;
     line-height: 14px;
     font-size: var(--app-fs-xs);
+}
+.cc-page .cc-line.no-lyrics .cc-lyrics-wrap { margin-top: 0; }
+
+/* 歌词局部加粗（选中段 Ctrl+B / 无选中整句）：
+   有粗区间时输入文字透明只留光标，粗样式渲染在等距覆盖层上——编辑仍是原生 input */
+.cc-lyrics-wrap { position: relative; display: block; margin-top: 10px; }
+.cc-cell-lyrics.has-b { color: transparent; caret-color: var(--app-text); }
+.cc-lyrics-wrap:focus-within .cc-cell-lyrics.has-b { color: var(--app-text); } /* 聚焦编辑时输入实显(粗样式让位),失焦交回覆盖层 */
+.cc-lyrics-wrap:focus-within .cc-lyrics-rich { opacity: 0; }
+.cc-lyrics-rich {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    padding: 3px 4px;
+    text-align: center;
+    font-size: var(--app-fs-sm);
+    color: var(--app-text);
+    white-space: pre;
+    overflow: hidden;
 }
 
 /* 小节「⋯」操作按钮与菜单 */
