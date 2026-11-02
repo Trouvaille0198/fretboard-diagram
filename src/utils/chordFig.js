@@ -160,15 +160,16 @@ export function figSvg(fig, opts = {}) {
 		const fo = p.fret === 0 ? -0.35 * cell : (p.fret - fig.startFret + 0.5) * cell;
 		return pt(Math.min(spanF, fo), offS(p.string));
 	};
-	// 连线(压点下层):沿弦轴外凸的弧
+	// 连线(压点下层):两端各沿垂直于两音连线的方向起落(cubic)——切线正对圆心,
+	// 可见段始终"对着音符中心";二次曲线的控制点悬在两音中点上,短跨距时斜切圆边,看起来像没对准
 	(fig.links || []).forEach(({ a, b }) => {
 		const pa = posOf(a), pb = posOf(b);
-		const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
+		const dx = pb.x - pa.x, dy = pb.y - pa.y;
+		const len = Math.hypot(dx, dy) || 1;
 		const bend = 0.55 * cell;
-		const horizPair = Math.abs(pa.x - pb.x) > Math.abs(pa.y - pb.y);
-		const cx = horizPair ? mx : mx - bend * Math.sign(pb.y - pa.y || 1);
-		const cy = horizPair ? my - bend : my;
-		svg += `<path d="M ${pa.x.toFixed(2)} ${pa.y.toFixed(2)} Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${pb.x.toFixed(2)} ${pb.y.toFixed(2)}" fill="none" stroke="${th.link}" stroke-width="${(1.5 * cell / 9).toFixed(2)}" stroke-linecap="round" opacity="0.9"/>`;
+		let nx = -dy / len, ny = dx / len; // 连线方向的垂直线
+		if (ny > 0 || (ny === 0 && nx > 0)) { nx = -nx; ny = -ny; } // 弧统一拱向谱面上方/左侧
+		svg += `<path d="M ${pa.x.toFixed(2)} ${pa.y.toFixed(2)} C ${(pa.x + nx * bend).toFixed(2)} ${(pa.y + ny * bend).toFixed(2)}, ${(pb.x + nx * bend).toFixed(2)} ${(pb.y + ny * bend).toFixed(2)}, ${pb.x.toFixed(2)} ${pb.y.toFixed(2)}" fill="none" stroke="${th.link}" stroke-width="${(1.5 * cell / 9).toFixed(2)}" stroke-linecap="round" opacity="0.9"/>`;
 	});
 	// (闷音/空弦不画 ×/○ —— 传统黑点图不带圈叉标记;闷音直接不显示)
 	// 点 + 度数(点径=格距固定比例)
