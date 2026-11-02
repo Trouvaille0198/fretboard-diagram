@@ -6818,7 +6818,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 }
 
 .cc-page .cc-line {
-    margin-bottom: 12px;
+    margin-bottom: 18px; /* 行间呼吸空间：图行变高后 12px 显挤 */
 }
 
 .cc-page .cc-cell-slots {
