@@ -30,6 +30,12 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   const [data, setData] = useState(() => (initialData && Object.keys(initialData).length ? JSON.parse(JSON.stringify(initialData)) : {}));
   const dataRef = useRef(data);
   dataRef.current = data;
+  // 打开时的原图快照：形状覆盖多少次,"还原"都回到这份（还原后仍可外部 Ctrl+Z 再退）
+  const originalRef = useRef(JSON.parse(JSON.stringify(initialData || {})));
+  const sameAsOriginal = (a, b) => {
+    const canon = (d) => JSON.stringify(Object.keys(d || {}).sort().flatMap(k => [k, d[k]]));
+    return canon(a) === canon(b);
+  };
 
   // 品窗：按初始数据最低/最高按弦品收敛；空 = 0-5
   const [fretWin, setFretWin] = useState(() => {
@@ -215,12 +221,49 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     ? candidatesForChord(chord, viewKey || { root: 0, minor: false }, [...builtinShapes(), ...loadShapes()])
     : []), [shapesOpen, chord, viewKey]);
 
-  const applyCandidate = (c) => {
-    const d = candidateToData(c);
+  // 数据 → 品窗：低位收敛窗，不足默认跨度时以品位为中心补齐（与挂载逻辑同口径）
+  const fitWindow = useCallback((d) => {
     const pressed = pressedFretsOf(d);
+    const defSpan = Math.min(14, maxSpanRef.current);
+    if (!pressed.length) return { start: 0, end: defSpan };
+    const min = Math.min(...pressed), max = Math.max(...pressed);
+    const t0 = Math.max(0, min - 1), t1 = Math.min(22, max + 2);
+    if (t1 - t0 >= defSpan) return { start: t0, end: t1 };
+    let start = Math.round((min + max) / 2 - (defSpan + 1) / 2);
+    start = Math.max(0, Math.min(start, 22 - defSpan));
+    return { start, end: start + defSpan };
+  }, []);
+
+  // 最近一次应用的形状候选：换把位按钮的轮换基准（ref 供逻辑读，state 驱动按钮显隐）
+  const lastCandRef = useRef(null);
+  const [lastCand, setLastCand] = useState(null);
+  // 应用候选：整板覆盖 + 品窗居中收敛到该形状
+  const applyCand = useCallback((c) => {
+    const d = candidateToData(c);
     setData(d);
-    if (pressed.length) setFretWin({ start: Math.max(0, Math.min(...pressed) - 1), end: Math.min(22, Math.max(...pressed) + 2) });
-    setShapesOpen(false);
+    lastCandRef.current = c;
+    setLastCand(c);
+    setFretWin(fitWindow(d));
+  }, [fitWindow]);
+  const applyCandidate = (c) => { applyCand(c); setShapesOpen(false); };
+
+  // 换把位：同和弦的全部候选按把位从低到高循环（跨形状——同唱名的其它按法）
+  const cyclePos = () => {
+    const cur = lastCandRef.current;
+    if (!cur || !chord) return;
+    const cands = candidatesForChord(chord, viewKey || { root: 0, minor: false }, [...builtinShapes(), ...loadShapes()]);
+    if (cands.length < 2) return;
+    const idx = cands.findIndex(c => c.shape.id === cur.shape.id && c.rootFret === cur.rootFret);
+    applyCand(cands[(idx + 1 + cands.length) % cands.length] ?? cands[0]);
+  };
+
+  // 还原：回到打开本编辑器时的指法（形状覆盖多少次都回到最初）
+  const restoreOriginal = () => {
+    const d = JSON.parse(JSON.stringify(originalRef.current));
+    setData(d);
+    lastCandRef.current = null;
+    setLastCand(null);
+    setFretWin(fitWindow(d));
   };
 
   const openSave = () => {
@@ -257,6 +300,10 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
         <span className="figbe-title">指法图{chord ? ` · ${formatName(chord, viewKey || { root: 0, minor: false })}` : ""}</span>
         {chord ? <button className="button sm" onClick={() => setShapesOpen(v => !v)}>形状库</button> : null}
         <button className="button sm" onClick={openSave}>存为形状</button>
+        {lastCand ? <button className="button sm" onClick={cyclePos}
+          title={`当前 @${lastCand.rootFret} 品 · 同和弦的其它按法按把位从低到高循环`}>换把位</button> : null}
+        {!sameAsOriginal(data, originalRef.current) ? <button className="button sm" onClick={restoreOriginal}
+          title="还原为打开本编辑器时的指法——形状覆盖多少次都回到最初">还原</button> : null}
         <button className="button sm danger" onClick={() => { onAutoSave && onAutoSave(null); onClose(); }}>删除</button>
         <button className="button sm accent" onClick={onClose}>完成</button>
       </div>
