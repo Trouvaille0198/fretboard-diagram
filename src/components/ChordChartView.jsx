@@ -1447,7 +1447,8 @@ export function ChordChartView({ songId }) {
 				}}
 				onClick={e => {
 					if (copyMode || !editing) return;
-					if (e.target.closest(".cc-beat, .cc-cell-lyrics, .cc-mmenu")) return;
+					// 图行(含占位带)不算小节空白：内嵌模式下它是拍框上方一大片，点到不该当"点了这小节"开菜单——菜单只认拍框
+					if (e.target.closest(".cc-beat, .cc-cell-lyrics, .cc-mmenu, .cc-cell-figs")) return;
 					const firstEmpty = m.slots.findIndex(sl => (sl.split ? sl.split.every(u => u.kind !== "chord") : sl.kind !== "chord"));
 					const si = firstEmpty === -1 ? 0 : firstEmpty;
 					setCursor({ mi, si, half: null });
