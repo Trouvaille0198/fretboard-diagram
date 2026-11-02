@@ -8165,6 +8165,33 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     border-radius: 5px;
     padding: 2px 6px;
 }
+
+/* 右键候选菜单：重命名 / 删除（内置形状只读灰显；z 1350 > 弹窗 1300，菜单浮在编辑器上） */
+.figbe-cmenu {
+    position: fixed;
+    z-index: 1350;
+    min-width: 130px;
+    background: var(--cc-panel, #10161c);
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-sm);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.figbe-cmenu button {
+    border: none;
+    background: none;
+    color: var(--app-text);
+    text-align: left;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: var(--app-fs-sm);
+    border-radius: 6px;
+}
+.figbe-cmenu button:hover:not(:disabled) { background: rgba(243, 186, 98, 0.12); }
+.figbe-cmenu button:disabled { opacity: 0.4; cursor: not-allowed; }
+.figbe-cmenu button.danger { color: #e5695f; }
 /* ≤800px：淡色档位改"点色块弹气泡"（桌面左挂面板在 641-800px 会伸出屏幕外，实测 780px 仍出界）
    —— 阈值须与 FretboardMenu.jsx 的 matchMedia 同步 */
 @media (max-width: 800px) {

@@ -538,12 +538,13 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	const e1 = f.find(c => c.rootFret === 1 && c.shape.rootString === 5);
 	const a8 = f.find(c => c.rootFret === 8 && c.shape.rootString === 4);
 	A("Fmaj7 候选含 E型@根品1 与 A型@根品8", !!e1 && !!a8);
+	A("Fmaj7 E型 高八度位 @13 也在候选里", f.some(c => c.rootFret === 13 && c.shape.rootString === 5));
 	A("Fmaj7 E型@1 音集 = F A C E", [...new Set(e1.points.map(p => pcName(p.string, p.fret)))].sort().join("") === "ACEF");
-	A("候选平移不超品窗(≤15)", f.every(c => c.points.every(p => p.fret >= 0 && p.fret <= 15)));
+	A("候选平移不超全板(≤22)", f.every(c => c.points.every(p => p.fret >= 0 && p.fret <= 22)));
 	A("候选排序: 把位低在前", f[0].rootFret <= f[f.length - 1].rootFret || f[f.length - 1].rootFret === 0);
 
 	const c0 = candidatesForChord(ch(1, ""), KEY, shapes); // C 大三
-	A("C 和弦候选 3 个(开放原把位/E型8/A型3)", c0.length === 3 && c0.some(c => c.shape.open && c.rootFret === 3));
+	A("C 和弦候选 5 个(开放@3/A型@3/E型@8 + 高把位 A型@15/E型@20)", c0.length === 5 && c0.some(c => c.shape.open && c.rootFret === 3));
 	const g0 = candidatesForChord(ch(5, ""), KEY, shapes); // G
 	A("开放形状只在同根音时出现(G 不带开放C)", g0.every(c => !c.shape.open || c.shape.rootPc === 7));
 
