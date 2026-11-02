@@ -14,6 +14,9 @@ import { QUALITIES, formatName, degreePc } from '../utils/chordLib';
 
 const noOp = () => { };
 
+// 已按弦的物理品号列表(id f<i>-s<n> 的 i+1;空弦不算)——品窗收敛/居中都按它算
+const pressedFretsOf = (d) => Object.keys(d || {}).map(id => { const m = /^f(-?\d+)-s\d$/.exec(id); return m ? +m[1] + 1 : null; }).filter(v => v && v > 0);
+
 // 唱名（首调,相对当前调根音）:全半音表——小调自然音级(b3/b6/b7)自动落对,与小图"调内级数"体系同口径
 const SOLFEGE_REL = { 0: '1', 1: '#1', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5', 8: 'b6', 9: '6', 10: 'b7', 11: '7' };
 const solfegeRelKey = (noteIndex, rootNote) => SOLFEGE_REL[((noteIndex - rootNote) % 12 + 12) % 12];
@@ -30,7 +33,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
   // 品窗：按初始数据最低/最高按弦品收敛；空 = 0-5
   const [fretWin, setFretWin] = useState(() => {
-    const pressed = Object.keys(initialData || {}).map(id => { const m = /^f(-?\d+)-s\d$/.exec(id); return m ? +m[1] + 1 : null; }).filter(v => v && v > 0);
+    const pressed = pressedFretsOf(initialData);
     return pressed.length
       ? { start: Math.max(0, Math.min(...pressed) - 1), end: Math.min(22, Math.max(...pressed) + 2) }
       : { start: 0, end: 5 };
@@ -63,9 +66,12 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
       const defSpan = Math.min(14, maxSpanRef.current);
       setFretWin(prev => {
         if (prev.end - prev.start >= defSpan) return prev;
-        const end = Math.min(22, Math.max(prev.start + defSpan, prev.end));
-        const start = Math.max(0, Math.min(prev.start, end - defSpan));
-        return { start, end };
+        // 收敛窗补到默认跨度时以有值的品位为中心两侧均分（显示品位 = start+1..end，中心 = start+(span+1)/2）——
+        // 原先 start 不动只往右补，和弦全堆在板左缘；低/高把位顶到 0/22 品才贴边。无数据沿用原起点
+        const pressed = pressedFretsOf(dataRef.current);
+        let start = pressed.length ? Math.round((Math.min(...pressed) + Math.max(...pressed)) / 2 - (defSpan + 1) / 2) : prev.start;
+        start = Math.max(0, Math.min(start, 22 - defSpan));
+        return { start, end: start + defSpan };
       });
     };
     apply();
@@ -211,7 +217,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
   const applyCandidate = (c) => {
     const d = candidateToData(c);
-    const pressed = Object.keys(d).map(id => { const m = /^f(-?\d+)-s\d$/.exec(id); return m ? +m[1] + 1 : null; }).filter(v => v && v > 0);
+    const pressed = pressedFretsOf(d);
     setData(d);
     if (pressed.length) setFretWin({ start: Math.max(0, Math.min(...pressed) - 1), end: Math.min(22, Math.max(...pressed) + 2) });
     setShapesOpen(false);
