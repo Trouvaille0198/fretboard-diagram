@@ -1334,23 +1334,6 @@ export function ChordChartView({ songId }) {
 		setFigTarget({ mi, si, half });
 	};
 
-	// 指法图一览：谱内所有带小图的和弦槽位（M 位置 + 和弦 + 图）；编辑态点卡片可改
-	const frequentChords = useMemo(() => {
-		const counter = new Map();
-		song.measures.forEach(m => m.slots.forEach(sl => (sl.split || [sl]).forEach(u => {
-			if (u.kind === "chord" && u.chord) {
-				const k = `${u.chord.acc || 0}|${u.chord.degree}|${u.chord.quality || ""}|${u.chord.bass ? u.chord.bass.degree : ""}`;
-				if (!counter.has(k)) counter.set(k, { chord: u.chord, n: 0 });
-				counter.get(k).n++;
-			}
-		})));
-		const sorted = [...counter.values()].sort((a, b) => b.n - a.n).slice(0, 6).map(x => x.chord);
-		if (sorted.length) return sorted;
-		// 空歌兜底：当前调的七个调内三和弦（裸级数，显示时按调性出 1M/6m 或 1m/5m）——
-		// 不再给固定 1645 进行，新歌不会被误认成上一首的残留历史
-		return [1, 2, 3, 4, 5, 6, 7].map(d => ({ degree: d, acc: 0, quality: "", bass: null }));
-	}, [song]);
-
 
 	// ============ 渲染（8pu 式格子谱） ============
 
@@ -1694,23 +1677,7 @@ export function ChordChartView({ songId }) {
 
 				{editing ? (
 					<div className="cc-tools-row">
-						{toolTab === "chord" ? (
-							<div className="cc-freqbar">
-								{frequentChords.map((c, i) => {
-									const localKey = keyAt(cursor.mi); // 常用和弦音名提示跟随光标处生效调（谱中转调后不误导）
-									return (
-										<button key={i} className="cc-freq-chord" title={formatName(c, localKey)} onClick={() => {
-											typeRef.current = { t: Date.now(), mode: "degree", sub: null, lastKind: "mod" };
-											patchCurrentUnit({ kind: "chord", chord: { ...c } });
-											rememberQuality(c);
-										}}>
-											<ChordSign chord={c} display="degree" viewKey={localKey} />
-										</button>
-									);
-								})}
-								<button className="cc-freq-tool" title={ts.addRow ?? "新增一行"} onClick={addRow}>＋<small>{ts.rowLabel ?? "一行"}</small></button>
-							</div>
-						) : toolTab === "measure" ? (
+						{toolTab === "chord" ? null : toolTab === "measure" ? (
 							<div className="cc-measuretools">
 								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
 								<button className="button sm" onClick={() => addMeasure(cursor.mi)}>＋ {ts.addMeasure ?? "后插小节"}</button>

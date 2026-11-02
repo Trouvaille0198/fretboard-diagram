@@ -441,7 +441,6 @@ main {
     /* hover 不上浮：overflow 容器会裁顶 */
 }
 
-
 /* Fretboard diagram */
 
 g.note.transparent:hover {
@@ -977,7 +976,6 @@ button.color.level2.selected {
     color: var(--app-accent-text);
     box-shadow: 0 0 0 1px rgba(243, 186, 98, 0.14), 0 4px 14px var(--app-accent-12);
 }
-
 
 /* 第一层级调色盘按钮颜色 - 配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
 .color.blue {
@@ -2212,8 +2210,6 @@ g.note.preview-hover>circle {
     background: var(--app-accent, #f3ba62);
     border-color: transparent;
 }
-
-
 
 .score-fields {
     display: flex;
@@ -4002,7 +3998,6 @@ g.drag-fx-layer circle[stroke-dasharray] {
     font-size: var(--app-fs-xs);
 }
 
-
 /* 页面给钢琴条让位 */
 .cc-page {
     padding-bottom: 16px;
@@ -4101,58 +4096,6 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 /* 常用和弦快捷栏（8pu 式：按本谱频率自动排） */
-.cc-freqbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-}
-
-.cc-freq-chord {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    line-height: 1.05;
-    flex: 1;
-    max-width: 90px;
-    min-width: 52px;
-    padding: 7px 8px 6px;
-    background: var(--app-bg-secondary);
-    border: 1px solid var(--app-border);
-    border-radius: var(--app-radius-xs);
-    color: var(--app-text);
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.cc-freq-chord small {
-    font-size: 9.5px;
-    color: var(--app-text-muted);
-    font-weight: 400;
-}
-
-.cc-freq-chord:hover {
-    border-color: var(--app-accent);
-    color: var(--app-accent-text);
-}
-
-.cc-freq-tool {
-    min-width: 30px;
-    height: 36px;
-    background: var(--app-bg-secondary);
-    border: 1px solid var(--app-border);
-    border-radius: var(--app-radius-xs);
-    color: var(--app-text-muted);
-    font-size: var(--app-fs-lg);
-    cursor: pointer;
-}
-
-.cc-freq-tool:hover {
-    border-color: var(--app-accent);
-    color: var(--app-accent-text);
-}
 
 .cc-sep {
     width: 1px;
@@ -4902,7 +4845,6 @@ html[data-theme="light"] .cc-page {
     margin-left: 8px;
 }
 
-
 .cc-hint {
     color: var(--app-text-soft);
     font-size: var(--app-fs-sm);
@@ -5218,15 +5160,9 @@ html[data-theme="light"] .cc-cell-tools {
     border-bottom-color: var(--cc-accent);
 }
 
-.cc-page .cc-freq-chord:hover {
-    border-color: var(--cc-accent);
-    color: var(--cc-accent-text);
-}
+.cc-page 
 
-.cc-page .cc-freq-tool:hover {
-    border-color: var(--cc-accent);
-    color: var(--cc-accent-text);
-}
+.cc-page 
 
 .cc-page .cc-chip.on,
 .cc-page .cc-cp-deg.on,
@@ -5840,12 +5776,6 @@ html[data-theme="light"] .cc-cell-tools {
     padding: 0 9px;
     cursor: pointer;
     color: var(--app-text-muted);
-}
-
-.cc-freq-chord,
-.cc-freq-tool {
-    height: 36px;
-    font-size: var(--app-fs-lg);
 }
 
 .cc-key-stepper > button:not(.cc-key-mode) {
@@ -6876,20 +6806,11 @@ html[data-theme="light"] .button.sm.edit-enter {
 }
 
 /* —— 常用和弦栏 / 预览子栏 —— */
-.cc-page .cc-freq-chord {
-    border-radius: var(--cc-radius);
-    padding: 5px 8px 4px;
-    font-size: var(--app-fs-lg);
-}
+.cc-page 
 
-.cc-page .cc-freq-chord small {
-    font-size: 9px;
-}
+.cc-page 
 
-.cc-page .cc-freq-tool {
-    border-radius: var(--cc-radius);
-    height: 32px;
-}
+.cc-page 
 
 .cc-page .cc-preview-tabs {
     gap: 3px;
@@ -7271,17 +7192,6 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 /* 常用和弦栏 / 动态条 */
-.cc-freq-chord .csign-deg {
-    font-size: 17px;
-}
-
-.cc-freq-chord .csign-sfx {
-    font-size: 13.5px;
-}
-
-.cc-freq-chord .csign-sup .csign-sfx {
-    font-size: var(--app-fs-xs);
-}
 
 .cc-dyn-chord .csign-deg {
     font-size: 15px;
@@ -7296,12 +7206,6 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 }
 
 /* 常用和弦栏/动态条：按钮本身就是容器，记号芯片去框融入 */
-.cc-freq-chord .csign,
-.cc-dyn-chord .csign {
-    border: none;
-    background: none;
-    padding: 0;
-}
 
 /* ============ 拼接区（StitchDock，普通图片模式右上角） ============ */
 
