@@ -3,34 +3,39 @@
 
 import { voiceChord } from "./voicing.js";
 
-// 展开反复/跳房子 → 线性小节索引序列（v1 支持一层反复；房子 1 第一遍、房子 2 第二遍）
+// 展开反复/跳房子 → 线性小节索引序列（支持一层反复×自定义遍数；房子 1 第一遍、房子 2 第二遍起）
 export function expandSong(song) {
 	const ms = song.measures || [];
 	const seq = [];
-	const repeated = new Set(); // 已回跳过的 repeatEnd 小节索引
+	const jumpCount = new Map(); // repeatEnd 小节索引 → 已回跳次数（默认反复 2 遍 = 回跳 1 次）
+	const maxTimes = Math.max(2, ...ms.map(m => m.repeatTimes || 2)); // 防呆上限跟着遍数走
 	let i = 0, pass = 1, guard = 0;
-	while (i < ms.length && guard++ <= ms.length * 6) {
+	while (i < ms.length && guard++ <= ms.length * maxTimes + 10) {
 		const m = ms[i];
-		const skip = (m.house === 1 && pass === 2) || (m.house === 2 && pass === 1);
+		const skip = (m.house === 1 && pass >= 2) || (m.house === 2 && pass === 1);
 		if (skip) { i++; continue; }
 		seq.push(i);
 		if (m.endBar === "final") break;
-		if (m.endBar === "repeatEnd" && !repeated.has(i)) {
-			repeated.add(i);
-			// 段起点：本小节自带 repeatStart > 最近的前方 repeatStart > 前一反复段结束之后 > 开头
-			let start = m.repeatStart ? i : null;
-			if (start === null) {
-				for (let k = i - 1; k >= 0; k--) {
-					if (ms[k].repeatStart) { start = k; break; }
-					if (ms[k].endBar === "repeatEnd") { start = k + 1; break; }
+		if (m.endBar === "repeatEnd") {
+			const jumps = Math.max(2, m.repeatTimes || 2) - 1;
+			const done = jumpCount.get(i) || 0;
+			if (done < jumps) {
+				jumpCount.set(i, done + 1);
+				// 段起点：本小节自带 repeatStart > 最近的前方 repeatStart > 前一反复段结束之后 > 开头
+				let start = m.repeatStart ? i : null;
+				if (start === null) {
+					for (let k = i - 1; k >= 0; k--) {
+						if (ms[k].repeatStart) { start = k; break; }
+						if (ms[k].endBar === "repeatEnd") { start = k + 1; break; }
+					}
 				}
+				if (start === null) start = 0;
+				i = start;
+				pass = done + 2; // 进入第几遍（跳房子按遍次显隐）
+				continue;
 			}
-			if (start === null) start = 0;
-			i = start;
-			pass = 2;
-			continue;
+			pass = 1; // 出反复段，回第一遍语义
 		}
-		if (m.endBar === "repeatEnd") pass = 1; // 出反复段，回第一遍语义
 		i++;
 	}
 	return seq;

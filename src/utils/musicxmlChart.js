@@ -93,7 +93,10 @@ export function exportMusicXml(song, keyAtFn) {
 				out += `      <note><rest/><duration>${dur}</duration><type>${slot.split ? "eighth" : "quarter"}</type></note>\n`;
 			});
 		});
-		out += BARLINE_XML[m.endBar] || "";
+		if (m.endBar === "repeatEnd" && m.repeatTimes > 1) {
+			// MusicXML 标准：backward repeat 带 times 属性 = 该反复段共奏 times 遍
+			out += `      <barline location="right"><bar-style>light-heavy</bar-style><repeat direction="backward" times="${m.repeatTimes}"/></barline>\n`;
+		} else out += BARLINE_XML[m.endBar] || "";
 		out += `    </measure>\n`;
 	});
 	out += `  </part>\n</score-partwise>\n`;
@@ -228,8 +231,12 @@ export function importMusicXml(text, fallbackName = "导入谱") {
 			const dirAttr = repeat && repeat.attrs && repeat.attrs.direction;
 			if (loc === "left" && dirAttr === "forward") measure.repeatStart = true;
 			if (loc === "right") {
-				if (dirAttr === "backward") measure.endBar = "repeatEnd";
-				else {
+				if (dirAttr === "backward") {
+					measure.endBar = "repeatEnd";
+					// backward repeat 的 times 属性 = 反复遍数（MuseScore 等主流软件都写）
+					const t = Number(repeat && repeat.attrs && repeat.attrs.times);
+					if (Number.isFinite(t) && t > 1) measure.repeatTimes = t;
+				} else {
 					const style = kid(b, "bar-style");
 					if (style && /light-heavy|heavy-heavy/.test(style.text)) measure.endBar = "final";
 					else if (style && /light-light/.test(style.text)) measure.endBar = "double";
