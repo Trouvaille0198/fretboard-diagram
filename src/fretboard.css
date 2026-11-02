@@ -4367,6 +4367,8 @@ g.drag-fx-layer circle[stroke-dasharray] {
     /* 拍格和弦记号全是固定 px（deg 24/num 19…），窄屏拍格变窄会溢出——整体等比缩（同钢琴 v125 zoom 方案） */
     .cc-beat .csign, .cc-beat .cc-glyph { zoom: 0.78; }
     .cc-cell-lyrics { font-size: var(--app-fs-2xs); }
+    /* 窄屏图被拍格宽度夹住（~40px），行高再高也只是留白——维持原 108，不多占竖向空间 */
+    .cc-page { --cc-fig-h: 108px; }
 }
 
 /* 641-800px（横屏手机/小平板）：拍格仍偏窄，记号轻缩一档 */
@@ -4422,7 +4424,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     width: 1.5px;
     background: var(--cc-bar-ink);
 }
-.cc-cell:has(.cc-cell-figs.pad)::before { top: 116px; } /* 图行占位高度(112+边距)以下才开始画线 */
+.cc-cell:has(.cc-cell-figs.pad)::before { top: calc(var(--cc-fig-h) + 8px); } /* 图行占位高(图高+4 下边距)+4 格上内边距 以下才开始画线 */
 .cc-cell:not(:has(.cc-cell-figs.pad))::before { top: 0; }
 
 .cc-cell:first-child::before {
@@ -4556,13 +4558,16 @@ g.drag-fx-layer circle[stroke-dasharray] {
 /* 拍格 */
 /* 图行按拍分格：每格与正下方拍格同宽对齐（gap 与 slots 一致），图在自己拍的格内居中 */
 /* pad：同行有图时全行占位（空小节也留同高带），记号才同线；整行无图(:empty 无 pad)不占高 */
+/* 图行高度单一来源 --cc-fig-h：svg 高 / pad 占位高(+4 下边距) / 小节线起点(再 +4 格上内边距) 三处同步。
+   图宽随之按比例长；窄拍格下 max-width:100% 夹住，相邻图至少隔 5px 行距 + 图内左右留白 */
+.cc-page { --cc-fig-h: 128px; }
 .cc-cell-figs { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 4px; min-height: 0; }
 .cc-cell-figs:empty:not(.pad) { display: none; }
-.cc-cell-figs.pad { min-height: 112px; }
+.cc-cell-figs.pad { min-height: calc(var(--cc-fig-h) + 4px); }
 .cc-cell-figslot { flex: 1; display: flex; gap: 2px; min-width: 0; position: relative; }
 /* 占位带空槽：极淡虚线框（同行有图才出现），双击开编辑配图——空隙变功能槽 */
 .cc-cell-figslot .cc-figview { flex: 1; display: flex; justify-content: center; min-width: 0; }
-.cc-cell-figs svg { height: 108px; width: auto; max-width: 100%; display: block; }
+.cc-cell-figs svg { height: var(--cc-fig-h); width: auto; max-width: 100%; display: block; }
 
 .cc-cell-slots {
     display: flex;
