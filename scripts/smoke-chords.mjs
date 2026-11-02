@@ -592,6 +592,15 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	// Am 根音 A(pc9):B弦品1=C→♭3、E空弦→5;C大调内:A空弦=6、G空弦=5、C音=1
 	A("度数:和弦内(Am 根 A, x02210 的音)", degreeLabel(1, 1, "chord", 9) === "♭3" && degreeLabel(0, 0, "chord", 9) === "5" && degreeLabel(4, 0, "chord", 9) === "R");
 	A("度数:调内(C 大调, A=6 G=5 C=1)", degreeLabel(4, 0, "scale", null, KEY) === "6" && degreeLabel(2, 0, "scale", null, KEY) === "5" && degreeLabel(1, 1, "scale", null, KEY) === "1");
+	// 调内 vs 和弦内:同一张图两种模式走同一条渲染路径——点径/字重/墨色全等,只有数字换成相对谱面调的 1-7;
+	// 调随小节走(G 大调下同一把 Am 的音变 2/4/6);不给 key 不崩、退化为素点(FigView 必须透传 key 才有度数)
+	const degTexts = (s) => [...s.matchAll(/<text [^>]*font-weight="700"[^>]*>([^<]*)<\/text>/g)].map(m => m[1]);
+	const dotRadii = (s) => [...s.matchAll(/<circle [^>]*r="([\d.]+)" fill="#e8eef4"\/>/g)].map(m => m[1]);
+	const sC = figSvg(fa, { degMode: "chord" }), sS = figSvg(fa, { degMode: "scale", key: KEY });
+	A("调内渲染:数字=相对 C 大调(x02210 → 3,1,6,3,6)", degTexts(sS).join(",") === "3,1,6,3,6");
+	A("调内 vs 和弦内:点径全等、点数同、仅数字不同", dotRadii(sS).join(",") === dotRadii(sC).join(",") && degTexts(sC).join(",") === "5,b3,R,5,R" && degTexts(sS).length === degTexts(sC).length);
+	A("调内渲染:数字跟着调走(G 大调 → 6,4,2,6,2)", degTexts(figSvg(fa, { degMode: "scale", key: { root: 7, minor: false } })).join(",") === "6,4,2,6,2");
+	A("调内渲染:缺 key 不崩、无度数素点", !degTexts(figSvg(fa, { degMode: "scale" })).length);
 }
 
 console.log(fail ? `\n✗ ${fail}/${n} 断言失败` : `\n✓ 全部 ${n} 项断言通过`);
