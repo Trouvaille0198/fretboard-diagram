@@ -4560,7 +4560,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 /* pad：同行有图时全行占位（空小节也留同高带），记号才同线；整行无图(:empty 无 pad)不占高 */
 /* 图行高度单一来源 --cc-fig-h：svg 高 / pad 占位高(+4 下边距) / 小节线起点(再 +4 格上内边距) 三处同步。
    图宽随之按比例长；窄拍格下 max-width:100% 夹住，相邻图至少隔 5px 行距 + 图内左右留白 */
-.cc-page { --cc-fig-h: 128px; }
+.cc-page { --cc-fig-h: 144px; }
 .cc-cell-figs { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 4px; min-height: 0; }
 .cc-cell-figs:empty:not(.pad) { display: none; }
 .cc-cell-figs.pad { min-height: calc(var(--cc-fig-h) + 4px); }
@@ -4568,6 +4568,9 @@ g.drag-fx-layer circle[stroke-dasharray] {
 /* 占位带空槽：极淡虚线框（同行有图才出现），双击开编辑配图——空隙变功能槽 */
 .cc-cell-figslot .cc-figview { flex: 1; display: flex; justify-content: center; min-width: 0; }
 .cc-cell-figs svg { height: var(--cc-fig-h); width: auto; max-width: 100%; display: block; }
+/* 单图档再放大：溢出拍格两侧各 10%——溢出的只是 svg 透明边距(左品数位/右留白)，不遮点；
+   相邻图之间仍有对方品数 + 空隙分隔。flex:none 免被拍格当 flex 容器压回去；双图档两图挤一格，溢出会互叠，维持 100% */
+.cc-cell-figslot:not(.paired) .cc-figview svg { max-width: 120%; flex: none; }
 
 .cc-cell-slots {
     display: flex;
