@@ -152,6 +152,8 @@ import { expandSong, buildEvents, buildPlayPlan } from "../src/utils/chartPlayba
 	A("连续两段反复", eq(expandSong(two), [0, 0, 1, 1, 2]));
 	const rs = { measures: [M([{}]), M([{}], { repeatStart: true }), M([{}], { endBar: "repeatEnd" }), M([{}])] };
 	A("repeatStart 从标记处回跳", eq(expandSong(rs), [0, 1, 2, 1, 2, 3]));
+	A("反复×3（repeatTimes）", eq(expandSong({ measures: [M([{}]), M([{}], { endBar: "repeatEnd", repeatTimes: 3 }), M([{}])] }), [0, 1, 0, 1, 0, 1, 2]));
+	A("反复×4", eq(expandSong({ measures: [M([{}], { endBar: "repeatEnd", repeatTimes: 4 }), M([{}], { endBar: "final" })] }), [0, 0, 0, 0, 1]));
 
 	console.log("== 播放引擎：事件流 ==");
 	const song1 = { timeSig: 4, bpm: 120, measures: [M([
@@ -248,6 +250,7 @@ console.log("== chartPack：工程文件往返 ==");
 		m.repeatStart = i === 8;
 		m.endBar = i === 23 ? "final" : i === 15 ? "repeatEnd" : i === 5 ? "double" : "single";
 		m.house = i === 16 ? 1 : null;
+		if (i === 15) m.repeatTimes = 3;
 		if (i === 12) { m.keyRoot = 2; m.keyMinor = false; }
 		m.tint = i % 3 === 0 ? "blue" : null;
 		m.slots = m.slots.map((_, si) => {
@@ -306,6 +309,7 @@ console.log("== chartPack：工程文件往返 ==");
 	A("配图被带上（board）", back.measures[0].slots[0].image?.kind === "board" && !!back.measures[0].slots[0].image.frame);
 	A("配图被带上（clip）", back.measures[2].slots[0].image?.id === "clip-xyz");
 	A("小节标色被带上", back.measures[0].tint === "blue");
+	A("反复遍数被带上", back.measures[15].repeatTimes === 3);
 	A("休止/延音不被压成空拍", back.measures[20].slots[0].kind === "rest" && back.measures[20].slots[1].kind === "hold");
 	A("节奏型被带上", back.measures[7].slots[1].rhythm === "ballad");
 	A("质量记忆被带上", back.qualityMemory?.["1"] === "M7");
@@ -413,6 +417,11 @@ console.log("== chartPack：工程文件往返 ==");
 	A("自然音级/五音层经 MusicXML 往返", eq(natXmlBack.measures[0].slots[0]?.chord?.alt, ["9", "13"])
 		&& eq(natXmlBack.measures[0].slots[1]?.chord?.alt, ["b5", "#9"]),
 		JSON.stringify([natXmlBack.measures[0].slots[0]?.chord?.alt, natXmlBack.measures[0].slots[1]?.chord?.alt]));
+	const rtXmlSong = { ...altXmlSong, measures: altXmlSong.measures.map((m, i) => i === 0 ? { ...m, endBar: "repeatEnd", repeatTimes: 3 } : m) };
+	const rtXml = exportMusicXml(rtXmlSong, () => C);
+	A("MusicXML 导出反复 times 属性", rtXml.includes('<repeat direction="backward" times="3"/>'));
+	const rtXmlBack = importMusicXml(rtXml, "rt");
+	A("MusicXML 导入认 times 遍数", rtXmlBack.measures[0].endBar === "repeatEnd" && rtXmlBack.measures[0].repeatTimes === 3);
 	const qOnlySong = { ...altXmlSong, measures: altXmlSong.measures.map((m, i) => i === 0
 		? { ...m, slots: [{ kind: "chord", chord: { degree: 1, acc: 0, quality: "maj9", bass: null } }, { kind: "chord", chord: { degree: 2, acc: 0, quality: "m7-5", bass: null } }, { kind: "chord", chord: { degree: 7, acc: 0, quality: "dim7", bass: null } }, { kind: "empty" }] } : m) };
 	const qXmlBack = importMusicXml(exportMusicXml(qOnlySong, () => C), "x");

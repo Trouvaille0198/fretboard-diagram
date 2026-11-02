@@ -228,6 +228,7 @@ function encodeMeasure(m) {
 	if (m.lyrics) o.L = m.lyrics;
 	// 加粗区间走对象标签 {r:[...]}:旧版解码器对未知数组标签会误读成变化音,对象则被整体忽略(fig 同款教训)
 	if (m.lyricsBold?.length) o.LB = { r: m.lyricsBold };
+	if (m.repeatTimes > 1) o.RP = { n: m.repeatTimes }; // 反复遍数(>1 才存;默认 2 遍即标准反复)
 	if (m.repeatStart) o.R = 1;
 	if (m.endBar && m.endBar !== "single") o.E = m.endBar;
 	if (m.house) o.H = m.house;
@@ -310,6 +311,7 @@ function decodeMeasure(o) {
 		slots: (o.p || []).map(decodeSlot)
 	};
 	if (Array.isArray(o.LB?.r)) m.lyricsBold = o.LB.r.filter(x => Array.isArray(x) && Number.isFinite(x[0]) && Number.isFinite(x[1]));
+	if (o.RP && Number.isFinite(o.RP.n) && o.RP.n > 1) m.repeatTimes = o.RP.n;
 	if (o.K) { m.keyRoot = o.K[0]; m.keyMinor = !!o.K[1]; }
 	if (o.T) m.tint = o.T;
 	return m;

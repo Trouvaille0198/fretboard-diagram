@@ -4528,6 +4528,18 @@ g.drag-fx-layer circle[stroke-dasharray] {
     left: 14px;
 }
 
+/* 反复遍数标识（反复结束线 ×N）：浮在小节右上角，随反复结束线出现 */
+.cc-repeat-times {
+    position: absolute;
+    top: 2px;
+    right: 8px;
+    color: var(--app-accent-text);
+    font-size: var(--app-fs-xs);
+    font-weight: 700;
+    pointer-events: none;
+    z-index: 2;
+}
+
 /* 跳房子：小节上方数字+短横 */
 .cc-house {
     font-size: var(--app-fs-xs);

@@ -1487,6 +1487,9 @@ export function ChordChartView({ songId }) {
 				) : null}
 				{m.repeatStart ? <span className="cc-bardots start" /> : null}
 				{m.endBar === "repeatEnd" ? <span className="cc-bardots end" /> : null}
+				{m.endBar === "repeatEnd" && m.repeatTimes > 1 ? (
+					<span className="cc-repeat-times" title={`此反复段共 ${m.repeatTimes} 遍`}>×{m.repeatTimes}</span>
+				) : null}
 				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格上方，拍格自身不受图影响，记号永远同线） */}
 				{figOpts.mode === "inline" ? (
 					<div className={`cc-cell-figs${rowHasFig ? " pad" : ""}`}>
@@ -1555,6 +1558,20 @@ export function ChordChartView({ songId }) {
 						<div className="cc-mmenu-row">
 							<button className={m.repeatStart ? "on" : ""} title={ts.repeatStart ?? "反复开始"}
 								onClick={() => patchMeasure(mi, x => ({ ...x, repeatStart: !x.repeatStart }))}>‖: {ts.repeatStart ?? "反复开始"}</button>
+						</div>
+						<div className="cc-mmenu-label">{ts.repeatTimesLabel ?? "反复遍数"}</div>
+						<div className="cc-mmenu-row">
+							{[2, 3, 4, 5].map(n => (
+								<button key={n} className={(m.repeatTimes || 2) === n ? "on" : ""}
+									title={n === 2 ? (ts.repeatDefaultTip ?? "默认：反复 2 遍（取消自定义遍数）") : `反复 ${n} 遍（自动设反复结束线）`}
+									onClick={() => patchMeasure(mi, x => ({
+										...x,
+										repeatTimes: (x.repeatTimes || 2) === n ? undefined : n,
+										endBar: (x.repeatTimes || 2) === n ? x.endBar : "repeatEnd", // 设遍数即设反复结束线，标识立即生效
+									}))}>
+									×{n}
+								</button>
+							))}
 						</div>
 						<div className="cc-mmenu-label">{ts.houseLabel ?? "跳房子"}</div>
 						<div className="cc-mmenu-row">
