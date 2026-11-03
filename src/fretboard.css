@@ -4548,12 +4548,11 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cell-figslot:not(.paired) .cc-figview svg { max-width: 120%; flex: none; }
 /* 跨拍图：svg 几何已按整段宽生成，宽度直接撑满(纵横比与段盒一致，不变形)，不再溢出 */
 .cc-cell-figslot[data-span] .cc-figview svg { width: 100%; max-width: 100%; }
-/* 跨小节图（简略模式）：段宽含下一小节开头空组，svg 溢出本小节格渲染（--cc-cross-w = 实测整段宽）；
-   被跨区域属于下一小节的空图行——图行容器不拦指针（点击穿透到溢出的图，空行本身无任何交互） */
+/* 跨小节图（简略模式）：段宽含下一小节开头空组，svg 溢出本小节格渲染（--cc-cross-w = 实测整段宽）。
+   溢出部分压在下一小节空图行之上（图槽是定位元素，命中测试本就优先于静态内容），
+   不需要 pointer-events 穿透——那会让点击穿透到格子本身、误开和弦菜单（实测踩雷） */
 .cc-cell-figslot[data-cross] .cc-figview { flex: none; width: var(--cc-cross-w); justify-content: flex-start; }
 .cc-cell-figslot[data-cross] .cc-figview svg { width: 100%; max-width: 100%; }
-.cc-cell-figs { pointer-events: none; }
-.cc-cell-figs .cc-figview { pointer-events: auto; }
 
 .cc-cell-slots {
     display: flex;
