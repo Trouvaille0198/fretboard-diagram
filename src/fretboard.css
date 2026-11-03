@@ -8150,8 +8150,10 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .figbe-shapes {
-    border-top: 1px solid var(--app-line);
-    padding-top: 8px;
+    /* 与上方 连线/预览 块同一观感：边框块容器，不再裸浮在弹窗底上 */
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius-sm);
+    padding: 10px 12px;
     flex: 0 1 auto;
     overflow-y: auto;
     min-height: 0;

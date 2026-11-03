@@ -1713,6 +1713,13 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							onClick={() => setLyricsOn(v => !v)}>
 							{ts.lyricsToggle ?? "歌词"}
 						</button>
+						{/* 新增一行：从 ⚙ 二级面板上移到设置条里，样式与相邻按钮统一 */}
+						{editing ? (
+							<button className="cc-compact-btn" title={ts.addRowTip ?? "在谱尾新增一整行空小节（末行残缺先补满）"}
+								onClick={() => addRow()}>
+								＋ {ts.addRow ?? "新增一行"}
+							</button>
+						) : null}
 						{/* 生效调：谱中转调真正起作用时才出现，避免"改了却看不出" */}
 						{(() => {
 							const ek = keyAt(cursor.mi);
@@ -1737,8 +1744,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 											options={[2, 3, 4, 6].map(b => ({ value: b, label: b + "/4" }))} />
 									</span>
 								</div>
-								{/* BPM 设置行已随播放/发声功能移除：song.bpm 字段保留（工程文件/分享码兼容），界面不再可改 */}
-								{editing ? <button className="cc-settings-rowbtn" onClick={() => { addRow(); setSettingsOpen(false); }}>＋ {ts.addRow ?? "新增一行"}</button> : null}
+									{/* BPM 设置行已随播放/发声功能移除：song.bpm 字段保留（工程文件/分享码兼容），界面不再可改；新增一行已上移到歌名旁 */}
 							</div>
 							<div className="cc-settings-group">
 								<div className="cc-settings-label">{ts.gFigures ?? "和弦图"}</div>
