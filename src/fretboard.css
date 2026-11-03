@@ -6768,7 +6768,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 }
 
 .cc-page .cc-line {
-    margin-bottom: 18px; /* 行间呼吸空间：图行变高后 12px 显挤 */
+    margin-bottom: 28px; /* 行间呼吸空间：内嵌图行变高后 18px 仍显挤，行与行之间再放开些 */
 }
 
 .cc-page .cc-cell-slots {

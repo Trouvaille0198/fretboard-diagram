@@ -616,6 +616,15 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("调内 vs 和弦内:点径全等、点数同、仅数字不同", dotRadii(sS).join(",") === dotRadii(sC).join(",") && degTexts(sC).join(",") === "5,b3,R,5,R" && degTexts(sS).length === degTexts(sC).length);
 	A("调内渲染:数字跟着调走(G 大调 → 6,4,2,6,2)", degTexts(figSvg(fa, { degMode: "scale", key: { root: 7, minor: false } })).join(",") === "6,4,2,6,2");
 	A("调内渲染:缺 key 不崩、无度数素点", !degTexts(figSvg(fa, { degMode: "scale" })).length);
+	// 连线三预设如实成形:以前 boardFigData 只带端点、figSvg 一律画弧——直线成了弧、箭头全丢
+	const lnConn = { "f0-s1": N(), "f2-s2": N(), connections: { "conn-x": { startNoteId: "f0-s1", endNoteId: "f2-s2", type: "line", arrowDirection: "none" } } };
+	const svgLn = figSvg(boardFigData(lnConn, null, KEY), {});
+	A("连线:line 预设=直线(L 段,无弧无箭头)", /<path d="M [\d.]+ [\d.]+ L [\d.]+ [\d.]+"/.test(svgLn) && !svgLn.includes(" C ") && !svgLn.includes("<polygon"));
+	const arcConn = { ...lnConn, connections: { "conn-x": { startNoteId: "f0-s1", endNoteId: "f2-s2", type: "arc", arrowDirection: "end" } } };
+	const svgArc = figSvg(boardFigData(arcConn, null, KEY), {});
+	A("连线:arc 预设=弧(C 段)+末端箭头(贴点边缘的 polygon)", svgArc.includes(" C ") && /<polygon points="/.test(svgArc));
+	const arrowLn = { ...lnConn, connections: { "conn-x": { startNoteId: "f0-s1", endNoteId: "f2-s2", type: "line", arrowDirection: "end" } } };
+	A("连线:line+箭头=直线段+三角箭头", /<path d="M [\d.]+ [\d.]+ L [\d.]+ [\d.]+"/.test(figSvg(boardFigData(arrowLn, null, KEY), {})) && svgArc.includes("<polygon"));
 
 	// 跨拍拉宽(boxW/boxH):内嵌图行右邻空槽时图撑满整段——两轴格距独立,只加宽不加高;
 	// 点径/字号取紧轴 → 与不拉宽时的渲染尺寸(CSS 缩放到同一高度后)完全一致;盒宽不够自然比例 → 忽略盒子(绝不压扁)

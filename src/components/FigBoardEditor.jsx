@@ -458,7 +458,8 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
                 Object.values(data.connections || {}).forEach(c => {
                   const idOf = (nid) => { const m = /^(?:o|f(-?\d+))-s(\d)$/.exec(nid); return m ? { string: +m[2], fret: m[1] === undefined ? 0 : +m[1] + 1 } : null; };
                   const a = idOf(c.startNoteId), b = idOf(c.endNoteId);
-                  if (a && b) links.push({ a, b });
+                  // 样式随主板预设带入(直线/弧、箭头)——与 boardFigData 同口径
+                  if (a && b) links.push({ a, b, type: c.type === 'arc' ? 'arc' : 'line', arrowDirection: c.arrowDirection || 'none' });
                 });
                 return figSvg({ points: pts, links, startFret, window, rootPc: null, fail: !pts.length }, figOpts || { degMode: 'chord' });
               })(),

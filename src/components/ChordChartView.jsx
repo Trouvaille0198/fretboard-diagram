@@ -200,20 +200,19 @@ export function ChordChartView({ songId }) {
 	const fileRef = useRef(null);
 
 	// 指法小图(黑点格)全局展示设置:方向/度数/尺寸/模式;localStorage 持久化
-	// 尺寸档位 112/144/176；旧档(88/104/128)读入时升级到最近的新档
-	// 模式默认"悬浮"（谱面紧凑，hover 拍看大图；内嵌会把整行谱面撑高）。
-	// figV 2：一次性把 v48 时代默认的 inline 迁到 hover，之后用户自己选的 inline 不再覆盖
+	// 尺寸档位 112/144/176；旧档(88/104/128)读入时升级到最近的新档。尺寸只在悬浮模式生效(内嵌档位随拍宽自适应)
+	// figV 3:默认改回"内嵌+横向+和弦内"(内嵌是产品主形态,横向贴近谱面阅读方向);一次性覆盖旧存储(figV2 时代的自选也重置),之后用户再选不覆盖
 	const [figOpts, setFigOpts] = useState(() => {
 		try {
 			const v = JSON.parse(localStorage.getItem("fretboard-figopts") || "null");
 			if (v && v.orientation) {
 				if (!FIG_SIZES.includes(v.size)) v.size = v.size <= 88 ? FIG_SIZES[0] : (v.size <= 104 ? FIG_SIZES[1] : FIG_SIZES[2]);
-				if (v.figV !== 2) { v.mode = "hover"; v.figV = 2; }
-				else if (v.mode !== "inline" && v.mode !== "hover") v.mode = "hover";
+				if (v.figV !== 3) { v.mode = "inline"; v.orientation = "h"; v.degMode = "chord"; v.figV = 3; }
+				else if (v.mode !== "inline" && v.mode !== "hover") v.mode = "inline";
 				return v;
 			}
 		} catch (e) { /* 忽略 */ }
-		return { orientation: "v", degMode: "chord", size: 144, mode: "hover", figV: 2 };
+		return { orientation: "h", degMode: "chord", size: 144, mode: "inline", figV: 3 };
 	});
 	useEffect(() => { try { localStorage.setItem("fretboard-figopts", JSON.stringify(figOpts)); } catch (e) { /* 忽略 */ } }, [figOpts]);
 
@@ -1849,11 +1848,14 @@ export function ChordChartView({ songId }) {
 												<button className={figOpts.degMode === "none" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "none" }))}>{ts.degNone ?? "无"}</button>
 											</span>
 										</div>
-										<div className="cc-settings-row"><span className="cc-settings-k">{ts.figSize ?? "尺寸"}</span>
-											<span className="cc-settings-seg">
-												{FIG_SIZES.map(s2 => <button key={s2} className={figOpts.size === s2 ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, size: s2 }))}>{s2}</button>)}
-											</span>
-										</div>
+										{/* 尺寸只在悬浮模式生效(内嵌的图随拍宽/半拍简版自适应,给这个档位是无效控件) */}
+										{figOpts.mode === "hover" ? (
+											<div className="cc-settings-row"><span className="cc-settings-k">{ts.figSize ?? "尺寸"}</span>
+												<span className="cc-settings-seg">
+													{FIG_SIZES.map(s2 => <button key={s2} className={figOpts.size === s2 ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, size: s2 }))}>{s2}</button>)}
+												</span>
+											</div>
+										) : null}
 										<div className="cc-settings-row"><span className="cc-settings-k">{ts.figMode ?? "展示"}</span>
 											<span className="cc-settings-seg">
 												<button className={figOpts.mode === "inline" ? "on" : ""} title={ts.inlineTip ?? "图行显示在拍格上方（同行占位，记号同线）"} onClick={() => setFigOpts(o => ({ ...o, mode: "inline" }))}>{ts.modeInline ?? "内嵌"}</button>
