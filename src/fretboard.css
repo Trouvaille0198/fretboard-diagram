@@ -3367,8 +3367,8 @@ g.drag-fx-layer circle[stroke-dasharray] {
     gap: 18px;
     height: 46px;
     padding: 0 16px;
-    position: sticky;
-    top: 0;
+    /* 不吸顶（用户明确要求）：常驻可见的只有和弦谱页的 tab+设置行（.cc-toolbar sticky），
+       普通/动图/谱子 顶栏随下滚自然离开。z-index 仍保留：覆盖同层的谱面内容 */
     z-index: 1200;
     background: var(--app-panel);
     backdrop-filter: blur(10px);
