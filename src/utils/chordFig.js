@@ -278,9 +278,20 @@ export function figSvg(fig, opts = {}) {
 			// 变化音用 ASCII b/#(与调内写法一致):♭/♯ 在 Segoe UI 等正文字体里没有字形,会掉到衬线符号字体——
 			// 又细又宽还带空隙,与粗体数字不搭;整段普通字体同字号,数字也不会被挤小
 			const label = deg.replace(/♭/g, "b").replace(/♯/g, "#");
-			// 字号按字数顶满点径不溢出:单字 1.9r(大写高≈点径 2/3),双字 1.5r(最宽的 #4 墨迹宽≈点径 85%),更多按比例缩
-			const fs = r * (label.length === 1 ? 1.9 : label.length === 2 ? 1.5 : 3 / label.length);
-			svg += `<text x="${x.toFixed(2)}" y="${(y + fs * 0.36).toFixed(2)}" font-size="${fs.toFixed(2)}" font-weight="700" fill="${th.ink}" text-anchor="middle">${label}</text>`;
+			const acc = /^([b#])(\d)$/.exec(label);
+			if (acc) {
+				// 带升降号的度数(b3/#4):升降号缩小(1.05r)、数字放大(1.8r,接近单字的 1.9r)——
+				// 原先两字同为 1.5r,升降号喧宾夺主、数字反而小。总墨迹宽 ≈0.55r+1.08r=1.63r,仍在点径(2r)内;
+				// 升降号用 dy 抬到数字中线附近(两者高度差的 0.35),第二个 tspan 用 dy 回到基线
+				const fsD = r * 1.8, fsA = r * 1.05;
+				const lift = (0.35 * (fsD - fsA)).toFixed(2);
+				svg += `<text x="${x.toFixed(2)}" y="${(y + fsD * 0.36).toFixed(2)}" font-weight="700" fill="${th.ink}" text-anchor="middle">` +
+					`<tspan font-size="${fsA.toFixed(2)}" dy="-${lift}">${acc[1]}</tspan><tspan font-size="${fsD.toFixed(2)}" dy="${lift}">${acc[2]}</tspan></text>`;
+			} else {
+				// 字号按字数顶满点径不溢出:单字 1.9r(大写高≈点径 2/3),双字 1.5r(最宽的 #4 墨迹宽≈点径 85%),更多按比例缩
+				const fs = r * (label.length === 1 ? 1.9 : label.length === 2 ? 1.5 : 3 / label.length);
+				svg += `<text x="${x.toFixed(2)}" y="${(y + fs * 0.36).toFixed(2)}" font-size="${fs.toFixed(2)}" font-weight="700" fill="${th.ink}" text-anchor="middle">${label}</text>`;
+			}
 		}
 	});
 	// 编辑态:全部格位铺白点暗圆(点击目标)

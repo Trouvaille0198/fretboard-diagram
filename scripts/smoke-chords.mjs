@@ -622,9 +622,13 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("度数:调内(C 大调, A=6 G=5 C=1)", degreeLabel(4, 0, "scale", null, KEY) === "6" && degreeLabel(2, 0, "scale", null, KEY) === "5" && degreeLabel(1, 1, "scale", null, KEY) === "1");
 	// 调内 vs 和弦内:同一张图两种模式走同一条渲染路径——点径/字重/墨色全等,只有数字换成相对谱面调的 1-7;
 	// 调随小节走(G 大调下同一把 Am 的音变 2/4/6);不给 key 不崩、退化为素点(FigView 必须透传 key 才有度数)
-	const degTexts = (s) => [...s.matchAll(/<text [^>]*font-weight="700"[^>]*>([^<]*)<\/text>/g)].map(m => m[1]);
+	// 度数文本:带升降号的度数拆成两个 tspan(升降号小、数字大),这里剥标签取纯文本
+	const degTexts = (s) => [...s.matchAll(/<text [^>]*font-weight="700"[^>]*>(.*?)<\/text>/g)].map(m => m[1].replace(/<[^>]+>/g, ""));
 	const dotRadii = (s) => [...s.matchAll(/<circle [^>]*r="([\d.]+)" fill="#e8eef4"\/>/g)].map(m => m[1]);
 	const sC = figSvg(fa, { degMode: "chord" }), sS = figSvg(fa, { degMode: "scale", key: KEY });
+	// b3:升降号 tspan 字号明显小于数字 tspan(1.05r vs 1.8r),数字比原先双字同号(1.5r)更大
+	const b3 = /<tspan font-size="([\d.]+)"[^>]*>b<\/tspan><tspan font-size="([\d.]+)"[^>]*>3<\/tspan>/.exec(sC);
+	A("度数 b3:升降号小、数字大(升降号/数字 ≈ 0.58,数字 ≥ 1.8r)", !!b3 && +b3[1] / +b3[2] < 0.6 && +b3[2] >= +dotRadii(sC)[0] * 1.79);
 	A("调内渲染:数字=相对 C 大调(x02210 → 3,1,6,3,6)", degTexts(sS).join(",") === "3,1,6,3,6");
 	A("调内 vs 和弦内:点径全等、点数同、仅数字不同", dotRadii(sS).join(",") === dotRadii(sC).join(",") && degTexts(sC).join(",") === "5,b3,R,5,R" && degTexts(sS).length === degTexts(sC).length);
 	A("调内渲染:数字跟着调走(G 大调 → 6,4,2,6,2)", degTexts(figSvg(fa, { degMode: "scale", key: { root: 7, minor: false } })).join(",") === "6,4,2,6,2");
