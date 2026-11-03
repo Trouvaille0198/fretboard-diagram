@@ -4012,10 +4012,14 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 /* Q 复制模式：模式条 + 选区段高亮（整段一个框）+ 非选区淡出 */
 .cc-copybar {
+    /* 复制模式操作条：与钉顶工具行一起常驻（top = 工具行实测高度，JS 写入 --cc-toolbar-h） */
+    position: sticky;
+    top: var(--cc-toolbar-h, 90px);
+    z-index: 590;
     display: flex;
     align-items: center;
     gap: 10px;
-    background: var(--cc-accent-weak, rgba(61, 139, 255, 0.12));
+    background: linear-gradient(rgba(61, 139, 255, 0.16), rgba(61, 139, 255, 0.16)), var(--app-panel, #10161c);
     border: 1px solid var(--cc-accent, #3d8bff);
     border-radius: var(--app-radius-sm);
     padding: 7px 12px;
