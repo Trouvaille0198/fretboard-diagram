@@ -8,8 +8,7 @@ import { UiSelect } from "./UiSelect";
 import { Toast } from "./Toast";
 import audioService from "../services/audioService";
 
-// 指法小图尺寸档位（汇总行可切）
-const FIG_SIZES = [112, 144, 176];
+// 指法小图尺寸档位移到 chordChartModel（与每谱一份的展示设置同住）
 
 // 该拍单元真的画得出指法图（和弦/延音拍 + 至少一个可见音；与 FigView 的判定同口径）——
 // 空 fig 对象画不出东西，它的槽位算"没图"，左邻的图可以跨过来拉宽
@@ -37,7 +36,8 @@ import { ChordSign } from "./ChordSign";
 import { KeyPicker } from "./KeyPicker";
 import {
 	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong, deleteBeatInSong,
-	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText, normalizeBoldRanges, toggleBoldRange, collectSameChordFigs
+	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText, normalizeBoldRanges, toggleBoldRange, collectSameChordFigs,
+	FIG_SIZES, defaultFigOpts, normalizeFigOpts
 } from "../utils/chordChartModel";
 import { buildPlayPlan } from "../utils/chartPlayback";
 import { remoteIsNewer } from "../utils/syncEngine";
@@ -199,22 +199,22 @@ export function ChordChartView({ songId }) {
 	};
 	const fileRef = useRef(null);
 
-	// 指法小图(黑点格)全局展示设置:方向/度数/尺寸/模式;localStorage 持久化
-	// 尺寸档位 112/144/176；旧档(88/104/128)读入时升级到最近的新档。尺寸只在悬浮模式生效(内嵌档位随拍宽自适应)
-	// figV 3:默认改回"内嵌+横向+和弦内"(内嵌是产品主形态,横向贴近谱面阅读方向);一次性覆盖旧存储(figV2 时代的自选也重置),之后用户再选不覆盖
-	const [figOpts, setFigOpts] = useState(() => {
+	// 和弦图展示设置(方向/度数/尺寸/展示模式):每谱一份,存 song.figOpts——随谱走账号同步/工程文件/分享码,
+	// 两台设备打开同一首谱子渲染一致;不再是全局一份 localStorage。
+	// 老谱没有该字段时回退旧全局种子(各设备沿用自己最后一次的全局选择),第一次改动即写进谱子开始随谱同步。
+	// 尺寸只在悬浮模式生效(内嵌图随拍宽自适应);figV=3 默认 内嵌+横向+和弦内
+	const figSeed = useMemo(() => {
 		try {
 			const v = JSON.parse(localStorage.getItem("fretboard-figopts") || "null");
-			if (v && v.orientation) {
-				if (!FIG_SIZES.includes(v.size)) v.size = v.size <= 88 ? FIG_SIZES[0] : (v.size <= 104 ? FIG_SIZES[1] : FIG_SIZES[2]);
-				if (v.figV !== 3) { v.mode = "inline"; v.orientation = "h"; v.degMode = "chord"; v.figV = 3; }
-				else if (v.mode !== "inline" && v.mode !== "hover") v.mode = "inline";
-				return v;
-			}
+			if (v && v.orientation) return normalizeFigOpts(v);
 		} catch (e) { /* 忽略 */ }
-		return { orientation: "h", degMode: "chord", size: 144, mode: "inline", figV: 3 };
+		return defaultFigOpts();
+	}, []);
+	const figOpts = normalizeFigOpts(song.figOpts || figSeed);
+	const setFigOpts = (updater) => setSong(s => {
+		const base = s.figOpts || figSeed;
+		return { ...s, figOpts: normalizeFigOpts(typeof updater === "function" ? updater(base) : updater) };
 	});
-	useEffect(() => { try { localStorage.setItem("fretboard-figopts", JSON.stringify(figOpts)); } catch (e) { /* 忽略 */ } }, [figOpts]);
 
 	// 简略模式：每两拍并成一格展示（双和弦并成反拍对；本身是反拍的只留前半）——谱面更紧凑，纯显示层不动数据
 	const [compactView, setCompactView] = useState(() => {

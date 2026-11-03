@@ -135,7 +135,31 @@ export function createSong(name = "未命名") {
 		enharmonic: 1,
 		rowsPerLine: 4,
 		colorScheme: "navy",
+		figOpts: defaultFigOpts(),
 		measures: [0, 1, 2, 3].map(() => createMeasure(4)) // 新歌给满一行
+	};
+}
+
+// 和弦图展示设置：每谱一份（song.figOpts），随谱走账号同步 / 工程文件 / 分享码——
+// 不再是全局一份：两台设备打开同一首谱子，图的样子应当一致，而不是各按各的全局偏好渲染
+export const FIG_SIZES = [112, 144, 176];
+export const FIG_OPTS_V = 3;
+export function defaultFigOpts() {
+	return { orientation: "h", degMode: "chord", size: 144, mode: "inline", figV: FIG_OPTS_V };
+}
+// 白名单清洗：localStorage / 服务端 / 工程文件来的值不可信，缺的补默认、错的回默认，坏数据不炸渲染
+export function normalizeFigOpts(v) {
+	const d = defaultFigOpts();
+	if (!v || typeof v !== "object") return d;
+	const size = FIG_SIZES.includes(v.size) ? v.size
+		: Number.isFinite(v.size) ? (v.size <= 88 ? FIG_SIZES[0] : v.size <= 104 ? FIG_SIZES[1] : FIG_SIZES[2])
+		: d.size;
+	return {
+		orientation: v.orientation === "v" || v.orientation === "h" ? v.orientation : d.orientation,
+		degMode: v.degMode === "chord" || v.degMode === "scale" || v.degMode === "none" ? v.degMode : d.degMode,
+		size,
+		mode: v.mode === "inline" || v.mode === "hover" ? v.mode : d.mode,
+		figV: FIG_OPTS_V,
 	};
 }
 

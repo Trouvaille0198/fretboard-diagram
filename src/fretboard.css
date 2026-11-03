@@ -4205,7 +4205,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     border: 1px solid transparent;
     border-radius: 6px;
     color: var(--app-text);
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 700;
     text-align: center;
     padding: 2px 10px;
