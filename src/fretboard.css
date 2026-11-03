@@ -4882,6 +4882,10 @@ html[data-theme="light"] .cc-page {
     background: var(--app-panel-soft);
 }
 
+.cc-mmenu-row button.danger {
+    color: var(--app-danger);
+}
+
 /* 选中联动脉冲 */
 @keyframes ccPulse {
     0% {
