@@ -1535,9 +1535,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					setCellMenu(cellMenu === mi ? null : mi);
 				}}
 				onClick={e => {
-					if (copyMode || !editing) return;
-					// 图行(含占位带)不算小节空白：内嵌模式下它是拍框上方一大片，点到不该当"点了这小节"开菜单——菜单只认拍框
-					if (e.target.closest(".cc-beat, .cc-cell-lyrics, .cc-mmenu, .cc-cell-figs")) return;
+				if (copyMode || !editing) return;
+				// 图行(含占位带)/角标带不算小节空白：内嵌模式下它们是拍框上方一大片，点到不该当"点了这小节"开菜单——菜单只认拍框
+				if (e.target.closest(".cc-beat, .cc-cell-lyrics, .cc-mmenu, .cc-cell-figs, .cc-cell-tags")) return;
 					const firstEmpty = m.slots.findIndex(sl => (sl.split ? sl.split.every(u => u.kind !== "chord") : sl.kind !== "chord"));
 					const si = firstEmpty === -1 ? 0 : firstEmpty;
 					setCursor({ mi, si, half: null });
