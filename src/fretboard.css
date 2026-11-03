@@ -8374,9 +8374,10 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 /* ============ 段落跳转悬浮钮（右上角常驻圆形，hover 展开全曲段落标记；点击滚到对应行） ============ */
 .cc-nav-float {
     position: fixed;
-    top: 62px;
-    right: 14px;
-    z-index: 550; /* 高过谱面内容与钉顶行内容，低于弹窗遮罩(1300) */
+    /* 蹲进钉顶工具行的右端（⋯ 按钮左侧空位）——与行同高常驻可见，永不被行盖住 */
+    top: 7px;
+    right: 64px;
+    z-index: 650; /* 高过钉顶工具行(600)，低于弹窗遮罩(1300) */
 }
 
 .cc-nav-float-btn {
