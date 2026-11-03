@@ -1886,7 +1886,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						</div>
 					</span>
 				) : null}
-				) : null}
 					</div>
 				{editing && toolTab !== "chord" ? (
 					<div className="cc-tools-row">
