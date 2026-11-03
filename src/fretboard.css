@@ -8375,41 +8375,39 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     50% { opacity: 1; }
 }
 
-/* ============ 段落跳转悬浮钮（右上角常驻圆形，hover 展开全曲段落标记；点击滚到对应行） ============ */
-.cc-nav-float {
-    position: fixed;
-    /* 蹲进钉顶工具行的右端（⋯ 按钮左侧空位）——与行同高常驻可见，永不被行盖住 */
-    top: 7px;
-    right: 64px;
-    z-index: 650; /* 高过钉顶工具行(600)，低于弹窗遮罩(1300) */
+/* ============ 段落跳转 ¶ 钮（tab 行内嵌，hover 展开全曲段落标记；点击滚到对应行） ============ */
+.cc-nav-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
 }
 
-.cc-nav-float-btn {
-    width: 40px;
-    height: 40px;
+.cc-nav-btn {
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: 1px solid var(--app-line-strong);
-    background: var(--app-panel-strong, #10161c);
-    color: var(--app-text);
-    font-size: 16px;
+    background: transparent;
+    color: var(--app-text-soft);
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: border-color 0.12s, color 0.12s;
 }
 
-.cc-nav-float-btn:hover {
+.cc-nav-btn:hover,
+.cc-nav-btn.on {
     border-color: var(--app-control-thumb-border, #e4a54b);
     color: var(--app-control-thumb-border, #e4a54b);
 }
 
-.cc-nav-float-menu {
-    /* 开合由 JS 状态驱动（display 由组件内联给出），不再用 :hover——缝隙一过菜单即消失 */
+.cc-nav-menu {
     position: absolute;
+    top: calc(100% + 4px);
     right: 0;
-    top: 40px;
     min-width: 180px;
     max-height: 50vh;
     overflow-y: auto;
@@ -8421,7 +8419,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     z-index: 560;
 }
 
-.cc-nav-float-menu button {
+.cc-nav-menu button {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -8437,7 +8435,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     font-size: var(--app-fs-sm);
 }
 
-.cc-nav-float-menu button:hover {
+.cc-nav-menu button:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
@@ -8445,6 +8443,12 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cc-nav-mi {
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: var(--app-fs-xs);
     white-space: nowrap;
 }
 
