@@ -1459,6 +1459,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					// 右键小节 = 打开小节设置（替代原来那个悬浮 ⋯ 小按钮）；菜单内右键不劫持
 					if (!editing || copyMode) return;
 					if (e.target.closest(".cc-mmenu")) return;
+					// 右键与左键同规矩：菜单触发只认拍框——图行/角标带/歌词/小节空白右键不弹本菜单
+					//（含小节颜色等整格操作）；也不拦浏览器原生菜单
+					if (!e.target.closest(".cc-beat")) return;
 					e.preventDefault();
 					const firstEmpty = m.slots.findIndex(sl => (sl.split ? sl.split.every(u => u.kind !== "chord") : sl.kind !== "chord"));
 					setCursor({ mi, si: cursor.mi === mi ? Math.min(cursor.si, m.slots.length - 1) : (firstEmpty === -1 ? 0 : firstEmpty), half: null });
