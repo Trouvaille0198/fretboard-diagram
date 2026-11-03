@@ -4429,6 +4429,14 @@ g.drag-fx-layer circle[stroke-dasharray] {
 /* 反复双点居中于拍格行（有图行时避开图行:图高+8 边距 + 拍格半高 29px） */
 .cc-cell:has(.cc-cell-figs.pad) .cc-bardots { top: calc(var(--cc-fig-h) + 37px); }
 
+/* 反复结束紧跟反复开始（同一条小节线）：两符号并成标准 :||:（点-细-粗-细-点）——
+   原先两套符号并排渲染成 :‖‖:，四条竖线挤在一处、双点甩在两端。开始侧只画细线（粗由结束侧担任），双点向中缝收拢 */
+.cc-cell.repeat-joint { padding-right: 8px; }
+.cc-cell.repeat-joint .cc-bardots.end { right: 9px; }
+.cc-cell.repeat-joint + .cc-cell { padding-left: 8px; }
+.cc-cell.repeat-joint + .cc-cell.rep-start::before { width: 1.5px; margin-left: 2.5px; box-shadow: none; }
+.cc-cell.repeat-joint + .cc-cell .cc-bardots.start { left: 9px; }
+
 /* ×N 标识：有图行时落到拍格行右上（结束圆点上方），无图行贴小节顶 */
 .cc-cell:has(.cc-cell-figs.pad) .cc-repeat-times { top: calc(var(--cc-fig-h) + 12px); }
 
