@@ -8406,10 +8406,10 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .cc-nav-float-menu {
-    display: none;
+    /* 开合由 JS 状态驱动（display 由组件内联给出），不再用 :hover——缝隙一过菜单即消失 */
     position: absolute;
     right: 0;
-    top: 46px;
+    top: 40px;
     min-width: 180px;
     max-height: 50vh;
     overflow-y: auto;
@@ -8419,10 +8419,6 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
     padding: 4px;
     z-index: 560;
-}
-
-.cc-nav-float:hover .cc-nav-float-menu {
-    display: block;
 }
 
 .cc-nav-float-menu button {
