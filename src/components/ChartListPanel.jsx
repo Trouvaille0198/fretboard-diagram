@@ -2,7 +2,8 @@ import React, { useMemo, useState } from "react";
 
 // 曲目面板：一处看全部谱子（名称/调/拍号/速度/小节数/更新时间），并就地新建、重命名、复制、删除、导入导出。
 // 之前这些只能挤在工具行「⋯」菜单里的一个 <select>，且预览态不可用——所以看起来像"没有曲目列表"。
-export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, onDelete, onRename, onImport, onImportCode, onExport, onTrash, onClose, t, variant }) {
+export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, onDelete, onRename, onImport, onImportCode, onExport, onTrash, onClose, t, variant,
+	sel, onToggleSel, onSelectAll, onClearSel, onExportSel, onDeleteSel }) {
 	const ts = t?.chords ?? {};
 	const [q, setQ] = useState("");
 	const [editingId, setEditingId] = useState(null);
@@ -56,15 +57,33 @@ export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, 
 							{charts.length === 0 ? (ts.noSongs ?? "还没有曲目，点「新歌」开始一首") : (ts.noMatch ?? "没有匹配的曲目")}
 						</div>
 					) : (
-						<div className="cc-songs-list">
-							{list.map(c => {
-								const cur = c.id === currentId;
-								const n = (c.measures || []).length;
-								const chords = (c.measures || []).reduce((a, m) => a + (m.slots || []).reduce((b, sl) => b + (sl.split ? sl.split.filter(u => u.kind === "chord").length : (sl.kind === "chord" ? 1 : 0)), 0), 0);
-								return (
-									<div key={c.id} className={`cc-song-row ${cur ? "cur" : ""}`}
-										onClick={() => { if (editingId !== c.id) onOpen(c.id); }}>
-										<div className="cc-song-main">
+						<>
+							{/* 批量操作条：勾了才出现（列表页）；全选=当前列表全部（含被搜索滤掉的整库?——就当前列表） */}
+							{page && onToggleSel && sel && sel.size > 0 ? (
+								<div className="cc-songs-batch">
+									<span className="cc-songs-batch-n">{(ts.selectedN ?? "已选 {n} 首").replace("{n}", String(sel.size))}</span>
+									<button className="button sm" onClick={onSelectAll}>{ts.selectAll ?? "全选"}</button>
+									<button className="button sm" onClick={onClearSel}>{ts.clearSel ?? "清空"}</button>
+									<span className="cc-flex" />
+									<button className="button sm accent" onClick={onExportSel}>⇩ {ts.batchExport ?? "批量导出"}</button>
+									<button className="button sm danger" onClick={onDeleteSel}>{ts.batchDel ?? "批量删除"}</button>
+								</div>
+							) : null}
+							<div className="cc-songs-list">
+								{list.map(c => {
+									const cur = c.id === currentId;
+									const n = (c.measures || []).length;
+									const chords = (c.measures || []).reduce((a, m) => a + (m.slots || []).reduce((b, sl) => b + (sl.split ? sl.split.filter(u => u.kind === "chord").length : (sl.kind === "chord" ? 1 : 0)), 0), 0);
+									return (
+										<div key={c.id} className={`cc-song-row ${cur ? "cur" : ""} ${sel?.has(c.id) ? "checked" : ""}`}
+											onClick={() => { if (editingId !== c.id) onOpen(c.id); }}>
+											{page && onToggleSel ? (
+												<input type="checkbox" className="cc-song-check" title={ts.checkTip ?? "勾选后用上方批量操作"}
+													checked={sel?.has(c.id) || false}
+													onClick={e => e.stopPropagation()}
+													onChange={e => onToggleSel(c.id, e.target.checked)} />
+											) : null}
+											<div className="cc-song-main">
 											{editingId === c.id ? (
 												<input autoFocus className="cc-song-rename" value={draft}
 													onChange={e => setDraft(e.target.value)}
@@ -101,9 +120,10 @@ export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, 
 												onClick={() => onDelete(c.id)}>✕</button>
 										</div>
 									</div>
-								);
-							})}
-						</div>
+									);
+								})}
+							</div>
+						</>
 					)}
 				</div>
 			</div>
