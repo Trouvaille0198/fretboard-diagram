@@ -1840,6 +1840,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							</div>
 						</div>
 						) : null}
+					</div>
 					<span className="cc-flex" />
 					{shared ? (
 						<button className="button sm accent" onClick={adoptShared} title={ts.sharedSaveTip ?? "存一份到自己的曲库，之后可以编辑"}>⬇ {ts.sharedSave ?? "保存到我的曲库"}</button>
@@ -1862,15 +1863,30 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 										<div className="cc-menu-sep" />
 										<button className="cc-menu-item" onClick={shareChart}>{ts.copyCode ?? "复制分享码"}</button>
 										<button className="cc-menu-item" onClick={doExportXml}>⇩ {ts.exportXml ?? "导出 MusicXML"}<small className="cc-menu-warn">{ts.lossyWarn ?? "配图/标色不带"}</small></button>
-									</div>
+								</div>
 								) : null}
 							</span>
 							<input ref={fileRef} type="file" accept=".fbchart,.musicxml,.xml,.txt" style={{ display: "none" }} onChange={doImportFile} />
 						</>
 					) : null}
+			{sections.length ? (
+				<div className="cc-nav-float"
+					onMouseEnter={() => { clearTimeout(navTimerRef.current); setNavOpen(true); }}
+					onMouseLeave={navCloseSoon}>
+					<button className="cc-nav-float-btn" title={ts.sectionNavTip ?? "段落跳转"}
+						onClick={() => setNavOpen(v => !v)}>¶</button>
+					<div className="cc-nav-float-menu" style={{ display: navOpen ? "block" : "none" }}
+						onMouseEnter={() => { clearTimeout(navTimerRef.current); }}>
+						{sections.map(s => (
+							<button key={s.mi} onClick={() => { jumpToSection(s.mi); setNavOpen(false); }}>
+								<span className="cc-nav-name">{s.name}</span>
+								<span className="cc-nav-mi">{ts.measureShort ? ts.measureShort(s.mi + 1) : `M${s.mi + 1}`}</span>
+							</button>
+						))}
+					</div>
 				</div>
+			) : null}
 				</div>
-				{/* 和弦页签没有行内工具：不渲染空容器（min-height 54px 的空白条会把悬浮钮盖住） */}
 				{editing && toolTab !== "chord" ? (
 					<div className="cc-tools-row">
 						{toolTab === "measure" ? (
@@ -2132,23 +2148,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			) : null}
 			{/* 段落跳转悬浮钮（右上角常驻，hover 展开全曲段落标记一览）。
 			    开合用 JS 状态 + 移出延迟关闭——纯 CSS :hover 有缝就断（按钮与菜单之间的空隙光标一过菜单即消失） */}
-			{sections.length ? (
-				<div className="cc-nav-float"
-					onMouseEnter={() => { clearTimeout(navTimerRef.current); setNavOpen(true); }}
-					onMouseLeave={navCloseSoon}>
-					<button className="cc-nav-float-btn" title={ts.sectionNavTip ?? "段落跳转"}
-						onClick={() => setNavOpen(v => !v)}>¶</button>
-					<div className="cc-nav-float-menu" style={{ display: navOpen ? "block" : "none" }}
-						onMouseEnter={() => { clearTimeout(navTimerRef.current); }}>
-						{sections.map(s => (
-							<button key={s.mi} onClick={() => { jumpToSection(s.mi); setNavOpen(false); }}>
-								<span className="cc-nav-name">{s.name}</span>
-								<span className="cc-nav-mi">{ts.measureShort ? ts.measureShort(s.mi + 1) : `M${s.mi + 1}`}</span>
-							</button>
-						))}
-					</div>
-				</div>
-			) : null}
 			{toast ? <Toast key={toast.key} message={toast.msg} onClose={() => setToast(null)} /> : null}
 		</div>
 	);
