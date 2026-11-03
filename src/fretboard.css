@@ -4208,6 +4208,9 @@ g.drag-fx-layer circle[stroke-dasharray] {
     text-align: center;
     padding: 2px 10px;
     width: 280px;
+    /* 歌名在谱面上方居中（独立于 tab 行） */
+    display: block;
+    margin: 0 auto 14px;
 }
 
 .cc-score-title:hover,

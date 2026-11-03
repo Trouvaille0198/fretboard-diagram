@@ -1778,10 +1778,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							</div>
 						</div>
 						) : null}
-					<input className="cc-score-title" value={song.name} readOnly={!editing}
-						onChange={e => setSong(s => ({ ...s, name: e.target.value }))}
-						onBlur={() => { if (dirtyRef.current) persistNow(); }} // 改名瞬间落盘：点"回列表"时先失焦，立刻存住
-						onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); persistNow(); e.target.blur(); } }} />
 					<span className="cc-flex" />
 					{shared ? (
 						<button className="button sm accent" onClick={adoptShared} title={ts.sharedSaveTip ?? "存一份到自己的曲库，之后可以编辑"}>⬇ {ts.sharedSave ?? "保存到我的曲库"}</button>
@@ -1912,6 +1908,11 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 
 			<div className="cc-body" style={!editing && viewTab === "dynamic" ? { display: "none" } : undefined}>
 				<div className="cc-score" ref={scoreRef}>
+					{/* 歌名仍在原位（谱面上方居中，24px）——不进 tab 行 */}
+					<input className="cc-score-title" value={song.name} readOnly={!editing}
+						onChange={e => setSong(s => ({ ...s, name: e.target.value }))}
+						onBlur={() => { if (dirtyRef.current) persistNow(); }} // 改名瞬间落盘：点"回列表"时先失焦，立刻存住
+						onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); persistNow(); e.target.blur(); } }} />
 
 					{copyMode ? (
 						<div className="cc-copybar">
