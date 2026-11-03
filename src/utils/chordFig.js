@@ -35,10 +35,13 @@ export function degreeLabel(string, fret, mode, rootPc, key) {
 
 // ============ 普通图数据 → 竖式小图数据 ============
 
+// 幽灵音符（划音起点）：可见性透明、无实色——主编辑器"从空音符拖到相邻一品实音"的半音划音手势产生
+const isGhostNote = (n) => !!n && (!n.color || n.color === "white") && n.color2 == null;
+
 // data = 普通图 data(noteId→noteData + connections);产出:
-// { points: [{string, fret, id}], links: [{a:{string,fret}, b:{string,fret}, type:'line'|'arc', arrowDirection:'none'|'end'|'start'|'both'}],
+// { points: [{string, fret, ghost?, id}], links: [{a,b, type:'line'|'arc', arrowDirection, ghost?}],
 //   startFret, window, rootPc(用于和弦内度数,可 null), fail }
-// 一弦多点(音阶式)合法:全部点亮音都进 points;fret 用物理品(0=空弦)。
+// 一弦多点(音阶式)合法;划音的幽灵起点(透明音)也进 points(ghost:true)——但不参与品窗收敛(它不是实音)
 export function boardFigData(data, chord, viewKey) {
 	const points = [];
 	Object.entries(data || {}).forEach(([id, n]) => {
@@ -48,20 +51,34 @@ export function boardFigData(data, chord, viewKey) {
 		if (!m) return;
 		const string = parseInt(m[2], 10);
 		const fret = m[1] === undefined ? 0 : parseInt(m[1], 10) + 1;
-		points.push({ id, string, fret });
+		points.push({ id, string, fret, ghost: false });
+	});
+	// 划音幽灵起点：透明音符，只作为连线端点存在——补进点集（ghost:true），不参与品窗
+	const conns = Object.values((data && data.connections) || {});
+	conns.forEach(c => {
+		for (const nid of [c.startNoteId, c.endNoteId]) {
+			if (points.some(p => p.id === nid)) continue;
+			const n = (data || {})[nid];
+			if (!n) continue;
+			const m = /^(?:o|f(-?\d+))-s(\d)$/.exec(nid);
+			if (!m) continue;
+			const string = parseInt(m[2], 10);
+			const fret = m[1] === undefined ? 0 : parseInt(m[1], 10) + 1;
+			points.push({ id: nid, string, fret, ghost: true });
+		}
 	});
 	if (!points.length) return { points: [], links: [], fail: true, startFret: 1, window: 4, rootPc: null };
-	const pressed = points.filter(p => p.fret > 0).map(p => p.fret);
+	const pressed = points.map(p => p.fret).filter(f => f > 0); // 空弦(品0)不算起点;幽灵起点参与品窗覆盖（滑入起点常比实音低一品，窗必须盖住它）
 	const startFret = pressed.length ? Math.min(...pressed) : 1;
 	const maxFret = pressed.length ? Math.max(...pressed) : 1;
 	const window = Math.max(4, Math.min(6, maxFret - startFret + 1));
-	// 连线:端点必须在点亮音里(两端都找得到才带入);样式(直线/弧、箭头)随主板预设原样带入——
+	// 连线:端点必须在点集里(含幽灵起点);样式(直线/弧、箭头、划音 ghost)随主板数据原样带入——
 	// 以前只存 {a,b},小图把三种预设一律画成弧,直线也成了弧、箭头全丢
 	const byId = new Map(points.map(p => [p.id, p]));
 	const links = [];
-	Object.values((data && data.connections) || {}).forEach(c => {
+	conns.forEach(c => {
 		const a = byId.get(c.startNoteId), b = byId.get(c.endNoteId);
-		if (a && b) links.push({ a, b, type: c.type === "arc" ? "arc" : "line", arrowDirection: c.arrowDirection || "none" });
+		if (a && b) links.push({ a, b, type: c.type === "arc" ? "arc" : "line", arrowDirection: c.arrowDirection || "none", ghost: !!c.ghost });
 	});
 	// 和弦内度数的根音(该拍有和弦才给;无和弦拍退化为调内/无标注由调用方决定)
 	let rootPc = null;
@@ -224,8 +241,17 @@ export function figSvg(fig, opts = {}) {
 	// 以前不分预设一律画弧,直线也成了弧、箭头全丢。带箭头的一端沿路径实际走向画小三角,箭尖贴圆点边缘
 	const linkStroke = (1.5 * cell / 9).toFixed(2);
 	const arrowLen = 0.5 * cell, arrowHalf = 0.375 * arrowLen;
+	const rGhost = 0.3 * cell; // 划音幽灵起点：空心圆环半径（比实音点小一号）
+	// 幽灵端点的线从圆环边缘起笔（空心环里穿过线会显脏）；实音端仍从圆心
+	const anchor = (p, other) => {
+		if (!p.ghost) return posOf(p);
+		const o = posOf(other);
+		const px = posOf(p);
+		const dx = o.x - px.x, dy = o.y - px.y, len = Math.hypot(dx, dy) || 1;
+		return { x: px.x + dx / len * rGhost, y: px.y + dy / len * rGhost };
+	};
 	(fig.links || []).forEach(({ a, b, type = "line", arrowDirection = "none" }) => {
-		const pa = posOf(a), pb = posOf(b);
+		const pa = anchor(a, b), pb = anchor(b, a);
 		const dx = pb.x - pa.x, dy = pb.y - pa.y;
 		const len = Math.hypot(dx, dy) || 1;
 		let P1 = null, P2 = null;
@@ -267,9 +293,13 @@ export function figSvg(fig, opts = {}) {
 		if (arrowDirection === "start" || arrowDirection === "both") arrowAt("start");
 	});
 	// (闷音/空弦不画 ×/○ —— 传统黑点图不带圈叉标记;闷音直接不显示)
-	// 点 + 度数(点径=格距固定比例)
+	// 点 + 度数(点径=格距固定比例);划音幽灵起点画空心圆环(无实色=空音符)
 	fig.points.forEach(p => {
 		const { x, y } = posOf(p);
+		if (p.ghost) {
+			svg += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${(rGhost).toFixed(2)}" fill="none" stroke="${th.dot}" stroke-width="${(1.2 * cell / 9).toFixed(2)}"/>`;
+			return; // 幽灵起点不标度数（空音符是滑入的经过音，标了反而误导）
+		}
 		const deg = degFor(p);
 		// 所有点(格内按弦音与琴枕外空弦音)同一套半径/字号的度数——视觉全等
 		const r = deg ? rDeg : rPlain;
