@@ -4279,7 +4279,21 @@ g.drag-fx-layer circle[stroke-dasharray] {
     gap: 3px;
 }
 
-.cc-line-no-float { position: absolute; left: 2px; top: 0; z-index: 5; pointer-events: none; opacity: 0.7; }
+.cc-line-no-float {
+    position: absolute;
+    /* 左移进页边距：贴着小节线的外侧，不压线也不压拍格/图行 */
+    left: -18px;
+    top: 0;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* 有图行：小节线从图行下方(figH+8)起笔，行号跟着到同一高度、紧邻小节线——
+   不再钉在行顶（那里现在是和弦图，行号标在图旁实测被用户打回）；
+   行内还有角标带时再下移带宽(20+2)px */
+.cc-line:has(.cc-cell-figs.pad) .cc-line-no-float { top: calc(var(--cc-fig-h) + 8px); }
+.cc-line:has(.cc-cell-tags.in-flow) .cc-line-no-float { top: calc(var(--cc-fig-h) + 30px); }
 .cc-line { position: relative; }
 
 /* 移动端：左右边距全部收紧（寸土寸金） */
