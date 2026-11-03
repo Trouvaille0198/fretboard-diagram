@@ -70,8 +70,8 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 				) : null}
 				<button className="danger" onClick={() => onSetKind("empty")} disabled={!unit || unit.kind === "empty"} title={ts.clearHint ?? "删（⌫）"}><span>✕</span></button>
 				{onAttach ? (
-					<button className={`cc-cp-attach cc-cp-back ${hasAttach ? "has" : ""}`} disabled={!(hasChord || unit?.kind === "hold")}
-						title={hasAttach ? (ts.attachViewTip ?? "查看/编辑该拍的黑点指法小图") : (ts.attachTip ?? "给该拍画一张黑点指法小图（可挑选形状/手捏/存形状库）")}
+					<button className={`cc-cp-attach cc-cp-back ${hasAttach ? "has" : ""}`}
+						title={hasAttach ? (ts.attachViewTip ?? "查看/编辑该拍的黑点指法小图") : (ts.attachTip ?? "给该拍画一张黑点指法小图（默认带入上一张，可挑选形状/手捏/存形状库）")}
 						onClick={onAttach}>{ts.attachTab ?? "指法图"}{hasAttach ? " ✓" : ""}</button>
 				) : null}
 				{keyHere ? (
