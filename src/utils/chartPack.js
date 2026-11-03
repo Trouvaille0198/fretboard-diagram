@@ -362,6 +362,27 @@ export function isChartPack(text) {
 	return /^[A-Za-z0-9+\-$_.!~*'()%]+$/.test(s) && s.length > 24;
 }
 
+// ---------- 批量工程包（列表页勾选批量导出/导入） ----------
+
+// 多首打一个文件：外壳是明识别 JSON，charts 每项 = 单首完整工程文本（packChart 输出，
+// 带前缀、内嵌动图帧）——单首的一切保证原样继承，导入端逐首走 unpackChartBundle 即可
+export function packChartsBundle(songs) {
+	return JSON.stringify({ v: 1, kind: "fretboard-charts", charts: (songs || []).map(s => packChart(s)) });
+}
+
+export function isChartsBundle(text) {
+	const s = String(text || "").trim();
+	if (!s.startsWith("{")) return false;
+	try { const o = JSON.parse(s); return o?.kind === "fretboard-charts" && Array.isArray(o.charts); } catch (e) { return false; }
+}
+
+// 解批量包：[{song, clips}, ...]（clips 由调用方逐首落回本机）
+export function unpackChartsBundle(text) {
+	const o = JSON.parse(String(text || "").trim());
+	if (!o || o.kind !== "fretboard-charts" || !Array.isArray(o.charts)) throw new Error("不是本应用的批量工程包");
+	return o.charts.map(t => unpackChartBundle(t));
+}
+
 // 解包：同时接受 工程文件文本 / 分享码 / 裸紧凑 JSON。
 // 返回 { song, clips }：clips 是文件里内嵌的动图（含全部帧数据），由调用方落回本机存储。
 export function unpackChartBundle(text) {

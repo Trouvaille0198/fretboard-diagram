@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../i18n";
 import { ChartListPanel } from "./ChartListPanel";
 import { loadCharts, saveChart, deleteChart, createSong } from "../utils/chordChartModel";
-import { packChart, unpackChartBundle, isChartPack } from "../utils/chartPack";
+import { packChart, packChartsBundle, unpackChartBundle, unpackChartsBundle, isChartPack, isChartsBundle } from "../utils/chartPack";
 import { importMusicXml } from "../utils/musicxmlChart";
 import { saveClip } from "../utils/clipModel";
 import { trashList, trashPullCloud, trashRestoreCloud, trashPurgeCloud, trashClear, trashRemove, trashDaysLeft, TRASH_TTL_DAYS } from "../utils/trashModel";
@@ -126,6 +126,47 @@ export function ChartListPage() {
 		showToast((ts.exportedOne ?? "已导出「{n}」").replace("{n}", target.name || ""));
 	};
 
+	// —— 批量操作（列表页勾选）：勾选状态在本页，面板只负责画勾选框和操作条 ——
+	const [sel, setSel] = useState(() => new Set());
+	const toggleSel = (id, on) => setSel(prev => {
+		const next = new Set(prev);
+		if (on) next.add(id); else next.delete(id);
+		return next;
+	});
+	const selectAll = () => setSel(new Set(charts.map(c => c.id)));
+	const clearSel = () => setSel(new Set());
+
+	const removeCharts = () => {
+		const ids = charts.filter(c => sel.has(c.id));
+		if (!ids.length) return;
+		setDialog({
+			type: "confirm",
+			title: ts.batchDel ?? "批量删除",
+			text: (ts.batchDelConfirm ?? "删除选中的 {n} 首？（进回收站，10 天内可还原）").replace("{n}", String(ids.length)),
+			onOk: () => {
+				ids.forEach(c => deleteChart(c.id));
+				setSel(new Set());
+				refresh();
+				showToast((ts.batchDeleted ?? "已删除 {n} 首（可在回收站还原）").replace("{n}", String(ids.length)));
+			}
+		});
+	};
+
+	const exportCharts = () => {
+		const targets = charts.filter(c => sel.has(c.id));
+		if (!targets.length) return;
+		const blob = new Blob([packChartsBundle(targets)], { type: "application/json;charset=utf-8" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `曲谱批量-${targets.length}首.fbcharts`;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		setTimeout(() => URL.revokeObjectURL(url), 5000);
+		showToast((ts.batchExported ?? "已把 {n} 首打成一个批量工程包").replace("{n}", String(targets.length)));
+	};
+
 	// 导入完成后的公共路径：落盘（含内嵌动图）→ 进编辑页
 	const adoptImported = (imported, clips) => {
 		(clips || []).forEach(c => saveClip(c));
@@ -142,6 +183,14 @@ export function ChartListPage() {
 		reader.onload = () => {
 			const text = String(reader.result);
 			try {
+				if (isChartsBundle(text)) {
+					// 批量工程包：整批落盘，留在列表页（逐首还原含内嵌动图）
+					const items = unpackChartsBundle(text);
+					items.forEach(({ song, clips }) => { (clips || []).forEach(c => saveClip(c)); saveChart(song); });
+					refresh();
+					showToast((ts.importedN ?? "已导入 {n} 首").replace("{n}", String(items.length)));
+					return;
+				}
 				if (isChartPack(text)) {
 					const { song: imported, clips } = unpackChartBundle(text);
 					adoptImported(imported, clips);
@@ -176,6 +225,8 @@ export function ChartListPage() {
 	
 			<div className="cc-body cc-songs-page">
 				<ChartListPanel variant="page" charts={charts} currentId={currentId} t={t}
+					sel={sel} onToggleSel={toggleSel} onSelectAll={selectAll} onClearSel={clearSel}
+					onExportSel={exportCharts} onDeleteSel={removeCharts}
 					onOpen={enter}
 					onNew={newSong}
 					onDuplicate={duplicateChart}

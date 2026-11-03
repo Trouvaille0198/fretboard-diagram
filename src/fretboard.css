@@ -6389,6 +6389,37 @@ html[data-theme="light"] .button.sm.edit-enter {
     background: var(--cc-accent-weak, rgba(61, 139, 255, 0.12));
 }
 
+/* 批量操作：行首勾选框 + 勾选后浮出的操作条 */
+.cc-song-check {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--cc-accent, #3d8bff);
+}
+
+.cc-song-row.checked {
+    border-color: var(--cc-accent, #3d8bff);
+}
+
+.cc-songs-batch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    margin-bottom: 8px;
+    border: 1px solid var(--cc-accent, #3d8bff);
+    border-radius: var(--app-radius-sm);
+    background: var(--cc-accent-weak, rgba(61, 139, 255, 0.12));
+    font-size: var(--app-fs-sm);
+}
+
+.cc-songs-batch-n {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 .cc-song-main {
     flex: 1;
     min-width: 0;

@@ -234,7 +234,7 @@ console.log("== chordLib：变化音与新质量 ==");
 // 工程文件（.fbchart）往返：MusicXML 装不下的应用私有状态必须一个不丢
 console.log("== chartPack：工程文件往返 ==");
 {
-	const { packChart, unpackChart, unpackChartBundle, chartShareCode, isChartPack, compactChart } = await import("../src/utils/chartPack.js");
+	const { packChart, unpackChart, unpackChartBundle, chartShareCode, isChartPack, compactChart, packChartsBundle, isChartsBundle, unpackChartsBundle } = await import("../src/utils/chartPack.js");
 	// 造一首把应用里所有字段都用上的谱子（含配图/标色/节奏型/反复/跳房子/谱中转调/质量记忆）
 	const s = createSong("往返测试");
 	s.key = { root: 9, minor: true };
@@ -308,6 +308,13 @@ console.log("== chartPack：工程文件往返 ==");
 	A("分享码往返无差异", deepDiff(s, dropTs(unpackChart(chartShareCode(s)))).length === 0);
 	A("裸紧凑 JSON 往返无差异", deepDiff(s, dropTs(unpackChart(JSON.stringify(compactChart(s))))).length === 0);
 	A("展示设置随谱往返(非默认值 hover/v/176)", back.figOpts?.mode === "hover" && back.figOpts?.orientation === "v" && back.figOpts?.size === 176);
+	// 批量工程包：外壳 JSON + 逐首完整工程文本——批量导出/导入与单首同一套保真
+	const s2 = createSong("第二首");
+	const btext = packChartsBundle([s, s2]);
+	A("批量包:识别为包且不误判单曲/杂文本", isChartsBundle(btext) && !isChartsBundle(packed) && !isChartsBundle("不是包"));
+	const backs = unpackChartsBundle(btext);
+	A("批量包:两首且首曲逐字段无差异", backs.length === 2 && deepDiff(s, dropTs(backs[0].song)).length === 0);
+	A("批量包:第二曲独立成曲(名/默认展示设置)", backs[1].song.name === "第二首" && backs[1].song.figOpts?.mode === "inline");
 	A("配图被带上（board）", back.measures[0].slots[0].image?.kind === "board" && !!back.measures[0].slots[0].image.frame);
 	A("配图被带上（clip）", back.measures[2].slots[0].image?.id === "clip-xyz");
 	A("小节标色被带上", back.measures[0].tint === "blue");
