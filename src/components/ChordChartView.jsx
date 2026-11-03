@@ -57,8 +57,8 @@ const TINTS = {
 const END_BARS = [
 	{ v: "single", label: "|", name: "单线" },
 	{ v: "double", label: "‖", name: "双线" },
-	{ v: "repeatEnd", label: ":‖", name: "反复结束" },
-	{ v: "final", label: "⏨", name: "终止" }
+	{ v: "final", label: "⏨", name: "终止" },
+	{ v: "repeatEnd", label: ":‖", name: "反复结束" }
 ];
 
 // 和弦谱页（8pu 式和弦谱复刻）：格子谱面 + 键盘编辑 + 播放 + 移调 + MusicXML + 一键动图
@@ -1622,16 +1622,19 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						<div className="cc-menu-sep" />
 						<div className="cc-mmenu-label">{ts.barlineLabel ?? "小节线"}</div>
 						<div className="cc-mmenu-row">
-							{END_BARS.map(b => (
+							{END_BARS.filter(b => b.v !== "repeatEnd").map(b => (
 								<button key={b.v} className={m.endBar === b.v ? "on" : ""} title={b.name}
 									onClick={() => patchMeasure(mi, x => ({ ...x, endBar: b.v }))}>
 									{b.name ?? b.v}
 								</button>
 							))}
 						</div>
+						{/* 反复一对放同一行：开始/结束并列，不再"结束混在普通线里、开始孤零零在下行" */}
 						<div className="cc-mmenu-row">
 							<button className={m.repeatStart ? "on" : ""} title={ts.repeatStart ?? "反复开始"}
 								onClick={() => patchMeasure(mi, x => ({ ...x, repeatStart: !x.repeatStart }))}>‖: {ts.repeatStart ?? "反复开始"}</button>
+							<button className={m.endBar === "repeatEnd" ? "on" : ""} title={ts.repeatEnd ?? "反复结束"}
+								onClick={() => patchMeasure(mi, x => ({ ...x, endBar: x.endBar === "repeatEnd" ? "single" : "repeatEnd" }))}>:‖ {ts.repeatEnd ?? "反复结束"}</button>
 						</div>
 						<div className="cc-mmenu-label">{ts.repeatTimesLabel ?? "反复遍数"}</div>
 						<div className="cc-mmenu-row">
