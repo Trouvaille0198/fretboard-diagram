@@ -1853,9 +1853,10 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					) : null}
 				</div>
 				</div>
-				{editing ? (
+				{/* 和弦页签没有行内工具：不渲染空容器（min-height 54px 的空白条会把悬浮钮盖住） */}
+				{editing && toolTab !== "chord" ? (
 					<div className="cc-tools-row">
-						{toolTab === "chord" ? null : toolTab === "measure" ? (
+						{toolTab === "measure" ? (
 							<div className="cc-measuretools">
 								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
 								<button className="button sm" onClick={() => addMeasure(cursor.mi)}>＋ {ts.addMeasure ?? "后插小节"}</button>
