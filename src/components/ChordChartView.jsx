@@ -830,14 +830,22 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		return { ...s, measures };
 	});
 
-	// 插入一拍：光标处插入空拍并停在那里；从该拍起全曲的拍整体后移（跨小节流动），内容一个不丢
+	// 插入一拍：光标处插入空拍并停在那里；从该拍起全曲的拍整体后移（跨小节流动），内容一个不丢。
+	// si == 拍数 = 末尾追加（末小节加拍钮）：新拍落进自动新开的小节，终止线/反复线跟着真正的曲尾走
 	const insertBeat = (mi = cursor.mi, si = cursor.si) => {
 		const m = song.measures[mi];
 		if (!m) return;
-		const at = Math.max(0, Math.min(m.slots.length - 1, si));
+		const append = si >= m.slots.length;
+		const at = Math.max(0, Math.min(m.slots.length, si));
 		commitTyped();
-		setSong(s => insertBeatInSong(s, mi, at));
-		setCursor({ mi, si: at, half: null });
+		if (append) {
+			const ns = insertBeatInSong(song, mi, at);
+			setSong(ns);
+			setCursor({ mi: ns.measures.length - 1, si: ns.measures[ns.measures.length - 1].slots.length - 1, half: null });
+		} else {
+			setSong(s => insertBeatInSong(s, mi, at));
+			setCursor({ mi, si: at, half: null });
+		}
 		showToast(ts.insertBeatToast ?? "已插入一拍，后面的拍整体后移");
 	};
 
@@ -1570,7 +1578,12 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				) : null}
 				<div className="cc-cell-slots">{compactView
 					? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => compactPairView(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null))
-					: m.slots.map((_, si) => slotView(mi, si))}</div>
+					: m.slots.map((_, si) => slotView(mi, si))}
+					{/* 末小节尾部加拍钮：很窄一条＋，点了在曲尾追加一拍（拍满自动开新小节，终止线跟着走） */}
+					{editing && mi === song.measures.length - 1 ? (
+						<button className="cc-append-beat" title={ts.appendBeatTip ?? "在小节末尾加一拍（拍满会自动开新小节承接）"}
+							onClick={e => { e.stopPropagation(); insertBeat(mi, m.slots.length); }}>＋</button>
+					) : null}</div>
 				{lyricsOn ? (
 					<span key={`clw-${m.id}-${m.lyrics}`} className={`cc-lyrics-wrap${m.lyrics ? " has" : ""}`}>
 						<input className={`cc-cell-lyrics${m.lyrics ? " has" : ""}${m.lyricsBold?.length ? " has-b" : ""}`} defaultValue={m.lyrics || ""}

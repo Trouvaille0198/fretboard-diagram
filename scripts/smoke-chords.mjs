@@ -522,6 +522,11 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	const b = insertBeatInSong(song2(), 0, 0);
 	A("插在首拍：全曲右移一位", b.measures[0].slots[0].kind === "empty" && b.measures[0].slots[1].chord.degree === 1);
 
+	// 末尾追加（si == 拍数，末小节加拍钮）：新拍落进自动新开的小节，终止线/跳房子跟着真正的曲尾走
+	const ap = insertBeatInSong(song2(), 1, 4);
+	A("末尾追加:si=拍数 → 新小节收下新空拍", ap.measures.length === 3 && ap.measures[2].slots.length === 1 && ap.measures[2].slots[0].kind === "empty");
+	A("末尾追加:旧末小节保持满拍且让出终止线", ap.measures[1].slots.length === 4 && ap.measures[1].endBar === "single" && ap.measures[1].house == null && ap.measures[2].endBar === "repeatEnd" && ap.measures[2].house === 2);
+
 	const c = insertBeatInSong(song2(), 99, 0);
 	A("小节越界原样返回（防御）", c.measures.length === 2 && eq(flat(c), before));
 

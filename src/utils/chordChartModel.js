@@ -252,7 +252,7 @@ export function insertBeatInSong(song, mi, si) {
 	if (!target) return song;
 	const cap = song.timeSig || target.slots.length || 4;
 	const measures = song.measures.map(m => ({ ...m, slots: m.slots.slice() }));
-	const at = Math.max(0, Math.min(target.slots.length - 1, si));
+	const at = Math.max(0, Math.min(target.slots.length, si)); // si == 拍数 = 末尾追加（末小节加拍钮用）
 	measures[mi].slots.splice(at, 0, { kind: "empty" });
 	for (let k = mi; k < measures.length - 1; k++) {
 		while (measures[k].slots.length > cap) measures[k + 1].slots.unshift(measures[k].slots.pop());
