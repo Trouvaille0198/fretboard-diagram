@@ -7252,6 +7252,13 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     margin: -1px 0 0 1px;
 }
 
+/* 音名模式（csign-flat）：与数字/罗马（csign-deg）同一套字体——原先无规则，继承拍格字号+常规字重，明显偏细 */
+.csign-flat {
+    font-size: inherit;
+    font-weight: 700;
+    align-self: center;
+}
+
 .csign-bass {
     font-size: 0.55em;
     color: var(--app-text-muted);
