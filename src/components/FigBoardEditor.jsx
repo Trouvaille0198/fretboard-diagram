@@ -474,7 +474,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
           <div className="figbe-shapes-list">
             {(recentFigs || []).map((item, i) => (
               <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={`第${item.mi + 1}小节（点击应用）`}>
-                <span dangerouslySetInnerHTML={{ __html: figSvg(boardFigData(item.fig, chord, viewKey || { root: 0, minor: false }), { degMode: 'chord', size: 44 }) }} />
+                <span dangerouslySetInnerHTML={{ __html: figSvg(boardFigData(item.fig, chord, viewKey || { root: 0, minor: false }), { degMode: figOpts?.degMode ?? 'chord', orientation: figOpts?.orientation, size: figOpts?.size ?? 44, key: viewKey || { root: 0, minor: false } }) }} />
                 <em>{`第${item.mi + 1}小节`}</em>
               </button>
             ))}
