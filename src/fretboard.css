@@ -4429,15 +4429,24 @@ g.drag-fx-layer circle[stroke-dasharray] {
 /* 反复双点居中于拍格行（有图行时避开图行:图高+8 边距 + 拍格半高 29px） */
 .cc-cell:has(.cc-cell-figs.pad) .cc-bardots { top: calc(var(--cc-fig-h) + 37px); }
 
-/* 反复结束紧跟反复开始（同一条小节线）：两符号并成标准 :||:（点-细-粗-细-点）——
-   原先两套符号并排渲染成 :‖‖:，四条竖线挤在一处、双点甩在两端。几何全部显式给出：
-   粗线 4px 在中缝，两侧细线用负 spread 把 4px 影子收窄成 2px、贴着粗线，双点贴各自细线（整簇 ≈21px） */
-.cc-cell.repeat-joint { padding-right: 6px; }
-.cc-cell.repeat-joint.end-repeatEnd::after { box-shadow: -6px 0 0 -1px var(--cc-bar-ink); }
-.cc-cell.repeat-joint .cc-bardots.end { right: 7px; }
-.cc-cell.repeat-joint + .cc-cell { padding-left: 6px; }
-.cc-cell.repeat-joint + .cc-cell.rep-start::before { width: 1.5px; margin-left: 1px; box-shadow: none; }
-.cc-cell.repeat-joint + .cc-cell .cc-bardots.start { left: 4px; }
+/* 反复结束紧跟反复开始（同一条小节线）：两符号并成标准 :||:，以小节线为轴左右对称——
+   粗线 4px 骑线居中 [-2,+2]；左细线由下一格的 ::before 画在 [-6.5,-5]，右细线由其 ::after 画在 [+5,+6.5]；
+   双点中心 ±10.5（span 8~13）。上一版粗线整体偏在结束格一侧、两侧细线/双点距离粗线不对称，实测打脸 */
+.cc-cell.repeat-joint { padding-right: 10px; }
+.cc-cell.repeat-joint.end-repeatEnd::after { right: -2px; box-shadow: none; }
+.cc-cell.repeat-joint .cc-bardots.end { right: 8px; }
+.cc-cell.repeat-joint + .cc-cell { padding-left: 10px; }
+.cc-cell.repeat-joint + .cc-cell.rep-start::before { left: -6.5px; width: 1.5px; box-shadow: none; }
+.cc-cell.repeat-joint + .cc-cell::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: calc(var(--cc-fig-h) + 30px);
+    bottom: 0;
+    width: 1.5px;
+    background: var(--cc-bar-ink);
+}
+.cc-cell.repeat-joint + .cc-cell .cc-bardots.start { left: 8px; }
 
 /* ×N 标识：有图行时落到拍格行右上（结束圆点上方），无图行贴小节顶 */
 .cc-cell:has(.cc-cell-figs.pad) .cc-repeat-times { top: calc(var(--cc-fig-h) + 12px); }
