@@ -326,7 +326,9 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     Object.entries(d || {}).forEach(([id, n]) => {
       if (id === 'connections') { if (Object.keys(n || {}).length) out.connections = n; return; }
       if (id.startsWith('conn-')) return;
-      if (n && (n.visibility === 'visible' || n.visibility === 'selected')) out[id] = n;
+      // 划音的幽灵起点（透明音、无实色）也要保留——它是连线端点，丢了整条划音就悬空消失（实测踩雷）
+      const isGhostEndpoint = n && Object.values(d.connections || {}).some(c => c.startNoteId === id || c.endNoteId === id);
+      if (n && (n.visibility === 'visible' || n.visibility === 'selected' || isGhostEndpoint)) out[id] = n;
     });
     return Object.keys(out).some(k => k !== 'connections') ? out : null;
   }, []);
@@ -443,15 +445,23 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
             <div className="figbe-side-title">预览</div>
             <div className="figbe-preview" dangerouslySetInnerHTML={{
               __html: (() => {
-                // 与 FigView 同口径:从 data 直推点集与品窗
+                // 与 FigView 同口径:从 data 直推点集与品窗;划音幽灵起点(透明音)也带入(ghost:true)
                 const pts = [];
+                const ghostIds = new Set();
+                Object.values(data.connections || {}).forEach(c => { ghostIds.add(c.startNoteId); ghostIds.add(c.endNoteId); });
                 Object.entries(data).forEach(([id, n]) => {
                   if (id === 'connections' || id.startsWith('conn-')) return;
-                  if (!n || (n.visibility !== 'visible' && n.visibility !== 'selected')) return;
+                  if (!n || (n.visibility !== 'visible' && n.visibility !== 'selected')) {
+                    if (ghostIds.has(id) && n) {
+                      const mg = /^(?:o|f(-?\d+))-s(\d)$/.exec(id);
+                      if (mg) pts.push({ string: +mg[2], fret: mg[1] === undefined ? 0 : +mg[1] + 1, ghost: true });
+                    }
+                    return;
+                  }
                   const m = /^(?:o|f(-?\d+))-s(\d)$/.exec(id);
                   if (m) pts.push({ string: +m[2], fret: m[1] === undefined ? 0 : +m[1] + 1 });
                 });
-                const pressed = pts.filter(p => p.fret > 0).map(p => p.fret);
+                const pressed = pts.map(p => p.fret);
                 const startFret = pressed.length ? Math.min(...pressed) : 1;
                 const window = Math.max(4, Math.min(6, (pressed.length ? Math.max(...pressed) : startFret) - startFret + 1));
                 const links = [];

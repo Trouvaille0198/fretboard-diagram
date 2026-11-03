@@ -642,6 +642,23 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("连线:arc 预设=弧(C 段)+末端箭头(贴点边缘的 polygon)", svgArc.includes(" C ") && /<polygon points="/.test(svgArc));
 	const arrowLn = { ...lnConn, connections: { "conn-x": { startNoteId: "f0-s1", endNoteId: "f2-s2", type: "line", arrowDirection: "end" } } };
 	A("连线:line+箭头=直线段+三角箭头", /<path d="M [\d.]+ [\d.]+ L [\d.]+ [\d.]+"/.test(figSvg(boardFigData(arrowLn, null, KEY), {})) && svgArc.includes("<polygon"));
+	// 划音（ghost）：空音符(透明无实色)→同弦相邻一品的实音——小图渲染空心环+从环边起笔的线
+	const slideData = {
+		"f1-s1": { visibility: "visible", color: "mono", color2: null },      // 实音：2 品
+		"f0-s1": { visibility: "transparent", color: "white", color2: null }, // 幽灵起点：1 品（同弦相邻一品）
+		connections: { "conn-s": { startNoteId: "f0-s1", endNoteId: "f1-s1", type: "line", arrowDirection: "end", ghost: true } },
+	};
+	const fsSlide = boardFigData(slideData, null, KEY);
+	const ghostPts = fsSlide.points.filter(p => p.ghost);
+	A("划音:幽灵起点进点集(ghost:true)且品窗盖住它", ghostPts.length === 1 && fsSlide.points.length === 2 && fsSlide.startFret === 1 && fsSlide.window === 4);
+	const svgSlide = figSvg(fsSlide, {});
+	A("划音:幽灵起点渲染空心环(fill=none)", /<circle [^>]*fill="none" stroke="#e8eef4"/.test(svgSlide));
+	A("划音:连线从环边起笔(不穿环心)", (() => {
+		const ring = /<circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)" fill="none"/.exec(svgSlide);
+		const path = /<path d="M ([\d.]+) ([\d.]+) L/.exec(svgSlide);
+		if (!ring || !path) return false;
+		return Math.hypot(+path[1] - +ring[1], +path[2] - +ring[2]) >= +ring[3] * 0.8;
+	})());
 
 	// 跨拍拉宽(boxW/boxH):内嵌图行右邻空槽时图撑满整段——两轴格距独立,只加宽不加高;
 	// 点径/字号取紧轴 → 与不拉宽时的渲染尺寸(CSS 缩放到同一高度后)完全一致;盒宽不够自然比例 → 忽略盒子(绝不压扁)
