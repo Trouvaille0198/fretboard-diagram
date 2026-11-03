@@ -1241,6 +1241,11 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		const y = el.getBoundingClientRect().top + window.scrollY - 70; // 让过钉顶的工具行
 		window.scrollTo({ top: Math.max(0, y) });
 	};
+	// 悬浮钮开合：移入即开、移出 280ms 后才关——光标穿过按钮与菜单之间的空隙不会闪没
+	const [navOpen, setNavOpen] = useState(false);
+	const navTimerRef = useRef(null);
+	const navOpenNow = () => { clearTimeout(navTimerRef.current); setNavOpen(true); };
+	const navCloseSoon = () => { clearTimeout(navTimerRef.current); navTimerRef.current = setTimeout(() => setNavOpen(false), 280); };
 
 	const newSong = () => {
 		const base = ts.newSong ?? "新歌";
@@ -2125,13 +2130,18 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					</div>
 				</div>
 			) : null}
-			{/* 段落跳转悬浮钮（右上角常驻，hover 展开全曲段落标记一览） */}
+			{/* 段落跳转悬浮钮（右上角常驻，hover 展开全曲段落标记一览）。
+			    开合用 JS 状态 + 移出延迟关闭——纯 CSS :hover 有缝就断（按钮与菜单之间的空隙光标一过菜单即消失） */}
 			{sections.length ? (
-				<div className="cc-nav-float">
-					<button className="cc-nav-float-btn" title={ts.sectionNavTip ?? "段落跳转"}>¶</button>
-					<div className="cc-nav-float-menu">
+				<div className="cc-nav-float"
+					onMouseEnter={() => { clearTimeout(navTimerRef.current); setNavOpen(true); }}
+					onMouseLeave={navCloseSoon}>
+					<button className="cc-nav-float-btn" title={ts.sectionNavTip ?? "段落跳转"}
+						onClick={() => setNavOpen(v => !v)}>¶</button>
+					<div className="cc-nav-float-menu" style={{ display: navOpen ? "block" : "none" }}
+						onMouseEnter={() => { clearTimeout(navTimerRef.current); }}>
 						{sections.map(s => (
-							<button key={s.mi} onClick={() => jumpToSection(s.mi)}>
+							<button key={s.mi} onClick={() => { jumpToSection(s.mi); setNavOpen(false); }}>
 								<span className="cc-nav-name">{s.name}</span>
 								<span className="cc-nav-mi">{ts.measureShort ? ts.measureShort(s.mi + 1) : `M${s.mi + 1}`}</span>
 							</button>
