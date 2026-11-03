@@ -1681,6 +1681,85 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure ?? "小节"}</button>
 						</nav>
 					)}
+					{/* 曲谱设置条（调/拍号/简略/歌词）+ 歌名：从谱头行迁入 tab 行——整行 sticky 钉顶，下滚始终可见 */}
+					<div className="cc-score-meta">
+						<button className={`cc-settings-btn${settingsOpen ? " on" : ""}`} title={ts.settingsTip ?? "设置：调 / 拍号 / 速度 / 和弦图"}
+							onClick={() => setSettingsOpen(v => !v)}>
+							⚙ {keyLabelText(song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter, song.key?.acc ?? 0, !!song.key?.minor)} · {song.timeSig ?? 4}/4 · ♩={song.bpm ?? 72}
+						</button>
+						<button className={`cc-compact-btn${compactView ? " on" : ""}`}
+							title={ts.compactTip ?? "简略模式：两拍并成一格；两拍都有和弦时并成一对反拍，反拍只显示前半——谱面更紧凑，便于观看（不影响数据）"}
+							onClick={() => setCompactView(v => !v)}>
+							{ts.compactLabel ?? "简略"}
+						</button>
+						<button className={`cc-compact-btn${lyricsOn ? " on" : ""}`}
+							title={ts.lyricsToggleTip ?? "显示/隐藏歌词行：关掉后谱面高度变矮（歌词数据保留，不影响导出）"}
+							onClick={() => setLyricsOn(v => !v)}>
+							{ts.lyricsToggle ?? "歌词"}
+						</button>
+						{/* 生效调：谱中转调真正起作用时才出现，避免"改了却看不出" */}
+						{(() => {
+							const ek = keyAt(cursor.mi);
+							const deviates = ek.root !== (song.key?.root ?? 0) || !!ek.minor !== !!song.key?.minor;
+							if (!deviates) return null;
+							return <span className="cc-effective" title={ts.effectiveTip ?? "当前光标处实际生效的调（谱中转调后）"}>⇒ 1 = {PC_KEY[ek.root]}{ek.minor ? "m" : ""}</span>;
+						})()}
+					{settingsOpen ? (
+						<div className="cc-settings" onClick={e => e.stopPropagation()}>
+							<div className="cc-settings-group">
+								<div className="cc-settings-label">{ts.gSong ?? "曲谱"}</div>
+								<div className="cc-settings-row"><span className="cc-settings-k">{ts.keyLabel ?? "调"}</span>
+									<span className="cc-settings-v">
+										<KeyPicker letter={song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter} acc={song.key?.acc ?? 0}
+											minor={!!song.key?.minor} marked={false} disabled={!editing}
+											onChange={(letter, acc, minor) => setSong(s0 => ({ ...s0, key: { root: keyPcOf(letter, acc), letter, acc, minor } }))} />
+									</span>
+								</div>
+								<div className="cc-settings-row"><span className="cc-settings-k">{ts.timeSigLabel ?? "拍号"}</span>
+									<span className="cc-settings-v">
+										<UiSelect value={song.timeSig} disabled={!editing} onChange={v => setTimeSig(Number(v))}
+											options={[2, 3, 4, 6].map(b => ({ value: b, label: b + "/4" }))} />
+									</span>
+								</div>
+								{/* BPM 设置行已随播放/发声功能移除：song.bpm 字段保留（工程文件/分享码兼容），界面不再可改 */}
+								{editing ? <button className="cc-settings-rowbtn" onClick={() => { addRow(); setSettingsOpen(false); }}>＋ {ts.addRow ?? "新增一行"}</button> : null}
+							</div>
+							<div className="cc-settings-group">
+								<div className="cc-settings-label">{ts.gFigures ?? "和弦图"}</div>
+								<div className="cc-settings-row"><span className="cc-settings-k">{ts.figDir ?? "方向"}</span>
+									<span className="cc-settings-seg">
+										<button className={figOpts.orientation === "v" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "v" }))}>↕ 竖</button>
+										<button className={figOpts.orientation === "h" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "h" }))}>↔ 横</button>
+									</span>
+								</div>
+								<div className="cc-settings-row"><span className="cc-settings-k">{ts.figDeg ?? "度数标注"}</span>
+									<span className="cc-settings-seg">
+										<button className={figOpts.degMode === "chord" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "chord" }))}>{ts.degChord ?? "和弦内"}</button>
+										<button className={figOpts.degMode === "scale" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "scale" }))}>{ts.degScale ?? "调内"}</button>
+										<button className={figOpts.degMode === "none" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "none" }))}>{ts.degNone ?? "无"}</button>
+									</span>
+								</div>
+								{/* 尺寸只在悬浮模式生效(内嵌的图随拍宽/半拍简版自适应,给这个档位是无效控件) */}
+								{figOpts.mode === "hover" ? (
+									<div className="cc-settings-row"><span className="cc-settings-k">{ts.figSize ?? "尺寸"}</span>
+										<span className="cc-settings-seg">
+											{FIG_SIZES.map(s2 => <button key={s2} className={figOpts.size === s2 ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, size: s2 }))}>{s2}</button>)}
+										</span>
+									</div>
+									) : null}
+									<div className="cc-settings-row"><span className="cc-settings-k">{ts.figMode ?? "展示"}</span>
+							<span className="cc-settings-seg">
+										<button className={figOpts.mode === "inline" ? "on" : ""} title={ts.inlineTip ?? "图行显示在拍格上方（同行占位，记号同线）"} onClick={() => setFigOpts(o => ({ ...o, mode: "inline" }))}>{ts.modeInline ?? "内嵌"}</button>
+										<button className={figOpts.mode === "hover" ? "on" : ""} title={ts.hoverTip ?? "默认隐藏，悬停该拍浮出大图（谱面紧凑）"} onClick={() => setFigOpts(o => ({ ...o, mode: "hover" }))}>{ts.modeHover ?? "悬浮"}</button>
+									</span>
+								</div>
+							</div>
+						</div>
+						) : null}
+					<input className="cc-score-title" value={song.name} readOnly={!editing}
+						onChange={e => setSong(s => ({ ...s, name: e.target.value }))}
+						onBlur={() => { if (dirtyRef.current) persistNow(); }} // 改名瞬间落盘：点"回列表"时先失焦，立刻存住
+						onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); persistNow(); e.target.blur(); } }} />
 					<span className="cc-flex" />
 					{shared ? (
 						<button className="button sm accent" onClick={adoptShared} title={ts.sharedSaveTip ?? "存一份到自己的曲库，之后可以编辑"}>⬇ {ts.sharedSave ?? "保存到我的曲库"}</button>
@@ -1699,7 +1778,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 										<button className="cc-menu-item" onClick={doExportChart}>⇩ {ts.exportPack ?? "导出工程文件"}<small>.fbchart</small></button>
 										<button className="cc-menu-item" onClick={() => fileRef.current?.click()}>⇪ {ts.importBtn ?? "导入文件"}<small>.fbchart / .musicxml</small></button>
 										<button className="cc-menu-item" onClick={promptImportCode}>{ts.importCode ?? "从分享码导入"}</button>
-									<button className="cc-menu-item" onClick={() => { setMenuOpen(false); shareLink(); }}>🔗 {ts.shareLinkMenu ?? "分享链接"}<small>{ts.shareLinkMenuSub ?? "对方不用登录即可查看"}</small></button>
+										<button className="cc-menu-item" onClick={() => { setMenuOpen(false); shareLink(); }}>🔗 {ts.shareLinkMenu ?? "分享链接"}<small>{ts.shareLinkMenuSub ?? "对方不用登录即可查看"}</small></button>
 										<div className="cc-menu-sep" />
 										<button className="cc-menu-item" onClick={shareChart}>{ts.copyCode ?? "复制分享码"}</button>
 										<button className="cc-menu-item" onClick={doExportXml}>⇩ {ts.exportXml ?? "导出 MusicXML"}<small className="cc-menu-warn">{ts.lossyWarn ?? "配图/标色不带"}</small></button>
@@ -1710,7 +1789,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						</>
 					) : null}
 				</div>
-
+				</div>
 				{editing ? (
 					<div className="cc-tools-row">
 						{toolTab === "chord" ? null : toolTab === "measure" ? (
@@ -1811,88 +1890,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 
 			<div className="cc-body" style={!editing && viewTab === "dynamic" ? { display: "none" } : undefined}>
 				<div className="cc-score" ref={scoreRef}>
-					<div className="cc-score-head">
-						<div className="cc-score-meta">
-							{/* 所有设置统一收纳：⚙ 按钮开面板（曲谱:调/拍号/BPM + 和弦图:方向/度数/尺寸/展示） */}
-							<button className={`cc-settings-btn${settingsOpen ? " on" : ""}`} title={ts.settingsTip ?? "设置：调 / 拍号 / 速度 / 和弦图"}
-								onClick={() => setSettingsOpen(v => !v)}>
-								⚙ {keyLabelText(song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter, song.key?.acc ?? 0, !!song.key?.minor)} · {song.timeSig ?? 4}/4 · ♩={song.bpm ?? 72}
-							</button>
-							<button className={`cc-compact-btn${compactView ? " on" : ""}`}
-								title={ts.compactTip ?? "简略模式：两拍并成一格；两拍都有和弦时并成一对反拍，反拍只显示前半——谱面更紧凑，便于观看（不影响数据）"}
-								onClick={() => setCompactView(v => !v)}>
-								{ts.compactLabel ?? "简略"}
-							</button>
-							<button className={`cc-compact-btn${lyricsOn ? " on" : ""}`}
-								title={ts.lyricsToggleTip ?? "显示/隐藏歌词行：关掉后谱面高度变矮（歌词数据保留，不影响导出）"}
-								onClick={() => setLyricsOn(v => !v)}>
-								{ts.lyricsToggle ?? "歌词"}
-							</button>
-							{/* 生效调：谱中转调真正起作用时才出现，避免"改了却看不出" */}
-							{(() => {
-								const ek = keyAt(cursor.mi);
-								const deviates = ek.root !== (song.key?.root ?? 0) || !!ek.minor !== !!song.key?.minor;
-								if (!deviates) return null;
-								return <span className="cc-effective" title={ts.effectiveTip ?? "当前光标处实际生效的调（谱中转调后）"}>⇒ 1 = {PC_KEY[ek.root]}{ek.minor ? "m" : ""}</span>;
-							})()}
-							{settingsOpen ? (
-								<div className="cc-settings" onClick={e => e.stopPropagation()}>
-									<div className="cc-settings-group">
-										<div className="cc-settings-label">{ts.gSong ?? "曲谱"}</div>
-										<div className="cc-settings-row"><span className="cc-settings-k">{ts.keyLabel ?? "调"}</span>
-											<span className="cc-settings-v">
-												<KeyPicker letter={song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter} acc={song.key?.acc ?? 0}
-													minor={!!song.key?.minor} marked={false} disabled={!editing}
-													onChange={(letter, acc, minor) => setSong(s0 => ({ ...s0, key: { root: keyPcOf(letter, acc), letter, acc, minor } }))} />
-											</span>
-										</div>
-										<div className="cc-settings-row"><span className="cc-settings-k">{ts.timeSigLabel ?? "拍号"}</span>
-											<span className="cc-settings-v">
-												<UiSelect value={song.timeSig} disabled={!editing} onChange={v => setTimeSig(Number(v))}
-													options={[2, 3, 4, 6].map(b => ({ value: b, label: b + "/4" }))} />
-											</span>
-										</div>
-										{/* BPM 设置行已随播放/发声功能移除：song.bpm 字段保留（工程文件/分享码兼容），界面不再可改 */}
-										{editing ? <button className="cc-settings-rowbtn" onClick={() => { addRow(); setSettingsOpen(false); }}>＋ {ts.addRow ?? "新增一行"}</button> : null}
-									</div>
-									<div className="cc-settings-group">
-										<div className="cc-settings-label">{ts.gFigures ?? "和弦图"}</div>
-										<div className="cc-settings-row"><span className="cc-settings-k">{ts.figDir ?? "方向"}</span>
-											<span className="cc-settings-seg">
-												<button className={figOpts.orientation === "v" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "v" }))}>↕ 竖</button>
-												<button className={figOpts.orientation === "h" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "h" }))}>↔ 横</button>
-											</span>
-										</div>
-										<div className="cc-settings-row"><span className="cc-settings-k">{ts.figDeg ?? "度数标注"}</span>
-											<span className="cc-settings-seg">
-												<button className={figOpts.degMode === "chord" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "chord" }))}>{ts.degChord ?? "和弦内"}</button>
-												<button className={figOpts.degMode === "scale" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "scale" }))}>{ts.degScale ?? "调内"}</button>
-												<button className={figOpts.degMode === "none" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "none" }))}>{ts.degNone ?? "无"}</button>
-											</span>
-										</div>
-										{/* 尺寸只在悬浮模式生效(内嵌的图随拍宽/半拍简版自适应,给这个档位是无效控件) */}
-										{figOpts.mode === "hover" ? (
-											<div className="cc-settings-row"><span className="cc-settings-k">{ts.figSize ?? "尺寸"}</span>
-												<span className="cc-settings-seg">
-													{FIG_SIZES.map(s2 => <button key={s2} className={figOpts.size === s2 ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, size: s2 }))}>{s2}</button>)}
-												</span>
-											</div>
-										) : null}
-										<div className="cc-settings-row"><span className="cc-settings-k">{ts.figMode ?? "展示"}</span>
-											<span className="cc-settings-seg">
-												<button className={figOpts.mode === "inline" ? "on" : ""} title={ts.inlineTip ?? "图行显示在拍格上方（同行占位，记号同线）"} onClick={() => setFigOpts(o => ({ ...o, mode: "inline" }))}>{ts.modeInline ?? "内嵌"}</button>
-												<button className={figOpts.mode === "hover" ? "on" : ""} title={ts.hoverTip ?? "默认隐藏，悬停该拍浮出大图（谱面紧凑）"} onClick={() => setFigOpts(o => ({ ...o, mode: "hover" }))}>{ts.modeHover ?? "悬浮"}</button>
-											</span>
-										</div>
-									</div>
-								</div>
-							) : null}
-						</div>
-						<input className="cc-score-title" value={song.name} readOnly={!editing}
-							onChange={e => setSong(s => ({ ...s, name: e.target.value }))}
-							onBlur={() => { if (dirtyRef.current) persistNow(); }} // 改名瞬间落盘：点"回列表"时先失焦，立刻存住
-							onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); persistNow(); e.target.blur(); } }} />
-					</div>
 
 					{copyMode ? (
 						<div className="cc-copybar">
