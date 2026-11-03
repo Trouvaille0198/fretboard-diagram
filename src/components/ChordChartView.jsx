@@ -284,7 +284,10 @@ export function ChordChartView({ songId }) {
 			const beats = cell.querySelectorAll(".cc-beat");
 			if (beats.length && byN[beats.length] == null) byN[beats.length] = Math.round(beats[0].getBoundingClientRect().width * 100) / 100;
 		});
-		setFigMetrics(prev => (prev && prev.gap === gap && prev.figH === figH && JSON.stringify(prev.byN) === JSON.stringify(byN) ? prev : { gap, figH, byN }));
+		// 相邻小节格的水平实距(.cc-line 是 flex,间距来自盒模型,量出来最可靠)——简略模式跨小节拉宽要用
+		const cells = el.querySelectorAll(".cc-cell");
+		const mgap = cells.length >= 2 ? Math.round((cells[1].getBoundingClientRect().left - cells[0].getBoundingClientRect().right) * 100) / 100 : 0;
+		setFigMetrics(prev => (prev && prev.gap === gap && prev.figH === figH && prev.mgap === mgap && JSON.stringify(prev.byN) === JSON.stringify(byN) ? prev : { gap, figH, mgap, byN }));
 	}, []);
 	// 结构变化后 layout 阶段同步量：拉宽在首帧绘制前就位，无闪跳
 	const slotSig = song.measures.map(m => m.slots.length).join(",");
@@ -1516,8 +1519,8 @@ export function ChordChartView({ songId }) {
 				{figOpts.mode === "inline" ? (() => {
 					// 图行是与拍格同轨的 grid（列数=槽位数、列距=拍距），每个图显式落在自己拍的列上。
 					// 跨拍拉宽：图右边相邻的槽位没图（空拍/休止/无图延音）时，图 span 跨过去撑满"自己+右侧空槽"整段宽——
-					// 只加宽不加高（svg 按实测段宽重算几何，弦/品格距拉开、点径字号不变，更清晰）；被跨的空槽不渲染。不跨小节。
-					// 双图档（简略模式两拍并一格各有图）两图挤一格，不参与拉宽
+					// 只加宽不加高（svg 按实测段宽重算几何，弦/品格距拉开、点径字号不变，更清晰）；被跨的空槽不渲染。
+					// 简略模式下还可跨到下一小节开头连续无图的组（见下方 extra）；双图档（简略模式两拍并一格各有图）两图挤一格，不参与拉宽
 					const groups = compactView
 						? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => ({ key: k * 2, units: compactPairUnits(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null) }))
 						: m.slots.map((sl, si) => ({ key: si, units: (sl.split || [sl]).map((u, h) => ({ u, si, half: sl.split ? h : null })) }));
@@ -1530,10 +1533,28 @@ export function ChordChartView({ songId }) {
 								let span = 1;
 								while (gi + span < groups.length && !flags[gi + span]) span++;
 								const paired = units.length > 1;
-								const boxW = !paired && span > 1 && beatW ? span * beatW + (span - 1) * figMetrics.gap : undefined;
+								// 简略模式跨小节：本组拉到小节末尾、下一小节(同行)开头连续几组没图 → 溢出本格继续拉——
+								// 被跨区域是下一小节的空图行，视觉真空（CSS 关其容器指针事件，点击穿透到溢出的图）；双图档不拉；行尾不跨(下一小节在下一行)
+								let extra = 0, nextBeatW = null;
+								if (compactView && !paired && beatW && figMetrics
+									&& gi + span >= groups.length && mi + 1 < song.measures.length
+									&& Math.floor(mi / autoPer) === Math.floor((mi + 1) / autoPer)) {
+									const nm = song.measures[mi + 1];
+									const nN = Math.ceil(nm.slots.length / 2);
+									const nFlags = Array.from({ length: nN }, (_, k) => {
+										const us = compactPairUnits(mi + 1, k * 2, k * 2 + 1 < nm.slots.length ? k * 2 + 1 : null);
+										return us.some(({ u }) => figVisible(u));
+									});
+									while (extra < nN && !nFlags[extra]) extra++;
+									nextBeatW = extra ? figMetrics.byN[nN] : null;
+								}
+								const crossW = extra > 0 && nextBeatW ? figMetrics.mgap + extra * nextBeatW + (extra - 1) * figMetrics.gap : 0;
+								const boxW = !paired && beatW && (span > 1 || extra > 0)
+									? span * beatW + (span - 1) * figMetrics.gap + crossW : undefined;
 								return (
 									<div className={`cc-cell-figslot${paired ? " paired" : ""}`} key={key}
-										style={{ gridColumn: `${gi + 1} / span ${span}` }} data-span={span > 1 ? span : undefined}>
+										data-span={span > 1 ? span : undefined} data-cross={extra > 0 ? "" : undefined}
+										style={{ gridColumn: `${gi + 1} / span ${span}`, ...(extra > 0 ? { "--cc-cross-w": `${Math.round(boxW)}px` } : null) }}>
 										{units.map(({ u, si, half }, i) => (figVisible(u) ? (
 											<FigView key={i} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
 												opts={{ ...figOpts, compact: paired, size: paired ? 44 : 64, boxW, boxH: boxW ? figMetrics.figH : undefined }}
