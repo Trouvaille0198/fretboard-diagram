@@ -253,7 +253,8 @@ body {
     width: 100%;
     min-height: 100vh;
     position: relative;
-    overflow-x: hidden;
+    /* clip（而非 hidden）：hidden 会把 #app 变成滚动容器，子孙的 position:sticky 全部失效（tab 行钉顶实测踩雷） */
+    overflow-x: clip;
     color: var(--app-text);
     font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
     background:
@@ -269,7 +270,7 @@ main {
     display: flex;
     flex-direction: column;
     align-items: center;
-    overflow-x: hidden;
+    overflow-x: clip;
     box-sizing: border-box;
     padding: 0 20px 80px;
     transition: margin-left 0.3s ease;
@@ -3502,6 +3503,10 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-toolbar {
     display: flex;
     flex-direction: column;
+    /* tab+设置行钉顶：下滚时 TopNav 自然滚走，本行贴住视口顶（TopNav 不挡：它自身不 sticky） */
+    position: sticky;
+    top: 0;
+    z-index: 600;
     background: var(--app-panel);
     border-bottom: 1px solid var(--app-border);
     padding: 0 14px;
@@ -4182,21 +4187,14 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-settings-rowbtn { border: 1px dashed var(--cc-line, rgba(230,237,242,0.25)); background: transparent; color: var(--cc-text, #dfe7ee); border-radius: var(--cc-ctl-radius); padding: 4px 12px; cursor: pointer; align-self: flex-start; }
 .cc-settings-rowbtn:hover { border-color: var(--cc-accent, #3d8bff); color: var(--cc-accent-text, #6fb0ff); }
 
-.cc-score-head {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--app-border);
-    margin-bottom: 16px;
-}
-
-.cc-score-head .cc-score-meta { position: relative; /* ⚙ 设置面板的定位基准 */
+/* 设置条/歌名已迁入 tab 行（整行 sticky 钉顶）：原 .cc-score-head 行删除，空位收敛 */
+.cc-tabs-row .cc-score-meta {
+    position: relative; /* ⚙ 设置面板的定位基准 */
     justify-content: flex-start;
+    gap: 10px;
 }
 
-.cc-score-head .cc-score-title {
+.cc-tabs-row .cc-score-title {
     align-self: center;
 }
 
