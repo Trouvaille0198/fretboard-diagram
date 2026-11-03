@@ -8,7 +8,7 @@
 // 而同一首的 MusicXML 是 33 KB —— 既 100% 还原，体积也只有 MusicXML 的 1/18。
 //
 // 结构：{ v:1, n:名, k:[根音pc, 小调?1:0], ts:拍数, bpm, dp:记谱, en:等音,
-//         rp:每行小节数, cs:色系, qm:同级数质量记忆, m:谱面 }
+//         rp:每行小节数, cs:色系, qm:同级数质量记忆, fo:和弦图展示设置, m:谱面 }
 // measure：{ i:id, S:段落, L:歌词, R:反复开始, E:终止线(非 single 才存), H:跳房子,
 //            K:[转调根音, 小调], T:标色, p:[槽位…] }
 // slot（tag 编码，省掉 "kind"/"chord"/"degree" 这类重复键名）：
@@ -20,7 +20,7 @@
 // 和弦若带非规范字段，退化为 [3,"raw",原对象] 原样保存，保证不丢东西。
 
 import LZString from "lz-string";
-import { createSong, newChartId, newMeasureId } from "./chordChartModel.js";
+import { createSong, newChartId, newMeasureId, normalizeFigOpts } from "./chordChartModel.js";
 import { loadClips } from "./clipModel.js";
 
 const PREFIX = "fretboard-chart";
@@ -252,6 +252,7 @@ export function compactChart(song, { clips } = {}) {
 	};
 	if (song.createdAt) o.ct = song.createdAt;
 	if (song.qualityMemory && Object.keys(song.qualityMemory).length) o.qm = song.qualityMemory;
+	if (song.figOpts) o.fo = song.figOpts; // 和弦图展示设置每谱一份,随谱走
 	if (song.id) o.id = song.id;
 	// 动图配图连帧数据一起带上（file:// 里只存 id 的话，换台机器图就没了）
 	const ids = collectClipIds(song);
@@ -334,6 +335,7 @@ export function expandChart(o) {
 	song.colorScheme = o.cs ?? "navy";
 	song.measures = o.m.map(decodeMeasure);
 	if (o.qm) song.qualityMemory = o.qm;
+	if (o.fo) song.figOpts = normalizeFigOpts(o.fo); // 旧工程/分享码没有 fo → 无此字段,回退各自的全局种子
 	if (!song.measures.length) song.measures = [];
 	return song;
 }

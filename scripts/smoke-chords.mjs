@@ -240,6 +240,7 @@ console.log("== chartPack：工程文件往返 ==");
 	s.key = { root: 9, minor: true };
 	s.timeSig = 3; s.bpm = 88; s.display = "name"; s.enharmonic = -1; s.rowsPerLine = 3; s.colorScheme = "crimson";
 	s.qualityMemory = { "1": "M7", "4": "m7" };
+	s.figOpts = { ...s.figOpts, mode: "hover", orientation: "v", size: 176 }; // 展示设置(每谱一份)取非默认值,验证随谱往返
 	s.measures = [];
 	const qs = ["", "M", "m", "7", "M7", "m7", "maj7", "sus4", "dim", "aug", "m7b5"];
 	for (let i = 0; i < 24; i++) {
@@ -306,6 +307,7 @@ console.log("== chartPack：工程文件往返 ==");
 	A("工程文件往返无差异", diffs.length === 0, diffs.join(" / "));
 	A("分享码往返无差异", deepDiff(s, dropTs(unpackChart(chartShareCode(s)))).length === 0);
 	A("裸紧凑 JSON 往返无差异", deepDiff(s, dropTs(unpackChart(JSON.stringify(compactChart(s))))).length === 0);
+	A("展示设置随谱往返(非默认值 hover/v/176)", back.figOpts?.mode === "hover" && back.figOpts?.orientation === "v" && back.figOpts?.size === 176);
 	A("配图被带上（board）", back.measures[0].slots[0].image?.kind === "board" && !!back.measures[0].slots[0].image.frame);
 	A("配图被带上（clip）", back.measures[2].slots[0].image?.id === "clip-xyz");
 	A("小节标色被带上", back.measures[0].tint === "blue");
@@ -669,6 +671,16 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("品窗:宽图 1-16 品全覆盖不截音", W(fig(1, 16)) === "1-16");
 	A("品窗:窄视口 defSpan=8 → 7-9品 = 5-11", W(fig(7, 8, 9), 8) === "5-11");
 	A("品窗:defSpan=4 最短跨度跟着容量缩 → C = 1-4", W(fig(1, 2, 3), 4) === "1-4");
+}
+
+// ===== 和弦图展示设置(figOpts):每谱一份,白名单清洗——localStorage/服务端/工程文件来的值不可信 =====
+{
+	const { createSong, defaultFigOpts, normalizeFigOpts } = await import("../src/utils/chordChartModel.js");
+	const f = createSong("x").figOpts;
+	A("展示设置:新歌默认 内嵌/横向/和弦内", f.mode === "inline" && f.orientation === "h" && f.degMode === "chord" && f.figV === 3);
+	A("展示设置:坏数据清洗回默认(不带 junk 键)", JSON.stringify(normalizeFigOpts({ orientation: "x", degMode: 9, mode: null, size: "abc", junk: 1 })) === JSON.stringify(defaultFigOpts()));
+	A("展示设置:合法值保留+旧尺寸档升级(104→144)", normalizeFigOpts({ orientation: "v", degMode: "scale", mode: "hover", size: 104 }).size === 144);
+	A("展示设置:非对象/缺字段 → 整体默认", normalizeFigOpts(null).mode === "inline" && normalizeFigOpts({}).orientation === "h");
 }
 
 console.log(fail ? `\n✗ ${fail}/${n} 断言失败` : `\n✓ 全部 ${n} 项断言通过`);
