@@ -1340,6 +1340,26 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 
 	// ============ 渲染（8pu 式格子谱） ============
 
+	// 拍上无和弦时的度数基准：最近的前一个和弦——空拍/休止/延音上的指法图默认来自上一张，
+	// 它的"和弦内度数"也按那张图的和弦算，数字才不会凭空消失
+	const nearestPrevChord = (mi, si, half) => {
+		for (let m = mi; m >= 0; m--) {
+			const slots = song.measures[m]?.slots || [];
+			const sStart = Math.min(slots.length - 1, m === mi ? si : slots.length - 1);
+			for (let s = sStart; s >= 0; s--) {
+				const sl = slots[s];
+				const units = sl.split ? sl.split : [sl];
+				const hStart = Math.min(units.length - 1, m === mi && s === si ? (half ?? 0) : units.length - 1);
+				for (let h = hStart; h >= 0; h--) {
+					const u = units[h];
+					if (u && u.kind === "chord" && u.chord) return u.chord;
+				}
+			}
+		}
+		return null;
+	};
+	const figChordOf = (u, mi, si, half) => u.chord || nearestPrevChord(mi, si, half);
+
 	const stageChord = currentUnit && currentUnit.kind === "chord" ? currentUnit.chord : null;
 	const stageSnapshot = useMemo(() => {
 		const frame = stageChord ? stageFrame(stageChord, song, keyAt(cursor.mi)) : null;
@@ -1358,7 +1378,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			return (
 				<>
 					{/* hover 模式：图挂在拍上（CSS 默认隐藏，悬停浮动显示）；内嵌模式：图在独立图行 */}
-					{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={u.chord} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
+					{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={figChordOf(u, mi, si, half)} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
 						onClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} /> : null}
 					<ChordSign chord={u.chord} display={scoreDisplay} viewKey={keyAt(mi)} compact={compact} />
 				</>
@@ -1367,7 +1387,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		if (u.kind === "rest") return (
 			<>
 				{/* 休止拍也可配指法图（同延音拍） */}
-				{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={u.chord || null} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
+				{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={figChordOf(u, mi, si, half)} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
 					onDoubleClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} /> : null}
 				<span className="cc-glyph rest">0</span>
 			</>
@@ -1375,7 +1395,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		if (u.kind === "hold") return (
 			<>
 				{/* 延音拍也可配指法图（同 chord 拍：图上记号下） */}
-				{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={u.chord || null} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
+				{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={figChordOf(u, mi, si, half)} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
 					onDoubleClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} /> : null}
 				<span className="cc-glyph hold">—</span>
 			</>
@@ -1383,7 +1403,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		// 空拍（无和弦）：也允许挂指法图（默认带入上一张，见 prevSameChordFig），挂了就显示图；
 		// 纯空拍仍留白（8pu 同款）：任何占位符都会破坏拍格对齐
 		if (u.fig && figOpts.mode === "hover") return (
-			<FigView data={u.fig} chord={u.chord || null} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
+			<FigView data={u.fig} chord={figChordOf(u, mi, si, half)} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
 				onDoubleClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} />
 		);
 		return null;
@@ -1550,7 +1570,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 										data-span={span > 1 ? span : undefined} data-cross={extra > 0 ? "" : undefined}
 										style={{ gridColumn: `${gi + 1} / span ${span}`, ...(extra > 0 ? { "--cc-cross-w": `${Math.round(boxW)}px` } : null) }}>
 										{units.map(({ u, si, half }, i) => (figVisible(u) ? (
-											<FigView key={i} data={u.fig} chord={u.chord} viewKey={keyAt(mi)}
+											<FigView key={i} data={u.fig} chord={figChordOf(u, mi, si, half)} viewKey={keyAt(mi)}
 												opts={{ ...figOpts, compact: paired, size: paired ? 44 : 64, boxW, boxH: boxW ? figMetrics.figH : undefined }}
 												onClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} />
 										) : null))}
