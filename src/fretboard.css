@@ -6221,10 +6221,20 @@ html[data-theme="light"] .button.sm.edit-enter {
     white-space: nowrap;
 }
 
-/* 段落/跳房子/转调角标：有图行时不再悬在图上方——落到图行与拍格之间的标记带（整行统一留带，拍格对齐不破）：
-   带 = 拍格 padding-top 18px；角标 top = 格 padding-top(3) + 图行占位(figH+4) + 图行 margin(4) - 1px 呼吸 */
-.cc-line.figs-tags .cc-cell-slots { padding-top: 18px; }
-.cc-line.figs-tags .cc-cell-tags { top: calc(var(--cc-fig-h) + 10px); }
+/* 段落/跳房子/转调角标：有图行时放文档流（图行与拍格之间的标记带，不再绝对定位悬在格顶——
+   与拍格/反复线重叠实测踩雷）。整行每格都渲染这条带（空也占位），拍格横向对齐不破 */
+.cc-cell-tags.in-flow {
+    position: static;
+    height: 20px;
+    margin: 0 0 2px 1px;
+    align-items: flex-end;
+}
+
+/* 标记带存在时：左/右小节竖线、反复双点、×N 的基准整体下移带宽(20+2)px（v179 的 :has(.pad) 偏移之上） */
+.cc-cell:has(.cc-cell-tags.in-flow)::before,
+.cc-cell:has(.cc-cell-tags.in-flow)::after { top: calc(var(--cc-fig-h) + 30px); }
+.cc-cell:has(.cc-cell-tags.in-flow) .cc-bardots { top: calc(var(--cc-fig-h) + 59px); }
+.cc-cell:has(.cc-cell-tags.in-flow) .cc-repeat-times { top: calc(var(--cc-fig-h) + 34px); }
 
 /* 预览子栏（预览页签内容区自己的 文本谱/动态谱 页签，不占工具栏） */
 .cc-preview-bar {

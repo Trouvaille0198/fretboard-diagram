@@ -1517,7 +1517,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		);
 	};
 
-	const cellView = (m, mi, rowHasFig) => {
+	const cellView = (m, mi, rowHasFig, figsTags) => {
 		const inSel = selRange != null && mi >= selRange[0] && mi <= selRange[1];
 		return (
 			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${editing && cursor.mi === mi ? "cur" : ""} ${inSel ? "sel" : ""} ${selRange != null && mi === selRange[0] ? "sel-first" : ""} ${selRange != null && mi === selRange[1] ? "sel-last" : ""}`}
@@ -1544,20 +1544,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					setPopupOpen(true);
 				}}
 				title={editing ? (ts.cellRightClickTip ?? "右键小节：插入 / 复制 / 删除 / 转调 / 标色") : undefined}>
-				{/* 小节级角标（8pu 式，一律在本小节开头）：跳房子 / 段落标记 / 转调 */}
-				{(m.house || m.section || m.keyRoot != null) ? (
-					<div className="cc-cell-tags">
-						{m.house ? <span className="cc-house">{m.house}.</span> : null}
-						{m.section ? (
-							<span className="cc-sectionmark"
-								title={ts.sectionEditTip ?? "点击编辑段落标记"}
-								onClick={e => { e.stopPropagation(); promptSection(mi); }}>
-								{m.section}
-							</span>
-						) : null}
-						{m.keyRoot != null ? <span className="cc-keymark">{keyLabelText(m.keyLetter ?? keySpellOf(m.keyRoot).letter, m.keyAcc ?? 0, !!m.keyMinor)}</span> : null}
-					</div>
-				) : null}
 				{m.repeatStart ? <span className="cc-bardots start" /> : null}
 				{m.endBar === "repeatEnd" ? <span className="cc-bardots end" /> : null}
 				{m.endBar === "repeatEnd" && m.repeatTimes > 1 ? (
@@ -1614,6 +1600,22 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						</div>
 					);
 				})() : null}
+				{/* 小节级角标（8pu 式，一律在本小节开头）：跳房子 / 段落标记 / 转调。
+				    有图行时（figsTags）角标放文档流里、落在图行与拍格之间——不再是绝对定位悬在格顶
+				    （与拍格/反复线重叠实测踩雷）；整行每格都渲染这条带（空也占位），拍格横向对齐不破 */}
+				{(figsTags || m.house || m.section || m.keyRoot != null) ? (
+					<div className={`cc-cell-tags${figsTags ? " in-flow" : ""}`}>
+						{m.house ? <span className="cc-house">{m.house}.</span> : null}
+						{m.section ? (
+							<span className="cc-sectionmark"
+								title={ts.sectionEditTip ?? "点击编辑段落标记"}
+								onClick={e => { e.stopPropagation(); promptSection(mi); }}>
+								{m.section}
+							</span>
+						) : null}
+						{m.keyRoot != null ? <span className="cc-keymark">{keyLabelText(m.keyLetter ?? keySpellOf(m.keyRoot).letter, m.keyAcc ?? 0, !!m.keyMinor)}</span> : null}
+					</div>
+				) : null}
 				<div className="cc-cell-slots">{compactView
 					? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => compactPairView(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null))
 					: m.slots.map((_, si) => slotView(mi, si))}</div>
@@ -1969,21 +1971,21 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					) : null}
 
 					<div className="cc-lines">
-						{rows.map((row, ri) => {
-							const first = ri * per;
-							// 同行任一小节有图：全行图行占位（无图小节空占位带），保证全行记号同一条线
-							const rowHasFig = row.some(mm => mm.slots.some(sl => (sl.split || [sl]).some(u => u && u.fig)));
-							// 整行无歌词：歌词带压成细条省行高——输入框仍在（点击可补词，词落地离焦即恢复全高）
-							const rowHasLyrics = row.some(mm => (mm.lyrics || "").trim());
-							// 行内任一小节有段落/跳房子/转调角标：有图行时角标不再悬在图上方，整行统一在图行下留标记带（对齐不破）
-							const rowHasTags = row.some(mm => mm.house || mm.section || mm.keyRoot != null);
-							return (
-								<div className={`cc-line${rowHasLyrics ? "" : " no-lyrics"}${figOpts.mode === "inline" && rowHasFig && rowHasTags ? " figs-tags" : ""}`} key={ri}>
+							{rows.map((row, ri) => {
+								const first = ri * per;
+								// 同行任一小节有图：全行图行占位（无图小节空占位带），保证全行记号同一条线
+								const rowHasFig = row.some(mm => mm.slots.some(sl => (sl.split || [sl]).some(u => u && u.fig)));
+								// 整行无歌词：歌词带压成细条省行高——输入框仍在（点击可补词，词落地离焦即恢复全高）
+								const rowHasLyrics = row.some(mm => (mm.lyrics || "").trim());
+								// 行内任一小节有段落/跳房子/转调角标且有图行：角标整行统一放文档流（图行与拍格之间的标记带，空也占位对齐）
+								const figsTags = figOpts.mode === "inline" && rowHasFig && row.some(mm => mm.house || mm.section || mm.keyRoot != null);
+								return (
+									<div className={`cc-line${rowHasLyrics ? "" : " no-lyrics"}`} key={ri}>
 									{/* 行号：叠在行首小节格左上角小字，不占独立列 */}
 									<span className="cc-line-no cc-line-no-float">{first + 1}</span>
 									{/* 网格轨道按行内小节数固定：末行不满时列宽仍与他行像素级一致（加行入口在谱面底部按钮，不占格） */}
 									<div className="cc-line-cells" style={{ gridTemplateColumns: `repeat(${per}, 1fr)` }}>
-										{row.map((m, k) => cellView(m, first + k, rowHasFig))}
+										{row.map((m, k) => cellView(m, first + k, rowHasFig, figsTags))}
 									</div>
 								</div>
 							);
