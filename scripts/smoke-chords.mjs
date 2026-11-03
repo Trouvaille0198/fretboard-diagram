@@ -315,6 +315,10 @@ console.log("== chartPack：工程文件往返 ==");
 	const backs = unpackChartsBundle(btext);
 	A("批量包:两首且首曲逐字段无差异", backs.length === 2 && deepDiff(s, dropTs(backs[0].song)).length === 0);
 	A("批量包:第二曲独立成曲(名/默认展示设置)", backs[1].song.name === "第二首" && backs[1].song.figOpts?.mode === "inline");
+	// saveCharts（批量导入的落盘）：同一批内重复内容去重（同 id 同内容不重复入库）
+	const { saveCharts } = await import("../src/utils/chordChartModel.js");
+	const savedOut = saveCharts([s2, s2]);
+	A("批量保存:同批重复去重(只落一份)", savedOut.length === 1 && savedOut[0].name === "第二首");
 	A("配图被带上（board）", back.measures[0].slots[0].image?.kind === "board" && !!back.measures[0].slots[0].image.frame);
 	A("配图被带上（clip）", back.measures[2].slots[0].image?.id === "clip-xyz");
 	A("小节标色被带上", back.measures[0].tint === "blue");

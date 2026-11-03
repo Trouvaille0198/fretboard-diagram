@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../i18n";
 import { ChartListPanel } from "./ChartListPanel";
-import { loadCharts, saveChart, deleteChart, createSong } from "../utils/chordChartModel";
+import { loadCharts, saveChart, saveCharts, deleteChart, createSong } from "../utils/chordChartModel";
 import { packChart, packChartsBundle, unpackChartBundle, unpackChartsBundle, isChartPack, isChartsBundle } from "../utils/chartPack";
 import { importMusicXml } from "../utils/musicxmlChart";
 import { saveClip } from "../utils/clipModel";
@@ -63,6 +63,13 @@ export function ChartListPage() {
 		const onSync = () => refresh();
 		window.addEventListener("fretboard:charts-synced", onSync);
 		return () => window.removeEventListener("fretboard:charts-synced", onSync);
+	}, []);
+
+	// 本机存储写满（persistCharts 广播）：导入/编辑都要让人知道"没存上"，而不是刷新后凭空消失
+	useEffect(() => {
+		const onFull = () => showToast(ts.storageFull ?? "本机存储已满，刚才的改动没存上！请删几首曲目或清空回收站后再试");
+		window.addEventListener("fretboard:storage-full", onFull);
+		return () => window.removeEventListener("fretboard:storage-full", onFull);
 	}, []);
 
 	// 从编辑页返回时，编辑器的最后一刻冲刷可能刚写完 localStorage：本页初始 state 读到的还是旧值，
@@ -184,9 +191,10 @@ export function ChartListPage() {
 			const text = String(reader.result);
 			try {
 				if (isChartsBundle(text)) {
-					// 批量工程包：整批落盘，留在列表页（逐首还原含内嵌动图）
+					// 批量工程包：整批一次落盘（逐首 saveChart 会把全库 JSON 写 N 遍，大库直接爆配额），留在列表页
 					const items = unpackChartsBundle(text);
-					items.forEach(({ song, clips }) => { (clips || []).forEach(c => saveClip(c)); saveChart(song); });
+					items.forEach(({ clips }) => (clips || []).forEach(c => saveClip(c)));
+					saveCharts(items.map(x => x.song));
 					refresh();
 					showToast((ts.importedN ?? "已导入 {n} 首").replace("{n}", String(items.length)));
 					return;

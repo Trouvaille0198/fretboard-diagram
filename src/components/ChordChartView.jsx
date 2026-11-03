@@ -130,6 +130,12 @@ export function ChordChartView({ songId }) {
 
 	const dialogInputRef = useRef(null);
 	const showToast = (msg) => setToast({ msg, key: Date.now() });
+	// 本机存储写满（persistCharts 广播）：编辑页的防抖保存撞配额也要让人知道"没存上"
+	useEffect(() => {
+		const onFull = () => showToast(ts.storageFull ?? "本机存储已满，刚才的改动没存上！请删几首曲目或清空回收站后再试");
+		window.addEventListener("fretboard:storage-full", onFull);
+		return () => window.removeEventListener("fretboard:storage-full", onFull);
+	}, []);
 	const clipRef = useRef(null); // Ctrl+C/V 剪贴板：{type:'chord',chord} | {type:'measure',slots}
 	const dragRef = useRef(false); // 复制模式拖选中
 	const hoverBeatRef = useRef(null); // 鼠标悬停的拍子：hover + Backspace 直接清那个拍，不必先点选它

@@ -182,17 +182,35 @@ export function loadCharts() {
 }
 
 export function persistCharts(charts) {
+	// 返回 true=主数据已落盘（无 localStorage 的环境视为成功——本来就没地方写，调用方逻辑照走）。
+	// 教训（导入大库实测踩雷）：原先备份写失败会整体抛进 catch 只 console.error——
+	// 配额爆在最该保的主键之前，页面还照常提示导入成功，刷新全部丢失。现在：
+	//   · 备份各自容错：配额吃紧时宁可放弃备份也不挡主数据；
+	//   · 主键写失败先清滚动备份腾空间重试一次，仍失败才广播 fretboard:storage-full 并返回 false；
+	//   · 每次保存的写入量从"4 份全库"变成"1 份主键 + 尽力而为的备份"。
+	if (!hasLS()) return true;
+	// 滚动备份最近 3 份（与 clipModel 同策略）
+	for (let i = 2; i >= 1; i--) {
+		const cur = localStorage.getItem(`fretboard-chordcharts-bak-${i}`);
+		if (cur) { try { localStorage.setItem(`fretboard-chordcharts-bak-${i + 1}`, cur); } catch (e) { /* 备份装不下：容忍 */ } }
+	}
+	const prev = localStorage.getItem(CHARTS_KEY);
+	if (prev) { try { localStorage.setItem("fretboard-chordcharts-bak-1", prev); } catch (e) { /* 备份装不下：容忍 */ } }
 	try {
-		// 滚动备份最近 3 份（与 clipModel 同策略）
-		for (let i = 2; i >= 1; i--) {
-			const cur = hasLS() ? localStorage.getItem(`fretboard-chordcharts-bak-${i}`) : null;
-			if (cur && hasLS()) localStorage.setItem(`fretboard-chordcharts-bak-${i + 1}`, cur);
-		}
-		const prev = hasLS() ? localStorage.getItem(CHARTS_KEY) : null;
-		if (prev && hasLS()) localStorage.setItem("fretboard-chordcharts-bak-1", prev);
-		if (hasLS()) localStorage.setItem(CHARTS_KEY, JSON.stringify(charts));
+		localStorage.setItem(CHARTS_KEY, JSON.stringify(charts));
+		return true;
 	} catch (error) {
-		console.error("保存和弦谱失败:", error);
+		console.error("保存和弦谱失败（首次）:", error);
+		try {
+			// 清掉滚动备份腾空间，重试一次
+			for (let i = 1; i <= 3; i++) localStorage.removeItem(`fretboard-chordcharts-bak-${i}`);
+			localStorage.setItem(CHARTS_KEY, JSON.stringify(charts));
+			return true;
+		} catch (e2) {
+			console.error("保存和弦谱失败（清备份后仍失败，本机存储已满）:", e2);
+			try { window.dispatchEvent(new CustomEvent("fretboard:storage-full")); } catch (e3) { /* 忽略 */ }
+			return false;
+		}
 	}
 }
 
@@ -206,8 +224,28 @@ export function saveChart(song) {
 	const i = existing ? charts.indexOf(existing) : -1;
 	if (i !== -1) charts[i] = stamped;
 	else charts.unshift(stamped);
-	persistCharts(charts);
+	if (!persistCharts(charts)) return stamped; // 本机存储已满（fretboard:storage-full 已广播）：不/outbox 下发——本机都没存住，云端先别动
 	queuePush("charts", stamped); // 登录用户进离线队列异步下发（游客不入队，纯本地）
+	return stamped;
+}
+
+// 批量保存（导入整包用）：合并成一次落盘——逐首 saveChart 会把全库 JSON 写 N 遍，大库直接把配额写爆
+export function saveCharts(list) {
+	const charts = loadCharts();
+	const stamped = [];
+	for (const song of list || []) {
+		if (!song || !song.id) continue;
+		const existing = charts.find(c => c.id === song.id);
+		if (existing && sameContent(existing, song)) continue;
+		const s0 = { ...song, updatedAt: Date.now() };
+		const i = existing ? charts.indexOf(existing) : -1;
+		if (i !== -1) charts[i] = s0;
+		else charts.unshift(s0);
+		stamped.push(s0);
+	}
+	if (stamped.length && persistCharts(charts)) {
+		stamped.forEach(s => queuePush("charts", s));
+	}
 	return stamped;
 }
 
