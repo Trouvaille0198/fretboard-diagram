@@ -97,6 +97,18 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		document.addEventListener("mousedown", onDocDown);
 		return () => document.removeEventListener("mousedown", onDocDown);
 	}, []);
+
+	// 钉顶工具行的实测高度 → CSS 变量：复制模式操作条 sticky 时垫在它下面（行高随页签/工具行变化）
+	useEffect(() => {
+		const tb = document.querySelector(".cc-toolbar");
+		if (!tb || typeof ResizeObserver === "undefined") return;
+		const page = document.querySelector(".cc-page");
+		const set = () => page && page.style.setProperty("--cc-toolbar-h", tb.offsetHeight + "px");
+		set();
+		const ro = new ResizeObserver(set);
+		ro.observe(tb);
+		return () => ro.disconnect();
+	}, []);
 	// 工具栏页签：和弦 | 小节 | 预览；分享查看态钉死在预览（任何 setToolTab 都不生效）
 	const [toolTabRaw, setToolTab] = useState(shared ? "preview" : "chord");
 	const toolTab = shared ? "preview" : toolTabRaw;
