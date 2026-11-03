@@ -237,7 +237,7 @@ console.log("== chartPack：工程文件往返 ==");
 	const { packChart, unpackChart, unpackChartBundle, chartShareCode, isChartPack, compactChart, packChartsBundle, isChartsBundle, unpackChartsBundle } = await import("../src/utils/chartPack.js");
 	// 造一首把应用里所有字段都用上的谱子（含配图/标色/节奏型/反复/跳房子/谱中转调/质量记忆）
 	const s = createSong("往返测试");
-	s.key = { root: 9, minor: true };
+	s.key = { root: 6, letter: 4, acc: -1, minor: false }; // Gb 大调（含 letter/acc，往返不丢）
 	s.timeSig = 3; s.bpm = 88; s.display = "name"; s.enharmonic = -1; s.rowsPerLine = 3; s.colorScheme = "crimson";
 	s.qualityMemory = { "1": "M7", "4": "m7" };
 	s.figOpts = { ...s.figOpts, mode: "hover", orientation: "v", size: 176 }; // 展示设置(每谱一份)取非默认值,验证随谱往返
@@ -305,6 +305,7 @@ console.log("== chartPack：工程文件往返 ==");
 	delete s.updatedAt; delete back.updatedAt;
 	const diffs = deepDiff(s, back);
 	A("工程文件往返无差异", diffs.length === 0, diffs.join(" / "));
+	A("调拼写往返:letter/acc 不丢(Gb)", back.key?.letter === 4 && back.key?.acc === -1);
 	A("分享码往返无差异", deepDiff(s, dropTs(unpackChart(chartShareCode(s)))).length === 0);
 	A("裸紧凑 JSON 往返无差异", deepDiff(s, dropTs(unpackChart(JSON.stringify(compactChart(s))))).length === 0);
 	A("展示设置随谱往返(非默认值 hover/v/176)", back.figOpts?.mode === "hover" && back.figOpts?.orientation === "v" && back.figOpts?.size === 176);
