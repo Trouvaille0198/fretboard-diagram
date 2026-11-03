@@ -2,30 +2,29 @@
 // 本地（游客态）存 localStorage；登录用户以云端 trash 表为准（本地也留一份兜底）。
 // 云端被删时（SSE 广播 deleted）同样把数据捞回来进本地回收站——否则另一端删了就没法还原。
 import { authUser } from "./authModel.js";
+import { createBigStore } from "./idbStore.js";
 
 const TRASH_KEY = "fretboard-trash";
+// 回收站大键已迁 IndexedDB（v188）：条目是被删对象的完整数据，批量删歌后它是 localStorage 最大的尾巴之一
+const trashStore = createBigStore(TRASH_KEY);
+
 export const TRASH_TTL = 10 * 24 * 3600 * 1000; // 10 天
 export const TRASH_TTL_DAYS = 10;
 
 // 回收站条目：{ tbl:'charts'|'clips', id, item, at, name }
 // tbl 区分曲目/动图；item 是被删对象的完整数据（还原时直接写回）
 function readAll() {
-	try {
-		const raw = localStorage.getItem(TRASH_KEY);
-		const list = raw ? JSON.parse(raw) : [];
-		return Array.isArray(list) ? list.filter(e => e && e.tbl && e.id) : [];
-	} catch (error) {
-		console.error("读取回收站失败:", error);
-		return [];
-	}
+	const list = trashStore.getSync(() => {
+		try {
+			const raw = typeof localStorage !== "undefined" ? localStorage.getItem(TRASH_KEY) : null;
+			return raw ? JSON.parse(raw) : [];
+		} catch (error) { return []; }
+	});
+	return Array.isArray(list) ? list.filter(e => e && e.tbl && e.id) : [];
 }
 
 function writeAll(list) {
-	try {
-		localStorage.setItem(TRASH_KEY, JSON.stringify(list));
-	} catch (error) {
-		console.error("写入回收站失败:", error);
-	}
+	trashStore.setSync(list);
 }
 
 // 过期清理：超过 10 天的条目永久移除（每次读写都顺手清一遍）
