@@ -38,6 +38,7 @@ import {
 	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText, normalizeBoldRanges, toggleBoldRange, collectSameChordFigs,
 	FIG_SIZES, defaultFigOpts, normalizeFigOpts
 } from "../utils/chordChartModel";
+import { expandSong } from "../utils/chartPlayback";
 import { remoteIsNewer } from "../utils/syncEngine";
 import { buildSongClip, stageFrame } from "../utils/chartFrames";
 import { exportMusicXml, importMusicXml } from "../utils/musicxmlChart";
@@ -1718,6 +1719,12 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const rows = [];
 	const per = autoPer; // 响应式：视谱面宽度而定（rowsPerLine 仅作初值）
 	for (let i = 0; i < song.measures.length; i += per) rows.push(song.measures.slice(i, i + per));
+	// 行号按“演奏序”计数：反复段按遍数计入（回跳后的拍也要数）——行号 = 该行首小节首次出现时的演奏序 + 1。
+	// 原先用原始小节序，有反复的谱子下滚后数字对不上遍数（用户实测打回）。expandSong 为播放引擎同一口径。
+	const playedFirst = new Map();
+	try {
+		expandSong(song).forEach((mi, i) => { if (!playedFirst.has(mi)) playedFirst.set(mi, i); });
+	} catch (e) { /* 防御：展开失败退回原始序 */ }
 
 	return (
 		<div className={`cc-page${copyMode ? " cc-copying" : ""}${figOpts.mode === "hover" ? " figmode-hover" : ""}`}>
@@ -1988,7 +1995,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								return (
 									<div className={`cc-line${rowHasLyrics ? "" : " no-lyrics"}`} key={ri}>
 									{/* 行号：叠在行首小节格左上角小字，不占独立列 */}
-									<span className="cc-line-no cc-line-no-float">{first + 1}</span>
+									<span className="cc-line-no cc-line-no-float">{(playedFirst.get(first) ?? first) + 1}</span>
 									{/* 网格轨道按行内小节数固定：末行不满时列宽仍与他行像素级一致（加行入口在谱面底部按钮，不占格） */}
 									<div className="cc-line-cells" style={{ gridTemplateColumns: `repeat(${per}, 1fr)` }}>
 										{row.map((m, k) => cellView(m, first + k, rowHasFig, figsTags))}
