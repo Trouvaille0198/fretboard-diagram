@@ -36,7 +36,7 @@ export function degreeLabel(string, fret, mode, rootPc, key) {
 // ============ 普通图数据 → 竖式小图数据 ============
 
 // data = 普通图 data(noteId→noteData + connections);产出:
-// { points: [{string, fret, id}], links: [{a:{string,fret}, b:{string,fret}, tech}],
+// { points: [{string, fret, id}], links: [{a:{string,fret}, b:{string,fret}, type:'line'|'arc', arrowDirection:'none'|'end'|'start'|'both'}],
 //   startFret, window, rootPc(用于和弦内度数,可 null), fail }
 // 一弦多点(音阶式)合法:全部点亮音都进 points;fret 用物理品(0=空弦)。
 export function boardFigData(data, chord, viewKey) {
@@ -55,12 +55,13 @@ export function boardFigData(data, chord, viewKey) {
 	const startFret = pressed.length ? Math.min(...pressed) : 1;
 	const maxFret = pressed.length ? Math.max(...pressed) : 1;
 	const window = Math.max(4, Math.min(6, maxFret - startFret + 1));
-	// 连线:端点必须在点亮音里(两端都找得到才带入)
+	// 连线:端点必须在点亮音里(两端都找得到才带入);样式(直线/弧、箭头)随主板预设原样带入——
+	// 以前只存 {a,b},小图把三种预设一律画成弧,直线也成了弧、箭头全丢
 	const byId = new Map(points.map(p => [p.id, p]));
 	const links = [];
 	Object.values((data && data.connections) || {}).forEach(c => {
 		const a = byId.get(c.startNoteId), b = byId.get(c.endNoteId);
-		if (a && b) links.push({ a, b });
+		if (a && b) links.push({ a, b, type: c.type === "arc" ? "arc" : "line", arrowDirection: c.arrowDirection || "none" });
 	});
 	// 和弦内度数的根音(该拍有和弦才给;无和弦拍退化为调内/无标注由调用方决定)
 	let rootPc = null;
@@ -208,27 +209,68 @@ export function figSvg(fig, opts = {}) {
 		const fo = p.fret === 0 ? -0.35 * cellF : (p.fret - fig.startFret + 0.5) * cellF;
 		return pt(Math.min(spanF, fo), offS(p.string));
 	};
-	// 连线(压点下层):两端各沿垂直于两音连线的方向起落(cubic)——切线正对圆心,
-	// 可见段始终"对着音符中心";二次曲线的控制点悬在两音中点上,短跨距时斜切圆边,看起来像没对准
-	(fig.links || []).forEach(({ a, b }) => {
+	// 度数与点径(连线箭头要贴点边缘落,先于连线算)
+	const degMode = opts.degMode || "none";
+	const degFor = (p) => {
+		if (degMode === "chord" && fig.rootPc !== null) return degreeLabel(p.string, p.fret, "chord", fig.rootPc);
+		if (degMode === "scale" && opts.key) return degreeLabel(p.string, p.fret, "scale", null, opts.key);
+		return "";
+	};
+	// 带度数的点 0.40 格:相邻弦的点之间留 0.2 格空隙(0.44 时 R 5 ♭3 三点相贴)
+	const rDeg = 0.40 * cell, rPlain = 0.35 * cell;
+	const dotR = (p) => (degFor(p) ? rDeg : rPlain);
+	// 连线(压点下层):主板三种预设如实成形——line/line-arrow 直线;arc-arrow 弧线:两端各沿垂直于两音连线的方向
+	// 起落的 cubic(切线正对圆心,可见段始终"对着音符中心";二次曲线的控制点悬在两音中点上,短跨距时斜切圆边像没对准)。
+	// 以前不分预设一律画弧,直线也成了弧、箭头全丢。带箭头的一端沿路径实际走向画小三角,箭尖贴圆点边缘
+	const linkStroke = (1.5 * cell / 9).toFixed(2);
+	const arrowLen = 0.5 * cell, arrowHalf = 0.375 * arrowLen;
+	(fig.links || []).forEach(({ a, b, type = "line", arrowDirection = "none" }) => {
 		const pa = posOf(a), pb = posOf(b);
 		const dx = pb.x - pa.x, dy = pb.y - pa.y;
 		const len = Math.hypot(dx, dy) || 1;
-		const bend = 0.55 * cell;
-		let nx = -dy / len, ny = dx / len; // 连线方向的垂直线
-		if (ny > 0 || (ny === 0 && nx > 0)) { nx = -nx; ny = -ny; } // 弧统一拱向谱面上方/左侧
-		svg += `<path d="M ${pa.x.toFixed(2)} ${pa.y.toFixed(2)} C ${(pa.x + nx * bend).toFixed(2)} ${(pa.y + ny * bend).toFixed(2)}, ${(pb.x + nx * bend).toFixed(2)} ${(pb.y + ny * bend).toFixed(2)}, ${pb.x.toFixed(2)} ${pb.y.toFixed(2)}" fill="none" stroke="${th.link}" stroke-width="${(1.5 * cell / 9).toFixed(2)}" stroke-linecap="round" opacity="0.9"/>`;
+		let P1 = null, P2 = null;
+		let d = `M ${pa.x.toFixed(2)} ${pa.y.toFixed(2)}`;
+		if (type === "arc") {
+			const bend = 0.55 * cell;
+			let nx = -dy / len, ny = dx / len; // 连线方向的垂直线
+			if (ny > 0 || (ny === 0 && nx > 0)) { nx = -nx; ny = -ny; } // 弧统一拱向谱面上方/左侧
+			P1 = { x: pa.x + nx * bend, y: pa.y + ny * bend };
+			P2 = { x: pb.x + nx * bend, y: pb.y + ny * bend };
+			d += ` C ${P1.x.toFixed(2)} ${P1.y.toFixed(2)}, ${P2.x.toFixed(2)} ${P2.y.toFixed(2)}, ${pb.x.toFixed(2)} ${pb.y.toFixed(2)}`;
+		} else {
+			d += ` L ${pb.x.toFixed(2)} ${pb.y.toFixed(2)}`;
+		}
+		svg += `<path d="${d}" fill="none" stroke="${th.link}" stroke-width="${linkStroke}" stroke-linecap="round" opacity="0.9"/>`;
+		// 路径上 t∈[0,1] 的点(直线/cubic 同一入口,箭头按采样走向摆——弧线末端方向≠两音连线方向)
+		const at = (t) => {
+			if (type !== "arc") return { x: pa.x + dx * t, y: pa.y + dy * t };
+			const s = 1 - t, k0 = s * s * s, k1 = 3 * s * s * t, k2 = 3 * s * t * t, k3 = t * t * t;
+			return { x: k0 * pa.x + k1 * P1.x + k2 * P2.x + k3 * pb.x, y: k0 * pa.y + k1 * P1.y + k2 * P2.y + k3 * pb.y };
+		};
+		// 从该端沿路径向内:走出圆点半径处=箭尖,再走一个箭长=箭底;三角沿箭底→箭尖方向
+		const arrowAt = (end) => {
+			const r = dotR(end === "end" ? b : a);
+			const N2 = 48, pts = [];
+			for (let i = 0; i <= N2; i++) pts.push(at(end === "end" ? 1 - i / N2 : i / N2));
+			let acc = 0, tip = null, base = null;
+			for (let i = 1; i < pts.length && !base; i++) {
+				acc += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+				if (!tip && acc >= r) tip = pts[i];
+				else if (tip && acc >= r + arrowLen) base = pts[i];
+			}
+			if (!tip || !base) return; // 两音挨得太近,放不下箭头就不画
+			const ux = tip.x - base.x, uy = tip.y - base.y, ul = Math.hypot(ux, uy) || 1;
+			const px = -uy / ul * arrowHalf, py = ux / ul * arrowHalf;
+			svg += `<polygon points="${tip.x.toFixed(2)},${tip.y.toFixed(2)} ${(base.x + px).toFixed(2)},${(base.y + py).toFixed(2)} ${(base.x - px).toFixed(2)},${(base.y - py).toFixed(2)}" fill="${th.link}" opacity="0.95"/>`;
+		};
+		if (arrowDirection === "end" || arrowDirection === "both") arrowAt("end");
+		if (arrowDirection === "start" || arrowDirection === "both") arrowAt("start");
 	});
 	// (闷音/空弦不画 ×/○ —— 传统黑点图不带圈叉标记;闷音直接不显示)
 	// 点 + 度数(点径=格距固定比例)
-	const degMode = opts.degMode || "none";
-	// 带度数的点 0.40 格:相邻弦的点之间留 0.2 格空隙(0.44 时 R 5 ♭3 三点相贴)
-	const rDeg = 0.40 * cell, rPlain = 0.35 * cell;
 	fig.points.forEach(p => {
 		const { x, y } = posOf(p);
-		let deg = "";
-		if (degMode === "chord" && fig.rootPc !== null) deg = degreeLabel(p.string, p.fret, "chord", fig.rootPc);
-		else if (degMode === "scale" && opts.key) deg = degreeLabel(p.string, p.fret, "scale", null, opts.key);
+		const deg = degFor(p);
 		// 所有点(格内按弦音与琴枕外空弦音)同一套半径/字号的度数——视觉全等
 		const r = deg ? rDeg : rPlain;
 		svg += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${r.toFixed(2)}" fill="${th.dot}"/>`;
