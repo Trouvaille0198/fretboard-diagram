@@ -611,6 +611,16 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("同和弦收集:内容相同(连线键名不同)去重为一张", collectSameChordFigs(ms2, 0, "maj7", () => KEYC).length === 1);
 }
 
+// ===== 音名拼写：key.enharmonic 升降号切换（D♯/E♭） =====
+{
+	const { formatName } = await import("../src/utils/chordLib.js");
+	const KEY_AB = { root: 8, minor: false }; // Ab 大调：4 级 = Db（ tendency 记降）
+	A("音名:默认随调号倾向(Ab 大调 4 级 → Db)", formatName({ degree: 4, acc: 0, quality: "" }, KEY_AB) === "Db");
+	A("音名:enharmonic=0(♯) → C#", formatName({ degree: 4, acc: 0, quality: "" }, { ...KEY_AB, enharmonic: 0 }) === "C#");
+	A("音名:enharmonic=1(♭) → Db", formatName({ degree: 4, acc: 0, quality: "" }, { ...KEY_AB, enharmonic: 1 }) === "Db");
+	A("音名:度数自带变音仍优先(Ab 大调 4 级+1 → D)", formatName({ degree: 4, acc: 1, quality: "" }, { ...KEY_AB, enharmonic: 1 }) === "D");
+}
+
 // ===== 指法小图渲染几何(figSvg/figGeometry/figHitTest 同源一致性) =====
 {
 	const { boardFigData, figSvg, figGeometry, figHitTest, degreeLabel } = await import("../src/utils/chordFig.js");

@@ -29,7 +29,7 @@ function richLyric(text, ranges) {
 	return out;
 }
 
-import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken, degreePc } from "../utils/chordLib";
+import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken, degreePc, effectiveEnharmonic } from "../utils/chordLib";
 import { createPortal } from "react-dom";
 import { ChordSign } from "./ChordSign";
 import { KeyPicker } from "./KeyPicker";
@@ -331,11 +331,12 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const editing = toolTab !== "preview"; // 预览页签 = 查看态；其余页签 = 编辑（tab 栏永远不变）
 	const viewKey = { root: song.key?.root ?? 0, minor: !!song.key?.minor };
 	// 生效调：小节级转调标记（keyRoot）覆盖到该小节起；全局移调叠加 —— 播放/按法/音名显示都用它
+	// enharmonic（0=♯/1=♭）随行携带：音名模式的拼写切换直接生效（nameOfPc 读 key.enharmonic）
 	const keyAt = (mi) => {
-		let key = { root: song.key?.root ?? 0, minor: !!song.key?.minor };
+		let key = { root: song.key?.root ?? 0, minor: !!song.key?.minor, enharmonic: song.enharmonic };
 		for (let i = 0; i <= mi && song.measures.length; i++) {
 			const m = song.measures[i];
-			if (m && m.keyRoot != null) key = { root: m.keyRoot, minor: !!m.keyMinor };
+			if (m && m.keyRoot != null) key = { root: m.keyRoot, minor: !!m.keyMinor, enharmonic: song.enharmonic };
 		}
 		return key;
 	};
@@ -1901,6 +1902,14 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						<button className={previewDisplay === "roman" ? "on" : ""} onClick={() => setPreviewDisplay("roman")}>{ts.dispRoman ?? "罗马"}</button>
 						<button className={previewDisplay === "name" ? "on" : ""} onClick={() => setPreviewDisplay("name")}>{ts.dispName ?? "音名"}</button>
 					</nav>
+					{/* 音名模式的升降号拼写切换（D♯/E♭）：写进曲子数据（song.enharmonic），随谱保存/同步 */}
+					{previewDisplay === "name" ? (
+						<button className={`cc-compact-btn${(song.enharmonic ?? effectiveEnharmonic({ root: song.key?.root ?? 0, minor: !!song.key?.minor })) === 0 ? " on" : ""}`}
+							title={ts.enharmTip ?? "音名的升降号拼写：♯ 升号 / ♭ 降号（会写进曲子数据）"}
+							onClick={() => setSong(s => ({ ...s, enharmonic: effectiveEnharmonic({ root: s.key?.root ?? 0, minor: !!s.key?.minor, enharmonic: s.enharmonic }) === 1 ? 0 : 1 }))}>
+							{(song.enharmonic ?? effectiveEnharmonic({ root: song.key?.root ?? 0, minor: !!song.key?.minor })) === 1 ? "♭ 降号" : "♯ 升号"}
+						</button>
+					) : null}
 					<span className="cc-flex" />
 					<button className="button sm" onClick={shareLink} title={ts.shareLinkTip ?? "生成查看链接：对方不用登录，打开就能看"}>🔗 {ts.shareLinkBtn ?? "链接"}</button>
 					<button className="button sm" onClick={shareChart} title={ts.shareCodeTip ?? "复制分享码：对方粘贴即可 100% 还原整首谱"} >{ts.shareBtn ?? "分享码"}</button>

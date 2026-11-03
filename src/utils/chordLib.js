@@ -53,6 +53,14 @@ const DIATONIC = {
 // 降号调（F/Bb/Eb/Ab/Db）里歧义音级（F#/Gb、C#/Db）记降号，其余记升号
 const FLAT_KEYS = new Set([5, 10, 3, 8, 1]);
 
+// 生效的升降号偏好：key.enharmonic 显式给定时用之（和弦谱音名切换），否则随调号倾向（F/Bb/Eb/Ab/Db → ♭）
+export function effectiveEnharmonic(key) {
+	if (key && key.enharmonic != null) return key.enharmonic;
+	const root = key?.root || 0;
+	const relMajorRoot = key?.minor ? (root + 3) % 12 : root;
+	return FLAT_KEYS.has(((relMajorRoot % 12) + 12) % 12) ? 1 : 0;
+}
+
 const ACC_SIGN = { "-1": "b", "0": "", "1": "#" };
 
 export const stepsOf = (key) => (key.minor ? MINOR_STEPS : MAJOR_STEPS);
@@ -105,10 +113,12 @@ export function formatDegree(chord) {
 // ============ 音名 token ⇄ 和弦对象 ============
 
 // 音级拼写：降号度数（acc<0）记降、升号度数（acc>0）记升、自然度数随调号
-// （等大调签名定升/降调倾向：F/Bb/Eb/Ab/Db 记降，其余记升）
+// （等大调签名定升/降调倾向：F/Bb/Eb/Ab/Db 记降，其余记升）；
+// key.enharmonic（0=♯/1=♭，和弦谱音名切换）显式给定时优先于调号倾向
 function nameOfPc(pc, key, prefer) {
 	const relMajorRoot = key.minor ? (((key.root || 0) + 3) % 12) : (key.root || 0);
-	const flats = prefer === "flat" || (prefer !== "sharp" && FLAT_KEYS.has(relMajorRoot % 12));
+	const flats = prefer === "flat" || (prefer !== "sharp" &&
+		(key.enharmonic != null ? key.enharmonic === 1 : FLAT_KEYS.has(relMajorRoot % 12)));
 	const names = flats ? NOTE_NAMES[1] : NOTE_NAMES[0];
 	return names[((pc % 12) + 12) % 12];
 }
