@@ -4769,10 +4769,9 @@ html[data-theme="light"] .cc-page {
 /* 小节「⋯」操作按钮与菜单 */
 
 .cc-mmenu {
-    position: absolute;
-    top: 8px;
-    right: 2px;
-    z-index: 400;
+    /* 右键小节菜单：fixed 锚在鼠标右下 +6px（JS 视口钳制），不再贴小节格右上角——原位会正好被光标压住 */
+    position: fixed;
+    z-index: 1300;
     /* 340px：转调选择器一行放得下（主音+调式+♭♯+清除≈300px），不挤成竖排 */
     min-width: 340px;
     background: var(--app-panel-strong);
