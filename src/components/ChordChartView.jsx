@@ -1841,6 +1841,23 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						</div>
 						) : null}
 					</div>
+					{/* 段落跳转 ¶ 钮：hover/click 展开全曲段落标记菜单（跟 ⚙ 面板同款交互） */}
+					{sections.length ? (
+						<span className="cc-nav-wrap">
+							<button className="cc-nav-btn" title={ts.sectionNavTip ?? "段落跳转：点击跳到对应行"}
+								onClick={() => setNavOpen(v => !v)}
+								onMouseEnter={navOpenNow} onMouseLeave={navCloseSoon}>¶</button>
+							<div className="cc-nav-menu" style={{ display: navOpen ? "block" : "none" }}
+								onMouseEnter={navOpenNow} onMouseLeave={navCloseSoon}>
+								{sections.map(s => (
+									<button key={s.mi} onClick={() => { jumpToSection(s.mi); setNavOpen(false); }}>
+										<span className="cc-nav-name">{s.name}</span>
+										<span className="cc-nav-mi">{ts.measureShort ? ts.measureShort(s.mi + 1) : `M${s.mi + 1}`}</span>
+									</button>
+								))}
+							</div>
+						</span>
+					) : null}
 					<span className="cc-flex" />
 					{shared ? (
 						<button className="button sm accent" onClick={adoptShared} title={ts.sharedSaveTip ?? "存一份到自己的曲库，之后可以编辑"}>⬇ {ts.sharedSave ?? "保存到我的曲库"}</button>
@@ -1867,26 +1884,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								) : null}
 							</span>
 							<input ref={fileRef} type="file" accept=".fbchart,.musicxml,.xml,.txt" style={{ display: "none" }} onChange={doImportFile} />
-						</>
-					) : null}
-			{sections.length ? (
-				<div className="cc-nav-float"
-					onMouseEnter={() => { clearTimeout(navTimerRef.current); setNavOpen(true); }}
-					onMouseLeave={navCloseSoon}>
-					<button className="cc-nav-float-btn" title={ts.sectionNavTip ?? "段落跳转"}
-						onClick={() => setNavOpen(v => !v)}>¶</button>
-					<div className="cc-nav-float-menu" style={{ display: navOpen ? "block" : "none" }}
-						onMouseEnter={() => { clearTimeout(navTimerRef.current); }}>
-						{sections.map(s => (
-							<button key={s.mi} onClick={() => { jumpToSection(s.mi); setNavOpen(false); }}>
-								<span className="cc-nav-name">{s.name}</span>
-								<span className="cc-nav-mi">{ts.measureShort ? ts.measureShort(s.mi + 1) : `M${s.mi + 1}`}</span>
-							</button>
-						))}
+					</>
+				) : null}
 					</div>
-				</div>
-			) : null}
-				</div>
 				{editing && toolTab !== "chord" ? (
 					<div className="cc-tools-row">
 						{toolTab === "measure" ? (
