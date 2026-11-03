@@ -8,6 +8,7 @@ import { MAJOR_STEPS, MINOR_STEPS, NOTE_NAMES, LETTER_SEMITONES } from "./songSt
 // quality → 根音起的半音集
 export const CHORD_INTERVALS = {
 	"": [0, 4, 7],
+	M: [0, 4, 7],
 	m: [0, 3, 7],
 	"5": [0, 7],
 	maj9: [0, 4, 7, 11, 14],
@@ -132,11 +133,13 @@ export function resolvedQuality(chord, key) {
 }
 
 // 和弦对象 → 音名 token（相对 viewKey —— 移调看谱时传入移调后的调）
+// 显式大三 "M" 在音名里不带后缀（"A" 就是 A 大三，不写 "AM"）
 export function formatName(chord, viewKey) {
 	if (!chord) return "";
 	const accPref = (a) => (a < 0 ? "flat" : a > 0 ? "sharp" : null);
 	const root = nameOfPc(degreePc(chord.degree, chord.acc, viewKey), viewKey, accPref(chord.acc || 0));
-	let out = root + resolvedQuality(chord, viewKey) + altText(chord);
+	const q0 = resolvedQuality(chord, viewKey);
+	let out = root + (q0 === "M" ? "" : q0) + altText(chord);
 	if (chord.bass) {
 		out += "/" + nameOfPc(degreePc(chord.bass.degree, chord.bass.acc, viewKey), viewKey, accPref(chord.bass.acc || 0));
 	}

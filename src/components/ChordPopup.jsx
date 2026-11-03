@@ -6,7 +6,7 @@ import { ChordSign } from "./ChordSign";
 // 质量按族分组，一行一族（标签列 + 7 列对齐网格）：三 / 七 / 九 / 挂留
 const QUALITY_GROUPS = [
 	{ key: "qTriad", items: [
-		{ q: "", label: "M" }, { q: "m", label: "m" }, { q: "5", label: "5" }, { q: "dim", label: "dim" }, { q: "aug", label: "aug" }
+		{ q: "M", label: "M" }, { q: "m", label: "m" }, { q: "5", label: "5" }, { q: "dim", label: "dim" }, { q: "aug", label: "aug" }
 	] },
 	{ key: "qSeventh", items: [
 		{ q: "7", label: "7" }, { q: "m7", label: "m7" }, { q: "maj7", label: "maj7" },
