@@ -1645,11 +1645,18 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				) : null}
 				{cellMenu && cellMenu.mi === mi ? createPortal(
 					<div ref={cellMenuRef} className="cc-mmenu" style={{ left: cellMenu.x + 6, top: cellMenu.y + 6 }} onClick={e => e.stopPropagation()}>
-						<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure ?? "插入小节"}</button>
-						<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure ?? "删除小节"}</button>
-						<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
-						<button className="danger" onClick={() => { removeBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.delBeatTip ?? "删除光标处的拍：后面的拍整体前移（跨小节流动），末尾补空拍；末小节被掏空自动缩掉"}>⇤ {ts.delBeat ?? "删除一拍"}</button>
-						<button onClick={() => { setCellMenu(null); promptSection(mi); }}>¶ {ts.sectionBtn ?? "段落标记"}</button>
+						{/* 结构操作两两一行（插入/删除配对），比单列省一半高度 */}
+						<div className="cc-mmenu-row">
+							<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure ?? "插入小节"}</button>
+							<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure ?? "删除小节"}</button>
+						</div>
+						<div className="cc-mmenu-row">
+							<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
+							<button className="danger" onClick={() => { removeBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.delBeatTip ?? "删除光标处的拍：后面的拍整体前移（跨小节流动），末尾补空拍；末小节被掏空自动缩掉"}>⇤ {ts.delBeat ?? "删除一拍"}</button>
+						</div>
+						<div className="cc-mmenu-row">
+							<button onClick={() => { setCellMenu(null); promptSection(mi); }}>¶ {ts.sectionBtn ?? "段落标记"}</button>
+						</div>
 						<div className="cc-menu-sep" />
 						<div className="cc-mmenu-label">{ts.barlineLabel ?? "小节线"}</div>
 						<div className="cc-mmenu-row">
