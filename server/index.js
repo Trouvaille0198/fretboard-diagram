@@ -37,6 +37,13 @@ CREATE TABLE IF NOT EXISTS counters (name TEXT NOT NULL, tbl TEXT NOT NULL, rev 
 CREATE TABLE IF NOT EXISTS trash (name TEXT NOT NULL, tbl TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (name, tbl, id));
 `);
 
+// 分享链接：谱子快照存服务端，短 id 公开可读（查看不需要登录）。
+// 同一用户同一谱子复用同一 id——再分享 = 刷新快照，历史链接不失效
+db.exec(`
+CREATE TABLE IF NOT EXISTS shares (id TEXT PRIMARY KEY, name TEXT NOT NULL, chart_id TEXT NOT NULL, data TEXT NOT NULL, updated_at INTEGER NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_shares_owner_chart ON shares (name, chart_id);
+`);
+
 // 迁移：加 rev / hash 列（旧库自动补，data 不动）——SQLite 没有 ADD COLUMN IF NOT EXISTS，手工判断
 const hasCol = (table, col) => db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === col);
 for (const t of ["charts", "clips"]) {
@@ -312,8 +319,36 @@ const server = http.createServer(async (req, res) => {
 		return name ? json(res, 200, { user: name }) : json(res, 401, { error: "no_auth" });
 	}
 
+	// ===== 分享链接：公开读（查看不登录——"发个链接给别人就能看"的前提）=====
+	// 只回谱子快照本身，不暴露分享者/账号信息
+	if (p.startsWith("/api/share/") && req.method === "GET") {
+		const id = decodeURIComponent(p.slice("/api/share/".length));
+		const row = db.prepare("SELECT data, updated_at FROM shares WHERE id = ?").get(id);
+		if (!row) return json(res, 404, { error: "share_not_found" });
+		return json(res, 200, { data: row.data, updated_at: row.updated_at });
+	}
+
 	const name = authName(req, url);
 	if (!name) return json(res, 401, { error: "no_auth" });
+
+	// ===== 分享链接：登录用户建/刷新/撤销 =====
+	if (p === "/api/share" && req.method === "POST") {
+		const body = await readBody(req);
+		const chartId = String(body.chartId || "").slice(0, 120);
+		const data = String(body.data || "");
+		if (!chartId || !data) return json(res, 400, { error: "bad_request" });
+		const prev = db.prepare("SELECT id FROM shares WHERE name = ? AND chart_id = ?").get(name, chartId);
+		const id = prev ? prev.id : crypto.randomBytes(6).toString("base64url");
+		db.prepare(`INSERT INTO shares (id, name, chart_id, data, updated_at) VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`)
+			.run(id, name, chartId, data, Date.now());
+		return json(res, 200, { id });
+	}
+	if (p.startsWith("/api/share/") && req.method === "DELETE") {
+		const id = decodeURIComponent(p.slice("/api/share/".length));
+		const r = db.prepare("DELETE FROM shares WHERE id = ? AND name = ?").run(id, name);
+		return json(res, 200, { ok: true, removed: r.changes });
+	}
 
 	if (p === "/api/events" && req.method === "GET") {
 		res.writeHead(200, {

@@ -45,6 +45,25 @@ try {
 	r = await j("GET", "/api/auth/me", null, "badtoken");
 	ok(r.status === 401, "bad token 401");
 
+	// 分享链接：登录建短链 → 公开读（无 token）→ 同谱再分享复用同 id 且刷新内容 → 建需登录 → 撤销后 404
+	r = await j("POST", "/api/share", { chartId: "c-share", data: "fretboard-chart:AAA" }, tk);
+	ok(r.status === 200 && typeof r.data.id === "string" && r.data.id.length >= 6, "share create (authed)");
+	const sid = r.data.id;
+	r = await j("GET", `/api/share/${sid}`);
+	ok(r.status === 200 && r.data.data === "fretboard-chart:AAA", "share public read (no token)");
+	r = await j("POST", "/api/share", { chartId: "c-share", data: "fretboard-chart:BBB" }, tk);
+	ok(r.status === 200 && r.data.id === sid, "share again reuses same id");
+	r = await j("GET", `/api/share/${sid}`);
+	ok(r.status === 200 && r.data.data === "fretboard-chart:BBB", "share snapshot refreshed");
+	r = await j("POST", "/api/share", { chartId: "x", data: "y" });
+	ok(r.status === 401, "share create needs auth");
+	r = await j("GET", "/api/share/does-not-exist");
+	ok(r.status === 404, "unknown share 404");
+	r = await j("DELETE", `/api/share/${sid}`, null, tk);
+	ok(r.status === 200 && r.data.removed === 1, "share revoke by owner");
+	r = await j("GET", `/api/share/${sid}`);
+	ok(r.status === 404, "revoked share 404");
+
 	r = await j("POST", "/api/charts/merge", [{ id: "c1", name: "A", measures: [], updatedAt: 10 }], tk);
 	ok(r.status === 200 && r.data.items.length === 1, "merge local in");
 	r = await j("PUT", "/api/charts/c1", { id: "c1", name: "A2", measures: [{ slots: [] }], updatedAt: Date.now() }, tk);

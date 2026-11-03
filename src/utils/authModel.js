@@ -12,7 +12,8 @@ export function authUser() { return current && current.token ? current : null; }
 export function onAuthChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 const emit = () => listeners.forEach(fn => { try { fn(authUser()); } catch (e) { /* 订阅方自己兜 */ } });
 
-async function api(method, path, body) {
+// 通用 API 调用（带登录 token）：分享链接等其它模块复用，不各自拼 fetch
+export async function api(method, path, body) {
 	const token = authUser()?.token;
 	const res = await fetch("/api" + path, {
 		method,
