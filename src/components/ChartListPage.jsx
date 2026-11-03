@@ -134,7 +134,10 @@ export function ChartListPage() {
 	};
 
 	// —— 批量操作（列表页勾选）：勾选状态在本页，面板只负责画勾选框和操作条 ——
+	// 勾选框不常驻：点「批量管理」进入勾选模式，退出即收起
 	const [sel, setSel] = useState(() => new Set());
+	const [selMode, setSelMode] = useState(false);
+	const toggleSelMode = () => { setSelMode(v => { if (v) setSel(new Set()); return !v; }); };
 	const toggleSel = (id, on) => setSel(prev => {
 		const next = new Set(prev);
 		if (on) next.add(id); else next.delete(id);
@@ -233,7 +236,7 @@ export function ChartListPage() {
 	
 			<div className="cc-body cc-songs-page">
 				<ChartListPanel variant="page" charts={charts} currentId={currentId} t={t}
-					sel={sel} onToggleSel={toggleSel} onSelectAll={selectAll} onClearSel={clearSel}
+					sel={sel} selMode={selMode} onToggleSelMode={toggleSelMode} onToggleSel={toggleSel} onSelectAll={selectAll} onClearSel={clearSel}
 					onExportSel={exportCharts} onDeleteSel={removeCharts}
 					onOpen={enter}
 					onNew={newSong}
