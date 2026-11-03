@@ -4454,6 +4454,28 @@ g.drag-fx-layer circle[stroke-dasharray] {
     padding-left: 12px;
 }
 
+/* 末小节尾部的加拍钮：很窄一条＋（不挤拍格），hover 亮起 */
+.cc-append-beat {
+    flex: 0 0 10px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: var(--app-fs-xs);
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0.45;
+}
+
+.cc-append-beat:hover {
+    opacity: 1;
+    color: var(--app-control-thumb-border, #e4a54b);
+}
+
 .cc-cell.rep-start::before {
     /* 反复开始：粗+细（点另画） */
     width: 4px;
