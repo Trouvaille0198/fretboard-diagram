@@ -59,11 +59,13 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 	document.addEventListener("visibilitychange", () => { if (document.hidden) flushAll(); });
 }
 
-export function createBigStore(key, { legacyKeys } = {}) {
+export function createBigStore(key, { legacyKeys, lsRead } = {}) {
+	// lsRead = 该键的旧 localStorage 读取器（迁移分支用；灌入前的兜底同步读也走它），建库时绑定——
+	// 实测踩雷：原先由调用方在 getSync/hydrate 处传参，而 hydrateBigStores 是无参调用，迁移分支永远拿不到旧数据
 	const store = {
 		key,
-		// 同步读：缓存权威；灌入前的窗口（App 门保证不会发生；node 冒烟/异常兜底）退回调用方的 LS 老读法
-		getSync(lsRead) {
+		// 同步读：缓存权威；灌入前的窗口（App 门保证不会发生；node 冒烟/异常兜底）退回 LS 老读法
+		getSync() {
 			if (cache.has(key)) return cache.get(key);
 			return lsRead ? lsRead() : undefined;
 		},
@@ -71,12 +73,18 @@ export function createBigStore(key, { legacyKeys } = {}) {
 			cache.set(key, value);
 			scheduleFlush(key);
 		},
-		async hydrate(lsRead) {
+		async hydrate() {
 			if (cache.has(key)) return; // 已有写入（早于灌入的极端竞态）：内存为准
 			let v = null;
 			if (hasIDB()) { try { v = await idbGet(key); } catch (e) { v = null; } }
 			const apply = (val) => { if (!cache.has(key)) cache.set(key, val); };
-			if (v != null) { apply(v); return; }
+			if (v != null) {
+				// IDB 已有值：数据早就在 IDB 里了（迁移早已完成/被登录同步接管）——旧 LS 键照样清掉。
+				// 实测踩雷：清理只挂在"迁移首刷"那一次，首刷被登录同步抢先写入 IDB 后旧键就永远清不掉
+				apply(v);
+				(legacyKeys ? legacyKeys(key) : [key]).forEach(lsDel);
+				return;
+			}
 			// IDB 为空：看旧 localStorage 键——一次性迁移进 IDB，成功后清旧键
 			const legacy = lsRead ? lsRead() : undefined;
 			if (legacy != null) {

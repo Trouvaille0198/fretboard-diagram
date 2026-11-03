@@ -134,9 +134,10 @@ export function TopNav({ mode }) {
 	};
 	const doNotMerge = () => {
 		// 不合并：本机数据先备份（可找回），再以账号云端为准覆盖本地
+		// 大键已迁 IndexedDB（v188）：快照走内存缓存（loadCharts/loadClips），直读 localStorage 会拿到空/旧值
 		try {
-			localStorage.setItem("fretboard-chordcharts-guest-bak", localStorage.getItem("fretboard-chordcharts") || "[]");
-			localStorage.setItem("fretboard-clips-guest-bak", localStorage.getItem("fretboard-clips") || "[]");
+			localStorage.setItem("fretboard-chordcharts-guest-bak", JSON.stringify(loadCharts()));
+			localStorage.setItem("fretboard-clips-guest-bak", JSON.stringify(loadClips()));
 		} catch (e) { /* 备份失败也继续 */ }
 		pullAndApply();
 		setMergeAsk(null);

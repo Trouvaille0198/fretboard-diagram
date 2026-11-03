@@ -10,17 +10,18 @@ const CLIPS_KEY = "fretboard-clips";
 // 动图池大键已迁 IndexedDB（v188，与谱子库同一套缓存/灌入/防抖落盘；帧序列是全库最大的数据）
 const clipsStore = createBigStore(CLIPS_KEY, {
 	legacyKeys: (k) => [k, `${k}-bak-1`, `${k}-bak-2`, `${k}-bak-3`],
+	lsRead: () => {
+		try {
+			const raw = typeof localStorage !== "undefined" ? localStorage.getItem(CLIPS_KEY) : null;
+			return raw ? JSON.parse(raw) : [];
+		} catch (error) { return []; }
+	},
 });
 
 export const TECHNIQUES = [];
 
 export function loadClips() {
-	const clips = clipsStore.getSync(() => {
-		try {
-			const raw = typeof localStorage !== "undefined" ? localStorage.getItem(CLIPS_KEY) : null;
-			return raw ? JSON.parse(raw) : [];
-		} catch (error) { return []; }
-	});
+	const clips = clipsStore.getSync();
 	return Array.isArray(clips) ? clips.filter(c => c && Array.isArray(c.frames) && c.frames.length) : [];
 }
 
