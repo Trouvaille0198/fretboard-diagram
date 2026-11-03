@@ -44,6 +44,7 @@ import { remoteIsNewer } from "../utils/syncEngine";
 import { buildSongClip, stageFrame } from "../utils/chartFrames";
 import { exportMusicXml, importMusicXml } from "../utils/musicxmlChart";
 import { packChart, unpackChartBundle, chartShareCode, isChartPack } from "../utils/chartPack";
+import { createShareLink } from "../utils/shareModel";
 import { saveClip } from "../utils/clipModel";
 
 const PC_KEY = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -63,19 +64,24 @@ const END_BARS = [
 ];
 
 // 和弦谱页（8pu 式和弦谱复刻）：格子谱面 + 键盘编辑 + 播放 + 移调 + MusicXML + 一键动图
-export function ChordChartView({ songId }) {
+// sharedSong：分享链接打开的只读查看态（不登录也能看）——谱子不进本机曲库、不落盘、不同步、不可进编辑；
+// 顶部横幅给「保存到我的曲库」，保存后才变成自己的谱子
+export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const { t } = useLanguage();
 	const ts = t?.chords ?? {};
+	const shared = !!sharedSong;
 
 	const routedId = songId || null;
 	const [charts, setCharts] = useState(() => loadCharts());
 	const [currentId, setCurrentId] = useState(() => routedId ?? (loadCharts()[0] || {}).id ?? null);
 	const [song, setSong] = useState(() => {
+		if (sharedSong) return sharedSong;
 		const list = loadCharts();
 		return (routedId && list.find(c => c.id === routedId)) || list[0] || createSong(ts.firstSong ?? "第一首歌");
 	});
-	// 路由 id 不存在（被删/链错）：退回曲目列表页
+	// 路由 id 不存在（被删/链错）：退回曲目列表页（分享查看态不走库）
 	useEffect(() => {
+		if (shared) return;
 		if (routedId && !loadCharts().some(c => c.id === routedId)) window.location.replace('#/chords');
 	}, [routedId]);
 	const [cursor, setCursor] = useState({ mi: 0, si: 0, half: null });
@@ -95,7 +101,9 @@ export function ChordChartView({ songId }) {
 		document.addEventListener("mousedown", onDocDown);
 		return () => document.removeEventListener("mousedown", onDocDown);
 	}, []);
-	const [toolTab, setToolTab] = useState("chord"); // 工具栏页签：和弦 | 小节
+	// 工具栏页签：和弦 | 小节 | 预览；分享查看态钉死在预览（任何 setToolTab 都不生效）
+	const [toolTabRaw, setToolTab] = useState(shared ? "preview" : "chord");
+	const toolTab = shared ? "preview" : toolTabRaw;
 	const [viewTab, setViewTab] = useState("text"); // 查看：文本谱 | 动态谱
 	// 预览记谱形式（编辑态恒为数字功能谱）：number=1-7 | roman=I/vi | name=Am/Dmaj7
 	const [previewDisplay, setPreviewDisplay] = useState(song.display === "name" ? "name" : "number");
@@ -333,8 +341,9 @@ export function ChordChartView({ songId }) {
 	// 保存过一次之后磁盘版本号永远比内存新，卸载冲刷会以为"远端更新过"而丢掉最后 800ms 的编辑。
 	const savedAtRef = useRef(song.updatedAt || 0);
 	const dirtyRef = useRef(false);
-	// 立即落盘（并同步落盘基线）：改名等"就该瞬间生效"的改动走这里
+	// 立即落盘（并同步落盘基线）：改名等"就该瞬间生效"的改动走这里；分享查看态永不落盘
 	const persistNow = () => {
+		if (shared) return songRef.current;
 		const saved = saveChart(songRef.current);
 		dirtyRef.current = false;
 		savedAtRef.current = saved.updatedAt || Date.now();
@@ -360,8 +369,9 @@ export function ChordChartView({ songId }) {
 		setCursor({ mi: 0, si: 0, half: null });
 	};
 
-	// 多标签页同步：其他标签页保存了更新的谱子 → 采纳，避免本页用旧内存覆盖丢数据
+	// 多标签页同步：其他标签页保存了更新的谱子 → 采纳，避免本页用旧内存覆盖丢数据（分享查看态不走库，全部旁路）
 	useEffect(() => {
+		if (shared) return;
 		const onSynced = () => {
 			setCharts(loadCharts());
 			// 实时跟进：存储里的版本比内存新（别的浏览器改了这首）且本页没有未落盘编辑 → 采纳远端
@@ -382,6 +392,7 @@ export function ChordChartView({ songId }) {
 	// 正在编辑的曲被远端删除：退出到列表，并禁止卸载冲刷把它存回来（否则删除被本地复活）
 	const deletedByRemoteRef = useRef(false);
 	useEffect(() => {
+		if (shared) return;
 		const onDeleted = (e) => {
 			const d = e.detail || {};
 			if (d.id && d.id === songRef.current.id) {
@@ -397,6 +408,7 @@ export function ChordChartView({ songId }) {
 	}, []);
 
 	useEffect(() => {
+		if (shared) return;
 		const onStorage = (e) => {
 			if (e.key !== "fretboard-chordcharts") return;
 			if (dirtyRef.current) return; // 本页还有未落盘的编辑：先让本地保存赢，下次再对齐远端
@@ -417,6 +429,7 @@ export function ChordChartView({ songId }) {
 	// 下一次保存带过期 baseRev —— 服务端判"基于旧版本修改"给 409，同页连续编辑
 	// 全部自己跟自己冲突，炸出一串"冲突副本"（内容其实只有自己一个人在改）。
 	useEffect(() => {
+		if (shared) return;
 		const onAck = (e) => {
 			const d = e.detail || {};
 			if (d.table !== "charts" || !d.item || d.item.id !== songRef.current.id) return;
@@ -495,8 +508,9 @@ export function ChordChartView({ songId }) {
 	// 采纳远端版本时跳过保存：比对对象（StrictMode 双跑 effect 时一次性标志会被吃掉，
 	// 第二跑照常保存→广播→采纳→保存…形成无限 PUT 回环；对象比对两次都命中）
 	const adoptedRef = useRef(null);
-	// 自动保存（防抖）；卸载时冲刷最后 800ms 内的编辑
+	// 自动保存（防抖）；卸载时冲刷最后 800ms 内的编辑（分享查看态不保存）
 	useEffect(() => {
+		if (shared) return;
 		if (song === adoptedRef.current) return;
 		dirtyRef.current = true; // 有未落盘的编辑
 		clearTimeout(saveTimerRef.current);
@@ -511,6 +525,7 @@ export function ChordChartView({ songId }) {
 
 	// 防抖窗口防丢：刷新 / 切后台 / 关页前立刻落盘（否则最后 0.8s 的编辑在重开后"被改回"）
 	useEffect(() => {
+		if (shared) return;
 		const flush = () => {
 			if (!dirtyRef.current || deletedByRemoteRef.current) return;
 			clearTimeout(saveTimerRef.current);
@@ -536,6 +551,7 @@ export function ChordChartView({ songId }) {
 	useEffect(() => () => {
 		timersRef.current.forEach(id => clearTimeout(id));
 		audioService.stopAll?.();
+		if (shared) return; // 分享查看态：卸载不落盘
 		try {
 			if (deletedByRemoteRef.current) return; // 远端已删：卸载冲刷不得复活它
 			// 有未落盘的编辑 → 必须存（哪怕磁盘版本号更大：那可能是本页自己上次保存留下的，
@@ -1147,6 +1163,32 @@ export function ChordChartView({ songId }) {
 		}
 	};
 
+	// 分享链接：生成后尽量复制到剪贴板，同时弹框展示（局域网 http 下剪贴板 API 常不可用，留手动复制的路）
+	const shareLink = async () => {
+		try {
+			const { url, kind } = await createShareLink(song);
+			let copied = false;
+			try { await navigator.clipboard.writeText(url); copied = true; } catch (e) { /* 非安全上下文 */ }
+			setDialog({
+				type: "prompt", multiline: true,
+				title: ts.shareLinkTitle ?? (kind === "short" ? "分享链接（对方不用登录，打开即可查看）" : "分享链接（数据内嵌在链接里，较长）"),
+				label: "", value: url,
+				onOk: () => { },
+			});
+			showToast(copied ? (ts.shareLinkCopied ?? "链接已复制到剪贴板") : (ts.shareLinkManual ?? "请手动复制弹框里的链接"));
+		} catch (e) {
+			showToast((ts.shareLinkFail ?? "生成分享链接失败：") + (e.message || e));
+		}
+	};
+
+	// 分享查看态 →「保存到我的曲库」：随包的动图先落回本机，谱子入库后跳到自己的编辑页
+	const adoptShared = () => {
+		(sharedClips || []).forEach(c => { try { saveClip(c); } catch (e) { /* 忽略 */ } });
+		const saved = saveChart(song);
+		showToast((ts.sharedSaved ?? "已保存到我的曲库：「{n}」").replace("{n}", saved.name || ""));
+		window.location.hash = '#/chords?id=' + saved.id;
+	};
+
 	// 换上一首导入的谱子
 	const adoptImported = (imported) => {
 		clearHistory();
@@ -1672,13 +1714,22 @@ export function ChordChartView({ songId }) {
 		<div className={`cc-page${copyMode ? " cc-copying" : ""}${figOpts.mode === "hover" ? " figmode-hover" : ""}`}>
 			<header className="cc-toolbar">
 				<div className="cc-tabs-row">
-					<nav className="cc-tooltabs">
-						<button className="cc-songs-btn cc-songs-icon" onClick={goSongList} title={ts.songsTip ?? "回曲目列表"}>←</button>
-						<button className={toolTab === "preview" ? "on" : ""} onClick={() => { stopPlayback(); setToolTab("preview"); }}>{ts.tabPreview ?? "预览"}</button>
-						<button className={toolTab === "chord" ? "on" : ""} onClick={() => setToolTab("chord")}>{ts.tabChord ?? "和弦"}</button>
-						<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure ?? "小节"}</button>
-					</nav>
+					{shared ? (
+						<nav className="cc-tooltabs">
+							<span className="cc-share-banner">🔗 {ts.sharedView ?? "分享的谱子 · 只读查看"}</span>
+						</nav>
+					) : (
+						<nav className="cc-tooltabs">
+							<button className="cc-songs-btn cc-songs-icon" onClick={goSongList} title={ts.songsTip ?? "回曲目列表"}>←</button>
+							<button className={toolTab === "preview" ? "on" : ""} onClick={() => { stopPlayback(); setToolTab("preview"); }}>{ts.tabPreview ?? "预览"}</button>
+							<button className={toolTab === "chord" ? "on" : ""} onClick={() => setToolTab("chord")}>{ts.tabChord ?? "和弦"}</button>
+							<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure ?? "小节"}</button>
+						</nav>
+					)}
 					<span className="cc-flex" />
+					{shared ? (
+						<button className="button sm accent" onClick={adoptShared} title={ts.sharedSaveTip ?? "存一份到自己的曲库，之后可以编辑"}>⬇ {ts.sharedSave ?? "保存到我的曲库"}</button>
+					) : null}
 					{editing ? (
 						<>
 							<button className={`button sm play ${playing ? "on" : ""}`} onClick={() => (playing ? stopPlayback() : startPlayback())} title={ts.playFromCursor ?? "播放 · 从光标小节起；Ctrl+Space 从头"}>{playing ? "⏹" : "▶"}</button>
@@ -1697,6 +1748,7 @@ export function ChordChartView({ songId }) {
 										<button className="cc-menu-item" onClick={doExportChart}>⇩ {ts.exportPack ?? "导出工程文件"}<small>.fbchart</small></button>
 										<button className="cc-menu-item" onClick={() => fileRef.current?.click()}>⇪ {ts.importBtn ?? "导入文件"}<small>.fbchart / .musicxml</small></button>
 										<button className="cc-menu-item" onClick={promptImportCode}>{ts.importCode ?? "从分享码导入"}</button>
+									<button className="cc-menu-item" onClick={() => { setMenuOpen(false); shareLink(); }}>🔗 {ts.shareLinkMenu ?? "分享链接"}<small>{ts.shareLinkMenuSub ?? "对方不用登录即可查看"}</small></button>
 										<div className="cc-menu-sep" />
 										<button className="cc-menu-item" onClick={shareChart}>{ts.copyCode ?? "复制分享码"}</button>
 										<button className="cc-menu-item" onClick={doExportXml}>⇩ {ts.exportXml ?? "导出 MusicXML"}<small className="cc-menu-warn">{ts.lossyWarn ?? "配图/标色不带"}</small></button>
@@ -1772,7 +1824,8 @@ export function ChordChartView({ songId }) {
 						<button className={previewDisplay === "name" ? "on" : ""} onClick={() => setPreviewDisplay("name")}>{ts.dispName ?? "音名"}</button>
 					</nav>
 					<span className="cc-flex" />
-					<button className="button sm" onClick={shareChart} title={ts.shareCodeTip ?? "复制分享码：对方粘贴即可 100% 还原整首谱"} >{ts.shareBtn ?? "分享"}</button>
+					<button className="button sm" onClick={shareLink} title={ts.shareLinkTip ?? "生成查看链接：对方不用登录，打开就能看"}>🔗 {ts.shareLinkBtn ?? "链接"}</button>
+					<button className="button sm" onClick={shareChart} title={ts.shareCodeTip ?? "复制分享码：对方粘贴即可 100% 还原整首谱"} >{ts.shareBtn ?? "分享码"}</button>
 					<button className="button sm accent" onClick={doExportChart} title={ts.exportPackTip ?? "工程文件：体积最小且 100% 还原（含配图/标色/节奏型）"}>⇩ {ts.exportBtn ?? "导出"}</button>
 				</div>
 			) : null}

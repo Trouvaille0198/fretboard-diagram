@@ -91,7 +91,7 @@ export const zh = {
         noImage: "未设置配图",
         viewText: "文本谱",
         viewDynamic: "动态谱",
-        shareBtn: "分享",
+        shareBtn: "分享码",
         exportBtn: "导出",
         editBtn: "编辑",
         tabPreview: "预览",

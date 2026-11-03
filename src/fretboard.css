@@ -6420,6 +6420,29 @@ html[data-theme="light"] .button.sm.edit-enter {
     white-space: nowrap;
 }
 
+/* 分享链接查看页：顶部横幅（代替编辑页签）+ 加载/错误态 */
+.cc-share-banner {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: var(--app-radius-pill, 999px);
+    background: var(--cc-accent-weak, rgba(61, 139, 255, 0.12));
+    color: var(--cc-accent-text, #2f7ae8);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cc-share-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: var(--app-fs-lg);
+}
+
+.cc-share-state.cc-share-error {
+    color: #e06c6c;
+}
+
 .cc-song-main {
     flex: 1;
     min-width: 0;
