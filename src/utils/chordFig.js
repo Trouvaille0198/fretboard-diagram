@@ -103,7 +103,7 @@ export function fitFretWindow(data, defSpan = 14, minSpan = 5) {
 // 小图几何(与 figSvg 同源):cell/网格矩形/坐标映射,编辑器点击交互用
 // opts.boxW/boxH(px,成对给):跨拍拉宽——图要撑满一个已知宽高的盒子时,弦轴/品轴各自定格距(cellS/cellF),
 // 格子只在宽度方向拉开、高度不变;点径/字号/线宽等"视觉尺寸"取两轴较紧的一侧(cell),与不拉宽时完全一致。
-// 盒宽不够自然纵横比所需(拉宽变成压扁)时忽略盒子,退回原比例——拉宽只做加法,绝不压扁。
+// 盒宽低于自然纵横比的 0.62 倍(再拉就压成纸条)时忽略盒子,退回原比例——轻微压扁可以,纸条不行。
 export function figGeometry(fig, opts = {}) {
 	const compact = !!opts.compact;
 	const horizontal = opts.orientation === "h";
@@ -116,7 +116,10 @@ export function figGeometry(fig, opts = {}) {
 	const unitsX = horizontal ? nFrets + padLc + padRc : 5 + padLc + padRc;
 	const unitsY = horizontal ? 5 + padTc + padBc : nFrets + padTc + padBc;
 	let cellS, cellF, cell, W, H;
-	const boxOk = opts.boxW != null && opts.boxH != null && opts.boxW >= opts.boxH * unitsX / unitsY - 0.5;
+	// 守卫下限 = 自然纵横比的 0.62 倍：跨拍盒宽(简略模式跨2拍才 ~150px)常低于自然宽(如 h/6品 164px、v/4品 182px),
+	// 按自然比卡会把这些全打成信箱留白、网格根本没拉开; mild 压扁无害——点径/字号取紧轴自动缩小,
+	// 品数位 padL 在 0.62 时仍有 ~0.8 品距余量。比 0.62 还窄才退回原比例(绝不压成纸条)。
+	const boxOk = opts.boxW != null && opts.boxH != null && opts.boxW >= opts.boxH * unitsX / unitsY * 0.62 - 0.5;
 	if (boxOk) {
 		W = Math.round(opts.boxW); H = Math.round(opts.boxH);
 		const cellX = W / unitsX, cellY = H / unitsY;
