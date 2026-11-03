@@ -11,7 +11,7 @@ import { Toast } from "./Toast";
 
 // 该拍单元真的画得出指法图（和弦/延音拍 + 至少一个可见音；与 FigView 的判定同口径）——
 // 空 fig 对象画不出东西，它的槽位算"没图"，左邻的图可以跨过来拉宽
-const figVisible = (u) => !!(u && ((u.kind === "chord" && u.chord) || u.kind === "hold") && u.fig
+const figVisible = (u) => !!(u && u.fig
 	&& Object.keys(u.fig).some(k => !k.startsWith("conn") && k !== "connections" && (u.fig[k] || {}).visibility === "visible"));
 
 // 歌词加粗区间 → 富文本 span（.cc-lyrics-rich 覆盖层用）；区间先裁到当前文本长度
@@ -1286,11 +1286,13 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	// 转调段自动隔离——B 段的 4maj7 不会带入 D 段的 4maj7），取最近的一个指法图。
 	// 相同和弦的按法往往相似，画过一次后面直接改，提效。
 	const prevSameChordFig = (mi, si, half, chord) => {
-		if (!chord || chord.degree == null) return null;
-		const rootPc = degreePc(chord.degree, chord.acc || 0, keyAt(mi));
-		const q = chord.quality || "";
+		// 取当前位置之前最近的指法图：优先同和弦（同和弦按法往往相似，画过一次直接改）；
+		// 没有同和弦（或拍上根本没和弦）就取最近的一张——拍上无和弦也允许建图，默认带入上一张再改。
+		// 同和弦优先受转调段隔离（B 段不带入 D 段）；"最近"兜底不受限。
+		const rootPc = chord && chord.degree != null ? degreePc(chord.degree, chord.acc || 0, keyAt(mi)) : null;
+		const q = chord?.quality || "";
 		const curPos = si * 2 + (half ?? 0);
-		let found = null;
+		let found = null, nearest = null;
 		for (let m = 0; m <= mi; m++) {
 			const mm = song.measures[m];
 			if (!mm) continue;
@@ -1301,13 +1303,16 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				const units = sl.split ? sl.split : [sl];
 				for (let h = 0; h < units.length; h++) {
 					const u = units[h];
-					if (u.kind !== "chord" || !u.chord || !u.fig || !Object.keys(u.fig).length) continue;
-					const uRoot = degreePc(u.chord.degree, u.chord.acc || 0, keyAt(m));
-					if (uRoot === rootPc && (u.chord.quality || "") === q) found = u.fig; // 一直取到当前位置前最后一个
+					if (!u.fig || !Object.keys(u.fig).length) continue;
+					nearest = u.fig; // 一直取到当前位置前最后一张
+					if (rootPc != null && u.kind === "chord" && u.chord) {
+						const uRoot = degreePc(u.chord.degree, u.chord.acc || 0, keyAt(m));
+						if (uRoot === rootPc && (u.chord.quality || "") === q) found = u.fig;
+					}
 				}
 			}
 		}
-		return found;
+		return found || nearest;
 	};
 
 	const unitAt = (mi, si, half) => {
@@ -1351,7 +1356,14 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				</>
 			);
 		}
-		if (u.kind === "rest") return <span className="cc-glyph rest">0</span>;
+		if (u.kind === "rest") return (
+			<>
+				{/* 休止拍也可配指法图（同延音拍） */}
+				{u.fig && figOpts.mode === "hover" ? <FigView data={u.fig} chord={u.chord || null} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
+					onDoubleClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} /> : null}
+				<span className="cc-glyph rest">0</span>
+			</>
+		);
 		if (u.kind === "hold") return (
 			<>
 				{/* 延音拍也可配指法图（同 chord 拍：图上记号下） */}
@@ -1360,7 +1372,13 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				<span className="cc-glyph hold">—</span>
 			</>
 		);
-		return null; // 空拍留白（8pu 同款）：任何占位符都会破坏拍格对齐
+		// 空拍（无和弦）：也允许挂指法图（默认带入上一张，见 prevSameChordFig），挂了就显示图；
+		// 纯空拍仍留白（8pu 同款）：任何占位符都会破坏拍格对齐
+		if (u.fig && figOpts.mode === "hover") return (
+			<FigView data={u.fig} chord={u.chord || null} viewKey={keyAt(mi)} opts={{ ...figOpts, compact, size: compact ? 56 : figOpts.size }}
+				onDoubleClick={e => { e.stopPropagation(); if (editing) editFig(mi, si, half); }} />
+		);
+		return null;
 	};
 
 	const slotView = (mi, si) => {
@@ -1919,7 +1937,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							<ChordPopup song={song} viewKey={keyAt(cursor.mi)} unit={currentUnit} typedHint={typedHint}
 								defaultQuality={(d) => defaultQualityFor(d)}
 								hasAttach={!!(currentUnit?.kind === "chord" && currentUnit.fig)}
-								onAttach={(currentUnit?.kind === "chord" || currentUnit?.kind === "hold") ? () => editFig(cursor.mi, cursor.si, cursor.half) : null}
+								onAttach={() => editFig(cursor.mi, cursor.si, cursor.half)}
 								canSplit={canSplitCurrent} onPatchUnit={patchUnitFromPanel} onSetKind={onPanelSetKind}
 								onToggleSplit={toggleSplit} onClose={() => setPopupOpen(false)} t={t}
 								keyHere={editing ? keyStepper(cursor.mi) : null}
@@ -1937,9 +1955,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 
 		{figTarget != null ? (() => {
 			const u = unitAt(figTarget.mi, figTarget.si, figTarget.half);
-			// 指法图为空时自动带入前面同和弦的指法（见 prevSameChordFig）
-			const preFig = (!u?.fig || !Object.keys(u.fig).length) && u?.chord
-				? prevSameChordFig(figTarget.mi, figTarget.si, figTarget.half, u.chord)
+			// 指法图为空时自动带入前面最近的指法（同和弦优先，见 prevSameChordFig；拍上无和弦同样带入）
+			const preFig = (!u?.fig || !Object.keys(u.fig).length)
+				? prevSameChordFig(figTarget.mi, figTarget.si, figTarget.half, u?.chord)
 				: null;
 			// 全曲同和弦的既有指法（最近在前,内容去重）——编辑器默认面板"最近同和弦"展示
 			const sameFigs = u?.chord && u.chord.degree != null
