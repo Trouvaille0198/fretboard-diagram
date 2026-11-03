@@ -2027,7 +2027,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				: null;
 			// 全曲同和弦的既有指法（最近在前,内容去重）——编辑器默认面板"最近同和弦"展示
 			const sameFigs = u?.chord && u.chord.degree != null
-				? collectSameChordFigs(song.measures, degreePc(u.chord.degree, u.chord.acc || 0, keyAt(figTarget.mi)), u.chord.quality || "", keyAt)
+				? collectSameChordFigs(song.measures, degreePc(u.chord.degree, u.chord.acc || 0, keyAt(figTarget.mi)), u.chord.quality === "M" ? "" : (u.chord.quality || ""), keyAt)
 				: [];
 			return createPortal(
 				<div className="figbe-mask" onMouseDown={e => { if (e.target === e.currentTarget) setFigTarget(null); }}>

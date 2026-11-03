@@ -135,7 +135,8 @@ export function inferQuality(semis) {
 // 排序：把位低优先；根音品=0(E/A 开放把)排最后
 export function candidatesForChord(chord, key, shapes) {
 	if (!chord || chord.degree === undefined) return [];
-	const q = resolvedQuality(chord, key);
+	const rawQ = resolvedQuality(chord, key);
+	const q = rawQ === "M" ? "" : rawQ; // 显式大三 "M" ≡ ""（形状库按 "" 建键）
 	const rootPc = chordPcs(chord, key).root;
 	const out = [];
 	shapes.forEach(shape => {

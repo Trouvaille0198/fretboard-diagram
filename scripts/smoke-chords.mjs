@@ -621,6 +621,21 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("音名:度数自带变音仍优先(Ab 大调 4 级+1 → D)", formatName({ degree: 4, acc: 1, quality: "" }, { ...KEY_AB, enharmonic: 1 }) === "D");
 }
 
+// ===== 显式大三质量 "M"（面板 M 钮落库为显式大三，不再被调内默认吃掉） =====
+{
+	const { formatName, formatInline, chordPcs } = await import("../src/utils/chordLib.js");
+	const { collectSameChordFigs, createMeasure } = await import("../src/utils/chordChartModel.js");
+	const KEYC = { root: 0, minor: false };
+	const chM = { degree: 6, acc: 0, quality: "M" };
+	A("质量 M:音名不带 M 后缀(6M → A)", formatName(chM, KEYC) === "A");
+	A("质量 M:数字带 M 后缀(6M)", formatInline(chM, "degree", KEYC) === "6M");
+	A("质量 M:音高 = 大三和弦(A C♯ E)", (() => { const { root, pcs } = chordPcs(chM, KEYC); return root === 9 && pcs.join(",") === "1,4,9"; })());
+	const mkq = (q, key) => { const m = createMeasure(4); m.slots[0] = { kind: "chord", chord: { degree: 6, acc: 0, quality: q, bass: null }, fig: { [key]: { visibility: "visible", color: "mono", color2: null } } }; return m; };
+	// 两图内容不同（不同品）：匹配归一（M ≡ 调内）后两张都收集；若无归一，M 图会被质量过滤掉只剩 1 张
+	const gotM = collectSameChordFigs([mkq("M", "f0-s1"), mkq("", "f1-s2")], 9, "", () => KEYC);
+	A("质量 M:面板收集 M ≡ 调内(两张图都匹配)", gotM.length === 2 && gotM.some(g => g.fig["f0-s1"]) && gotM.some(g => g.fig["f1-s2"]));
+}
+
 // ===== 指法小图渲染几何(figSvg/figGeometry/figHitTest 同源一致性) =====
 {
 	const { boardFigData, figSvg, figGeometry, figHitTest, degreeLabel } = await import("../src/utils/chordFig.js");

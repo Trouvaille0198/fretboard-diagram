@@ -141,7 +141,8 @@ export function voiceChord(chord, key) {
 	if (!chord) return null;
 	const { root, pcs } = chordPcs(chord, key);
 	const bass = bassPc(chord, key);
-	const q = resolvedQuality(chord, key);
+	const rawQ = resolvedQuality(chord, key);
+	const q = rawQ === "M" ? "" : rawQ; // 显式大三 "M" ≡ 默认 ""（开放/移动形状表都按 "" 建键）
 
 	// 1) 开放和弦（要求最低发声弦就是要求的低音）
 	const open = OPEN_SHAPES[`${root}:${q}`];

@@ -22,8 +22,9 @@ function harmonyXml(chord, key) {
 	const step = m[1];
 	const alter = m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0;
 	const quality = resolvedQuality(chord, key);
-	const kind = QUALITY_TO_KIND[quality] || "other";
-	const kindText = QUALITY_TO_KIND[quality] ? "" : ` text="${esc(quality)}"`;
+	// 显式大三 "M" ≡ 默认 ""：MusicXML kind 按大三类导出
+	const kind = QUALITY_TO_KIND[quality === "M" ? "" : quality] || "other";
+	const kindText = QUALITY_TO_KIND[quality === "M" ? "" : quality] ? "" : ` text="${esc(quality)}"`;
 	let xml = `      <harmony print-frame="no">\n        <root>\n          <root-step>${step}</root-step>\n`;
 	if (alter) xml += `          <root-alter>${alter}</root-alter>\n`;
 	xml += `        </root>\n        <kind${kindText}>${kind}</kind>\n`;
