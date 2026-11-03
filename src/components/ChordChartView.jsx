@@ -189,10 +189,22 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	}, [copyMode]);
 
 	useEffect(() => {
-		if (cellMenu === null) return;
+		if (!cellMenu) return;
 		const close = (e) => { if (!e.target.closest(".cc-mmenu")) setCellMenu(null); };
 		document.addEventListener("mousedown", close);
 		return () => document.removeEventListener("mousedown", close);
+	}, [cellMenu]);
+	// 右键菜单防遮挡：打开在鼠标右下 +6px（首项不被光标压住），超视口边缘则往回拉
+	const cellMenuRef = useRef(null);
+	useLayoutEffect(() => {
+		if (!cellMenu || !cellMenuRef.current) return;
+		const el = cellMenuRef.current;
+		const r = el.getBoundingClientRect();
+		let x = cellMenu.x + 6, y = cellMenu.y + 6;
+		if (x + r.width > window.innerWidth - 8) x = Math.max(8, window.innerWidth - r.width - 8);
+		if (y + r.height > window.innerHeight - 8) y = Math.max(8, window.innerHeight - r.height - 8);
+		el.style.left = x + "px";
+		el.style.top = y + "px";
 	}, [cellMenu]);
 	const undoStackRef = useRef([]);
 	const redoStackRef = useRef([]);
@@ -1451,7 +1463,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					const firstEmpty = m.slots.findIndex(sl => (sl.split ? sl.split.every(u => u.kind !== "chord") : sl.kind !== "chord"));
 					setCursor({ mi, si: cursor.mi === mi ? Math.min(cursor.si, m.slots.length - 1) : (firstEmpty === -1 ? 0 : firstEmpty), half: null });
 					setPopupOpen(false);
-					setCellMenu(cellMenu === mi ? null : mi);
+					setCellMenu(cm => (cm && cm.mi === mi ? null : { mi, x: e.clientX, y: e.clientY }));
 				}}
 				onClick={e => {
 				if (copyMode || !editing) return;
@@ -1566,8 +1578,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						) : null}
 					</span>
 				) : null}
-				{cellMenu === mi ? (
-					<div className="cc-mmenu" onClick={e => e.stopPropagation()}>
+				{cellMenu && cellMenu.mi === mi ? createPortal(
+					<div ref={cellMenuRef} className="cc-mmenu" style={{ left: cellMenu.x + 6, top: cellMenu.y + 6 }} onClick={e => e.stopPropagation()}>
 						<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure ?? "插入小节"}</button>
 						<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure ?? "删除小节"}</button>
 						<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
@@ -1621,7 +1633,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							))}
 							<button onClick={() => patchMeasure(mi, x => ({ ...x, tint: null }))}>{ts.tintClear ?? "清除"}</button>
 						</div>
-					</div>
+					</div>,
+					document.body
 				) : null}
 			</div>
 		);
