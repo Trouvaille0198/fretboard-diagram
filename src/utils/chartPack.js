@@ -20,7 +20,7 @@
 // 和弦若带非规范字段，退化为 [3,"raw",原对象] 原样保存，保证不丢东西。
 
 import LZString from "lz-string";
-import { createSong, newChartId, newMeasureId, normalizeFigOpts } from "./chordChartModel.js";
+import { createSong, newChartId, newMeasureId, normalizeFigOpts, keySpellOf } from "./chordChartModel.js";
 import { loadClips } from "./clipModel.js";
 
 const PREFIX = "fretboard-chart";
@@ -241,8 +241,7 @@ export function compactChart(song, { clips } = {}) {
 	const o = {
 		v: VERSION,
 		n: song.name || "",
-		k: [song.key?.root ?? 0, song.key?.minor ? 1 : 0],
-		ts: song.timeSig ?? 4,
+		k: [song.key?.root ?? 0, song.key?.minor ? 1 : 0],		ts: song.timeSig ?? 4,
 		bpm: song.bpm ?? 72,
 		dp: song.display ?? "degree",
 		en: song.enharmonic ?? 1,
@@ -253,6 +252,7 @@ export function compactChart(song, { clips } = {}) {
 	if (song.createdAt) o.ct = song.createdAt;
 	if (song.qualityMemory && Object.keys(song.qualityMemory).length) o.qm = song.qualityMemory;
 	if (song.figOpts) o.fo = song.figOpts; // 和弦图展示设置每谱一份,随谱走
+	if (song.key?.letter != null) o.ka = [song.key.letter, song.key.acc ?? 0]; // 调的拼写（Gb vs F♯）
 	if (song.id) o.id = song.id;
 	// 动图配图连帧数据一起带上（file:// 里只存 id 的话，换台机器图就没了）
 	const ids = collectClipIds(song);
@@ -327,6 +327,9 @@ export function expandChart(o) {
 	song.createdAt = o.ct || Date.now();
 	song.updatedAt = Date.now();
 	song.key = { root: o.k?.[0] ?? 0, minor: !!o.k?.[1] };
+	// 还原 key 的 letter/acc（k 只带 root/minor；ka 是打包时额外携带的拼写信息）
+	if (o.ka) { song.key.letter = o.ka[0]; song.key.acc = o.ka[1]; }
+	else { const ks = keySpellOf(song.key.root); song.key.letter = ks.letter; song.key.acc = ks.acc; }
 	song.timeSig = o.ts ?? 4;
 	song.bpm = o.bpm ?? 72;
 	song.display = o.dp ?? "degree";
