@@ -633,6 +633,12 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("拉宽(v):弦轴格距拉开、品轴格距按盒高定", gv1.W === 400 && gv1.H === 144 && gv1.cellS > gv1.cellF * 2 && Math.abs(gv1.cellF - 144 / (fa.window + 1.38)) < 0.01);
 	const guarded = figGeometry(fa, { orientation: "h", boxW: 50, boxH: 144 });
 	A("拉宽守卫:盒宽不够自然比例 → 忽略盒子退回原几何", guarded.W === gh0.W && guarded.H === gh0.H);
+	// 守卫下限 = 自然比的 0.62 倍:简略模式跨2拍盒宽 ~150px 低于不少组合的自然宽(h/6品 164、v/4品 182),
+	// 按自然比卡会把这些全打成信箱留白、网格根本没拉开;轻微压扁无害(点径取紧轴自动缩小)
+	const mild = figGeometry(fa, { orientation: "h", boxW: 100, boxH: 144 });
+	A("拉宽守卫:0.62~1 倍自然宽允许轻微压扁(mild 拉开)", mild.W === 100 && mild.H === 144 && mild.cellF < mild.cellS && mild.cellF >= mild.cellS * 0.62 - 0.01);
+	const vMild = figGeometry({ ...fa, window: 4 }, { boxW: 154, boxH: 144 });
+	A("拉宽守卫:简略跨2拍 v/4品(自然宽182>盒154)现在也拉满盒子", vMild.W === 154 && vMild.H === 144);
 	A("回归:不传盒子时 cellS/cellF 恒等 cell", gh0.cellS === gh0.cell && gh0.cellF === gh0.cell && figSvg(fa, {}) === figSvg(fa, { boxW: null, boxH: null }));
 }
 

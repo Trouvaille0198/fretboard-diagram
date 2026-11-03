@@ -269,8 +269,10 @@ export function ChordChartView({ songId }) {
 	}, [song.timeSig, compactView]);
 
 	// 内嵌图行跨拍拉宽用的实测几何：各拍数下的拍格宽(byN[拍数])、拍距(gap)、图高(--cc-fig-h，窄屏断点会降到 108)。
-	// 图 svg 要按"跨过的那段槽位"的真实像素宽重算几何，只能量 DOM；每次渲染都量——插拍/删拍只改小节内拍数、
-	// 容器宽度不变，ResizeObserver 感知不到；量到的值没变就原样返回 prev，不触发重渲染，不会循环
+	// 图 svg 要按"跨过的那段槽位"的真实像素宽重算几何，只能量 DOM。
+	// ⚠测量绝不能挂在"每次渲染"上： setState → 重渲染 → 再测量 若赶上布局在两个状态间振荡(自动每行小节数/滚动条
+	// 出现消失正好卡在阈值)，比较器永不收敛 → Maximum update depth 白屏。所以只在"会改变拍宽的结构变化"后同步量
+	// (模式/简略/每行小节数/拍号/各小节拍数——插拍删拍改 slots.length)，宽度类变化(窗口缩放/字体)走 ResizeObserver 与 resize。
 	const [figMetrics, setFigMetrics] = useState(null);
 	const measureFigMetrics = useCallback(() => {
 		const el = scoreRef.current;
@@ -285,9 +287,14 @@ export function ChordChartView({ songId }) {
 		});
 		setFigMetrics(prev => (prev && prev.gap === gap && prev.figH === figH && JSON.stringify(prev.byN) === JSON.stringify(byN) ? prev : { gap, figH, byN }));
 	}, []);
-	useLayoutEffect(() => { if (figOpts.mode === "inline") measureFigMetrics(); }); // 每次渲染后同步量，首帧即拉宽、无闪跳
+	// 结构变化后 layout 阶段同步量：拉宽在首帧绘制前就位，无闪跳
+	const slotSig = song.measures.map(m => m.slots.length).join(",");
+	useLayoutEffect(() => {
+		if (figOpts.mode === "inline") measureFigMetrics();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [figOpts.mode, compactView, autoPer, song.timeSig, slotSig]);
 	useEffect(() => {
-		// 窗口缩放不经 React 重渲染（每行小节数没变时），靠观察器补量
+		// 窗口缩放/字体加载等宽度类变化不经 React 重渲染，靠观察器补量
 		const el = scoreRef.current;
 		if (!el || figOpts.mode !== "inline" || typeof ResizeObserver === "undefined") return;
 		const ro = new ResizeObserver(measureFigMetrics);
