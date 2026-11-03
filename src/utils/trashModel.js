@@ -6,7 +6,14 @@ import { createBigStore } from "./idbStore.js";
 
 const TRASH_KEY = "fretboard-trash";
 // 回收站大键已迁 IndexedDB（v188）：条目是被删对象的完整数据，批量删歌后它是 localStorage 最大的尾巴之一
-const trashStore = createBigStore(TRASH_KEY);
+const trashStore = createBigStore(TRASH_KEY, {
+	lsRead: () => {
+		try {
+			const raw = typeof localStorage !== "undefined" ? localStorage.getItem(TRASH_KEY) : null;
+			return raw ? JSON.parse(raw) : [];
+		} catch (error) { return []; }
+	},
+});
 
 export const TRASH_TTL = 10 * 24 * 3600 * 1000; // 10 天
 export const TRASH_TTL_DAYS = 10;
@@ -14,12 +21,7 @@ export const TRASH_TTL_DAYS = 10;
 // 回收站条目：{ tbl:'charts'|'clips', id, item, at, name }
 // tbl 区分曲目/动图；item 是被删对象的完整数据（还原时直接写回）
 function readAll() {
-	const list = trashStore.getSync(() => {
-		try {
-			const raw = typeof localStorage !== "undefined" ? localStorage.getItem(TRASH_KEY) : null;
-			return raw ? JSON.parse(raw) : [];
-		} catch (error) { return []; }
-	});
+	const list = trashStore.getSync();
 	return Array.isArray(list) ? list.filter(e => e && e.tbl && e.id) : [];
 }
 

@@ -30,7 +30,9 @@ const tx = async (mode, fn) => {
 		const t = db.transaction(STORE, mode);
 		let out;
 		try { out = fn(t.objectStore(STORE)); } catch (e) { reject(e); return; }
-		t.oncomplete = () => resolve(out && typeof out.result !== "undefined" && "result" in out ? out.result : out);
+		// 键不存在时 get 的 result 是 undefined——必须 resolve(out.result) 而不是 request 本身
+		// （实测踩雷：把 request 当 undefined 透传出去，后续拿它当值 put → DataCloneError 全部写入失败）
+		t.oncomplete = () => resolve(out && "result" in out ? out.result : out);
 		t.onerror = () => reject(t.error);
 		t.onabort = () => reject(t.error || new Error("indexedDB transaction aborted"));
 	});

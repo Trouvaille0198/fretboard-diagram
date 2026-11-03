@@ -176,15 +176,16 @@ export function resizeMeasure(measure, timeSig) {
 // 无 IDB 环境由 idbStore 自动退回 localStorage 老路径；旧键在首次落盘成功后自动清除。
 const chartsStore = createBigStore(CHARTS_KEY, {
 	legacyKeys: (k) => [k, `${k}-bak-1`, `${k}-bak-2`, `${k}-bak-3`],
-});
-
-export function loadCharts() {
-	const charts = chartsStore.getSync(() => {
+	lsRead: () => {
 		try {
 			const raw = hasLS() ? localStorage.getItem(CHARTS_KEY) : null;
 			return raw ? JSON.parse(raw) : [];
 		} catch (error) { return []; }
-	});
+	},
+});
+
+export function loadCharts() {
+	const charts = chartsStore.getSync();
 	return Array.isArray(charts) ? charts.filter(c => c && Array.isArray(c.measures)) : [];
 }
 
