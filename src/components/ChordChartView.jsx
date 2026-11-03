@@ -1218,6 +1218,16 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		window.location.hash = '#/chords';
 	};
 
+	// 段落跳转（右上角悬浮钮）：全曲段落标记一览，点击滚到对应行
+	const sections = song.measures.map((m, mi) => ({ mi, name: m.section })).filter(s => s.name);
+	const jumpToSection = (mi) => {
+		const el = document.querySelectorAll(".cc-cell")[mi];
+		if (!el) return;
+		setCursor(c => ({ ...c, mi, half: null }));
+		const y = el.getBoundingClientRect().top + window.scrollY - 70; // 让过钉顶的工具行
+		window.scrollTo({ top: Math.max(0, y) });
+	};
+
 	const newSong = () => {
 		const base = ts.newSong ?? "新歌";
 		const used = charts.filter(c => (c.name || "").startsWith(base)).length;
@@ -2076,6 +2086,20 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								</button>
 							)}
 						</div>
+					</div>
+				</div>
+			) : null}
+			{/* 段落跳转悬浮钮（右上角常驻，hover 展开全曲段落标记一览） */}
+			{sections.length ? (
+				<div className="cc-nav-float">
+					<button className="cc-nav-float-btn" title={ts.sectionNavTip ?? "段落跳转"}>¶</button>
+					<div className="cc-nav-float-menu">
+						{sections.map(s => (
+							<button key={s.mi} onClick={() => jumpToSection(s.mi)}>
+								<span className="cc-nav-name">{s.name}</span>
+								<span className="cc-nav-mi">{ts.measureShort ? ts.measureShort(s.mi + 1) : `M${s.mi + 1}`}</span>
+							</button>
+						))}
 					</div>
 				</div>
 			) : null}

@@ -8359,3 +8359,85 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     0%, 100% { opacity: 0.55; }
     50% { opacity: 1; }
 }
+
+/* ============ 段落跳转悬浮钮（右上角常驻圆形，hover 展开全曲段落标记；点击滚到对应行） ============ */
+.cc-nav-float {
+    position: fixed;
+    top: 62px;
+    right: 14px;
+    z-index: 550; /* 高过谱面内容与钉顶行内容，低于弹窗遮罩(1300) */
+}
+
+.cc-nav-float-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--app-line-strong);
+    background: var(--app-panel-strong, #10161c);
+    color: var(--app-text);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cc-nav-float-btn:hover {
+    border-color: var(--app-control-thumb-border, #e4a54b);
+    color: var(--app-control-thumb-border, #e4a54b);
+}
+
+.cc-nav-float-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 46px;
+    min-width: 180px;
+    max-height: 50vh;
+    overflow-y: auto;
+    background: var(--app-panel-strong, #10161c);
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-sm);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
+    padding: 4px;
+    z-index: 560;
+}
+
+.cc-nav-float:hover .cc-nav-float-menu {
+    display: block;
+}
+
+.cc-nav-float-menu button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--app-text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    font-size: var(--app-fs-sm);
+}
+
+.cc-nav-float-menu button:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.cc-nav-name {
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cc-nav-mi {
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: var(--app-fs-xs);
+    white-space: nowrap;
+}
