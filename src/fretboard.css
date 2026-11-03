@@ -6221,6 +6221,11 @@ html[data-theme="light"] .button.sm.edit-enter {
     white-space: nowrap;
 }
 
+/* 段落/跳房子/转调角标：有图行时不再悬在图上方——落到图行与拍格之间的标记带（整行统一留带，拍格对齐不破）：
+   带 = 拍格 padding-top 18px；角标 top = 格 padding-top(3) + 图行占位(figH+4) + 图行 margin(4) - 1px 呼吸 */
+.cc-line.figs-tags .cc-cell-slots { padding-top: 18px; }
+.cc-line.figs-tags .cc-cell-tags { top: calc(var(--cc-fig-h) + 10px); }
+
 /* 预览子栏（预览页签内容区自己的 文本谱/动态谱 页签，不占工具栏） */
 .cc-preview-bar {
     max-width: 1560px;

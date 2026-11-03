@@ -1916,8 +1916,10 @@ export function ChordChartView({ songId }) {
 							const rowHasFig = row.some(mm => mm.slots.some(sl => (sl.split || [sl]).some(u => u && u.fig)));
 							// 整行无歌词：歌词带压成细条省行高——输入框仍在（点击可补词，词落地离焦即恢复全高）
 							const rowHasLyrics = row.some(mm => (mm.lyrics || "").trim());
+							// 行内任一小节有段落/跳房子/转调角标：有图行时角标不再悬在图上方，整行统一在图行下留标记带（对齐不破）
+							const rowHasTags = row.some(mm => mm.house || mm.section || mm.keyRoot != null);
 							return (
-								<div className={`cc-line${rowHasLyrics ? "" : " no-lyrics"}`} key={ri}>
+								<div className={`cc-line${rowHasLyrics ? "" : " no-lyrics"}${figOpts.mode === "inline" && rowHasFig && rowHasTags ? " figs-tags" : ""}`} key={ri}>
 									{/* 行号：叠在行首小节格左上角小字，不占独立列 */}
 									<span className="cc-line-no cc-line-no-float">{first + 1}</span>
 									{/* 网格轨道按行内小节数固定：末行不满时列宽仍与他行像素级一致（加行入口在谱面底部按钮，不占格） */}
