@@ -1,4 +1,5 @@
 import { sameContent, queuePush, queueDelete, setApplier, setPuller, setConflictHandler, outboxPending } from "./syncEngine.js";
+import { createBigStore } from "./idbStore.js";
 import { trashPut } from "./trashModel.js";
 import { degreePc } from "./chordLib.js";
 
@@ -170,48 +171,28 @@ export function resizeMeasure(measure, timeSig) {
 	return { ...measure, slots };
 }
 
+// 谱子库大键已迁 IndexedDB（v188）：同步读写走内存缓存（idbStore），防抖刷 IDB，备份在 IDB 里轮转——
+// localStorage 只剩同步小件（outbox/台账/token/偏好），5MB 配额不再是库的天花板。
+// 无 IDB 环境由 idbStore 自动退回 localStorage 老路径；旧键在首次落盘成功后自动清除。
+const chartsStore = createBigStore(CHARTS_KEY, {
+	legacyKeys: (k) => [k, `${k}-bak-1`, `${k}-bak-2`, `${k}-bak-3`],
+});
+
 export function loadCharts() {
-	try {
-		const raw = hasLS() ? localStorage.getItem(CHARTS_KEY) : null;
-		const charts = raw ? JSON.parse(raw) : [];
-		return Array.isArray(charts) ? charts.filter(c => c && Array.isArray(c.measures)) : [];
-	} catch (error) {
-		console.error("读取和弦谱失败:", error);
-		return [];
-	}
+	const charts = chartsStore.getSync(() => {
+		try {
+			const raw = hasLS() ? localStorage.getItem(CHARTS_KEY) : null;
+			return raw ? JSON.parse(raw) : [];
+		} catch (error) { return []; }
+	});
+	return Array.isArray(charts) ? charts.filter(c => c && Array.isArray(c.measures)) : [];
 }
 
 export function persistCharts(charts) {
-	// 返回 true=主数据已落盘（无 localStorage 的环境视为成功——本来就没地方写，调用方逻辑照走）。
-	// 教训（导入大库实测踩雷）：原先备份写失败会整体抛进 catch 只 console.error——
-	// 配额爆在最该保的主键之前，页面还照常提示导入成功，刷新全部丢失。现在：
-	//   · 备份各自容错：配额吃紧时宁可放弃备份也不挡主数据；
-	//   · 主键写失败先清滚动备份腾空间重试一次，仍失败才广播 fretboard:storage-full 并返回 false；
-	//   · 每次保存的写入量从"4 份全库"变成"1 份主键 + 尽力而为的备份"。
-	if (!hasLS()) return true;
-	// 滚动备份最近 3 份（与 clipModel 同策略）
-	for (let i = 2; i >= 1; i--) {
-		const cur = localStorage.getItem(`fretboard-chordcharts-bak-${i}`);
-		if (cur) { try { localStorage.setItem(`fretboard-chordcharts-bak-${i + 1}`, cur); } catch (e) { /* 备份装不下：容忍 */ } }
-	}
-	const prev = localStorage.getItem(CHARTS_KEY);
-	if (prev) { try { localStorage.setItem("fretboard-chordcharts-bak-1", prev); } catch (e) { /* 备份装不下：容忍 */ } }
-	try {
-		localStorage.setItem(CHARTS_KEY, JSON.stringify(charts));
-		return true;
-	} catch (error) {
-		console.error("保存和弦谱失败（首次）:", error);
-		try {
-			// 清掉滚动备份腾空间，重试一次
-			for (let i = 1; i <= 3; i++) localStorage.removeItem(`fretboard-chordcharts-bak-${i}`);
-			localStorage.setItem(CHARTS_KEY, JSON.stringify(charts));
-			return true;
-		} catch (e2) {
-			console.error("保存和弦谱失败（清备份后仍失败，本机存储已满）:", e2);
-			try { window.dispatchEvent(new CustomEvent("fretboard:storage-full")); } catch (e3) { /* 忽略 */ }
-			return false;
-		}
-	}
+	// 写 = 更新内存缓存（同步语义不变，调用方零改动）+ 防抖刷 IDB。
+	// 异步写失败由 idbStore 广播 fretboard:storage-full；返回恒 true（缓存已是权威，同步 outbox 照走）。
+	chartsStore.setSync(charts);
+	return true;
 }
 
 export function saveChart(song) {

@@ -3,37 +3,32 @@
 
 import { sameContent, queuePush, queueDelete, setApplier, setPuller, setConflictHandler, outboxPending } from "./syncEngine.js";
 import { trashPut } from "./trashModel.js";
+import { createBigStore } from "./idbStore.js";
 
 const CLIPS_KEY = "fretboard-clips";
+
+// 动图池大键已迁 IndexedDB（v188，与谱子库同一套缓存/灌入/防抖落盘；帧序列是全库最大的数据）
+const clipsStore = createBigStore(CLIPS_KEY, {
+	legacyKeys: (k) => [k, `${k}-bak-1`, `${k}-bak-2`, `${k}-bak-3`],
+});
 
 export const TECHNIQUES = [];
 
 export function loadClips() {
-	try {
-		const raw = localStorage.getItem(CLIPS_KEY);
-		const clips = raw ? JSON.parse(raw) : [];
-		return Array.isArray(clips) ? clips.filter(c => c && Array.isArray(c.frames) && c.frames.length) : [];
-	} catch (error) {
-		console.error("读取动图失败:", error);
-		return [];
-	}
+	const clips = clipsStore.getSync(() => {
+		try {
+			const raw = typeof localStorage !== "undefined" ? localStorage.getItem(CLIPS_KEY) : null;
+			return raw ? JSON.parse(raw) : [];
+		} catch (error) { return []; }
+	});
+	return Array.isArray(clips) ? clips.filter(c => c && Array.isArray(c.frames) && c.frames.length) : [];
 }
 
 export function persistClips(clips) {
-	try {
-		// 滚动备份最近 3 份：任何误删/覆盖都能从 bak 里找回
-		for (let i = 2; i >= 1; i--) {
-			const cur = localStorage.getItem(`fretboard-clips-bak-${i}`);
-			if (cur) localStorage.setItem(`fretboard-clips-bak-${i + 1}`, cur);
-		}
-		const prev = localStorage.getItem(CLIPS_KEY);
-		if (prev) localStorage.setItem("fretboard-clips-bak-1", prev);
-		localStorage.setItem(CLIPS_KEY, JSON.stringify(clips));
-	} catch (error) {
-		console.error("保存动图失败:", error);
-	}
+	clipsStore.setSync(clips); // 同步更缓存 + 防抖刷 IDB；备份在 IDB 里轮转（见 idbStore）
 }
 
+// 旧 localStorage 备份的恢复口（IDB 备份目前只作落盘前旧值留存，尚未接恢复 UI）
 export function loadBackupClips() {
 	for (let i = 1; i <= 3; i++) {
 		try {
