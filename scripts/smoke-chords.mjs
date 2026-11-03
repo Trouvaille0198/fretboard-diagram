@@ -601,6 +601,14 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("同和弦指法收集: 匹配+去重+最近在前", got.length === 2 && got[0].mi === 3 && JSON.stringify(got[0].fig) === JSON.stringify(fA) && got[1].mi === 1 && JSON.stringify(got[1].fig) === JSON.stringify(fB));
 	A("同和弦指法收集: 质量不同不匹配", collectSameChordFigs(ms, 2, "m", () => KEYC).length === 1);
 	A("同和弦指法收集: 转调隔离(换调后全不匹配)", collectSameChordFigs(ms, 0, "maj7", () => ({ root: 2, minor: false })).length === 0);
+	// 内容去重按"画了什么"的规范化签名（连线随机键名/颜色细节不参与）——同内容不同键名的两张图只留一张
+	const mkConn = (key) => {
+		const f = { "f1-s1": { visibility: "visible", color: "mono", color2: null }, "f2-s1": { visibility: "visible", color: "mono", color2: null } };
+		f.connections = { [key]: { startNoteId: "f1-s1", endNoteId: "f2-s1", type: "line" } };
+		return f;
+	};
+	const ms2 = [mk(1, "maj7", mkConn("conn-abc")), mk(1, "maj7", mkConn("conn-xyz"))];
+	A("同和弦收集:内容相同(连线键名不同)去重为一张", collectSameChordFigs(ms2, 0, "maj7", () => KEYC).length === 1);
 }
 
 // ===== 指法小图渲染几何(figSvg/figGeometry/figHitTest 同源一致性) =====

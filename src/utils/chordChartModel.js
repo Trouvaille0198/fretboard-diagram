@@ -94,7 +94,17 @@ export function collectSameChordFigs(measures, rootPc, quality, keyAtMi) {
 				let uRoot = null;
 				try { uRoot = degreePc(u.chord.degree, u.chord.acc || 0, keyAtMi ? keyAtMi(m) : { root: 0, minor: false }); } catch (e) { /* 坏数据跳过 */ }
 				if (uRoot !== rootPc || (u.chord.quality || "") !== quality) return;
-				const sig = JSON.stringify(u.fig);
+				// 规范化签名：只看"画了什么"——音位(可见性+是否幽灵)与连线端点/类型，不看连线随机键名/颜色等
+				//（实测踩雷：JSON.stringify 整对象，连线键名 conn-<随机> 不同 → 内容相同的两张图去重失效）
+				const notes = Object.keys(u.fig).filter(k => !k.startsWith("conn") && k !== "connections")
+					.map(k => {
+						const n = u.fig[k] || {};
+						const ghost = (!n.color || n.color === "white") && n.color2 == null;
+						return [k, n.visibility, ghost];
+					}).sort();
+				const conns = Object.values(u.fig.connections || {})
+					.map(c => [c.startNoteId, c.endNoteId, c.type || "line", c.ghost ? 1 : 0, c.arrowDirection || "none"]).sort();
+				const sig = JSON.stringify([notes, conns]);
 				if (seen.has(sig)) return;
 				seen.add(sig);
 				list.push({ fig: u.fig, mi: m });
