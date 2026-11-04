@@ -6609,7 +6609,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-share-updated {
     position: sticky;
     top: 0;
-    z-index: 30;
+    z-index: var(--z-popover-tint);
     margin: 0 auto;
     width: max-content;
     padding: 3px 14px;
