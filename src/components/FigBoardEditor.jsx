@@ -7,7 +7,7 @@ import { CONNECTION_PRESETS, useConnectionState } from '../hooks/useConnectionSt
 import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, generateMarkers, getNotePosition, boardGeometry } from '../utils/fretboardCalculations';
 import { createNoteClickHandler, createNoteMouseDownHandler, createConnectionDragEndHandler } from '../handlers/noteHandlers';
 import { createSvgClickHandler, createSvgMouseMoveHandler, createSvgMouseDownHandler, createSvgContextMenuHandler } from '../handlers/svgHandlers';
-import { figSvg, fitFretWindow, boardFigData } from '../utils/chordFig';
+import { figSvg, fitFretWindow } from '../utils/chordFig';
 import { CONSTS } from '../constants';
 import { candidatesForChord, candidateToData, shapeFromBoard, builtinShapes, loadShapes, persistShapes } from '../utils/chordShapes';
 import { QUALITIES, formatName, degreePc } from '../utils/chordLib';
@@ -23,7 +23,7 @@ const solfegeRelKey = (noteIndex, rootNote) => SOLFEGE_REL[((noteIndex - rootNot
 // 音符恒为 mono 单色点(无色板)、工具区只有连线预设(无钢琴/下载/异色)。
 // 编辑实时自动保存(数据变化即落盘到该拍 unit.fig,无需手动确认)；
 // 顶条：形状库候选(该拍和弦匹配) / 存为形状 / 关闭。
-export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClose, showToast, figOpts, recentFigs }) {
+export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClose, showToast, figOpts }) {
   const [data, setData] = useState(() => (initialData && Object.keys(initialData).length ? JSON.parse(JSON.stringify(initialData)) : {}));
   const dataRef = useRef(data);
   dataRef.current = data;
@@ -216,24 +216,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   }, [handleConnDragEnd]);
 
   // —— 底部面板双页签：默认"最近同和弦"，形状库按钮切换 ——
-  const [panelTab, setPanelTab] = useState('recent'); // 'recent' | 'shapes'
   const [saveForm, setSaveForm] = useState(null);
-  const [shapesVer, setShapesVer] = useState(0); // 增删改名后 bump,候选列表重算
-  const [candMenu, setCandMenu] = useState(null); // 右键候选菜单 {shape, x, y, confirmDelete}
-  const [renameForm, setRenameForm] = useState(null); // 重命名表单 {id, name}
-  const renameInputRef = useRef(null);
-  const candidates = useMemo(() => (panelTab === 'shapes' && chord
-    ? candidatesForChord(chord, viewKey || { root: 0, minor: false }, [...builtinShapes(), ...loadShapes()])
-    : []), [panelTab, chord, viewKey, shapesVer]);
-  // 候选面板开着时:点面板外/按 Esc 收菜单
-  useEffect(() => {
-    if (!candMenu) return;
-    const close = (e) => { if (!e.target.closest('.figbe-cmenu')) setCandMenu(null); };
-    const esc = (e) => { if (e.key === 'Escape') setCandMenu(null); };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
-  }, [candMenu]);
 
   // 最近一次应用的形状候选：换把位按钮的轮换基准（ref 供逻辑读，state 驱动按钮显隐）
   const lastCandRef = useRef(null);
@@ -246,18 +229,6 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     setLastCand(c);
     setFretWin(fitWindow(d));
   }, [fitWindow]);
-  const applyCandidate = (c) => {
-    applyCand(c); // 面板保持打开:连续试多个候选不用反复点「形状库」,收起用顶栏按钮
-  };
-
-  // 应用"最近同和弦"的既有指法：整板覆盖 + 品窗居中（与形状候选同口径）；面板保持打开
-  const applyRecent = (figData) => {
-    const d = JSON.parse(JSON.stringify(figData || {}));
-    setData(d);
-    lastCandRef.current = null;
-    setLastCand(null);
-    setFretWin(fitWindow(d));
-  };
 
   // 换把位 = 同一形状不变、整体升八度（根品 +12）：在该形状自己的各八度位间循环（到底回绕最低位）
   const positions = useMemo(() => {
@@ -287,27 +258,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     onAutoSave && onAutoSave(serializeBoard(d));
   };
 
-  // —— 形状管理（右键候选：重命名 / 删除；内置形状只读）——
-  const openCandMenu = (e, shape) => {
-    e.preventDefault();
-    setCandMenu({ shape, x: e.clientX, y: e.clientY, confirmDelete: false });
-  };
-  const doRename = () => {
-    const v = (renameInputRef.current?.value || '').trim();
-    setRenameForm(null);
-    if (!v || !renameForm) return;
-    persistShapes(loadShapes().map(s => (s.id === renameForm.id ? { ...s, name: v } : s)));
-    setShapesVer(v => v + 1);
-    showToast && showToast(`已重命名：${v}`, 'success');
-  };
-  const doDelete = (shape) => {
-    persistShapes(loadShapes().filter(s => s.id !== shape.id));
-    if (lastCandRef.current?.shape.id === shape.id) { lastCandRef.current = null; setLastCand(null); }
-    setShapesVer(v => v + 1);
-    setCandMenu(null);
-    showToast && showToast(`已删除形状：${shape.name}`, 'success');
-  };
-
+  // —— 形状管理（右键重命名/删除）已随面板迁至页面级 FigPanel（v229）；弹窗只留「存为形状」——
   const openSave = () => {
     const got = shapeFromBoard(dataRef.current);
     if (!got.shape) { showToast && showToast('先点亮几个音再存形状', 'info'); return; }
@@ -343,8 +294,6 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     <div className="figbe">
       <div className="figbe-top">
         <span className="figbe-title">指法图{chord ? ` · ${formatName(chord, viewKey || { root: 0, minor: false })}` : ""}</span>
-        {chord ? <button className="button sm" title={panelTab === 'recent' ? '查看形状库候选（按当前和弦匹配）' : '查看本曲同和弦的既有指法'}
-          onClick={() => setPanelTab(t => (t === 'recent' ? 'shapes' : 'recent'))}>{panelTab === 'recent' ? '形状库' : '最近同和弦'}</button> : null}
         <button className="button sm" onClick={openSave}>存为形状</button>
         {positions ? <button className="button sm" onClick={cyclePos}
           title={`形状不变，整体升高八度（当前 @${lastCand.rootFret} 品 → 下一个 @${(positions.same.find(c => c.rootFret > lastCand.rootFret) ?? positions.same[0]).rootFret} 品，到底回绕）`}>换把位</button> : null}
@@ -477,59 +426,6 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
           </div>
         </div>
       </div>
-
-      {panelTab === 'recent' ? (
-        <div className="figbe-shapes">
-          <div className="figbe-shapes-title">{(recentFigs || []).length ? `${recentFigs.length} 个同和弦指法 · 点击应用（按当前和弦的 Root 换算，永远是同一组唱名）` : '本曲暂无相同和弦的指法图（先在别处给这个和弦配个图，或切「形状库」挑一个）'}</div>
-          <div className="figbe-shapes-list">
-            {(recentFigs || []).map((item, i) => (
-              <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={`第${item.mi + 1}小节（点击应用）`}>
-                <span dangerouslySetInnerHTML={{ __html: figSvg(boardFigData(item.fig, chord, viewKey || { root: 0, minor: false }), { degMode: figOpts?.degMode ?? 'chord', orientation: figOpts?.orientation, size: figOpts?.size ?? 44, key: viewKey || { root: 0, minor: false } }) }} />
-                <em>{`第${item.mi + 1}小节`}</em>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="figbe-shapes">
-          <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选 · 点击应用，右键重命名/删除` : '暂无形状'}</div>
-          <div className="figbe-shapes-list">
-            {candidates.map((c, i) => (
-              <button key={i} className="figbe-shape" onClick={() => applyCandidate(c)}
-                onContextMenu={e => openCandMenu(e, c.shape)} title={`${c.shape.name} @${c.rootFret}品`}>
-                <span dangerouslySetInnerHTML={{ __html: figSvg({ points: c.points.map(p => ({ string: p.string, fret: p.fret })), links: [], startFret: Math.min(...c.points.filter(p => p.fret > 0).map(p => p.fret), 13), window: 4, rootPc: c.rootPc, fail: false }, { degMode: 'none', size: 44 }) }} />
-                <em>{c.rootFret === 0 ? '开放把' : c.rootFret + '品'}</em>
-                <small>{c.shape.name}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {candMenu ? (
-        <div className="figbe-cmenu" style={{ left: Math.min(candMenu.x, window.innerWidth - 180), top: Math.min(candMenu.y, window.innerHeight - 110) }}>
-          <button disabled={candMenu.shape.builtin} title={candMenu.shape.builtin ? '内置形状不可修改' : ''}
-            onClick={() => { setRenameForm({ id: candMenu.shape.id, name: candMenu.shape.name }); setCandMenu(null); }}>重命名</button>
-          {candMenu.confirmDelete ? (
-            <button className="danger" onClick={() => doDelete(candMenu.shape)}>确认删除？</button>
-          ) : (
-            <button className="danger" disabled={candMenu.shape.builtin} title={candMenu.shape.builtin ? '内置形状不可删除' : ''}
-              onClick={() => setCandMenu(m => ({ ...m, confirmDelete: true }))}>删除</button>
-          )}
-        </div>
-      ) : null}
-
-      {renameForm ? (
-        <div className="figbe-shapes figbe-saveform">
-          <div className="figbe-shapes-title">重命名形状</div>
-          <div className="figbe-saveform-row">
-            <input ref={renameInputRef} autoFocus className="cc-dialog-input" defaultValue={renameForm.name}
-              onKeyDown={e => { if (e.key === 'Enter') doRename(); if (e.key === 'Escape') setRenameForm(null); }} />
-            <button className="button sm accent" onClick={doRename}>确定</button>
-            <button className="button sm" onClick={() => setRenameForm(null)}>取消</button>
-          </div>
-        </div>
-      ) : null}
 
       {saveForm ? (
         <div className="figbe-shapes figbe-saveform">

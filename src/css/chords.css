@@ -2160,8 +2160,7 @@ html[data-theme="light"] .cc-cell-tools {
 }
 
 /* ===== 工具行控件统一规格（#6 尺寸审计对齐）：高 32 / 字 12.5 / 圆角 8 ===== */
-.cc-tabs-row select,
-.cc-preview-bar select {
+.cc-tabs-row select {
     box-sizing: border-box;
     height: 32px;
     padding: 0 8px;
@@ -2652,49 +2651,125 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-cell:has(.cc-cell-tags.in-flow) .cc-bardots { top: calc(var(--cc-fig-h) + 59px); }
 .cc-cell:has(.cc-cell-tags.in-flow) .cc-repeat-times { top: calc(var(--cc-fig-h) + 34px); }
 
-/* 预览子栏（预览页签内容区的工具条：记谱形式/升降号/分享导出，不占工具栏） */
-.cc-preview-bar {
+/* 套和弦图面板（v229 从 figbe 弹窗底部迁来，占原预览槽位）：
+   最近同和弦 ↔ 形状库 双页签，点击缩略图应用到光标拍格 */
+.cc-figbar {
     max-width: 1560px;
     width: 100%;
     margin: 0 auto;
-    padding: 12px 16px 0;
+    padding: 6px 16px 0;
+}
+
+.cc-figbar-head {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.cc-preview-tabs {
-    display: flex;
-    gap: 4px;
-}
-
-/* 记谱形式切换（数字/罗马/音名）：比页签紧凑，与左侧页签留分隔 */
-.cc-display-seg {
-    margin-left: 10px;
-    padding-left: 12px;
-    border-left: 1px solid var(--app-border-strong);
-}
-
-.cc-display-seg button {
-    padding: 6px 12px;
-    font-size: var(--app-fs-md);
-    border-radius: 7px;
-}
-
-.cc-preview-tabs button {
+.cc-figbar-toggle {
     background: var(--app-bg-secondary);
     border: 1px solid var(--app-border);
     border-radius: var(--app-radius-xs);
     color: var(--app-text-muted);
-    font-size: var(--app-fs-md);
-    padding: 6px 16px;
+    font-size: var(--app-fs-sm);
+    padding: 3px 10px;
     cursor: pointer;
+    white-space: nowrap;
 }
 
-.cc-preview-tabs button.on {
+.cc-figbar-toggle:hover {
     border-color: var(--cc-accent);
     color: var(--cc-accent-text);
-    background: var(--cc-accent-weak);
-    font-weight: 600;
 }
+
+.cc-figbar-title {
+    font-size: var(--app-fs-sm);
+    color: var(--app-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cc-figbar-hint {
+    font-size: var(--app-fs-2xs);
+    color: var(--app-text-soft);
+    white-space: nowrap;
+}
+
+.cc-figbar-list {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 6px 0 8px;
+    scrollbar-width: thin;
+}
+
+.cc-figbar-thumb {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid var(--app-line-strong);
+    background: transparent;
+    border-radius: var(--app-radius-xs);
+    padding: 5px 7px;
+    cursor: pointer;
+    color: inherit;
+}
+
+.cc-figbar-thumb:hover {
+    border-color: var(--app-accent);
+    background: var(--cc-accent-weak);
+}
+
+.cc-figbar-thumb em {
+    font-style: normal;
+    font-size: var(--app-fs-2xs);
+    color: var(--app-text-muted);
+}
+
+.cc-figbar-thumb small {
+    font-size: var(--app-fs-2xs);
+    color: var(--app-text-soft);
+}
+
+/* 候选右键菜单（重命名/删除）——视觉同 figbe-cmenu 口径 */
+.cc-figbar-cmenu {
+    position: fixed;
+    z-index: var(--z-context-menu);
+    min-width: 130px;
+    background: var(--cc-panel, #10161c);
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-sm);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px color-mix(in srgb, #000 40%, transparent);
+}
+
+.cc-figbar-cmenu button {
+    border: none;
+    background: none;
+    color: var(--app-text);
+    text-align: left;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: var(--app-fs-sm);
+    border-radius: 6px;
+}
+
+.cc-figbar-cmenu button:hover:not(:disabled) { background: color-mix(in srgb, var(--app-accent) 12%, transparent); }
+.cc-figbar-cmenu button:disabled { opacity: 0.4; cursor: not-allowed; }
+.cc-figbar-cmenu button.danger { color: #e5695f; } /* lint-allow-color 存量设计红（同 figbe-cmenu 口径） */
+
+.cc-figbar-rename {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 6px;
+    font-size: var(--app-fs-sm);
+    color: var(--app-text-muted);
+}
+
 
