@@ -132,12 +132,8 @@ export function DynamicToolbar({
         </button>
         {exportOpen && (
           <>
-            <div style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-export-veil)' }} onClick={() => setExportOpen(false)} />
-            <div className="dyn-export-menu" style={{
-              position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 'var(--z-export-menu)',
-              background: 'var(--background-color, #10161c)', border: '1px solid var(--border-color, #2a3542)',
-              borderRadius: 8, minWidth: 220, padding: '4px 0', boxShadow: '0 8px 24px rgba(0,0,0,.45)'
-            }}>
+            <div className="dyn-export-veil" onClick={() => setExportOpen(false)} />
+            <div className="dyn-export-menu">
               {[
                 { id: 'gif', label: 'GIF 动图', hint: '通用动图，任何地方能开' },
                 { id: 'svganim', label: 'SVG 矢量动图', hint: '无限清晰体积小（浏览器打开/网页嵌入）' },
@@ -151,12 +147,9 @@ export function DynamicToolbar({
                   className="dyn-export-item"
                   disabled={!canPlay || exporting !== null}
                   onClick={() => { setExportOpen(false); onExport(item.id); }}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: 'inherit', padding: '8px 14px', cursor: 'pointer', font: 'inherit' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, #fff 6%, transparent)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <div style={{ fontWeight: 600 }}>{item.label}</div>
-                  <div style={{ fontSize: 12, opacity: 0.65 }}>{item.hint}</div>
+                  <div className="dyn-export-item-label">{item.label}</div>
+                  <div className="dyn-export-item-hint">{item.hint}</div>
                 </button>
               ))}
             </div>
