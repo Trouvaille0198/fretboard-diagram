@@ -58,7 +58,9 @@
     --cc-text: #dfe7ee; /* 和弦谱谱面墨色（历史上是 var 活回退，v225 起正式定义） */
     --cc-accent-text: var(--app-accent-text);
 
-    /* z-index 分层表（保值语义化：变量值 = 历史原值，同值即同层；调层级只改这里） */
+    /* z-index 分层表（同值即同层，互叠靠 DOM 顺序；调层级只改这里）
+       段位约定：十位=页内浮层 | 百位=菜单/吸顶 | 千位=chrome·遮罩 | 万位=模态顶层 */
+    /* —— 十位：页内浮层 —— */
     --z-popover-tint: 30;          /* 移动端着色弹出面板 */
     --z-export-veil: 40;           /* 动效工具条导出菜单遮罩 */
     --z-export-menu: 41;
@@ -66,11 +68,13 @@
     --z-panel-float: 60;           /* 页内浮动设置面板/下拉 */
     --z-panel-settings: 70;
     --z-modal-fig: 90;
+    /* —— 百位：菜单/吸顶 —— */
     --z-menu: 300;
     --z-popover-lg: 500;
     --z-nav-menu: 560;
     --z-copybar: 590;
     --z-toolbar-sticky: 600;
+    /* —— 千位：chrome·遮罩（901~905 为和弦谱舞台角标/FAB 簇） —— */
     --z-build-ver: 901;
     --z-stage-float: 904;
     --z-stage-fab: 905;
@@ -79,12 +83,13 @@
     --z-chrome: 1100;              /* 主题/语言开关、dock */
     --z-stitch-dock: 1180;
     --z-top-nav: 1200;
-    --z-overlay: 1300;             /* 模态遮罩类（同层互叠靠 DOM 顺序） */
+    --z-overlay: 1300;             /* 模态遮罩类（盖过吸顶导航） */
     --z-context-menu: 1350;
     --z-modal-mask: 2000;
-    --z-modal-top-veil: 9999;
+    /* —— 万位：模态顶层 —— */
+    --z-modal-top-veil: 9999;      /* 导入对话框遮罩（刚好压同层 10000 组） */
     --z-modal-top: 10000;          /* 登录框/Toast/导入对话框 */
-    --z-max: 100000;               /* 形状库右键菜单（历史最高层） */
+    --z-max: 10100;                /* 形状库右键菜单（v225 前是 100000，收编进万位段；与 10000 间无其他层，顺序不变） */
 
     /* 字号阶（消除 10/10.5/11/11.5/12/12.5/13/14 八档并存） */
     --app-fs-2xs: 10px;
