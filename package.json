@@ -13,7 +13,8 @@
         "smoke:ui": "node scripts/smoke-ui.mjs",
         "sample:master": "node scripts/sample-master.mjs",
         "sample:master:browser": "node scripts/sample-master.mjs --browser",
-        "audit:colors": "node scripts/color-audit.mjs"
+        "audit:colors": "node scripts/color-audit.mjs",
+        "lint:css": "node scripts/lint-css.mjs"
     },
     "dependencies": {
         "better-sqlite3": "^13.0.3",

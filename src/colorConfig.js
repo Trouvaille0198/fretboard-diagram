@@ -1,6 +1,33 @@
 // 颜色配置文件
 // 在这里修改颜色配置，所有颜色都会自动应用
 
+// ============ 导出/画布域色（字面值：SVG 导出、canvas 绘制无 CSS 变量上下文） ============
+// 与 :root token 同族的值在此集中管理；改主题色时同步对照这里
+export const CANVAS_COLORS = {
+    bgFallback: '#10161c',                     // 画布底色回退（读 --background-color 失败时；≈ --app-panel-strong）
+    textFallback: '#dfe7ee',                   // 画布文字回退（读 --text-color 失败时；= --cc-text）
+    ink: '#e8eef4',                            // 导出谱面主墨色
+    muted: '#9fb2c0',                          // 导出谱面次级墨色（= --app-text-fig-soft）
+    accent: '#f3ba62',                         // 导出强调金（= --app-accent）
+    lineWhite: '#aaaaaa',                      // white/trans 音符连线替换色（兼作通用灰回退）
+    lineGrayed: 'rgba(200, 200, 200, 0.7)',    // 灰化连线
+    lineFaint: 'rgba(230, 237, 242, 0.14)',    // 导出谱行线
+    ghostRing: 'rgba(230, 237, 242, 0.55)',    // 透明音幽灵环（dyn 工具条示意点）
+};
+// 动效涟漪/连线高亮（导出 SVG 动效）
+export const ANIM_FX_COLORS = {
+    ringStroke: 'rgba(243, 186, 98, 0.95)',
+    lineStroke: 'rgba(243, 186, 98, 0.75)',
+    dotFill: 'rgba(243, 186, 98, 0.95)'
+};
+// 和弦谱小节标色（着色页签；.cc-tint 色板 CSS 展示的是 0.35 加强版，同源不同透明度）
+export const SECTION_TINTS = {
+    red: 'rgba(240, 138, 132, 0.10)',
+    blue: 'rgba(61, 139, 255, 0.10)',
+    green: 'rgba(136, 211, 159, 0.10)',
+    gold: 'rgba(243, 186, 98, 0.12)'
+};
+
 // 第一层级颜色配置（用于音符填充和调色盘按钮）
 // 注意：顺序很重要，所有地方都会按照这个顺序
 // ColorBrewer Dark2 qualitative palette — 感知等距、色相均匀分布

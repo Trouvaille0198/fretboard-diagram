@@ -8,7 +8,7 @@
 import { CONSTS } from "../constants.js";
 import { generateNotes, computeNoteName, computeNoteIndex } from "./fretboardCalculations.js";
 import { noteToSolfege } from "../utils.js";
-import { getLevel1FillColor, generateTintVariants } from "../colorConfig.js";
+import { getLevel1FillColor, generateTintVariants, ANIM_FX_COLORS } from "../colorConfig.js";
 import { activeNoteIdsOf } from "./songStructure.js";
 import { BEND_OUT, BEND_HOLD, BEND_TOTAL } from "./timeline.js";
 
@@ -44,11 +44,7 @@ const easeInOutCubic = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 // 击/勾：急进急停，与滑音的匀速感区分开
 const easeOutQuick = t => 1 - Math.pow(1 - t, 4);
 
-const FX_COLORS = {
-	ringStroke: "rgba(243, 186, 98, 0.95)",
-	lineStroke: "rgba(243, 186, 98, 0.75)",
-	dotFill: "rgba(243, 186, 98, 0.95)"
-};
+const FX_COLORS = ANIM_FX_COLORS; /* 导出域动效色，集中定义在 colorConfig.js */
 
 // 从帧数据取音符颜色（跟随动图色系）：{name,custom} 取 custom，色名取基础填充。
 // SMIL 导出的涟漪层同口径复用（复色涟漪的判定必须与内核一致）

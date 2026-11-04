@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { CONSTS } from './constants';
 import { updateNote, inlineCSS, noteToSolfege, calculateConnectionColor, getColorName } from './utils';
-import { initColorCSSVariables } from './colorConfig';
+import { initColorCSSVariables, CANVAS_COLORS } from './colorConfig';
 import { useFretboardState } from './hooks/useFretboardState';
 import { useConnectionState } from './hooks/useConnectionState';
 import { useHistory } from './hooks/useHistory';
@@ -1421,8 +1421,8 @@ function Fretboard({ mode = 'normal' }) {
       transMs: Number(settings.transMs) > 0 ? Number(settings.transMs) : 200,
       fps: Number(settings.fps) > 0 ? Number(settings.fps) : 30,
       width: Number(settings.width) || 720,
-      background: getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || '#10161c',
-      labelColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#dfe7ee',
+      background: getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || CANVAS_COLORS.bgFallback,
+      labelColor: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || CANVAS_COLORS.textFallback,
       noteStyle: resolveNoteVisualStyle() || undefined
     };
     if (format === 'mp4') {
@@ -1596,7 +1596,7 @@ function Fretboard({ mode = 'normal' }) {
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || '#10161c';
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || CANVAS_COLORS.bgFallback;
       ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0);
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));

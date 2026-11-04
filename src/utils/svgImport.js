@@ -1,4 +1,4 @@
-import { LEVEL1_COLORS, LEVEL2_COLORS } from '../colorConfig';
+import { LEVEL1_COLORS, LEVEL2_COLORS, CANVAS_COLORS } from '../colorConfig';
 import { CONSTS } from '../constants';
 import { reduceColorSaturation } from '../utils';
 
@@ -810,12 +810,12 @@ export async function parseSVGToFretboardState(svgInput) {
 
             // 获取其他属性
             const strokeWidth = parseFloat(pathElement.getAttribute('stroke-width') || pathElement.style.strokeWidth || '3');
-            let stroke = pathElement.getAttribute('stroke') || pathElement.style.stroke || '#aaaaaa';
+            let stroke = pathElement.getAttribute('stroke') || pathElement.style.stroke || CANVAS_COLORS.lineWhite;
 
             // 如果 stroke 是 'none' 或空，尝试从 computed style 获取
             if (!stroke || stroke === 'none') {
                 const computedStyle = window.getComputedStyle(pathElement);
-                stroke = computedStyle.stroke || '#aaaaaa';
+                stroke = computedStyle.stroke || CANVAS_COLORS.lineWhite;
             }
 
             // 解析颜色（可能是渐变 ID 或颜色值）

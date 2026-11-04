@@ -20,6 +20,7 @@
 - Vite dev server：端口 5173；`vite.config.js` 已强制 `no-store`（WSL 下文件监视失效 + Chrome 304 缓存会喂旧模块，导致"改了不生效"）。
 - 版本链：`index.html` 引 `main.jsx?v=N`、`main.jsx` 引 `fretboard.css?v=N`，大改后同步 bump（顶栏水印 vN 供用户自查）。
 - 纯逻辑测试：`node scripts/smoke-chords.mjs`（和弦谱）+ `node scripts/smoke-core.mjs`（动效内核），提交前全绿。
+- 样式纪律 lint：`node scripts/lint-css.mjs`（v225 起提交前全绿；规则见 `STYLE_GUIDE.md`）。
 - 测试浏览器探活脚本：`scripts/ensure-testchrome.sh`。
 
 ## 代码约定

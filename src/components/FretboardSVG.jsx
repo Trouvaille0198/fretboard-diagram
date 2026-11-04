@@ -2,7 +2,7 @@ import React from 'react';
 import { CONSTS } from '../constants';
 import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, getPointOnNoteEdge, getColorName, getNoteSplitMode, resolveNoteColorValue } from '../utils';
 import { buildConnectionPath, adaptiveArcCurvature } from '../utils/connectionUtils';
-import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from '../colorConfig';
+import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor, CANVAS_COLORS } from '../colorConfig';
 import { CONNECTION_PRESETS, matchConnectionPreset } from '../hooks/useConnectionState';
 import { ConnectionPresetIcon } from './ConnectionPresetIcon';
 import { useLanguage } from '../i18n';
@@ -249,7 +249,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
             const gradientX2 = endEdge.x;
             const gradientY2 = endEdge.y;
 
-            const finalStartColor = startColorName === 'white' || startColorName === 'trans' ? '#aaaaaa' : startColor;
+            const finalStartColor = startColorName === 'white' || startColorName === 'trans' ? CANVAS_COLORS.lineWhite : startColor;
             const finalEndColor = endColorName === 'white' || endColorName === 'trans' ? '#aaaaaa' : endColor;
             const safeStartColor = finalStartColor || '#aaaaaa';
             const safeEndColor = finalEndColor || '#aaaaaa';
@@ -499,12 +499,12 @@ export const FretboardSVG = React.memo(function FretboardSVG({
 
           // 计算连线颜色：如果是渐变ID，使用url引用；否则使用起点颜色
           const isGradient = conn.color && conn.color.startsWith('gradient-');
-          let strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColorName === 'white' || startColorName === 'trans' ? '#aaaaaa' : reduceColorSaturation(startColor, 0.6)));
+          let strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColorName === 'white' || startColorName === 'trans' ? CANVAS_COLORS.lineWhite : reduceColorSaturation(startColor, 0.6)));
 
           // 如果启用了灰色效果，使用半透明灰色
           const isGrayed = conn.isGrayed || false;
           if (isGrayed) {
-            strokeColor = 'rgba(200, 200, 200, 0.7)';
+            strokeColor = CANVAS_COLORS.lineGrayed;
           }
 
           // 箭头颜色：每个箭头使用自己接触的note的颜色（降低饱和度）

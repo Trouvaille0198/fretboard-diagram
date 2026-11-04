@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { ScoreBoard, renderBoardImage } from './ScorePieces';
 import { stitchLayout, stitchScale, withAlpha, unifyStitchState } from '../utils/stitchModel';
+import { CANVAS_COLORS } from '../colorConfig';
 
 // 拼接区悬浮舱（普通图片模式）：右上角 FAB，hover 展开实时拼接预览
 // 预览 = DOM 版拼接画布（各段按指板坐标上下对齐、段间分割线），
@@ -19,7 +20,7 @@ async function composeStitchCanvas(items, layout, unify) {
   canvas.width = Math.max(1, Math.round(layout.w * k));
   canvas.height = Math.max(1, Math.round(layout.h * k));
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = cssVar('--background-color', '#10161c');
+  ctx.fillStyle = cssVar('--background-color', CANVAS_COLORS.bgFallback);
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   for (let i = 0; i < items.length; i++) {
     const seg = layout.segs[i];
@@ -33,7 +34,7 @@ async function composeStitchCanvas(items, layout, unify) {
     ctx.drawImage(img, Math.round(seg.x * k), Math.round(seg.y * k), Math.round(seg.vb.w * k), Math.round(seg.vb.h * k));
   }
   // 段间分割竖线（位于留白中央，主题文字色降透明度——深浅主题都清晰）
-  ctx.strokeStyle = withAlpha(cssVar('--app-text', '#dfe7ee'), 0.5);
+  ctx.strokeStyle = withAlpha(cssVar('--app-text', CANVAS_COLORS.textFallback), 0.5);
   ctx.lineWidth = Math.max(2, Math.round(k * 2));
   layout.dividers.forEach(dx => {
     const px = Math.round(dx * k) + 0.5;
@@ -262,7 +263,7 @@ export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, uni
                 className="stitch-canvas"
                 style={{
                   aspectRatio: `${layout.w} / ${layout.h}`,
-                  background: cssVarSafe('--background-color', '#10161c'),
+                  background: cssVarSafe('--background-color', CANVAS_COLORS.bgFallback),
                 }}
               >
                 {items.map((item, i) => {

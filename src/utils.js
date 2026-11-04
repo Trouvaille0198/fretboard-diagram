@@ -77,7 +77,7 @@ function rgbToHex(r, g, b) {
 }
 
 // 从颜色配置文件导入
-import { getLevel2Color as getLevel2ColorFromConfig, LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor } from './colorConfig.js';
+import { getLevel2Color as getLevel2ColorFromConfig, LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor, CANVAS_COLORS } from './colorConfig.js';
 
 // 获取第二层级颜色值（独立设置，不依赖第一层级）
 export function getLevel2Color(colorName) {
@@ -250,7 +250,7 @@ export function inlineCSS(svg, originalSvgOverride) {
     const rootStyle = getComputedStyle(root);
     const cssVars = {
         '--background-color': rootStyle.getPropertyValue('--background-color').trim() || 'black',
-        '--text-color': rootStyle.getPropertyValue('--text-color').trim() || '#aaaaaa'
+        '--text-color': rootStyle.getPropertyValue('--text-color').trim() || CANVAS_COLORS.lineWhite
     };
 
     // 获取所有颜色 CSS 变量

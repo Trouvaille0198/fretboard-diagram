@@ -36,18 +36,18 @@
 
 .toast.success {
     background:
-        linear-gradient(180deg, rgba(136, 211, 159, 0.16), color-mix(in srgb, #fff 4%, transparent)),
+        linear-gradient(180deg, color-mix(in srgb, var(--app-success) 16%, transparent), color-mix(in srgb, #fff 4%, transparent)),
         var(--app-panel-strong);
-    border-color: rgba(136, 211, 159, 0.28);
-    border-left: 3px solid rgba(136, 211, 159, 0.72);
+    border-color: color-mix(in srgb, var(--app-success) 28%, transparent);
+    border-left: 3px solid color-mix(in srgb, var(--app-success) 72%, transparent);
 }
 
 .toast.error {
     background:
-        linear-gradient(180deg, rgba(240, 138, 132, 0.16), color-mix(in srgb, #fff 4%, transparent)),
+        linear-gradient(180deg, color-mix(in srgb, var(--app-danger) 16%, transparent), color-mix(in srgb, #fff 4%, transparent)),
         var(--app-panel-strong);
-    border-color: rgba(240, 138, 132, 0.28);
-    border-left: 3px solid rgba(240, 138, 132, 0.72);
+    border-color: color-mix(in srgb, var(--app-danger) 28%, transparent);
+    border-left: 3px solid color-mix(in srgb, var(--app-danger) 72%, transparent);
 }
 
 .toast.warning {
