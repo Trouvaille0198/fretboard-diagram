@@ -118,13 +118,13 @@
 }
 
 .gallery-clear-btn:hover {
-    background: rgba(240, 138, 132, 0.12);
-    border-color: rgba(240, 138, 132, 0.42);
+    background: color-mix(in srgb, var(--app-danger) 12%, transparent);
+    border-color: color-mix(in srgb, var(--app-danger) 42%, transparent);
     color: #ffd6d2;
 }
 
 .gallery-clear-btn:active {
-    background: rgba(240, 138, 132, 0.18);
+    background: color-mix(in srgb, var(--app-danger) 18%, transparent);
 }
 
 .gallery-import-btn,
@@ -135,7 +135,7 @@
 .gallery-import-btn:hover {
     background: color-mix(in srgb, var(--app-accent) 14%, transparent);
     border-color: var(--app-border-strong);
-    color: #ffe1ac;
+    color: var(--app-accent-text);
 }
 
 .gallery-import-btn:active {
@@ -207,8 +207,8 @@
 }
 
 .gallery-item.selected {
-    border-color: rgba(136, 211, 159, 0.58);
-    box-shadow: 0 0 0 2px rgba(136, 211, 159, 0.22), 0 16px 30px rgba(17, 43, 31, 0.26);
+    border-color: color-mix(in srgb, var(--app-success) 58%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-success) 22%, transparent), 0 16px 30px rgba(17, 43, 31, 0.26);
     transform: translateY(-2px);
 }
 
@@ -236,7 +236,7 @@
     position: relative;
     width: 100%;
     height: 120px;
-    background: rgba(8, 14, 18, 0.88);
+    background: rgba(8, 14, 18, 0.88); /* lint-allow-color 画布导出预览底色，双主题恒暗（var(--app-bg) 亮色会翻转） */
     overflow: hidden;
     border: 1px solid rgba(230, 237, 242, 0.08);
     border-radius: 14px;
@@ -258,7 +258,7 @@
     justify-content: center;
     color: var(--app-text-soft);
     font-size: 12px;
-    background: rgba(8, 14, 18, 0.88);
+    background: rgba(8, 14, 18, 0.88); /* lint-allow-color 画布导出预览底色，双主题恒暗（var(--app-bg) 亮色会翻转） */
 }
 
 .gallery-delete-btn,
@@ -292,8 +292,8 @@
 }
 
 .gallery-delete-btn:hover {
-    background: rgba(240, 138, 132, 0.24);
-    border-color: rgba(240, 138, 132, 0.36);
+    background: color-mix(in srgb, var(--app-danger) 24%, transparent);
+    border-color: color-mix(in srgb, var(--app-danger) 36%, transparent);
     transform: translateY(-1px) scale(1.08);
 }
 
@@ -550,7 +550,7 @@
 }
 
 .directory-tab.active .directory-tab-name {
-    color: #f3c67d;
+    color: var(--app-control-thumb-border-hover);
     font-weight: 600;
 }
 
@@ -591,7 +591,7 @@
 
 .directory-tab-close:hover {
     opacity: 1;
-    background: rgba(240, 138, 132, 0.14);
+    background: color-mix(in srgb, var(--app-danger) 14%, transparent);
     color: var(--app-danger);
 }
 
@@ -623,7 +623,7 @@
 .gallery-export-btn:hover {
     background: color-mix(in srgb, var(--app-accent) 16%, transparent);
     border-color: var(--app-border-strong);
-    color: #ffe1ac;
+    color: var(--app-accent-text);
 }
 
 .gallery-export-btn:active {
@@ -685,7 +685,7 @@
 .mode-tab.active {
     background: color-mix(in srgb, var(--app-accent) 14%, transparent);
     border-color: color-mix(in srgb, var(--app-accent) 32%, transparent);
-    color: #ffe1ac;
+    color: var(--app-accent-text);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-accent) 12%, transparent);
 }
 

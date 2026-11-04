@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getLevel1FillColor } from '../colorConfig';
+import { getLevel1FillColor, CANVAS_COLORS } from '../colorConfig';
 
 // 动态编辑模式工具条：模式开关、技法工具、定格、播放、节奏设置、导出
 export function DynamicToolbar({
@@ -68,7 +68,7 @@ export function DynamicToolbar({
             onClick={onToggleTransTool}
             title="透明音：开启后点击音符涂背景色幽灵音（独立于色系，换色系不变）；按住 Ctrl 点击等效"
           >
-            <span className="dyn-scheme-dot" style={{ background: 'var(--background-color)', boxShadow: 'inset 0 0 0 2px rgba(230,237,242,0.55)' }} />
+            <span className="dyn-scheme-dot" style={{ background: 'var(--background-color)', boxShadow: `inset 0 0 0 2px ${CANVAS_COLORS.ghostRing}` }} />
           </button>
           <span className="dyn-sep" />
         </>
@@ -152,7 +152,7 @@ export function DynamicToolbar({
                   disabled={!canPlay || exporting !== null}
                   onClick={() => { setExportOpen(false); onExport(item.id); }}
                   style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', color: 'inherit', padding: '8px 14px', cursor: 'pointer', font: 'inherit' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.06)')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, #fff 6%, transparent)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div style={{ fontWeight: 600 }}>{item.label}</div>

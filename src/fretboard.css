@@ -44,9 +44,6 @@
     --app-line-strong: var(--app-border-strong);
     --app-line-lighter: rgba(150, 200, 230, 0.06);
     --app-sheen: rgba(255, 255, 255, 0.05);
-    --app-accent-09: rgba(243, 186, 98, 0.09);
-    --app-accent-12: rgba(243, 186, 98, 0.12);
-    --app-accent-45: rgba(243, 186, 98, 0.45);
 
     /* 强调色上的深色文字（金底按钮）；强调色 alpha 梯度统一 color-mix(var(--app-accent)) 派生 */
     --app-ink-on-accent: #10161c;
@@ -58,6 +55,7 @@
        各处 var() 的蓝色死回退（#3d8bff/#2f7ae8/#6fb0ff）已删） */
     --cc-accent: var(--app-accent);
     --cc-accent-weak: color-mix(in srgb, var(--app-accent) 13%, transparent);
+    --cc-text: #dfe7ee; /* 和弦谱谱面墨色（历史上是 var 活回退，v225 起正式定义） */
     --cc-accent-text: var(--app-accent-text);
 
     /* z-index 分层表（保值语义化：变量值 = 历史原值，同值即同层；调层级只改这里） */
@@ -125,7 +123,7 @@ html[data-theme="light"] {
 html[data-theme="light"],
 html[data-theme="light"] body {
     background:
-        radial-gradient(ellipse 60% 50% at 0% 0%, var(--app-accent-09) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 60%),
         radial-gradient(ellipse 50% 40% at 100% 8%, rgba(90, 160, 220, 0.09) 0%, transparent 55%),
         radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.06) 0%, transparent 58%),
         linear-gradient(180deg, #eef2f7 0%, #f5f8fc 100%);
@@ -134,7 +132,7 @@ html[data-theme="light"] body {
 /* 日间模式：#app 同步亮色背景（否则内容限宽外露出夜色底，两侧出现黑条） */
 html[data-theme="light"] #app {
     background:
-        radial-gradient(ellipse 60% 50% at 0% 0%, var(--app-accent-09) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 60%),
         radial-gradient(ellipse 50% 40% at 100% 8%, rgba(90, 160, 220, 0.09) 0%, transparent 55%),
         radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.06) 0%, transparent 58%),
         linear-gradient(180deg, #eef2f7 0%, #f5f8fc 100%);
@@ -148,7 +146,7 @@ html[data-theme="light"] .title-header h1 {
 }
 
 html[data-theme="light"] .title-header .datetime {
-    color: rgba(22, 39, 54, 0.68);
+    color: color-mix(in srgb, var(--app-text) 68%, transparent);
 }
 
 html[data-theme="light"] .menu-left,
@@ -204,36 +202,36 @@ html[data-theme="light"] .menu-connection-presets .button {
 html[data-theme="light"] .button:hover,
 html[data-theme="light"] .enharmonic-button:hover {
     background: linear-gradient(180deg, rgba(255, 252, 245, 0.98), rgba(250, 243, 229, 0.96));
-    border-color: rgba(222, 157, 66, 0.34);
+    border-color: color-mix(in srgb, var(--app-accent-strong) 34%, transparent);
     color: var(--app-text);
-    box-shadow: 0 8px 18px rgba(222, 157, 66, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--app-accent-strong) 12%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.96);
 }
 
 html[data-theme="light"] .menu-global-actions .button:hover,
 html[data-theme="light"] .menu-global-actions .enharmonic-button:hover,
 html[data-theme="light"] .menu-connection-presets .button:hover {
     background: linear-gradient(180deg, rgba(255, 252, 245, 0.99), rgba(248, 238, 216, 0.97));
-    border-color: rgba(222, 157, 66, 0.40);
+    border-color: color-mix(in srgb, var(--app-accent-strong) 40%, transparent);
     color: #263847;
     box-shadow:
-        0 10px 22px rgba(222, 157, 66, 0.16),
+        0 10px 22px color-mix(in srgb, var(--app-accent-strong) 16%, transparent),
         inset 0 1px 0 rgba(255, 255, 255, 0.98),
-        inset 0 -1px 0 rgba(222, 157, 66, 0.10);
+        inset 0 -1px 0 color-mix(in srgb, var(--app-accent-strong) 10%, transparent);
 }
 
 html[data-theme="light"] .button.selected {
     background: linear-gradient(180deg, rgba(255, 244, 222, 0.98), rgba(249, 232, 196, 0.96));
-    border-color: rgba(222, 157, 66, 0.44);
+    border-color: color-mix(in srgb, var(--app-accent-strong) 44%, transparent);
     color: #8a5a15;
-    box-shadow: 0 8px 18px rgba(222, 157, 66, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--app-accent-strong) 16%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 html[data-theme="light"] .menu-global-actions .button.selected,
 html[data-theme="light"] .menu-connection-presets .button.selected {
     color: #7d5111;
-    border-color: rgba(222, 157, 66, 0.52);
+    border-color: color-mix(in srgb, var(--app-accent-strong) 52%, transparent);
     box-shadow:
-        0 10px 22px rgba(222, 157, 66, 0.18),
+        0 10px 22px color-mix(in srgb, var(--app-accent-strong) 18%, transparent),
         inset 0 1px 0 rgba(255, 255, 255, 0.94),
         inset 0 -1px 0 rgba(213, 160, 74, 0.12);
 }
@@ -276,7 +274,7 @@ html {
     min-height: 100%;
     background:
         radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 13%, transparent) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 100% 8%, var(--app-accent-09) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 55%),
         radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.07) 0%, transparent 58%),
         linear-gradient(180deg, #0b1318 0%, #060c10 100%);
 }
@@ -299,7 +297,7 @@ body {
     font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
     background:
         radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 13%, transparent) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 100% 8%, var(--app-accent-09) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 55%),
         radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.07) 0%, transparent 58%),
         linear-gradient(180deg, #0b1318 0%, #060c10 100%);
 }
@@ -436,7 +434,7 @@ main {
 
 .theme-switch--light .theme-switch__thumb {
     left: calc(56px - 22px - 3px);
-    background: linear-gradient(145deg, #ffe47a, #f3ba62);
+    background: linear-gradient(145deg, #ffe47a, var(--app-accent));
     box-shadow: 0 2px 10px color-mix(in srgb, var(--app-accent) 42%, transparent), 0 0 0 1px color-mix(in srgb, var(--app-accent) 30%, transparent);
 }
 
@@ -469,16 +467,16 @@ main {
     font-weight: 600;
     padding: 6px 14px;
     border-radius: var(--app-radius-pill);
-    border: 1px solid rgba(136, 211, 159, 0.28);
-    background: rgba(136, 211, 159, 0.1);
+    border: 1px solid color-mix(in srgb, var(--app-success) 28%, transparent);
+    background: color-mix(in srgb, var(--app-success) 10%, transparent);
     display: inline-block;
     cursor: help;
     transition: all 0.2s ease;
 }
 
 .title-header .selected-state-name:hover {
-    background: rgba(136, 211, 159, 0.16);
-    border-color: rgba(136, 211, 159, 0.42);
+    background: color-mix(in srgb, var(--app-success) 16%, transparent);
+    border-color: color-mix(in srgb, var(--app-success) 42%, transparent);
     /* hover 不上浮：overflow 容器会裁顶 */
 }
 
@@ -857,7 +855,7 @@ g.note>text {
 }
 
 .menu-download-button:hover {
-    background: var(--app-accent-12);
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
     color: var(--app-text);
 }
 
@@ -1015,7 +1013,7 @@ button.color.level2.selected {
     background: color-mix(in srgb, var(--app-accent) 14%, transparent);
     border: 1px solid color-mix(in srgb, var(--app-accent) 38%, transparent);
     color: var(--app-accent-text);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-accent) 14%, transparent), 0 4px 14px var(--app-accent-12);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-accent) 14%, transparent), 0 4px 14px color-mix(in srgb, var(--app-accent) 12%, transparent);
 }
 
 /* 第一层级调色盘按钮颜色 - 配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
@@ -1437,7 +1435,7 @@ svg.drag-connecting * {
 }
 
 .toolbar-icon-btn:hover {
-    background: var(--app-accent-12);
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
     border-color: color-mix(in srgb, var(--app-accent) 28%, transparent);
     color: var(--app-text);
     /* hover 不上浮：overflow 容器会裁顶 */
@@ -1515,7 +1513,7 @@ svg.drag-connecting * {
 }
 
 .toolbar-dropdown button:hover {
-    background-color: var(--app-accent-12);
+    background-color: color-mix(in srgb, var(--app-accent) 12%, transparent);
     color: var(--app-text);
 }
 
@@ -1943,7 +1941,7 @@ g.note.preview-hover>circle {
 }
 
 .score-play {
-    border-color: var(--app-accent-45);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
     color: var(--app-accent-text, #f3ba62);
 }
 
@@ -1988,7 +1986,7 @@ g.note.preview-hover>circle {
 }
 
 .fx-out {
-    fill: rgba(159, 178, 192, 0.35);
+    fill: color-mix(in srgb, var(--app-text-fig-soft) 35%, transparent);
     animation: fxOut 0.45s ease-in forwards;
 }
 
@@ -2128,7 +2126,7 @@ g.note.preview-hover>circle {
 .score-chord-input {
     width: 120px;
     background: color-mix(in srgb, #fff 6%, transparent);
-    border: 1px solid var(--app-accent-45);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
     color: var(--app-text, #e8eef4);
     border-radius: var(--app-radius-pill);
     padding: 6px 12px;
@@ -2149,7 +2147,7 @@ g.note.preview-hover>circle {
 
 .score-add-frame:hover {
     color: var(--app-accent-text, #f3ba62);
-    border-color: var(--app-accent-45);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
 }
 
 /* 帧条 */
@@ -2222,7 +2220,7 @@ g.note.preview-hover>circle {
     height: 20px;
     border-radius: var(--app-radius-sm);
     background: rgba(11, 19, 24, 0.85);
-    color: #f3ba62;
+    color: var(--app-accent);
     font-size: var(--app-fs-sm);
     font-weight: 700;
     display: inline-flex;
@@ -2270,7 +2268,7 @@ g.note.preview-hover>circle {
 }
 
 .score-fields input:focus {
-    border-color: var(--app-accent-45);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
 }
 
 .score-empty {
@@ -2370,7 +2368,7 @@ html[data-theme="light"] .fx-letter {
     min-width: 44px;
     height: 38px;
     font-size: 15px;
-    border-color: var(--app-accent-45);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
     color: var(--app-accent-text, #f3ba62);
 }
 
@@ -2448,7 +2446,7 @@ html[data-theme="light"] .fx-letter {
 .tl-chord-input {
     width: 70px;
     background: color-mix(in srgb, #fff 6%, transparent);
-    border: 1px solid var(--app-accent-45);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
     color: var(--app-text, #e8eef4);
     border-radius: var(--app-radius-pill);
     padding: 3px 10px;
@@ -2469,7 +2467,7 @@ html[data-theme="light"] .fx-letter {
 
 .tl-add:hover {
     color: var(--app-accent-text, #f3ba62);
-    border-color: var(--app-accent-45);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
 }
 
 .tl-frames {
@@ -2499,7 +2497,7 @@ html[data-theme="light"] .fx-letter {
 
 .tl-new-measure:hover {
     color: var(--app-accent-text, #f3ba62);
-    border-color: var(--app-accent-45);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
 }
 
 .tl-fields {
@@ -2684,7 +2682,7 @@ html[data-theme="light"] .tl-bar {
 .sc-chord-input {
     width: 110px;
     background: color-mix(in srgb, #fff 6%, transparent);
-    border: 1px solid var(--app-accent-45);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
     color: var(--app-text, #e8eef4);
     border-radius: var(--app-radius-pill);
     padding: 5px 12px;
@@ -2705,7 +2703,7 @@ html[data-theme="light"] .tl-bar {
 
 .sc-add:hover {
     color: var(--app-accent-text, #f3ba62);
-    border-color: var(--app-accent-45);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
 }
 
 .sc-frames {
@@ -2734,7 +2732,7 @@ html[data-theme="light"] .tl-bar {
 }
 
 .sc-field:focus {
-    border-color: var(--app-accent-45);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
 }
 
 /* 动态谱：大舞台 + 时间轴 */
@@ -2802,7 +2800,7 @@ html[data-theme="light"] .tl-bar {
     min-width: 46px;
     height: 40px;
     border-radius: 12px;
-    border: 1px solid var(--app-accent-45);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
     background: color-mix(in srgb, var(--app-accent) 10%, transparent);
     color: var(--app-accent-text, #f3ba62);
     font-size: 16px;
@@ -3362,7 +3360,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     font-size: var(--app-fs-xs);
     font-weight: 700;
     color: var(--app-accent-text, #f3ba62);
-    background: var(--app-accent-12);
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
     border-radius: 6px;
     padding: 1px 6px;
 }
@@ -3793,7 +3791,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cp-accrow button.on {
     border-color: var(--app-accent);
     color: var(--app-accent-text);
-    background: var(--app-accent-09);
+    background: color-mix(in srgb, var(--app-accent) 9%, transparent);
 }
 
 .cc-cp-accrow button:disabled {
@@ -3820,7 +3818,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cp-rhythms button.on {
     border-color: var(--app-accent);
     color: var(--app-accent-text);
-    background: var(--app-accent-09);
+    background: color-mix(in srgb, var(--app-accent) 9%, transparent);
 }
 
 .cc-cp-tabs {
@@ -3899,7 +3897,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cp-deg.on {
     border-color: var(--app-accent);
     color: var(--app-accent-text);
-    background: var(--app-accent-09);
+    background: color-mix(in srgb, var(--app-accent) 9%, transparent);
 }
 
 .cc-cp-accs {
@@ -3951,7 +3949,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-cp-quals button.on {
     border-color: var(--app-accent);
     color: var(--app-accent-text);
-    background: var(--app-accent-09);
+    background: color-mix(in srgb, var(--app-accent) 9%, transparent);
 }
 
 .cc-cp-quals button:disabled {
@@ -4205,7 +4203,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 }
 
 /* ⚙ 设置面板：谱头摘要按钮 + 下拉面板（曲谱/和弦图两组，行式控件） */
-.cc-settings-btn { border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); background: var(--cc-panel-soft, rgba(230,237,242,0.05)); color: var(--cc-text, #dfe7ee); border-radius: var(--cc-radius, 8px); padding: 3px 10px; font-size: var(--app-fs-md); cursor: pointer; white-space: nowrap; }
+.cc-settings-btn { border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); background: var(--cc-panel-soft, rgba(230,237,242,0.05)); color: var(--cc-text); border-radius: var(--cc-radius, 8px); padding: 3px 10px; font-size: var(--app-fs-md); cursor: pointer; white-space: nowrap; }
 .cc-settings-btn:hover, .cc-settings-btn.on { border-color: var(--cc-accent); color: var(--cc-accent-text); }
 /* 简略模式开关（谱头，⚙ 右侧）：开启后谱面变紧凑 */
 .cc-compact-btn { border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); background: var(--cc-panel-soft, rgba(230,237,242,0.05)); color: var(--cc-muted, #9fb2c0); border-radius: var(--cc-radius, 8px); padding: 3px 10px; font-size: var(--app-fs-sm); cursor: pointer; white-space: nowrap; margin-left: 6px; }
@@ -4218,17 +4216,17 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .cc-settings-group + .cc-settings-group { border-top: 1px solid var(--cc-line, rgba(230,237,242,0.12)); padding-top: 10px; }
 .cc-settings-label { font-size: var(--app-fs-xs); color: var(--cc-muted, #9fb2c0); letter-spacing: 0.5px; }
 /* 两列网格：标签列固定宽，所有行控件起点同一条线 */
-.cc-settings-row { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 8px; font-size: var(--app-fs-md); color: var(--cc-text, #dfe7ee); }
+.cc-settings-row { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 8px; font-size: var(--app-fs-md); color: var(--cc-text); }
 .cc-settings-k { color: var(--cc-muted, #9fb2c0); }
 .cc-settings-v { display: inline-flex; align-items: center; gap: 6px; }
-.cc-settings-row select, .cc-settings-row input[type="number"] { background: var(--cc-input, #0d1319); border: 1px solid var(--cc-line, rgba(230,237,242,0.2)); color: var(--cc-text, #dfe7ee); border-radius: 6px; padding: 2px 6px; font-size: var(--app-fs-md); }
+.cc-settings-row select, .cc-settings-row input[type="number"] { background: var(--cc-input, #0d1319); border: 1px solid var(--cc-line, rgba(230,237,242,0.2)); color: var(--cc-text); border-radius: 6px; padding: 2px 6px; font-size: var(--app-fs-md); }
 .cc-settings-row input[type="number"] { width: 64px; }
 .cc-settings-seg { display: inline-flex; border: 1px solid var(--cc-line, rgba(230,237,242,0.18)); border-radius: 7px; overflow: hidden; }
 .cc-settings-seg { border-radius: var(--cc-ctl-radius); }
 .cc-settings-seg button { border: none; background: transparent; color: var(--cc-muted, #9fb2c0); padding: 3px 10px; font-size: var(--cc-ctl-fs, 12.5px); cursor: pointer; }
 .cc-settings-seg button + button { border-left: 1px solid var(--cc-line, rgba(230,237,242,0.14)); }
 .cc-settings-seg button.on { background: var(--cc-accent); color: var(--cc-accent-text); }
-.cc-settings-rowbtn { border: 1px dashed var(--cc-line, rgba(230,237,242,0.25)); background: transparent; color: var(--cc-text, #dfe7ee); border-radius: var(--cc-ctl-radius); padding: 4px 12px; cursor: pointer; align-self: flex-start; }
+.cc-settings-rowbtn { border: 1px dashed var(--cc-line, rgba(230,237,242,0.25)); background: transparent; color: var(--cc-text); border-radius: var(--cc-ctl-radius); padding: 4px 12px; cursor: pointer; align-self: flex-start; }
 .cc-settings-rowbtn:hover { border-color: var(--cc-accent); color: var(--cc-accent-text); }
 
 /* 设置条/歌名已迁入 tab 行（整行 sticky 钉顶）：原 .cc-score-head 行删除，空位收敛 */
@@ -4711,7 +4709,7 @@ html[data-theme="light"] .cc-page {
 .cc-beat.playing,
 .cc-beat-unit.playing {
     border-color: var(--app-success);
-    background: rgba(136, 211, 159, 0.10);
+    background: color-mix(in srgb, var(--app-success) 10%, transparent);
 }
 
 .cc-beat-splitmark {
@@ -5459,7 +5457,7 @@ html[data-theme="light"] .cc-cell-tools {
 }
 
 .ui-select-item.on {
-    background: var(--app-accent-12, color-mix(in srgb, var(--app-accent) 12%, transparent));
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
     color: var(--cc-accent-text);
     font-weight: 600;
 }
@@ -5660,21 +5658,21 @@ html[data-theme="light"] .cc-cell-tools {
     cursor: pointer;
 }
 
+/* 着色四色板 = 字面色，镜像 colorConfig.js 的 JS 常量，不跟随主题 token（lint-allow 在值行） */
 .cc-tint.red {
-    background: rgba(240, 138, 132, 0.35);
+    background: rgba(240, 138, 132, 0.35); /* lint-allow-color 色板镜像 colorConfig.js */
 }
 
 .cc-tint.blue {
-    background: rgba(61, 139, 255, 0.35);
+    background: rgba(61, 139, 255, 0.35); /* lint-allow-color 色板镜像 colorConfig.js */
 }
 
 .cc-tint.green {
-    background: rgba(136, 211, 159, 0.35);
+    background: rgba(136, 211, 159, 0.35); /* lint-allow-color 色板镜像 colorConfig.js */
 }
 
 .cc-tint.gold {
-    /* 着色色板是字面色（镜像 colorConfig.js 的 JS 常量），不跟随主题强调色 */
-    background: rgba(243, 186, 98, 0.4);
+    background: rgba(243, 186, 98, 0.4); /* lint-allow-color 色板镜像 colorConfig.js */
 }
 
 .cc-tint.on {
@@ -5843,7 +5841,7 @@ html[data-theme="light"] .cc-cell-tools {
 
 .cc-ap-remove:hover {
     color: var(--app-danger);
-    background: rgba(240, 138, 132, 0.1);
+    background: color-mix(in srgb, var(--app-danger) 10%, transparent);
 }
 
 /* ===== 工具行控件统一规格（#6 尺寸审计对齐）：高 32 / 字 12.5 / 圆角 8 ===== */
@@ -5993,7 +5991,7 @@ html[data-theme="light"] .cc-cell-tools {
 .cc-cp-keytoggle {
     border: 1px solid rgba(230, 237, 242, 0.2);
     background: transparent;
-    color: var(--cc-text, #dfe7ee);
+    color: var(--cc-text);
     border-radius: var(--cc-radius, 6px);
     padding: 3px 9px;
     font-size: var(--app-fs-sm);
@@ -7522,7 +7520,7 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
     font-size: var(--app-fs-xs);
     font-weight: 600;
     color: var(--app-accent-text);
-    background: var(--app-accent-12);
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
     border: 1px solid color-mix(in srgb, var(--app-accent) 30%, transparent);
     padding: 1px 8px;
     border-radius: var(--app-radius-pill);
@@ -7894,14 +7892,14 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .cc-figbtn:hover {
-    border-color: #f3ba62;
-    color: #f3ba62;
+    border-color: var(--app-accent);
+    color: var(--app-accent);
 }
 
 .cc-figbtn.on {
     background: color-mix(in srgb, var(--app-accent) 18%, transparent);
-    border-color: #f3ba62;
-    color: #f3ba62;
+    border-color: var(--app-accent);
+    color: var(--app-accent);
 }
 
 .cc-figbtn.primary {
@@ -7957,13 +7955,13 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .cc-figpick:hover {
-    border-color: #f3ba62;
+    border-color: var(--app-accent);
 }
 
 .cc-figpick em {
     font-style: normal;
     font-size: var(--app-fs-2xs);
-    color: #f3ba62;
+    color: var(--app-accent);
 }
 
 .cc-figpick small {
@@ -8053,13 +8051,13 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .attach-shape:hover {
-    border-color: #f3ba62;
+    border-color: var(--app-accent);
 }
 
 .attach-shape em {
     font-style: normal;
     font-size: var(--app-fs-2xs);
-    color: #f3ba62;
+    color: var(--app-accent);
 }
 
 .attach-shape small {
@@ -8189,7 +8187,7 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 
 .figbe-side-title em {
     font-style: normal;
-    color: #f3ba62;
+    color: var(--app-accent);
 }
 
 .figbe-presets {
@@ -8246,13 +8244,13 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .figbe-shape:hover {
-    border-color: #f3ba62;
+    border-color: var(--app-accent);
 }
 
 .figbe-shape em {
     font-style: normal;
     font-size: var(--app-fs-2xs);
-    color: #f3ba62;
+    color: var(--app-accent);
 }
 
 .figbe-shape small {
@@ -8375,8 +8373,8 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
     }
     .top-nav-sync.ok { background: #6fd99c; box-shadow: 0 0 5px rgba(111, 217, 156, 0.45); }
     .top-nav-sync.offline { background: #f0aa6c; }
-    .top-nav-sync.error { background: #f08a84; }
-    .top-nav-sync.error:hover { background: #f08a84; }
+    .top-nav-sync.error { background: var(--app-danger); }
+    .top-nav-sync.error:hover { background: var(--app-danger); }
     .top-nav-ver { display: none; }
     .top-nav-tabs { min-width: max-content; } /* 容器不许被压到内容宽以下（曾压到 92px，末 tab 溢出压住徽标） */
     .top-nav-user-name {
@@ -8390,15 +8388,15 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 .top-nav-sync.ok:hover { opacity: 1; }
 .top-nav-sync.syncing { color: #7ec8ff; animation: sync-pulse 1.2s ease-in-out infinite; }
 .top-nav-sync.offline { color: #f0aa6c; }
-.top-nav-sync.error { color: #f08a84; }
-.top-nav-sync.error:hover { background: rgba(240, 138, 132, 0.12); }
+.top-nav-sync.error { color: var(--app-danger); }
+.top-nav-sync.error:hover { background: color-mix(in srgb, var(--app-danger) 12%, transparent); }
 
 .top-nav-sync.ok { color: var(--app-text-soft); opacity: 0.75; }
 .top-nav-sync.ok:hover { opacity: 1; }
 .top-nav-sync.syncing { color: #7ec8ff; animation: sync-pulse 1.2s ease-in-out infinite; }
 .top-nav-sync.offline { color: #f0aa6c; }
-.top-nav-sync.error { color: #f08a84; }
-.top-nav-sync.error:hover { background: rgba(240, 138, 132, 0.12); }
+.top-nav-sync.error { color: var(--app-danger); }
+.top-nav-sync.error:hover { background: color-mix(in srgb, var(--app-danger) 12%, transparent); }
 @keyframes sync-pulse {
     0%, 100% { opacity: 0.55; }
     50% { opacity: 1; }

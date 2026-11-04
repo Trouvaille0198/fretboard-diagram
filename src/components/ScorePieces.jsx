@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useCallback, useState, useEffect } from 'react'
 import { FretboardSVG } from './FretboardSVG';
 import { generateNotes, computeNoteName, computeNoteIndex, generateFretPath, generateStringPath, generateMarkers, getNotePosition, boardGeometry } from '../utils/fretboardCalculations';
 import { inlineCSS, noteToSolfege } from '../utils';
-import { resolveNoteVisualStyle } from '../colorConfig';
+import { resolveNoteVisualStyle, CANVAS_COLORS } from '../colorConfig';
 import { chordDisplay } from '../utils/songStructure';
 import { describeTransition, sampleTransition, elsToSvgString } from '../utils/transitionAnimator';
 import { LanguageProvider } from '../i18n';
@@ -218,7 +218,7 @@ export async function renderBoardImage(state, width, options = {}) {
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.setAttribute('width', String(width));
   clone.setAttribute('height', String(height));
-  const bg = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || '#10161c';
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || CANVAS_COLORS.bgFallback;
   clone.setAttribute('style', `background-color:${bg};`);
 
   const svgString = new XMLSerializer().serializeToString(clone);
@@ -275,9 +275,9 @@ export function exportSheetImage({ timelineEl, measures, meta, rootNote, isMinor
 
   const backgroundColor =
     getComputedStyle(document.documentElement).getPropertyValue('--background-color').trim() || 'black';
-  const textColor = '#e8eef4';
-  const mutedColor = '#9fb2c0';
-  const accent = '#f3ba62';
+  const textColor = CANVAS_COLORS.ink;
+  const mutedColor = CANVAS_COLORS.muted;
+  const accent = CANVAS_COLORS.accent;
   const fontStack = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 
   const rows = groups.map((group, index) => {
@@ -299,7 +299,7 @@ export function exportSheetImage({ timelineEl, measures, meta, rootNote, isMinor
 
   let y = headerH;
   rows.forEach(({ minis, index, chordText, m, height }) => {
-    parts.push(`<line x1="${rowPad}" y1="${y}" x2="${pageW - rowPad}" y2="${y}" stroke="rgba(230,237,242,0.14)" stroke-width="1"/>`);
+    parts.push(`<line x1="${rowPad}" y1="${y}" x2="${pageW - rowPad}" y2="${y}" stroke="${CANVAS_COLORS.lineFaint}" stroke-width="1"/>`);
     parts.push(`<text x="${rowPad + 6}" y="${y + 44}" font-family="${fontStack}" font-size="26" font-weight="700" fill="${accent}">${index + 1}</text>`);
     parts.push(`<text x="${rowPad + 6}" y="${y + 74}" font-family="${fontStack}" font-size="17" fill="${textColor}">${escapeXml(chordText)}</text>`);
 

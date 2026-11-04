@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../i18n";
+import { SECTION_TINTS } from "../colorConfig";
 import { ScoreBoard } from "./ScorePieces";
 import { ChordPopup } from "./ChordPopup";
 import { FigView } from "./ChordFig.jsx";
@@ -49,10 +50,10 @@ import { saveClip } from "../utils/clipModel";
 const PC_KEY = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 // 小节标色（着色页签）：段落视觉标记
 const TINTS = {
-	red: { name: "红", bg: "rgba(240, 138, 132, 0.10)" },
-	blue: { name: "蓝", bg: "rgba(61, 139, 255, 0.10)" },
-	green: { name: "绿", bg: "rgba(136, 211, 159, 0.10)" },
-	gold: { name: "金", bg: "rgba(243, 186, 98, 0.12)" }
+	red: { name: "红", bg: SECTION_TINTS.red },
+	blue: { name: "蓝", bg: SECTION_TINTS.blue },
+	green: { name: "绿", bg: SECTION_TINTS.green },
+	gold: { name: "金", bg: SECTION_TINTS.gold }
 };
 
 const END_BARS = [

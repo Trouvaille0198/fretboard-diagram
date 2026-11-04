@@ -158,12 +158,12 @@ html[data-theme="light"] .scale-degree-note {
 }
 
 html[data-theme="light"] .scale-degree-symbol {
-  color: rgba(22, 39, 54, 0.66);
+  color: color-mix(in srgb, var(--app-text) 66%, transparent);
 }
 
 html[data-theme="light"] .scale-degree-roman,
 html[data-theme="light"] .scale-degree-index {
-  color: rgba(22, 39, 54, 0.46);
+  color: color-mix(in srgb, var(--app-text) 46%, transparent);
 }
 
 @media (max-width: 900px) {

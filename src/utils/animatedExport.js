@@ -6,6 +6,7 @@
 import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 import { describeTransition, sampleTransition, elsToSvgString } from './transitionAnimator';
 import { stateClock, END_PAUSE_MS } from './timeline';
+import { CANVAS_COLORS } from '../colorConfig';
 
 function svgToImage(svgString) {
 	return new Promise((resolve, reject) => {
@@ -57,7 +58,7 @@ async function renderSubframes({ states, specs, boardImages, viewBox, opts, onPr
 	canvas.height = height;
 	const ctx = canvas.getContext('2d');
 
-	const bg = opts.background || '#10161c';
+	const bg = opts.background || CANVAS_COLORS.bgFallback;
 	const descs = states.slice(0, -1).map((s, i) => describeTransition(states[i], states[i + 1], specs?.[i] || { technique: null, pairs: [] }));
 	// 并发轨道：desc 用「该帧末态」自身做 prev/next（diff 为空，只有 pair 光点）——
 	// 与播放器 TransitionFx 的 hintState 同构；绝不能用整段首尾态（全局 diff 会给每条轨道
