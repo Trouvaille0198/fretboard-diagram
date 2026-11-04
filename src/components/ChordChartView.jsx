@@ -381,6 +381,12 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		setCursor({ mi: 0, si: 0, half: null });
 	};
 
+	// 分享查看态热更新：实时链接推送了新版本 → 采纳进内存（song 初始化是惰性 useState，
+	// prop 变化本不会进状态）。不重挂载，滚动位置/工具页签都不动；同引用时 React 自己会跳过。
+	useEffect(() => {
+		if (sharedSong) setSong(sharedSong);
+	}, [sharedSong]);
+
 	// 多标签页同步：其他标签页保存了更新的谱子 → 采纳，避免本页用旧内存覆盖丢数据（分享查看态不走库，全部旁路）
 	useEffect(() => {
 		if (shared) return;
@@ -1119,17 +1125,28 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		}
 	};
 
-	// 分享链接：生成后尽量复制到剪贴板，同时弹框展示（局域网 http 下剪贴板 API 常不可用，留手动复制的路）
+	// 分享链接：生成后尽量复制到剪贴板，同时弹框展示（局域网 http 下剪贴板 API 常不可用，留手动复制的路）。
+	// 短链弹框带「实时跟进」开关：开启后链接内容跟随云端最新版本，对方打开就在看直播；
+	// 同一谱子复用同一条链接，开关只是改这条链接的模式，URL 永远不变。
 	const shareLink = async () => {
 		try {
-			const { url, kind } = await createShareLink(song);
+			const { url, kind, live } = await createShareLink(song);
 			let copied = false;
 			try { await navigator.clipboard.writeText(url); copied = true; } catch (e) { /* 非安全上下文 */ }
 			setDialog({
-				type: "prompt", multiline: true,
+				type: "share",
 				title: ts.shareLinkTitle ?? (kind === "short" ? "分享链接（对方不用登录，打开即可查看）" : "分享链接（数据内嵌在链接里，较长）"),
-				label: "", value: url,
-				onOk: () => { },
+				url, short: kind === "short", live,
+				onToggleLive: async (on) => {
+					try {
+						const r = await createShareLink(song, { live: on }); // 同谱同 id：服务端只切模式
+						if (r.kind !== "short") { showToast(ts.shareLiveNeedLogin ?? "实时链接需要登录同步服务"); return; }
+						setDialog(cur => (cur && cur.type === "share" ? { ...cur, live: on } : cur));
+						showToast(on ? (ts.shareLiveOn ?? "已开启实时：链接将跟随你的最新版本") : (ts.shareLiveOff ?? "已切回快照：链接定格当前内容"));
+					} catch (e) {
+						showToast((ts.shareLinkFail ?? "生成分享链接失败：") + (e.message || e));
+					}
+				},
 			});
 			showToast(copied ? (ts.shareLinkCopied ?? "链接已复制到剪贴板") : (ts.shareLinkManual ?? "请手动复制弹框里的链接"));
 		} catch (e) {
@@ -2089,7 +2106,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v226</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v227</div>
 
 
 			{dialog ? (
@@ -2124,6 +2141,22 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 											onClick={() => { setDialog(null); o.onPick?.(); }}>{o.label}</button>
 									))}
 								</div>
+							) : dialog.type === "share" ? (
+								<div className="cc-dialog-share">
+									<textarea autoFocus readOnly className="cc-dialog-input cc-dialog-area" value={dialog.url || ""}
+										rows={3} onFocus={e => e.target.select()}
+										onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); setDialog(null); } }} />
+									{dialog.short ? (
+										<label className="cc-share-live-row">
+											<input type="checkbox" checked={!!dialog.live}
+												onChange={e => dialog.onToggleLive?.(e.target.checked)} />
+											<span>
+												<b>{ts.shareLive ?? "实时跟进我的最新版本"}</b>
+												<small>{ts.shareLiveHint ?? "开启后对方打开链接看到的是你的云端最新版，每次保存自动跟进；关闭则定格当前内容。链接不变。"}</small>
+											</span>
+										</label>
+									) : null}
+								</div>
 							) : <div className="cc-dialog-text">{dialog.text}</div>}
 						</div>
 						<div className="cc-modal-foot">
@@ -2131,8 +2164,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								<button className="button sm danger" style={{ marginRight: "auto" }}
 									onClick={() => { const d = dialog; d.onDelete?.(); setDialog(cur => (cur === d ? null : cur)); }}>{ts.deleteMark ?? "删除标记"}</button>
 							) : null}
-							{dialog.type !== "alert" ? <button className="button sm" onClick={() => setDialog(null)}>{ts.cancel ?? "取消"}</button> : null}
-							{dialog.type === "choose" ? null : (
+							{dialog.type !== "alert" ? <button className="button sm" onClick={() => setDialog(null)}>{dialog.type === "share" ? (ts.closeBtn ?? "关闭") : (ts.cancel ?? "取消")}</button> : null}
+							{dialog.type === "choose" || dialog.type === "share" ? null : (
 								<button className={`button sm ${dialog.type === "confirm" ? "danger" : "accent"}`}
 									onClick={() => {
 										const d = dialog;

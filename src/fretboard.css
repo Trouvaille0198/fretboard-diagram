@@ -6605,6 +6605,75 @@ html[data-theme="light"] .button.sm.edit-enter {
     color: #e06c6c;
 }
 
+/* 实时分享：内容跟进后的顶部轻提示（2 秒消失，不打断阅读） */
+.cc-share-updated {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0 auto;
+    width: max-content;
+    padding: 3px 14px;
+    border-radius: var(--app-radius-pill, 999px);
+    background: var(--cc-accent-weak);
+    color: var(--cc-accent-text);
+    font-size: var(--app-fs-sm, 12px);
+    font-weight: 700;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
+    animation: cc-share-updated-in .18s ease-out;
+}
+
+@keyframes cc-share-updated-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 分享查看页外壳：实时提示浮在谱面上方，不挤布局 */
+.cc-share-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+/* 分享链接弹窗：链接文本框（只读，点击全选）+ 实时跟进开关 */
+.cc-dialog-share {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cc-dialog-share .cc-dialog-area {
+    resize: none;
+    font-size: var(--app-fs-sm, 12px);
+    word-break: break-all;
+}
+
+.cc-share-live-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.cc-share-live-row input {
+    margin-top: 3px;
+    accent-color: var(--cc-accent, #4a7dde);
+}
+
+.cc-share-live-row span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cc-share-live-row small {
+    color: var(--app-text-muted, #9fb2c0);
+    font-weight: 400;
+    line-height: 1.5;
+}
+
 .cc-song-main {
     flex: 1;
     min-width: 0;

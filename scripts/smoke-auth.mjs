@@ -64,6 +64,83 @@ try {
 	r = await j("GET", `/api/share/${sid}`);
 	ok(r.status === 404, "revoked share 404");
 
+	// ===== 实时分享：live=1 短链跟随作者 charts 表活谱子；切模式同 id；删谱回退最后直播版本；SSE 推送 =====
+	const { packChart, unpackChartBundle } = await import("../src/utils/chartPack.js");
+	const { createSong } = await import("../src/utils/chordChartModel.js");
+	const liveSong = createSong("直播谱");
+	r = await j("PUT", `/api/charts/${liveSong.id}`, liveSong, tk);
+	ok(r.status === 200, "live: 谱子先入 charts 表");
+	r = await j("POST", "/api/share", { chartId: liveSong.id, data: "fretboard-chart:SNAP0", live: 1 }, tk);
+	ok(r.status === 200 && typeof r.data.id === "string", "live: 建实时分享");
+	const lid = r.data.id;
+	r = await j("GET", `/api/share/${lid}`);
+	// 实时读取：返回的不是分享时的快照 SNAP0，而是活谱子现场打包（能解开且歌名对上）
+	ok(r.status === 200 && r.data.live === 1 && Number.isFinite(r.data.rev) && r.data.rev > 0, "live: GET 带 live/rev");
+	const got1 = (() => { try { return unpackChartBundle(r.data.data).song; } catch (e) { return null; } })();
+	ok(got1 && got1.name === "直播谱", "live: 内容来自活谱子而非快照");
+	// 作者保存 → 链接内容跟随
+	const v2 = { ...liveSong, name: "直播谱v2", measures: [...(liveSong.measures || [])] };
+	r = await j("PUT", `/api/charts/${liveSong.id}`, v2, tk);
+	ok(r.status === 200, "live: 作者保存 v2");
+	r = await j("GET", `/api/share/${lid}`);
+	const got2 = (() => { try { return unpackChartBundle(r.data.data).song; } catch (e) { return null; } })();
+	ok(got2 && got2.name === "直播谱v2", "live: 链接内容跟随保存");
+	// 切回快照：同 id，内容回到 POST 的快照数据
+	r = await j("POST", "/api/share", { chartId: liveSong.id, data: "fretboard-chart:SNAP1", live: 0 }, tk);
+	ok(r.status === 200 && r.data.id === lid, "live: 切模式复用同 id");
+	r = await j("GET", `/api/share/${lid}`);
+	ok(r.status === 200 && r.data.data === "fretboard-chart:SNAP1" && r.data.live !== 1, "live: 关闭后回快照");
+	// 再开实时（马上要用的 SSE 订阅建立在 live 分享上）
+	r = await j("POST", "/api/share", { chartId: liveSong.id, data: "fretboard-chart:SNAP1", live: 1 }, tk);
+	ok(r.data.id === lid, "live: 重开实时同 id");
+	// 不带 live 的再分享：保持现有模式（重开分享弹窗刷新链接，不会把实时链接悄悄切回快照）
+	r = await j("POST", "/api/share", { chartId: liveSong.id, data: "fretboard-chart:SNAP2" }, tk);
+	ok(r.data.id === lid && r.data.live === 1, "live: 不传 live 保持现有模式");
+	// SSE：查看端订阅 → 作者保存 → 收到 changed
+	const sseOnce = async (path, trigger, timeoutMs = 2500) => {
+		const ctrl = new AbortController();
+		const res = await fetch(BASE + path, { signal: ctrl.signal });
+		if (res.status !== 200) { ctrl.abort(); return { status: res.status, event: null }; }
+		const reader = res.body.getReader();
+		const dec = new TextDecoder();
+		let buf = "";
+		const got = new Promise((resolve) => {
+			const pump = async () => {
+				try {
+					const { value, done } = await reader.read();
+					if (done) return resolve(null);
+					buf += dec.decode(value, { stream: true });
+					if (buf.includes("event: changed")) return resolve("changed");
+					pump();
+				} catch (e) { resolve(null); }
+			};
+			pump();
+		});
+		await new Promise(r2 => setTimeout(r2, 50)); // 给服务端一拍登记连接
+		await trigger();
+		const ev = await Promise.race([got, new Promise(r2 => setTimeout(() => r2(null), timeoutMs))]);
+		ctrl.abort();
+		return { status: res.status, event: ev };
+	};
+	const v3 = { ...v2, name: "直播谱v3" };
+	const sse = await sseOnce(`/api/share/${lid}/events`, () => j("PUT", `/api/charts/${liveSong.id}`, v3, tk));
+	ok(sse.status === 200 && sse.event === "changed", "live SSE: 作者保存推送到查看端");
+	r = await j("GET", `/api/share/${lid}`);
+	const got3 = (() => { try { return unpackChartBundle(r.data.data).song; } catch (e) { return null; } })();
+	ok(got3 && got3.name === "直播谱v3", "live: SSE 后内容为 v3（并 write-through 落回快照列）");
+	// 作者删谱：链接不死，回退到最后直播过的版本（write-through 的 v3，而非分享时的 SNAP1）
+	r = await j("DELETE", `/api/charts/${liveSong.id}`, null, tk);
+	ok(r.status === 200, "live: 作者删谱");
+	r = await j("GET", `/api/share/${lid}`);
+	const got4 = (() => { try { return unpackChartBundle(r.data.data).song; } catch (e) { return null; } })();
+	ok(r.status === 200 && got4 && got4.name === "直播谱v3" && r.data.live !== 1, "live: 删谱后回退最后直播版本");
+	// SSE 端点：未知分享 404
+	const nf = await fetch(BASE + "/api/share/nope/events");
+	ok(nf.status === 404, "live SSE: 未知分享 404");
+	try { await nf.body.cancel(); } catch (e) { /* 已断 */ }
+	r = await j("DELETE", `/api/share/${lid}`, null, tk);
+	ok(r.status === 200 && r.data.removed === 1, "live: 撤销实时分享");
+
 	r = await j("POST", "/api/charts/merge", [{ id: "c1", name: "A", measures: [], updatedAt: 10 }], tk);
 	ok(r.status === 200 && r.data.items.length === 1, "merge local in");
 	r = await j("PUT", "/api/charts/c1", { id: "c1", name: "A2", measures: [{ slots: [] }], updatedAt: Date.now() }, tk);

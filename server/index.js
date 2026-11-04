@@ -15,6 +15,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
+import { packChart } from "../src/utils/chartPack.js"; // 实时分享：服务端现场打包活谱子（该模块链 Node 安全，smoke 同款用法）
 
 const PORT = Number(process.env.PORT || 8787);
 const DB_FILE = process.env.FRETB_DB || path.join(path.dirname(fileURLToPath(import.meta.url)), "data.db");
@@ -51,6 +52,7 @@ for (const t of ["charts", "clips"]) {
 	if (!hasCol(t, "hash")) db.exec(`ALTER TABLE ${t} ADD COLUMN hash TEXT NOT NULL DEFAULT ''`);
 }
 if (!hasCol("tombstones", "rev")) db.exec("ALTER TABLE tombstones ADD COLUMN rev INTEGER NOT NULL DEFAULT 0");
+if (!hasCol("shares", "live")) db.exec("ALTER TABLE shares ADD COLUMN live INTEGER NOT NULL DEFAULT 0"); // 实时分享开关：0=快照（默认，旧数据全是它）1=跟随作者活谱子
 
 const hashPass = (pass, salt) => crypto.scryptSync(pass, salt, 32).toString("hex");
 // 固定账号 seed：users 表为空才建（改密码 = 删 users 行 + 重启；凭据走环境变量，
@@ -145,6 +147,7 @@ const handleCollection = async (table, req, res, url, p, name) => {
 			INSERT INTO ${table} (name, id, data, updated_at, rev, hash) VALUES (@name, @id, @data, @updated_at, @rev, @hash)
 			ON CONFLICT (name, id) DO UPDATE SET data = @data, updated_at = @updated_at, rev = @rev, hash = @hash
 		`);
+		const changedIds = [];
 		const tx = db.transaction((list) => {
 			for (const c of list) {
 				if (!c || !c.id) continue;
@@ -155,9 +158,11 @@ const handleCollection = async (table, req, res, url, p, name) => {
 				const rev = nextRev(name, table);
 				const stamped = { ...c, updatedAt: Date.now(), rev };
 				upsert.run({ name, id: c.id, data: JSON.stringify(stamped), updated_at: stamped.updatedAt, rev, hash });
+				changedIds.push(c.id);
 			}
 		});
 		tx(incoming);
+		if (table === "charts") for (const id of changedIds) notifyShareViewers(name, id); // merge 不走 broadcast，实时查看端在这里补推
 		json(res, 200, { items: rowsOf(table, name), rev: currentRev(name, table) });
 		return true;
 	}
@@ -196,7 +201,10 @@ const handleCollection = async (table, req, res, url, p, name) => {
 			INSERT INTO ${table} (name, id, data, updated_at, rev, hash) VALUES (?, ?, ?, ?, ?, ?)
 			ON CONFLICT (name, id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, rev = excluded.rev, hash = excluded.hash
 		`).run(name, item.id, body, stamped.updatedAt, rev, hash);
-		if (shouldBroadcast(table, item.id, body)) broadcast("changed", { table, id: item.id, rev, clientId }); // 带 rev 与来源：客户端据此跳过自己的写
+		if (shouldBroadcast(table, item.id, body)) {
+			broadcast("changed", { table, id: item.id, rev, clientId }); // 带 rev 与来源：客户端据此跳过自己的写
+			if (table === "charts") notifyShareViewers(name, item.id); // 实时分享查看端：活谱子变了，推他们重拉
+		}
 		json(res, 200, { item: stamped, rev });
 		return true;
 	}
@@ -212,6 +220,7 @@ const handleCollection = async (table, req, res, url, p, name) => {
 		db.prepare(`DELETE FROM ${table} WHERE name = ? AND id = ?`).run(name, id);
 		db.prepare("INSERT OR REPLACE INTO tombstones (name, tbl, id, at, rev) VALUES (?, ?, ?, ?, ?)").run(name, table, id, Date.now(), rev);
 		broadcast("deleted", { table, id, rev, clientId });
+		if (table === "charts") notifyShareViewers(name, id); // 作者删谱：实时查看端重拉 → 回退最后直播版本（write-through 的快照）
 		json(res, 200, { ok: true, rev, trashed: !!row });
 		return true;
 	}
@@ -238,6 +247,37 @@ const shouldBroadcast = (table, id, hash) => {
 const tombstoned = (name, tbl, id, updatedAt) => {
 	const t = db.prepare("SELECT at FROM tombstones WHERE name = ? AND tbl = ? AND id = ?").get(name, tbl, id);
 	return !!t && (updatedAt || 0) <= t.at;
+};
+
+// ===== 实时分享：查看端 SSE（公开，share id 即访问凭证，事件不带作者信息）=====
+// 与登录端的 /api/events 分池管理：这里按 shareId 分桶，谱子有动静时只推订阅了它的查看端
+const shareSseClients = new Map(); // shareId → Set<res>
+const pushToShare = (shareId, payload) => {
+	const set = shareSseClients.get(shareId);
+	if (!set) return;
+	for (const c of set) {
+		try { c.write(`event: changed\ndata: ${JSON.stringify(payload)}\n\n`); } catch (e) { set.delete(c); }
+	}
+};
+// 作者的活谱子变了 → 通知订阅该谱子分享的查看端（onlyLive=false 时连快照分享的查看端也推：
+// 用于"再分享刷新内容 / 切换实时开关"，让正在看的人立即跟进）
+const notifyShareViewers = (name, chartId, onlyLive = true) => {
+	const rows = db.prepare(`SELECT id FROM shares WHERE name = ? AND chart_id = ?${onlyLive ? " AND live = 1" : ""}`).all(name, chartId);
+	for (const r of rows) pushToShare(r.id, {});
+};
+// 实时分享读取：把作者 charts 表里的活谱子现场打包（动图从 clips 表捡被引用的）。
+// 任何一步失败（谱子已删 / JSON 损坏 / 打包异常）都返回 null，调用方回退快照——链接永不因直播而死
+const packLiveChart = (name, chartId) => {
+	try {
+		const row = db.prepare("SELECT data, rev, updated_at FROM charts WHERE name = ? AND id = ?").get(name, chartId);
+		if (!row) return null;
+		const song = JSON.parse(row.data);
+		// clips 对象池：剥掉同步附加字段（rev/updatedAt 会被 encodeClip 当未知键原样带走，白白变大）
+		const clips = rowsOf("clips", name).map(({ rev, updatedAt, ...c }) => c);
+		return { data: packChart(song, { clips }), rev: row.rev, updated_at: row.updated_at };
+	} catch (e) {
+		return null;
+	}
 };
 
 
@@ -320,11 +360,38 @@ const server = http.createServer(async (req, res) => {
 	}
 
 	// ===== 分享链接：公开读（查看不登录——"发个链接给别人就能看"的前提）=====
-	// 只回谱子快照本身，不暴露分享者/账号信息
+	// 只回谱子数据本身，不暴露分享者/账号信息。
+	// 实时分享（live=1）：优先读作者 charts 表的活谱子现场打包，并把这份内容 write-through 落回
+	// 快照列——作者删谱后链接回退到"最后直播过的版本"而非分享那一刻；活谱子读不到则回退快照。
+	const mShareEvents = /^\/api\/share\/([^/]+)\/events$/.exec(p);
+	if (mShareEvents && req.method === "GET") {
+		// 查看端订阅：share id 即访问凭证（与公开 GET 同级安全，无 token）
+		const id = decodeURIComponent(mShareEvents[1]);
+		if (!db.prepare("SELECT 1 FROM shares WHERE id = ?").get(id)) return json(res, 404, { error: "share_not_found" });
+		res.writeHead(200, {
+			"Content-Type": "text/event-stream",
+			"Cache-Control": "no-store",
+			"Access-Control-Allow-Origin": "*",
+			Connection: "keep-alive",
+		});
+		res.write("retry: 3000\n\n");
+		let set = shareSseClients.get(id);
+		if (!set) { set = new Set(); shareSseClients.set(id, set); }
+		set.add(res);
+		req.on("close", () => { set.delete(res); if (!set.size) shareSseClients.delete(id); });
+		return;
+	}
 	if (p.startsWith("/api/share/") && req.method === "GET") {
 		const id = decodeURIComponent(p.slice("/api/share/".length));
-		const row = db.prepare("SELECT data, updated_at FROM shares WHERE id = ?").get(id);
+		const row = db.prepare("SELECT name, chart_id, data, updated_at, live FROM shares WHERE id = ?").get(id);
 		if (!row) return json(res, 404, { error: "share_not_found" });
+		if (row.live) {
+			const live = packLiveChart(row.name, row.chart_id);
+			if (live) {
+				db.prepare("UPDATE shares SET data = ?, updated_at = ? WHERE id = ?").run(live.data, live.updated_at, id);
+				return json(res, 200, { data: live.data, live: 1, rev: live.rev, updated_at: live.updated_at });
+			}
+		}
 		return json(res, 200, { data: row.data, updated_at: row.updated_at });
 	}
 
@@ -337,16 +404,24 @@ const server = http.createServer(async (req, res) => {
 		const chartId = String(body.chartId || "").slice(0, 120);
 		const data = String(body.data || "");
 		if (!chartId || !data) return json(res, 400, { error: "bad_request" });
-		const prev = db.prepare("SELECT id FROM shares WHERE name = ? AND chart_id = ?").get(name, chartId);
+		// live 是可选字段：显式传 0/1 才切模式，不传 = 保持这条链接现有的模式
+		// （否则客户端重开分享弹窗刷新个链接，就会把实时链接悄悄切回快照）
+		const prev = db.prepare("SELECT id, live FROM shares WHERE name = ? AND chart_id = ?").get(name, chartId);
+		const live = (body.live === 0 || body.live === 1) ? body.live : (prev ? prev.live : 0);
 		const id = prev ? prev.id : crypto.randomBytes(6).toString("base64url");
-		db.prepare(`INSERT INTO shares (id, name, chart_id, data, updated_at) VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`)
-			.run(id, name, chartId, data, Date.now());
-		return json(res, 200, { id });
+		db.prepare(`INSERT INTO shares (id, name, chart_id, data, updated_at, live) VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, live = excluded.live`)
+			.run(id, name, chartId, data, Date.now(), live);
+		// 再分享=刷新内容 / 切换实时开关：正在看的查看端（快照、实时都算）立即跟进
+		notifyShareViewers(name, chartId, false);
+		return json(res, 200, { id, live });
 	}
 	if (p.startsWith("/api/share/") && req.method === "DELETE") {
 		const id = decodeURIComponent(p.slice("/api/share/".length));
 		const r = db.prepare("DELETE FROM shares WHERE id = ? AND name = ?").run(id, name);
+		// 撤销：正在看的查看端连接直接关掉（EventSource 对 404 会停止重连，不会空转）
+		const set = shareSseClients.get(id);
+		if (set) { for (const c of set) { try { c.end(); } catch (e) { /* 已断 */ } } shareSseClients.delete(id); }
 		return json(res, 200, { ok: true, removed: r.changes });
 	}
 
