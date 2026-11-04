@@ -1,0 +1,1238 @@
+/* menu-panel.css —— 自 fretboard.css 669-1905 行拆出（v227 P6）；@import 顺序 = 原级联顺序，不可调换 */
+/* ============================================================
+   菜单面板样式层：单一真理来源
+   —— 组件规则只写一次；断点只改 --m-* token（不再重写选择器）
+   ============================================================ */
+.menu {
+    /* 版式 */
+    --m-gap: 40px;          /* 左右面板间距 */
+    --m-col-w: 420px;       /* 单面板最大宽 */
+    --m-panel-pad: 22px 24px;
+    --m-panel-top: 24px;    /* 面板顶部呼吸：首行按钮 hover 光晕(扩18px)不被裁 */
+    --m-panel-gap: 18px;    /* 面板内分组间距 */
+    /* 按钮 */
+    --m-btn-h: 36px;
+    --m-btn-fs: 14px;
+    --m-btn-pad: 6px 16px;
+    --m-acc-fs: 13px;
+    --m-btn-pad: 6px 16px;
+    --m-acc-w: 36px;        /* ♭ 钮宽 */
+    --m-act-gap: 8px;       /* 操作行间距 */
+    --m-act-cols: 36px repeat(3, minmax(0, 1fr)); /* 操作行网格列 */
+    /* 下载/复制选项 */
+    --m-opt-gap: 12px;
+    --m-opt-fs: 13px;
+    --m-opt-cols: none;     /* none = 单行 flex 排布 */
+}
+
+.menu {
+    text-align: center;
+    padding: 24px 0;
+    position: relative;
+    z-index: 1;
+    isolation: isolate;
+    transform: translateZ(0);
+    will-change: transform;
+    display: flex;
+    flex-direction: row;
+    gap: var(--m-gap);
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.menu-scale-bottom {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.menu-left,
+.menu-right {
+    display: flex;
+    flex-direction: column;
+    gap: var(--m-panel-gap);
+    align-items: stretch;      /* 子面板拉伸占满（原来是 center → 收缩到内容宽） */
+    overflow: visible;         /* 不裁切 hover 光晕 */
+    width: min(100%, var(--m-col-w));
+    padding: var(--m-panel-pad);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-xl);
+    background:
+        linear-gradient(160deg, color-mix(in srgb, #fff 6.5%, transparent) 0%, color-mix(in srgb, #fff 2.2%, transparent) 100%),
+        var(--app-panel);
+    box-shadow: var(--app-shadow-md), inset 0 1px 0 rgba(200, 230, 255, 0.08);
+    backdrop-filter: blur(22px) saturate(150%);
+}
+
+.menu-palette-shell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    overflow: visible;
+}
+
+.menu-tint-variants {
+    position: absolute;
+    left: -74px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(230, 237, 242, 0.1);
+    background:
+        linear-gradient(180deg, color-mix(in srgb, #fff 8%, transparent), color-mix(in srgb, #fff 3%, transparent)),
+        rgba(9, 16, 21, 0.92);
+    box-shadow:
+        0 16px 30px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
+    backdrop-filter: blur(16px);
+    z-index: 3;
+}
+
+.menu-tint-variants::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: -7px;
+    width: 14px;
+    height: 14px;
+    transform: translateY(-50%) rotate(45deg);
+    border-top: 1px solid var(--app-line-soft);
+    border-right: 1px solid var(--app-line-soft);
+    background: rgba(12, 20, 26, 0.9);
+}
+
+.menu-section-panel {
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--m-panel-top) 0 0; /* 顶部呼吸位：首行按钮 hover 光晕不被面板边界裁 */
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+/* 连线预设：三个按钮并排，点一下直接选中想要的形状和方向 */
+.menu-connection-presets {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+}
+
+.menu-preset-button {
+    min-width: 0;
+    padding: 4px 6px;
+    gap: 6px;
+    font-size: var(--app-fs-md);
+}
+
+.menu-preset-button svg {
+    flex: 0 0 auto;
+    opacity: 0.9;
+}
+
+.menu-preset-button.selected svg {
+    opacity: 1;
+}
+
+.menu-download-panel {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-top: var(--m-panel-top);
+    border-top: 1px solid var(--app-line-soft);
+}
+
+.menu-download-options {
+    flex: 1 1 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.menu-download-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--m-opt-gap);
+}
+
+.menu-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: var(--m-opt-fs);
+    color: var(--app-text-muted);
+    white-space: nowrap;
+}
+
+.menu-checkbox input {
+    accent-color: var(--app-accent-strong);
+    cursor: pointer;
+}
+
+.menu-download-button {
+    min-width: 0;
+    background: var(--app-sheen);
+    color: var(--app-text-muted);
+    border-color: var(--app-border);
+    box-shadow: none;
+}
+
+.menu-download-button:hover {
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+    color: var(--app-text);
+}
+
+text.marker {
+    text-anchor: middle;
+    dominant-baseline: middle;
+    font-size: 16px;
+    font-weight: bold;
+    fill: var(--text-color);
+    opacity: 1 !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+    visibility: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+g.markers {
+    opacity: 1 !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+    visibility: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+}
+
+/* Palette and control surfaces */
+
+.color-selector {
+    margin: 0;
+    padding: 10px 8px 12px;
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.color-palette-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    flex-wrap: nowrap; /* 9 色恒一排：swatch 随面板宽等比缩。换行会把末位色块甩成孤行，看着像"多出来的颜色" */
+}
+
+button.color {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(230, 237, 242, 0.18);
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
+}
+
+/* 一层 9 色一行自适应：宽度 = (行宽 - 8 个间隙) / 9，上限 40px；窄屏自动缩小、绝不换行/溢出。
+   只作用一层调色盘行，异色变体按钮（color-tint）不受影响 */
+.color-palette-row button.color {
+    width: min(40px, calc((100% - 64px) / 8));
+    height: auto;
+    aspect-ratio: 1;
+}
+
+@media (max-width: 640px) {
+    /* 窄屏不缩不换行：34px 色块。行宽随内容（8 色 321px）且上限容器宽：
+       装得下 → fit-content 居中；装不下 → 收缩回全宽出横向滚动（fit-content 在溢出方向自动失效）。
+       上下留白 ≥ 选中光圈(2px ring + 发光)与 hover 缩放的出界量——overflow 容器不留白会裁选中态 */
+    .color-palette-row {
+        flex-wrap: nowrap;
+        justify-content: center;
+        gap: 7px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        padding: 7px 4px 4px;
+        margin-left: auto;
+        margin-right: auto;
+        width: fit-content;
+        max-width: 100%;
+        -webkit-overflow-scrolling: touch;
+    }
+    .color-palette-row button.color {
+        width: 34px;
+        flex: 0 0 auto;
+    }
+    button.color.color-tint { width: 28px; height: 28px; border-radius: var(--app-radius-xs); }
+    .color-palette-row::-webkit-scrollbar { height: 4px; }
+    .color-palette-row::-webkit-scrollbar-thumb { background: rgba(230, 237, 242, 0.22); border-radius: 2px; }
+    .color-palette-row::-webkit-scrollbar-track { background: transparent; }
+}
+
+/* 淡色版本按钮样式 */
+button.color.color-tint {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--app-radius-sm);
+    box-shadow: 0 8px 16px color-mix(in srgb, #000 22%, transparent);
+}
+
+/* 淡色版本选中效果 */
+button.color.color-tint.selected {
+    box-shadow: 0 0 0 3px rgba(230, 237, 242, 0.88), 0 0 12px color-mix(in srgb, var(--app-accent) 34%, transparent);
+    transform: scale(1.1);
+    border-width: 2px;
+}
+
+button.color:hover {
+    border-color: rgba(230, 237, 242, 0.44);
+    transform: translateY(-2px) scale(1.08);
+    box-shadow: 0 10px 22px color-mix(in srgb, #000 30%, transparent);
+}
+
+button.color.selected {
+    box-shadow: 0 0 0 2px rgba(230, 237, 242, 0.88), 0 0 14px color-mix(in srgb, var(--app-accent) 26%, transparent);
+}
+
+/* 第二层颜色选中状态优化 */
+button.color.level2.selected {
+    border-width: 7px;
+    box-shadow: 0 0 0 1px rgba(230, 237, 242, 0.88), 0 0 12px color-mix(in srgb, var(--app-accent) 22%, transparent);
+}
+
+/* 通用按钮 */
+.button {
+    background: color-mix(in srgb, #fff 4%, transparent);
+    color: var(--app-text-muted);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-pill);
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: var(--app-fs-lg);
+    min-width: 0; /* 宽度跟内容走——原 70px 最小宽让短文字钮(♭/重置)虚胖 */
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, color 0.18s ease;
+}
+
+.button:hover {
+    background: color-mix(in srgb, var(--app-accent) 11%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 32%, transparent);
+    color: var(--app-text);
+    /* 不再 translateY 上浮：多个父容器带 overflow-x:hidden，上移 1px 会被裁掉顶缘 */
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-accent) 16%, transparent), 0 6px 18px color-mix(in srgb, var(--app-accent) 10%, transparent);
+}
+
+.button:active {
+    background: color-mix(in srgb, var(--app-accent) 16%, transparent);
+    transform: translateY(0) scale(0.97);
+    box-shadow: none;
+}
+
+.button.selected {
+    background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 38%, transparent);
+    color: var(--app-accent-text);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-accent) 14%, transparent), 0 4px 14px color-mix(in srgb, var(--app-accent) 12%, transparent);
+}
+
+/* 第一层级调色盘按钮颜色 - 配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
+.color.blue {
+    background-color: var(--color-level1-blue-button);
+}
+
+.color.trans {
+    background-color: var(--color-level1-trans-button);
+}
+
+.color.green {
+    background-color: var(--color-level1-green-button);
+}
+
+.color.red {
+    background-color: var(--color-level1-red-button);
+}
+
+.color.brown {
+    background-color: var(--color-level1-brown-button);
+}
+
+.color.gray {
+    background-color: var(--color-level1-gray-button);
+}
+
+.color.navy {
+    background-color: var(--color-level1-navy-button);
+}
+
+.color.crimson {
+    background-color: var(--color-level1-crimson-button);
+}
+
+/* 第二层级调色盘颜色 - 配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
+/* 第二层颜色使用环状（空心）样式 */
+.color.level2 {
+    background-color: transparent;
+    border: 6px solid;
+    box-sizing: border-box;
+}
+
+.color.level2.yellow {
+    border-color: var(--color-level2-yellow);
+}
+
+.color.level2.cyan {
+    border-color: var(--color-level2-cyan);
+}
+
+.color.level2.pink {
+    border-color: var(--color-level2-pink);
+}
+
+.color.level2.grass-green {
+    border-color: var(--color-level2-grass-green);
+}
+
+.color.level2.orange {
+    border-color: var(--color-level2-orange);
+}
+
+.color.level2.white {
+    border-color: var(--color-level2-white);
+    border-width: 6px;
+}
+
+/* Enharmonic 按钮样式 */
+.enharmonic-button {
+    background: var(--app-sheen);
+    color: var(--app-text-muted);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-pill);
+    padding: 0;
+    cursor: pointer;
+    font-size: var(--app-fs-lg);
+    font-weight: 600;
+    line-height: 1;
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.enharmonic-button:hover {
+    background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 34%, transparent);
+    /* hover 不上浮：overflow 容器会裁顶 */
+}
+
+.enharmonic-button:active {
+    background: color-mix(in srgb, var(--app-accent) 20%, transparent);
+}
+
+/* Global actions */
+
+.menu-global-actions {
+    margin: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: var(--m-act-cols);
+    justify-content: center;
+    align-items: center;
+    gap: var(--m-act-gap);
+    padding: 12px 0 14px;
+    background: transparent;
+    border: none;
+    border-radius: var(--app-radius-lg);
+    box-shadow: none;
+}
+
+.menu-global-actions .button {
+    height: var(--m-btn-h);
+    font-size: var(--m-btn-fs);
+    min-width: 0;
+    padding: 0 4px;
+}
+
+.menu-global-actions .enharmonic-button {
+    width: var(--m-acc-w);
+    min-width: var(--m-acc-w);
+    height: var(--m-btn-h);
+    font-size: var(--m-acc-fs);
+}
+
+.menu-global-actions .menu-download-button {
+    width: 100%;
+    min-width: 0;
+}
+
+.fretboard-stage {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto 12px;
+    position: relative;
+    z-index: 1;
+    isolation: isolate;
+    overflow-x: auto;
+    box-sizing: border-box;
+    padding: 8px 0 4px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+.fretboard-stage svg {
+    display: block;
+    position: relative;
+    z-index: 1;
+    flex: 0 1 auto;
+    isolation: isolate;
+    max-width: 100%;
+    height: auto;
+    border-radius: 0;
+}
+
+/* 主板 SVG：flex 内不收缩（宽度由 React 内联样式钉死，见 Fretboard.jsx）；
+   此前空板帧的内在宽度计算会塌成 ~0 或 max-content 撑爆，导致整板消失/缩放跳动 */
+.fretboard-stage>svg:not(.stage-fx) {
+    flex: 0 0 auto;
+}
+
+/* fx 覆盖层不参与主板的 flex/内在尺寸计算，定位见下方 .stage-fx 规则 */
+.fretboard-stage svg.stage-fx {
+    position: absolute;
+    max-width: none;
+}
+
+.error {
+    font-size: 18px;
+    text-anchor: middle;
+}
+
+/* Piano keyboard */
+.menu-piano-keyboard {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 14px;
+    position: relative;
+    z-index: 1;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.piano-keyboard {
+    display: block; /* 占满整行宽度做 zoom 基准；inline-block 会收缩包裹形成"越缩越小"反馈回路 */
+    width: 100%;
+}
+.piano-keys { margin: 0 auto; width: max-content; }
+
+.piano-keys {
+    display: flex;
+    position: relative;
+    /* 窄屏由组件 zoom 等比缩小（几何恒定，黑键定位不破） */
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-lg);
+    padding: 8px;
+    background: linear-gradient(180deg, color-mix(in srgb, #fff 7%, transparent), color-mix(in srgb, #fff 3%, transparent));
+    height: 130px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+}
+
+.piano-key {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.1s ease;
+    box-sizing: border-box;
+}
+
+.piano-key.white-key {
+    flex: 0 0 auto;
+    width: 45px;
+    height: 130px;
+    background: linear-gradient(180deg, #fefefe 0%, #dfe6ea 100%);
+    border: 1px solid rgba(17, 34, 44, 0.18);
+    border-radius: 0 0 14px 14px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 10px;
+    position: relative;
+    margin-right: 2px;
+}
+
+.piano-key.white-key:last-of-type {
+    margin-right: 0;
+}
+
+.piano-key.white-key:hover {
+    background: linear-gradient(180deg, #ffffff 0%, #e9f0f4 100%);
+}
+
+.piano-key.white-key.selected {
+    background: linear-gradient(180deg, #f9e1b9 0%, #f0bd72 100%);
+    border-color: var(--app-accent-strong);
+    border-width: 2px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.48);
+}
+
+.piano-key.black-key {
+    width: 28px;
+    height: 80px;
+    background: linear-gradient(180deg, #2b3942 0%, #10181d 100%);
+    border: 1px solid color-mix(in srgb, #fff 8%, transparent);
+    border-radius: 0 0 10px 10px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 8px;
+    position: absolute;
+    top: 8px;
+    z-index: 2;
+    box-shadow: 0 10px 16px color-mix(in srgb, #000 22%, transparent);
+}
+
+.piano-key.black-key:hover {
+    background: linear-gradient(180deg, #31434d 0%, #141e24 100%);
+}
+
+.piano-key.black-key.selected {
+    background: linear-gradient(180deg, #f1bb67 0%, #c88426 100%);
+    border-color: #ffe2b1;
+    border-width: 2px;
+}
+
+.key-label {
+    font-size: var(--app-fs-md);
+    font-weight: bold;
+    color: var(--app-text-muted);
+}
+
+.piano-key.white-key .key-label {
+    color: #21323d;
+}
+
+.piano-key.white-key.selected .key-label {
+    color: #0d222b;
+}
+
+.piano-key.black-key .key-label {
+    color: white;
+}
+
+.piano-key.black-key.selected .key-label {
+    color: white;
+}
+
+/* 连线相关样式 */
+.connection {
+    pointer-events: stroke;
+    stroke-width: 3px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 1;
+}
+
+.connection-preview {
+    pointer-events: none;
+}
+
+/* 触屏：从音符拖出连线/刷色时不滚动页面；其余区域滑动正常滚屏 */
+g.note {
+    touch-action: none;
+}
+
+/* 触屏：去掉按钮双击缩放延迟与点按高亮 */
+button,
+.button,
+.menu-checkbox {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#fretboard-svg {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* 拖拽连线进行中：整个指板显示十字光标 */
+svg.drag-connecting,
+svg.drag-connecting * {
+    cursor: crosshair !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+}
+
+/* 连线工具栏 */
+.connection-toolbar-container {
+    /* 容器只负责定位，不吞掉指板上的点击 */
+    pointer-events: none;
+    z-index: 101;
+    overflow: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip-path: none !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    overflow-x: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    overflow-y: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    isolation: isolate;
+}
+
+.connection-toolbar {
+    pointer-events: auto;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 8px;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    width: max-content;
+    height: max-content;
+    clip-path: none !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    backdrop-filter: none;
+}
+
+.toolbar-icons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 连线工具栏里的预设按钮：图标直接画形状，点一下切换到该预设 */
+.toolbar-preset-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-right: 6px;
+    margin-right: 2px;
+    border-right: 1px solid rgba(230, 237, 242, 0.1);
+}
+
+.toolbar-icon-btn.toolbar-preset-btn {
+    gap: 5px;
+    padding: 6px 8px;
+    font-size: var(--app-fs-sm);
+    color: var(--app-text-muted);
+}
+
+.toolbar-preset-label {
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.toolbar-icon-wrapper {
+    position: relative;
+    overflow: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    z-index: 102;
+    isolation: isolate;
+}
+
+.toolbar-icon-btn {
+    background: var(--app-sheen);
+    color: var(--app-text-muted);
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius-sm);
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: var(--app-fs-lg);
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
+    white-space: nowrap;
+    pointer-events: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    position: relative;
+    z-index: 104;
+}
+
+.toolbar-icon-btn:hover {
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 28%, transparent);
+    color: var(--app-text);
+    /* hover 不上浮：overflow 容器会裁顶 */
+}
+
+.toolbar-icon-btn:active {
+    background: color-mix(in srgb, #fff 8%, transparent);
+}
+
+.toolbar-icon-btn.active {
+    background: color-mix(in srgb, var(--app-accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 34%, transparent);
+    color: var(--app-accent-text);
+}
+
+.toolbar-icon-btn.delete-icon-btn {
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.toolbar-icon-btn.delete-icon-btn:hover {
+    background: rgba(255, 107, 107, 0.2);
+    border-color: #ff5252;
+}
+
+.toolbar-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background:
+        linear-gradient(180deg, color-mix(in srgb, #fff 7%, transparent), color-mix(in srgb, #fff 3%, transparent)),
+        rgba(11, 19, 24, 0.96);
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius-md);
+    box-shadow: var(--app-shadow-md);
+    min-width: 100px;
+    width: max-content;
+    max-width: none;
+    z-index: 103 !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    padding: 6px;
+    white-space: nowrap;
+    overflow: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    display: block !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    visibility: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip-path: none !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    transform: translateZ(0);
+    will-change: transform;
+    backdrop-filter: blur(16px);
+}
+
+/* 向上展开的下拉菜单 - 使用更具体的选择器确保覆盖 */
+.toolbar-icon-wrapper .toolbar-dropdown.toolbar-dropdown-up,
+.toolbar-dropdown.toolbar-dropdown-up {
+    top: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    bottom: calc(100% + 4px) !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+}
+
+.toolbar-dropdown button {
+    display: block;
+    width: 100%;
+    min-width: 100px;
+    background-color: transparent;
+    color: var(--app-text-muted);
+    border: none;
+    border-radius: var(--app-radius-sm);
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: var(--app-fs-lg);
+    text-align: left;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+.toolbar-dropdown button:hover {
+    background-color: color-mix(in srgb, var(--app-accent) 12%, transparent);
+    color: var(--app-text);
+}
+
+.toolbar-dropdown button.active {
+    background-color: color-mix(in srgb, var(--app-accent) 18%, transparent);
+    color: var(--app-accent-text);
+}
+
+.toolbar-slider-wrapper {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+    background: transparent;
+}
+
+.toolbar-slider-wrapper input[type="range"] {
+    flex: 1;
+    cursor: pointer;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    outline: none;
+}
+
+.toolbar-slider-wrapper input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--app-control-thumb-bg);
+    border: 2px solid var(--app-control-thumb-border);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(17, 34, 44, 0.24);
+    margin-top: -5px;
+}
+
+.toolbar-slider-wrapper input[type="range"]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(230, 237, 242, 0.18);
+    border-radius: var(--app-radius-pill);
+}
+
+.toolbar-slider-wrapper input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--app-control-thumb-bg);
+    border: 2px solid var(--app-control-thumb-border);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(17, 34, 44, 0.24);
+}
+
+.toolbar-slider-wrapper input[type="range"]::-moz-range-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(230, 237, 242, 0.18);
+    border-radius: var(--app-radius-pill);
+}
+
+.toolbar-slider-wrapper span {
+    min-width: 35px;
+    text-align: right;
+    font-size: var(--app-fs-sm);
+    color: var(--app-text-muted);
+}
+
+/* 品格范围滑块 */
+/* 品窗拖块（替代旧双头滑块）：板旁窄竖轨 + 小把手，左右拖平移品窗 */
+.fwt {
+    position: relative;
+    flex: 0 0 auto;
+    width: 22px;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    touch-action: none;
+}
+
+.fwt-rail {
+    position: absolute;
+    top: 8px;
+    bottom: 22px;
+    left: 50%;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: var(--app-radius-pill);
+    background: rgba(230, 237, 242, 0.1);
+}
+
+.fwt-knob {
+    position: relative;
+    z-index: 1;
+    width: 14px;
+    height: 34px;
+    border-radius: 6px;
+    background: var(--app-line-strong);
+    border: 1px solid rgba(230, 237, 242, 0.22);
+    cursor: ew-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.45;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.fwt-knob:hover,
+.fwt.dragging .fwt-knob {
+    opacity: 1;
+    background: rgba(230, 237, 242, 0.24);
+    border-color: var(--app-control-thumb-border, #e4a54b);
+}
+
+.fwt-grip {
+    width: 6px;
+    height: 16px;
+    border-radius: 3px;
+    background: rgba(230, 237, 242, 0.45);
+    pointer-events: none;
+}
+
+.fwt.dragging .fwt-grip {
+    background: rgba(230, 237, 242, 0.8);
+}
+
+.fwt-label {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: var(--app-fs-2xs);
+    color: var(--app-text-muted, #9fb2c0);
+    opacity: 0.6;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.fwt.dragging .fwt-label {
+    opacity: 1;
+    color: var(--app-control-thumb-border, #e4a54b);
+}
+
+/* 预览悬停note的高亮 */
+g.note.preview-hover {
+    opacity: 1;
+}
+
+g.note.preview-hover>circle {
+    stroke-dasharray: 3, 3;
+    stroke-width: 2px;
+    stroke: var(--app-accent);
+}
+
+@media (max-width: 1024px) {
+    .menu {
+        --m-gap: 18px;
+        --m-btn-h: 32px;
+        --m-btn-fs: 11.5px;
+        --m-acc-w: 28px;
+        --m-act-gap: 5px;
+        --m-act-cols: 28px repeat(3, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 640px) {
+    .menu {
+        --m-btn-h: 30px;
+        --m-btn-fs: 11px;
+        --m-acc-w: 28px;
+        --m-act-gap: 4px;
+        --m-opt-gap: 6px;
+        --m-opt-fs: 11px;
+    }
+
+}
+
+/* 通用响应式 - 确保 SVG 在所有屏幕上自适应 */
+@media (max-width: 1600px) {
+    .fretboard-stage svg {
+        max-width: calc(100vw - 40px);
+    }
+}
+
+@media (max-width: 1200px) {
+    main {
+        padding: 0 15px;
+    }
+
+    .fretboard-stage svg {
+        max-width: calc(100vw - 30px);
+    }
+}
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+
+    /* 指板优先于菜单显示：首屏直接看到指板，工具菜单向下滑 */
+    .fretboard-stage {
+        order: -1;
+        margin-top: 4px;
+    }
+
+    /* 禁止页面整体横向滚动 - 从根元素开始 */
+    html {
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+    }
+
+    body {
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+    }
+
+    #app {
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+    }
+
+    main {
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+        padding: 0 10px;
+    }
+
+    /* 指板图区域横向滚动（唯一允许滚动的区域） */
+    .fretboard-stage {
+        overflow-x: auto !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-y: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100vw;
+        justify-content: flex-start !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+    }
+
+    .fretboard-stage svg {
+        /* 手机屏宽有限：板占满行内剩余宽（减拖块22px）、等比缩放，品窗用右侧拖块调 */
+        width: auto !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        height: auto !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        min-width: 0 !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        flex: 1 1 auto !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        display: block;
+    }
+
+    /* 工具区域移动端适配（禁止横向滚动） */
+    .menu {
+        flex-direction: column !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        flex-wrap: nowrap !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        width: 100%;
+        max-width: 100%;
+        gap: 12px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        padding: 20px 16px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        box-sizing: border-box;
+        margin: 0;
+    }
+
+    .menu-palette-shell {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .menu-left,
+    .menu-right {
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        padding: 18px 14px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        box-sizing: border-box;
+        margin: 0;
+    }
+
+    .color-selector {
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        box-sizing: border-box;
+        padding: 10px 0 12px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        margin: 0;
+    }
+
+    .menu-global-actions {
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        box-sizing: border-box;
+        padding: 8px 0 12px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        margin: 0;
+        justify-content: center;
+        grid-template-columns: 28px repeat(3, minmax(0, 1fr));
+    }
+
+    .menu-connection-panel {
+        width: 100%;
+        max-width: 100%;
+        overflow: visible;
+        box-sizing: border-box;
+        margin: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .menu-connection-panel>div {
+        width: 100%;
+        max-width: 100%;
+        overflow: visible;
+        flex-wrap: wrap;
+        box-sizing: border-box;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .menu-download-panel {
+        width: 100%;
+        max-width: 100%;
+        overflow: visible;
+        box-sizing: border-box;
+        flex-wrap: wrap;
+        padding: var(--m-panel-top) 0 0;
+        margin: 0;
+        margin-top: 0 !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        justify-content: center;
+        gap: 8px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        align-items: center;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .menu-download-panel label {
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    .menu-download-panel button {
+        margin-left: 0;
+        flex-shrink: 0;
+    }
+
+    .menu-piano-keyboard {
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        box-sizing: border-box;
+        padding: 12px 0 10px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        margin: 0;
+    }
+
+    .piano-keyboard {
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+    }
+
+    .piano-keys {
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+    }
+
+    .fret-range-slider-wrapper {
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        box-sizing: border-box;
+        padding: 8px 0 0 !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        margin: 0;
+    }
+}
+

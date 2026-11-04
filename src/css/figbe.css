@@ -1,0 +1,590 @@
+/* figbe.css —— 自 fretboard.css 7867-8455 行拆出（v227 P6）；@import 顺序 = 原级联顺序，不可调换 */
+/* ============ 和弦谱指法小图（黑点格）============ */
+.cc-beat-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.cc-figview svg {
+    display: block;
+}
+
+.cc-beat-unit .cc-figview svg {
+    max-width: 100%;
+}
+
+/* 悬浮模式：图不占位（谱面紧凑），hover 到拍才浮动放大显示 */
+.cc-page.figmode-hover .cc-beat-unit .cc-figview {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    z-index: var(--z-panel-float);
+    background: var(--cc-panel, #10161c);
+    border: 1px solid rgba(230, 237, 242, 0.22);
+    border-radius: var(--app-radius-sm);
+    padding: 6px;
+    box-shadow: 0 10px 30px color-mix(in srgb, #000 40%, transparent);
+    white-space: nowrap;
+}
+
+.cc-page.figmode-hover .cc-beat-unit .cc-figview svg {
+    max-width: none;
+}
+
+.cc-page.figmode-hover .cc-beat:hover .cc-figview,
+.cc-page.figmode-hover .cc-figview:hover {
+    /* 指针移到浮层上保持显示（否则离开拍格浮层即消失，双击落空） */
+    display: inline-block;
+}
+
+/* 汇总行的小图设置开关 */
+.cc-score-foot { display: flex; align-items: center; gap: 10px; padding: 6px 2px 2px; }
+.cc-figopts {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: 10px;
+}
+
+.cc-figopts button {
+    border: 1px solid var(--cc-border, rgba(230, 237, 242, 0.18));
+    background: transparent;
+    color: var(--cc-text, #c4d1db);
+    font-size: var(--app-fs-xs);
+    border-radius: 5px;
+    padding: 1px 7px;
+    cursor: pointer;
+}
+
+.cc-figopts button:hover {
+    border-color: var(--cc-accent);
+    color: var(--cc-accent);
+}
+
+/* 编辑弹层 */
+.cc-figmodal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: var(--z-modal-fig);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cc-figmodal-box {
+    background: var(--cc-panel, #10161c);
+    border: 1px solid var(--app-line-strong);
+    border-radius: 12px;
+    padding: 12px 14px;
+    max-width: 92vw;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.cc-figmodal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: var(--app-fs-md);
+    color: var(--app-text-fig);
+    margin-bottom: 8px;
+}
+
+.cc-figeditor {
+    min-width: 420px;
+}
+
+.cc-figeditor-main {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.cc-figeditor-stage {
+    cursor: pointer;
+    user-select: none;
+    line-height: 0;
+}
+
+.cc-figeditor-stage svg {
+    border-radius: var(--app-radius-xs);
+    background: color-mix(in srgb, #fff 2%, transparent);
+}
+
+.cc-figeditor-side {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 170px;
+}
+
+.cc-figeditor-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.cc-figeditor-row.hint {
+    font-size: var(--app-fs-xs);
+    color: var(--app-text-fig-muted);
+    max-width: 180px;
+}
+
+.cc-figbtn {
+    border: 1px solid rgba(230, 237, 242, 0.2);
+    background: transparent;
+    color: #c4d1db;
+    font-size: var(--app-fs-sm);
+    border-radius: 6px;
+    padding: 3px 9px;
+    cursor: pointer;
+}
+
+.cc-figbtn:hover {
+    border-color: var(--app-accent);
+    color: var(--app-accent);
+}
+
+.cc-figbtn.on {
+    background: color-mix(in srgb, var(--app-accent) 18%, transparent);
+    border-color: var(--app-accent);
+    color: var(--app-accent);
+}
+
+.cc-figbtn.primary {
+    background: color-mix(in srgb, var(--app-accent) 85%, transparent);
+    border-color: transparent;
+    color: #1a1206;
+    font-weight: 600;
+}
+
+.cc-figstart {
+    font-size: var(--app-fs-xs);
+    color: var(--app-text-fig-muted);
+    min-width: 40px;
+    text-align: center;
+}
+
+.cc-figeditor-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+/* 挑选面板(形状候选) */
+.cc-figpicker {
+    margin-top: 10px;
+    border-top: 1px solid var(--app-line);
+    padding-top: 8px;
+}
+
+.cc-figpicker-title {
+    font-size: var(--app-fs-sm);
+    color: var(--app-text-fig-muted);
+    margin-bottom: 6px;
+}
+
+.cc-figpicker-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.cc-figpick {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid var(--app-line-strong);
+    background: transparent;
+    border-radius: var(--app-radius-xs);
+    padding: 5px 7px;
+    cursor: pointer;
+}
+
+.cc-figpick:hover {
+    border-color: var(--app-accent);
+}
+
+.cc-figpick em {
+    font-style: normal;
+    font-size: var(--app-fs-2xs);
+    color: var(--app-accent);
+}
+
+.cc-figpick small {
+    font-size: var(--app-fs-2xs);
+    color: var(--app-text-fig-muted);
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 存形状面板 */
+.cc-figsave {
+    margin-top: 10px;
+    border-top: 1px solid var(--app-line);
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cc-figsave-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--app-fs-sm);
+    color: #c4d1db;
+    flex-wrap: wrap;
+}
+
+.cc-figsave-row select,
+.cc-figsave-row input {
+    background: #0d1319;
+    border: 1px solid rgba(230, 237, 242, 0.2);
+    color: var(--app-text-fig);
+    border-radius: 5px;
+    padding: 2px 6px;
+    font-size: var(--app-fs-sm);
+}
+
+.cc-figsave-row .hint {
+    font-size: var(--app-fs-xs);
+    color: var(--app-text-fig-muted);
+}
+
+/* figEdit 会话的形状挑选浮层/存形状表单(attach-bar 内) */
+.attach-shapes {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 12px;
+    z-index: var(--z-panel-float);
+    background: var(--background-color, #10161c);
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-sm);
+    padding: 10px 12px;
+    max-width: 560px;
+    box-shadow: 0 8px 24px color-mix(in srgb, #000 40%, transparent);
+}
+
+.attach-bar {
+    position: relative;
+}
+
+.attach-shapes-title {
+    font-size: var(--app-fs-sm);
+    color: var(--app-text-fig-soft);
+    margin-bottom: 8px;
+}
+
+.attach-shapes-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.attach-shape {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid var(--app-line-strong);
+    background: transparent;
+    border-radius: var(--app-radius-xs);
+    padding: 5px 7px;
+    cursor: pointer;
+    color: inherit;
+}
+
+.attach-shape:hover {
+    border-color: var(--app-accent);
+}
+
+.attach-shape em {
+    font-style: normal;
+    font-size: var(--app-fs-2xs);
+    color: var(--app-accent);
+}
+
+.attach-shape small {
+    font-size: var(--app-fs-2xs);
+    color: var(--app-text-fig-muted);
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attach-saveform-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.attach-saveform-row select {
+    background: #0d1319;
+    border: 1px solid rgba(230, 237, 242, 0.2);
+    color: var(--app-text-fig);
+    border-radius: 5px;
+    padding: 2px 6px;
+}
+
+/* ============ 指法小图编辑大弹窗(和弦谱页内,裁剪版普通编辑器) ============ */
+.figbe-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: var(--z-overlay); /* 盖过吸顶 .top-nav(1200):页面一滚动顶栏就压住弹窗顶条,形状库/换把位/还原/完成全点不到 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 上下结构：板在上自适应缩放（绝不撑出滚动条），工具行在下；overflow:hidden 硬保无滚动条 */
+/* 宽度随板内容自适应：品窗短弹窗就窄，不留大空挡；上限防溢屏 */
+.figbe-box {
+    background: var(--cc-panel, #10161c);
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-md);
+    padding: 14px 18px;
+    width: fit-content;
+    min-width: 480px;
+    max-width: calc(100vw - 16px);
+    max-height: 92vh;
+    overflow: hidden;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
+    display: flex;
+}
+
+.figbe {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+}
+
+.figbe-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.figbe-title {
+    font-size: var(--app-fs-md);
+    color: var(--app-text-fig);
+    margin-right: auto;
+    min-width: 0;
+    max-width: 220px;
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.figbe-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.figbe-board {
+    /* 可收缩：容器宽由弹窗上限决定，svg 100% 跟随——页面放大/窄屏都装得下，绝不溢出 */
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.figbe-board svg {
+    max-width: 100%;
+    max-height: calc(92vh - 250px);
+    width: auto;
+    height: auto;
+}
+
+.figbe-side {
+    display: flex;
+    flex-direction: row;
+    gap: 14px;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+
+.figbe-side-block {
+    flex: 1 1 180px;
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius-sm);
+    padding: 10px 12px;
+}
+
+.figbe-side-title {
+    font-size: var(--app-fs-sm);
+    color: var(--app-text-fig-soft);
+    margin-bottom: 8px;
+}
+
+.figbe-side-title em {
+    font-style: normal;
+    color: var(--app-accent);
+}
+
+.figbe-presets {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.figbe-presets .button {
+    padding: 4px 8px;
+}
+
+.figbe-preview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 6px 0;
+    min-height: 64px;
+}
+
+.figbe-shapes {
+    /* 与上方 连线/预览 块同一观感：边框块容器，不再裸浮在弹窗底上 */
+    border: 1px solid var(--app-line);
+    border-radius: var(--app-radius-sm);
+    padding: 10px 12px;
+    flex: 0 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.figbe-shapes-title {
+    font-size: var(--app-fs-sm);
+    color: var(--app-text-fig-soft);
+    margin-bottom: 6px;
+}
+
+.figbe-shapes-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.figbe-shape {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid var(--app-line-strong);
+    background: transparent;
+    border-radius: var(--app-radius-xs);
+    padding: 5px 7px;
+    cursor: pointer;
+    color: inherit;
+}
+
+.figbe-shape:hover {
+    border-color: var(--app-accent);
+}
+
+.figbe-shape em {
+    font-style: normal;
+    font-size: var(--app-fs-2xs);
+    color: var(--app-accent);
+}
+
+.figbe-shape small {
+    font-size: var(--app-fs-2xs);
+    color: var(--app-text-fig-muted);
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.figbe-saveform-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.figbe-saveform-row select {
+    background: #0d1319;
+    border: 1px solid rgba(230, 237, 242, 0.2);
+    color: var(--app-text-fig);
+    border-radius: 5px;
+    padding: 2px 6px;
+}
+
+/* 右键候选菜单：重命名 / 删除（内置形状只读灰显；z 1350 > 弹窗 1300，菜单浮在编辑器上） */
+.figbe-cmenu {
+    position: fixed;
+    z-index: var(--z-context-menu);
+    min-width: 130px;
+    background: var(--cc-panel, #10161c);
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-sm);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px color-mix(in srgb, #000 40%, transparent);
+}
+.figbe-cmenu button {
+    border: none;
+    background: none;
+    color: var(--app-text);
+    text-align: left;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: var(--app-fs-sm);
+    border-radius: 6px;
+}
+.figbe-cmenu button:hover:not(:disabled) { background: color-mix(in srgb, var(--app-accent) 12%, transparent); }
+.figbe-cmenu button:disabled { opacity: 0.4; cursor: not-allowed; }
+.figbe-cmenu button.danger { color: #e5695f; }
+/* ≤800px：淡色档位改"点色块弹气泡"（桌面左挂面板在 641-800px 会伸出屏幕外，实测 780px 仍出界）
+   —— 阈值须与 FretboardMenu.jsx 的 matchMedia 同步 */
+@media (max-width: 800px) {
+    .menu-tint-variants.mobile-popup {
+        position: absolute;
+        top: calc(100% + 10px);
+        transform: translateX(-50%);
+        flex-direction: row;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 16px;
+        z-index: var(--z-popover-tint);
+    }
+
+    .menu-left .menu-tint-variants.mobile-popup::after {
+        top: -7.5px;
+        right: auto;
+        left: 50%;
+        width: 13px;
+        height: 13px;
+        transform: translateX(-50%) rotate(45deg);
+        border-top: 1px solid var(--app-line-soft);
+        border-right: none;
+        border-left: 1px solid var(--app-line-soft);
+    }
+
+    /* 气泡要盖住下方指板区：.menu 的 isolate+transform 层叠上下文把 z:30 关住了，弹出期间整体提权 */
+    .menu:has(.menu-tint-variants.mobile-popup) {
+        z-index: var(--z-popover-tint-parent);
+    }
+}
+

@@ -1,0 +1,127 @@
+/* topnav.css —— 自 fretboard.css 3450-3575 行拆出（v227 P6）；@import 顺序 = 原级联顺序，不可调换 */
+/* ============ 顶部导航（8pu 式：logo + 模式 tab + 主题/语言） ============ */
+
+.top-nav {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    height: 46px;
+    padding: 0 16px;
+    /* 不吸顶（用户明确要求）：常驻可见的只有和弦谱页的 tab+设置行（.cc-toolbar sticky），
+       普通/动图/谱子 顶栏随下滚自然离开。z-index 仍保留：覆盖同层的谱面内容 */
+    z-index: var(--z-top-nav);
+    background: var(--app-panel);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--app-border);
+}
+
+.top-nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--app-text);
+    font-weight: 700;
+    font-size: var(--app-fs-lg);
+    letter-spacing: 0.5px;
+}
+
+.top-nav-logo-icon {
+    font-size: 17px;
+}
+
+.top-nav-logo-text { /* 已废弃：logo 文案移除 */
+    opacity: 0.9;
+}
+
+.top-nav-tabs { min-width: 0; }
+.top-nav-tabs button { white-space: nowrap; }
+.top-nav-tabs {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+    gap: 2px;
+}
+
+.top-nav-tab {
+    position: relative;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0 14px;
+    color: var(--app-text-muted);
+    font-size: 13.5px;
+    transition: color 0.15s;
+    height: 100%;
+}
+
+.top-nav-tab:hover {
+    color: var(--app-text);
+}
+
+.top-nav-tab.on {
+    color: var(--app-accent-text);
+    font-weight: 600;
+}
+
+.top-nav-tab.on::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: var(--app-accent);
+}
+
+.top-nav-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.top-nav-right { position: relative; /* ⚙ 偏好菜单定位基准 */ }
+.cc-prefs { position: absolute; top: calc(100% + 6px); right: 0; z-index: var(--z-menu); background: var(--app-panel-strong); border: 1px solid var(--app-border-strong); border-radius: var(--app-radius-sm); padding: 5px; min-width: 170px; box-shadow: 0 12px 34px color-mix(in srgb, #000 30%, transparent); display: flex; flex-direction: column; }
+.cc-prefs-ver { font-size: var(--app-fs-xs); color: var(--app-text-soft); padding: 4px 10px; border-bottom: 1px solid var(--app-border); margin-bottom: 4px; }
+.cc-prefs button { border: none; background: transparent; color: var(--app-text); text-align: left; padding: 7px 10px; font-size: var(--app-fs-md); border-radius: 7px; cursor: pointer; white-space: nowrap; }
+.cc-prefs button:hover { background: var(--app-panel-soft); }
+
+.top-nav-user { display: inline-flex; align-items: center; gap: 4px; }
+.top-nav-cloudfail { color: #ff8a80; font-size: var(--app-fs-md); animation: cloudfailPulse 1.2s ease-in-out infinite; }
+@keyframes cloudfailPulse { 50% { opacity: 0.45; } }
+.top-nav-user-name { font-size: var(--app-fs-md); color: var(--app-accent-text, #6fb0ff); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.top-nav-ver {
+    font-size: var(--app-fs-2xs);
+    color: var(--app-text-soft);
+    opacity: 0.7;
+    margin-right: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+.top-nav-icon { min-width: 30px; height: 30px; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; box-sizing: border-box; }
+.top-nav-icon {
+    min-width: 34px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-xs);
+    color: var(--app-text-muted);
+    cursor: pointer;
+    font-size: var(--app-fs-md);
+    transition: color 0.15s, background 0.15s;
+}
+
+.top-nav-icon:hover {
+    color: var(--app-text);
+    background: var(--app-panel-soft);
+}
+

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// P6 拆分脚本（待命）：把 fretboard.css 按既有分区横幅切成多个文件，fretboard.css 保留 @import 链 + :root token。
-// 安全性设计：
-//   1. 只按「连续行区间」切（绝不按选择器前缀分组——那会重排级联顺序）
-//   2. @import 必须在所有规则之前 → fretboard.css = @import 链 + 原 :root/light 区块
-//   3. --check 模式：拼接全部产物（去掉 @import 行）与原文件逐字节比对，不等即失败
-// 运行前置：工作树对 src/fretboard.css 必须是干净的（git diff 为空）——活跃 WIP 期间禁止执行。
+// P6 拆分：把 fretboard.css 按「连续行区间」切成多个文件（级联顺序绝不重排）。
+// 安全设计：
+//   1. 只按行区间切；fretboard.css = 原 :root/light 基座 + @import 链（@import 必须在规则前，基座无规则只有注释+变量定义，合法）
+//   2. --check：区间连续性 + 逐字节等价校验，不等即拒绝
+//   3. WIP 守卫：fretboard.css 有未提交改动时拒绝执行
+
 // 用法：node scripts/split-css.mjs [--check]
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,59 +16,48 @@ const SRC = join(ROOT, 'src/fretboard.css');
 const checkOnly = process.argv.includes('--check');
 
 const dirty = execSync('git status --porcelain -- src/fretboard.css', { cwd: ROOT }).toString().trim();
-if (dirty) { console.error('✗ src/fretboard.css 有未提交改动（活跃 WIP），拒绝拆分。先提交再跑。'); process.exit(1); }
+if (dirty) { console.error('✗ src/fretboard.css 有未提交改动，先提交再拆。'); process.exit(1); }
 
 const css = readFileSync(SRC, 'utf8');
 const lines = css.split('\n');
 
-// 分区表：按文件内既有横幅注释的行号区间（拆分前用 --check 校验区间连续无空洞）
-// [目标文件, 起始横幅匹配词]（区间 = 该横幅行到下一横幅前一行；token 基座固定在文件头）
+// [文件名, 起始行]（行号为 v227 提交后的实测值；区间 = 起始行到下一区间前一行，末区间到文件尾）
 const SECTIONS = [
-  ['fretboard-base.css', 'Title header'],            // 指板图本体 + 菜单/调色盘
-  ['timeline.css', '时间轴'],
-  ['score-page.css', '独立谱子页'],
-  ['dynamic.css', '动态编辑工具条'],
-  ['topnav.css', '顶部导航'],
-  ['chords.css', '和弦谱（8pu'],
-  ['songs.css', '曲目入口'],
-  ['figbe.css', '形状库'],                            // figbe/fig 编辑区（横幅词按实际调整）
+  ['tokens-base.css', 1],    // 头注释 + :root token 表 + light 主题 + html/body 基础（fretboard.css 变 manifest）
+  ['menu-panel.css', 669],    // 菜单面板样式层（.menu/.menu-left/调色盘/移动端断点）
+  ['seq-score.css', 1906],    // 序列谱视图
+  ['timeline.css', 2296],     // 时间轴
+  ['score-page.css', 2546],   // 独立谱子页
+  ['dynamic.css', 2889],      // 动态编辑工具条
+  ['topnav.css', 3450],       // 顶部导航
+  ['chords.css', 3576],       // 和弦谱主区（含页面级强调色/UiSelect/工具行控件规格——按区间归属，语义混合已注释）
+  ['songs.css', 6437],        // 曲目入口 + 小控件基线
+  ['chords-v24.css', 6744],   // 谱头 + v24 紧凑重设计
+  ['stitch.css', 7501],       // 拼接区
+  ['figbe.css', 7867],        // 指法小图 + 编辑大弹窗（形状库）
+  ['overlays-misc.css', 8456],// 回收站/同步徽标/¶钮/实时分享提示
 ];
-// 兜底：横幅没覆盖到的尾部区块并入最后一个文件，--check 的字节等价会兜住任何遗漏
 
-const bannerRe = /^\/* =+ .* =+ \*\/$|\/\* =+ .* =+ \*\//;
-const banners = [];
-lines.forEach((l, i) => { if (/^\/\* =+ .+ =+ \*\/$/.test(l.trim()) || /^\/\* =+= /.test(l.trim())) banners.push({ line: i + 1, text: l.trim() }); });
-if (!banners.length) { console.error('✗ 未找到分区横幅，中止'); process.exit(1); }
-
-// token 基座 = 第一个横幅之前的所有行（:root + light + 头部注释）
-const firstBanner = banners[0].line;
-const base = lines.slice(0, firstBanner - 1);
-
-// 定位各 section 起点
-const starts = SECTIONS.map(([file, kw]) => {
-  const b = banners.find(x => x.text.includes(kw));
-  if (!b) { console.error(`✗ 横幅关键词未命中: ${kw}`); process.exit(1); }
-  return { file, start: b.line };
-}).sort((a, b) => a.start - b.start);
-const tailStart = starts[starts.length - 1].start;
-const tail = { file: starts[starts.length - 1].file, start: tailStart };
-
-const parts = [];
-starts.forEach((s, i) => {
-  const end = i + 1 < starts.length ? starts[i + 1].start - 1 : lines.length;
-  parts.push({ file: s.file, from: s.start, to: end, body: lines.slice(s.start - 1, end) });
+const parts = SECTIONS.map(([file, start], i) => {
+  const end = i + 1 < SECTIONS.length ? SECTIONS[i + 1][1] - 1 : lines.length;
+  return { file, from: start, to: end, body: lines.slice(start - 1, end) };
 });
 
-if (checkOnly) {
-  const rebuilt = [...base.map(l => l), ...parts.flatMap(p => p.body)].join('\n');
-  console.log(rebuilt === css ? '✓ 区间拼接与原文件逐字节相等（可以安全拆分）' : '✗ 区间拼接不等！中止，人工核对横幅区间');
-  console.log(`基座 ${base.length} 行 | ` + parts.map(p => `${p.file}: ${p.from}-${p.to}(${p.body.length})`).join(' | '));
-  process.exit(rebuilt === css ? 0 : 1);
+// 校验：区间拼接必须与原文件逐字节相等（连续无缝 + 无丢失）
+const rebuilt = parts.flatMap(p => p.body).join('\n');
+const contiguous = rebuilt === css;
+if (!contiguous) {
+  console.error('✗ 区间拼接与原文件不等（行号表过期或有空洞），重新对表：');
+  console.error('   ' + parts.map(p => `${p.file}: ${p.from}-${p.to}`).join(' | '));
+  process.exit(1);
 }
+console.log('✓ 字节级等价确认：' + parts.map(p => `${p.file}: ${p.from}-${p.to}(${p.body.length}行)`).join(' | '));
+if (checkOnly) { console.log('✓ --check 通过，可执行实际拆分'); process.exit(0); }
 
 mkdirSync(join(ROOT, 'src/css'), { recursive: true });
 for (const p of parts) {
-  writeFileSync(join(ROOT, 'src/css', p.file), `/* ${p.file} —— 自 fretboard.css ${p.from}-${p.to} 行拆出（v226 拆分，顺序不可调换） */\n${p.body.join('\n')}\n`);
+  writeFileSync(join(ROOT, 'src/css', p.file), `/* ${p.file} —— 自 fretboard.css ${p.from}-${p.to} 行拆出（v227 P6）；@import 顺序 = 原级联顺序，不可调换 */\n${p.body.join('\n')}\n`);
 }
-writeFileSync(SRC, base.join('\n') + '\n' + parts.map(p => `@import './css/${p.file}';`).join('\n') + '\n');
-console.log(`✓ 拆分完成：基座 + ${parts.length} 个分区文件；跑 lint:css + 全部 smoke + Chrome 抽查后提交`);
+writeFileSync(SRC, `/* fretboard.css —— v227 P6 拆分后成为 manifest：全部样式按原级联顺序 @import（顺序不可调换）。\n   token 表在 css/tokens-base.css；新增域样式进对应分区文件或组件旁 CSS（见 STYLE_GUIDE）。 */\n` + parts.map(p => `@import './css/${p.file}';`).join('\n') + '\n');
+console.log(`✓ 拆分完成：fretboard.css(manifest) + src/css/ 下 ${parts.length} 个分区文件`);
+console.log('  验证清单：npm run lint:css → 全部 smoke → Chrome 双主题抽查 → 提交');
