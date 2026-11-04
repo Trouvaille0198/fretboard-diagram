@@ -454,12 +454,33 @@
     padding: 4px 8px;
 }
 
-.figbe-preview {
+/* 套和弦图面板（v229 从弹窗底部迁进原「预览」格）：标题行 + 可滚动缩略图列 */
+.figbe-side-head {
     display: flex;
-    justify-content: center;
     align-items: center;
-    padding: 6px 0;
-    min-height: 64px;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.figbe-side-head .figbe-side-title {
+    margin-bottom: 0;
+}
+
+.figbe-panel-toggle {
+    padding: 2px 8px;
+    font-size: var(--app-fs-xs);
+    white-space: nowrap;
+}
+
+.figbe-panel {
+    flex: 2 1 260px; /* 比「连线」块宽：缩略图要摆得下 */
+}
+
+.figbe-panel-list {
+    max-height: 132px;   /* 两行 44px 缩略图；更多往里滚，不再把弹窗底顶出去 */
+    overflow-y: auto;
+    align-content: flex-start;
 }
 
 .figbe-shapes {
