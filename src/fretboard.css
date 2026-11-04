@@ -526,12 +526,12 @@ g.note.transparent>text {
 
 /* 当toggle处于hidden状态时，强制trans note显示为0.3透明度 */
 g.note.force-transparent {
-    opacity: 0.5 !important;
+    opacity: 0.5 !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
 }
 
 /* force-transparent 状态下，文字保持完全不透明 */
 g.note.force-transparent>text {
-    opacity: 1 !important;
+    opacity: 1 !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
 }
 
 g.note.visible {
@@ -622,14 +622,14 @@ g.note.crimson>text {
 }
 
 path.string {
-    stroke: var(--text-color) !important;
+    stroke: var(--text-color) !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
     fill: none;
     pointer-events: none;
-    stroke-width: 1px !important;
+    stroke-width: 1px !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
 }
 
 path.frets {
-    stroke: var(--text-color) !important;
+    stroke: var(--text-color) !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
     stroke-width: 1px;
     fill: none;
 }
@@ -870,8 +870,8 @@ text.marker {
     font-size: 16px;
     font-weight: bold;
     fill: var(--text-color);
-    opacity: 1 !important;
-    visibility: visible !important;
+    opacity: 1 !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+    visibility: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -879,8 +879,8 @@ text.marker {
 }
 
 g.markers {
-    opacity: 1 !important;
-    visibility: visible !important;
+    opacity: 1 !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+    visibility: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
 }
 
 /* Palette and control surfaces */
@@ -1350,7 +1350,7 @@ button,
 /* 拖拽连线进行中：整个指板显示十字光标 */
 svg.drag-connecting,
 svg.drag-connecting * {
-    cursor: crosshair !important;
+    cursor: crosshair !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
 }
 
 /* 连线工具栏 */
@@ -1358,11 +1358,11 @@ svg.drag-connecting * {
     /* 容器只负责定位，不吞掉指板上的点击 */
     pointer-events: none;
     z-index: 101;
-    overflow: visible !important;
-    clip-path: none !important;
-    clip: auto !important;
-    overflow-x: visible !important;
-    overflow-y: visible !important;
+    overflow: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip-path: none !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    overflow-x: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    overflow-y: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
     isolation: isolate;
 }
 
@@ -1376,11 +1376,11 @@ svg.drag-connecting * {
     display: flex;
     align-items: center;
     position: relative;
-    overflow: visible !important;
+    overflow: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
     width: max-content;
     height: max-content;
-    clip-path: none !important;
-    clip: auto !important;
+    clip-path: none !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
     backdrop-filter: none;
 }
 
@@ -1414,7 +1414,7 @@ svg.drag-connecting * {
 
 .toolbar-icon-wrapper {
     position: relative;
-    overflow: visible !important;
+    overflow: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
     z-index: 102;
     isolation: isolate;
 }
@@ -1434,7 +1434,7 @@ svg.drag-connecting * {
     justify-content: center;
     transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
     white-space: nowrap;
-    pointer-events: auto !important;
+    pointer-events: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
     position: relative;
     z-index: 104;
 }
@@ -1480,14 +1480,14 @@ svg.drag-connecting * {
     min-width: 100px;
     width: max-content;
     max-width: none;
-    z-index: 103 !important;
+    z-index: 103 !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
     padding: 6px;
     white-space: nowrap;
-    overflow: visible !important;
-    display: block !important;
-    visibility: visible !important;
-    clip-path: none !important;
-    clip: auto !important;
+    overflow: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    display: block !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    visibility: visible !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip-path: none !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    clip: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
     transform: translateZ(0);
     will-change: transform;
     backdrop-filter: blur(16px);
@@ -1496,8 +1496,8 @@ svg.drag-connecting * {
 /* 向上展开的下拉菜单 - 使用更具体的选择器确保覆盖 */
 .toolbar-icon-wrapper .toolbar-dropdown.toolbar-dropdown-up,
 .toolbar-dropdown.toolbar-dropdown-up {
-    top: auto !important;
-    bottom: calc(100% + 4px) !important;
+    top: auto !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    bottom: calc(100% + 4px) !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
 }
 
 .toolbar-dropdown button {
@@ -1730,28 +1730,28 @@ g.note.preview-hover>circle {
 
     /* 禁止页面整体横向滚动 - 从根元素开始 */
     html {
-        overflow-x: hidden !important;
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         width: 100%;
         max-width: 100%;
         position: relative;
     }
 
     body {
-        overflow-x: hidden !important;
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         width: 100%;
         max-width: 100%;
         position: relative;
     }
 
     #app {
-        overflow-x: hidden !important;
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         width: 100%;
         max-width: 100%;
         position: relative;
     }
 
     main {
-        overflow-x: hidden !important;
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         width: 100%;
         max-width: 100%;
         position: relative;
@@ -1760,33 +1760,33 @@ g.note.preview-hover>circle {
 
     /* 指板图区域横向滚动（唯一允许滚动的区域） */
     .fretboard-stage {
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
+        overflow-x: auto !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-y: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         -webkit-overflow-scrolling: touch;
         width: 100%;
         max-width: 100vw;
-        justify-content: flex-start !important;
+        justify-content: flex-start !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
     }
 
     .fretboard-stage svg {
         /* 手机屏宽有限：板占满行内剩余宽（减拖块22px）、等比缩放，品窗用右侧拖块调 */
-        width: auto !important;
-        max-width: 100% !important;
-        height: auto !important;
-        min-width: 0 !important;
-        flex: 1 1 auto !important;
+        width: auto !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        height: auto !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        min-width: 0 !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        flex: 1 1 auto !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         display: block;
     }
 
     /* 工具区域移动端适配（禁止横向滚动） */
     .menu {
-        flex-direction: column !important;
-        overflow-x: hidden !important;
-        flex-wrap: nowrap !important;
+        flex-direction: column !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        flex-wrap: nowrap !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         width: 100%;
         max-width: 100%;
-        gap: 12px !important;
-        padding: 20px 16px !important;
+        gap: 12px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        padding: 20px 16px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         box-sizing: border-box;
         margin: 0;
     }
@@ -1798,29 +1798,29 @@ g.note.preview-hover>circle {
 
     .menu-left,
     .menu-right {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow-x: hidden !important;
-        padding: 18px 14px !important;
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        padding: 18px 14px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         box-sizing: border-box;
         margin: 0;
     }
 
     .color-selector {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow-x: hidden !important;
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         box-sizing: border-box;
-        padding: 10px 0 12px !important;
+        padding: 10px 0 12px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         margin: 0;
     }
 
     .menu-global-actions {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow-x: hidden !important;
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         box-sizing: border-box;
-        padding: 8px 0 12px !important;
+        padding: 8px 0 12px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         margin: 0;
         justify-content: center;
         grid-template-columns: 28px repeat(3, minmax(0, 1fr));
@@ -1855,9 +1855,9 @@ g.note.preview-hover>circle {
         flex-wrap: wrap;
         padding: var(--m-panel-top) 0 0;
         margin: 0;
-        margin-top: 0 !important;
+        margin-top: 0 !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         justify-content: center;
-        gap: 8px !important;
+        gap: 8px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         align-items: center;
         border: none;
         border-radius: 0;
@@ -1875,30 +1875,30 @@ g.note.preview-hover>circle {
     }
 
     .menu-piano-keyboard {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow-x: hidden !important;
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         box-sizing: border-box;
-        padding: 12px 0 10px !important;
+        padding: 12px 0 10px !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         margin: 0;
     }
 
     .piano-keyboard {
-        max-width: 100% !important;
-        overflow-x: hidden !important;
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
     }
 
     .piano-keys {
-        max-width: 100% !important;
-        overflow-x: hidden !important;
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
     }
 
     .fret-range-slider-wrapper {
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow-x: hidden !important;
+        width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        max-width: 100% !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
+        overflow-x: hidden !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         box-sizing: border-box;
-        padding: 8px 0 0 !important;
+        padding: 8px 0 0 !important; /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
         margin: 0;
     }
 }
@@ -3116,7 +3116,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 .dyn-frame-thumb path.frets,
 .dyn-frame-thumb path.string {
-    stroke-width: 2.5px !important;
+    stroke-width: 2.5px !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
 }
 
 .dyn-frame-thumb g.note>text {
@@ -3148,7 +3148,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 .dynamic-right-panel .menu-download-button,
 .dynamic-right-panel .menu-global-actions,
 .dynamic-right-panel .menu-preset-button {
-    display: none !important;
+    display: none !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
 }
 
 .dynamic-right-panel .menu {
@@ -3264,7 +3264,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 /* 卡片缩略图对比度增强：240px 宽下 1px 线太淡，加粗线/放大字号（viewBox 单位，等比缩放） */
 .dock-clip-board path.frets,
 .dock-clip-board path.string {
-    stroke-width: 2.5px !important;
+    stroke-width: 2.5px !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
 }
 
 .dock-clip-board g.note {
@@ -4361,7 +4361,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
     /* 复制模式条：窄屏允许换行，长提示词在条内折行，不再把标题挤出屏 */
     .cc-copybar { flex-wrap: wrap; gap: 4px 8px; padding: 6px 10px; font-size: var(--app-fs-sm); }
     .cc-copybar-state { white-space: normal; line-height: 1.5; }
-    .app-main { padding: 2px !important; }
+    .app-main { padding: 2px !important; } /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
     .cc-page .cc-body { padding: 2px; }
     .cc-page .cc-score { padding: 6px 6px 6px; }
     .cc-cell { padding: 4px 5px 2px 5px; }
@@ -4586,7 +4586,7 @@ g.drag-fx-layer circle[stroke-dasharray] {
 
 /* 指法图编辑器：hover 连线高亮——退格删连线的目标提示 */
 .figbe-board .connection:hover {
-    stroke-width: 5px !important;
+    stroke-width: 5px !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
     filter: brightness(1.3);
 }
 
@@ -7721,9 +7721,9 @@ html[data-theme="light"] .stitch-btn.danger:hover:not(:disabled) {
 }
 
 .stitch-empty-sub {
-    font-size: 11.5px !important;
-    font-weight: 400 !important;
-    color: var(--app-text-soft) !important;
+    font-size: 11.5px !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    font-weight: 400 !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
+    color: var(--app-text-soft) !important; /* lint-allow-important 防御性覆写（specificity 战争：对手是更晚/更强的复合选择器） */
     line-height: 1.6;
 }
 

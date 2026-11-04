@@ -53,8 +53,17 @@
 - `fretboard.css` 只在 `main.jsx` 引入一次（Fretboard/PianoKeyboard 不许再 import，会双份注入）。
 - 组件 CSS 不带版本参数（Vite 构建自带 hash）。
 
-## 6. 工具
+## 6. !important 政策（P4 定案）
 
-- `npm run lint:css`（或 `node scripts/lint-css.mjs`）：硬规则 + 设计色/!important 存量清单（`--colors` 看明细）。
+- **新增 `!important` 必须带 `/* lint-allow-important 理由 */`**，理由只有三种合法：
+  1. `对抗内联`：CSS 要赢 JS/SVG 内联样式（opacity/stroke/cursor 等，唯一手段）。
+  2. `断点承载层`：媒体查询里压制更晚/更强的复合选择器（实证：删了移动端布局会变）。
+  3. `防御性覆写`：压制同文件更晚的同属性规则（dropdown 定位类）。
+- 存量 102 处已全部分类标注（fretboard.css 79 + FretboardGallery.css 23——后者是死代码文件，未被任何组件加载）。
+- 想去掉某处：先跑页内剥离探针（CSSOM 逐条去 important + 全元素 computed diff，见 v225 提交记录），**移动端视口必须测**——桌面零差异不代表断点内零差异。
+
+## 7. 工具
+
+- `npm run lint:css`（或 `node scripts/lint-css.mjs`）：硬规则（颜色/z/悬空/!important）+ 设计色存量清单（`--colors` 看明细）。
 - 改"存量设计色"（lint 警告清单里的）必须带前后视觉对比，不允许顺手改色。
 - lint 的 JS_INJECTED 白名单：新增 `setProperty("--x")` 时同步维护。
