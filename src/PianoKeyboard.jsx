@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CONSTS } from './constants';
-import './fretboard.css';
 
 function PianoKeyboard({ enharmonic, selectedNote, onNoteSelect }) {
   // 白键：C, D, E, F, G, A, B

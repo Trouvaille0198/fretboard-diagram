@@ -132,9 +132,9 @@ export function DynamicToolbar({
         </button>
         {exportOpen && (
           <>
-            <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setExportOpen(false)} />
+            <div style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-export-veil)' }} onClick={() => setExportOpen(false)} />
             <div className="dyn-export-menu" style={{
-              position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 41,
+              position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 'var(--z-export-menu)',
               background: 'var(--background-color, #10161c)', border: '1px solid var(--border-color, #2a3542)',
               borderRadius: 8, minWidth: 220, padding: '4px 0', boxShadow: '0 8px 24px rgba(0,0,0,.45)'
             }}>

@@ -8,7 +8,7 @@
     border-radius: 18px;
     border: 1px solid var(--app-border);
     box-shadow: var(--app-shadow-md);
-    z-index: 10000;
+    z-index: var(--z-modal-top);
     animation: slideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     font-size: 14px;
     line-height: 1.5;
@@ -28,15 +28,15 @@
 
 .toast.info {
     background:
-        linear-gradient(180deg, rgba(243, 186, 98, 0.16), rgba(255, 255, 255, 0.04)),
+        linear-gradient(180deg, color-mix(in srgb, var(--app-accent) 16%, transparent), color-mix(in srgb, #fff 4%, transparent)),
         var(--app-panel-strong);
-    border-color: rgba(243, 186, 98, 0.26);
-    border-left: 3px solid rgba(243, 186, 98, 0.70);
+    border-color: color-mix(in srgb, var(--app-accent) 26%, transparent);
+    border-left: 3px solid color-mix(in srgb, var(--app-accent) 70%, transparent);
 }
 
 .toast.success {
     background:
-        linear-gradient(180deg, rgba(136, 211, 159, 0.16), rgba(255, 255, 255, 0.04)),
+        linear-gradient(180deg, rgba(136, 211, 159, 0.16), color-mix(in srgb, #fff 4%, transparent)),
         var(--app-panel-strong);
     border-color: rgba(136, 211, 159, 0.28);
     border-left: 3px solid rgba(136, 211, 159, 0.72);
@@ -44,7 +44,7 @@
 
 .toast.error {
     background:
-        linear-gradient(180deg, rgba(240, 138, 132, 0.16), rgba(255, 255, 255, 0.04)),
+        linear-gradient(180deg, rgba(240, 138, 132, 0.16), color-mix(in srgb, #fff 4%, transparent)),
         var(--app-panel-strong);
     border-color: rgba(240, 138, 132, 0.28);
     border-left: 3px solid rgba(240, 138, 132, 0.72);
@@ -52,10 +52,10 @@
 
 .toast.warning {
     background:
-        linear-gradient(180deg, rgba(243, 186, 98, 0.16), rgba(255, 255, 255, 0.04)),
+        linear-gradient(180deg, color-mix(in srgb, var(--app-accent) 16%, transparent), color-mix(in srgb, #fff 4%, transparent)),
         var(--app-panel-strong);
-    border-color: rgba(243, 186, 98, 0.30);
-    border-left: 3px solid rgba(243, 186, 98, 0.72);
+    border-color: color-mix(in srgb, var(--app-accent) 30%, transparent);
+    border-left: 3px solid color-mix(in srgb, var(--app-accent) 72%, transparent);
 }
 
 @keyframes slideIn {

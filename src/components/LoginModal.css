@@ -8,7 +8,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
+    z-index: var(--z-modal-top);
     animation: loginFadeIn 0.18s ease-out;
 }
 
@@ -22,7 +22,7 @@
     background: var(--app-panel-strong, #141c24);
     border: 1px solid var(--app-border-strong, rgba(230, 237, 242, 0.16));
     border-radius: 16px;
-    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 28px 80px color-mix(in srgb, #000 40%, transparent);
     padding: 22px 22px 16px;
     display: flex;
     flex-direction: column;
@@ -54,7 +54,7 @@
 .login-form input {
     border-radius: 9px;
     border: 1px solid var(--app-border-strong, rgba(230, 237, 242, 0.22));
-    background: var(--app-input-bg, rgba(255, 255, 255, 0.045));
+    background: var(--app-input-bg, color-mix(in srgb, #fff 4.5%, transparent));
     color: inherit;
     padding: 9px 11px;
     font-size: 14px;
@@ -64,7 +64,7 @@
 .login-form input:focus {
     outline: none;
     border-color: var(--app-accent, #3d8bff);
-    background: var(--app-input-bg-focus, rgba(255, 255, 255, 0.07));
+    background: var(--app-input-bg-focus, color-mix(in srgb, #fff 7%, transparent));
 }
 
 .login-error {

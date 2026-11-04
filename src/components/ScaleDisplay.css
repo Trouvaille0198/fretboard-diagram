@@ -5,9 +5,9 @@
   border: 1px solid var(--app-border);
   border-radius: 24px;
   background:
-    radial-gradient(120% 120% at 8% 0%, rgba(243, 186, 98, 0.18) 0%, rgba(243, 186, 98, 0) 55%),
+    radial-gradient(120% 120% at 8% 0%, color-mix(in srgb, var(--app-accent) 18%, transparent) 0%, color-mix(in srgb, var(--app-accent) 0%, transparent) 55%),
     radial-gradient(110% 130% at 100% 100%, rgba(126, 199, 220, 0.16) 0%, rgba(126, 199, 220, 0) 58%),
-    linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
+    linear-gradient(160deg, color-mix(in srgb, #fff 6%, transparent), color-mix(in srgb, #fff 3%, transparent)),
     var(--app-panel);
   box-shadow: var(--app-shadow-md);
   backdrop-filter: blur(16px);
@@ -68,7 +68,7 @@
   padding: 9px 6px 10px;
   border-radius: 16px;
   border: 1px solid rgba(230, 237, 242, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  background: linear-gradient(180deg, color-mix(in srgb, #fff 8%, transparent), color-mix(in srgb, #fff 3%, transparent));
   text-align: center;
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
@@ -76,8 +76,8 @@
 
 .scale-degree-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(243, 186, 98, 0.18);
-  border-color: rgba(243, 186, 98, 0.22);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.26), 0 0 0 1px color-mix(in srgb, var(--app-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--app-accent) 22%, transparent);
 }
 
 .scale-degree-index {
@@ -122,7 +122,7 @@
 
 html[data-theme="light"] .scale-display {
   background:
-    radial-gradient(120% 120% at 8% 0%, rgba(243, 186, 98, 0.18) 0%, rgba(243, 186, 98, 0) 52%),
+    radial-gradient(120% 120% at 8% 0%, color-mix(in srgb, var(--app-accent) 18%, transparent) 0%, color-mix(in srgb, var(--app-accent) 0%, transparent) 52%),
     radial-gradient(110% 130% at 100% 100%, rgba(126, 199, 220, 0.14) 0%, rgba(126, 199, 220, 0) 56%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(245, 249, 252, 0.96)),
     var(--app-panel);
