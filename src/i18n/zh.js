@@ -173,6 +173,13 @@ export const zh = {
         copyCode: "复制分享码",
         shareCodeTip: "复制分享码：对方粘贴即可 100% 还原整首谱",
         sharedCode: "分享码已复制（对方在和弦谱页「从分享码导入」即可 100% 还原）",
+        // 分享链接的实时跟进开关（短链弹窗里）
+        shareLive: "实时跟进我的最新版本",
+        shareLiveHint: "开启后对方打开链接看到的是你的云端最新版，每次保存自动跟进；关闭则定格当前内容。链接不变。",
+        shareLiveOn: "已开启实时：链接将跟随你的最新版本",
+        shareLiveOff: "已切回快照：链接定格当前内容",
+        shareLiveNeedLogin: "实时链接需要登录同步服务",
+        closeBtn: "关闭",
         playAll: "播放",
         stop: "停止",
         stageShow: "指板预览",

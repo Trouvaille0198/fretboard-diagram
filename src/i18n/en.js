@@ -172,6 +172,13 @@ export const en = {
         copyCode: "Copy share code",
         shareCodeTip: "Copy a share code: the other side pastes it to restore the song 100%",
         sharedCode: "Share code copied (paste it via “Import from share code” for a 100% restore)",
+        // Live-follow toggle in the share-link dialog (short links only)
+        shareLive: "Follow my latest version (live)",
+        shareLiveHint: "When on, viewers see your latest cloud version and get every save pushed automatically; off freezes the current content. The link itself never changes.",
+        shareLiveOn: "Live on: the link now follows your latest version",
+        shareLiveOff: "Back to snapshot: the link freezes the current content",
+        shareLiveNeedLogin: "Live links require signing in to the sync service",
+        closeBtn: "Close",
         playAll: "Play",
         stop: "Stop",
         stageShow: "Fretboard preview",
