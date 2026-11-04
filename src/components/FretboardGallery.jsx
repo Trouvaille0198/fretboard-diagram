@@ -771,7 +771,7 @@ export function FretboardGallery({
             position: 'fixed',
             left: `${contextMenu.x}px`,
             top: `${contextMenu.y}px`,
-            zIndex: 100000
+            zIndex: 'var(--z-max)'
           }}
           onClick={(e) => e.stopPropagation()}
         >

@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react';
-import './fretboard.css';
 import { CONSTS } from './constants';
 import { updateNote, inlineCSS, noteToSolfege, calculateConnectionColor, getColorName } from './utils';
 import { initColorCSSVariables } from './colorConfig';

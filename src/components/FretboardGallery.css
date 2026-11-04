@@ -5,7 +5,7 @@
     width: 420px;
     height: 100vh;
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+        linear-gradient(180deg, color-mix(in srgb, #fff 5%, transparent), color-mix(in srgb, #fff 2%, transparent)),
         var(--app-panel-strong);
     border-right: 1px solid var(--app-border);
     box-shadow: 24px 0 48px rgba(0, 0, 0, 0.24);
@@ -15,7 +15,7 @@
     padding: 0;
     margin: 0;
     overflow: hidden;
-    z-index: 1000;
+    z-index: var(--z-dock);
     transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
     transform: translateX(-100%);
 }
@@ -32,7 +32,7 @@
     width: 48px;
     height: 48px;
     background:
-        linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%),
+        linear-gradient(160deg, color-mix(in srgb, #fff 8%, transparent) 0%, color-mix(in srgb, #fff 3%, transparent) 100%),
         var(--app-panel);
     border: 1px solid var(--app-border);
     border-radius: 16px;
@@ -42,7 +42,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999;
+    z-index: var(--z-dock-toggle);
     transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
     color: var(--app-text);
     font-size: 20px;
@@ -50,11 +50,11 @@
 
 .gallery-toggle-btn:hover {
     background:
-        linear-gradient(160deg, rgba(243, 186, 98, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%),
+        linear-gradient(160deg, color-mix(in srgb, var(--app-accent) 18%, transparent) 0%, color-mix(in srgb, #fff 4%, transparent) 100%),
         var(--app-panel);
-    border-color: rgba(243, 186, 98, 0.38);
+    border-color: color-mix(in srgb, var(--app-accent) 38%, transparent);
     transform: translateY(-2px) scale(1.05);
-    box-shadow: var(--app-shadow-md), 0 0 0 1px rgba(243, 186, 98, 0.16), 0 0 22px rgba(243, 186, 98, 0.14);
+    box-shadow: var(--app-shadow-md), 0 0 0 1px color-mix(in srgb, var(--app-accent) 16%, transparent), 0 0 22px color-mix(in srgb, var(--app-accent) 14%, transparent);
 }
 
 .gallery-toggle-btn.open {
@@ -69,7 +69,7 @@
     padding: 18px 18px 16px;
     position: relative;
     border-bottom: 1px solid var(--app-border);
-    background: rgba(255, 255, 255, 0.02);
+    background: color-mix(in srgb, #fff 2%, transparent);
     flex-shrink: 0;
 }
 
@@ -88,7 +88,7 @@
 .gallery-export-btn {
     padding: 6px 12px;
     min-height: 34px;
-    background: rgba(255, 255, 255, 0.04);
+    background: color-mix(in srgb, #fff 4%, transparent);
     border: 1px solid var(--app-border);
     border-radius: 999px;
     cursor: pointer;
@@ -133,13 +133,13 @@
 }
 
 .gallery-import-btn:hover {
-    background: rgba(243, 186, 98, 0.14);
+    background: color-mix(in srgb, var(--app-accent) 14%, transparent);
     border-color: var(--app-border-strong);
     color: #ffe1ac;
 }
 
 .gallery-import-btn:active {
-    background: rgba(243, 186, 98, 0.2);
+    background: color-mix(in srgb, var(--app-accent) 20%, transparent);
 }
 
 .gallery-empty {
@@ -166,7 +166,7 @@
 }
 
 .gallery-grid::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.04);
+    background: color-mix(in srgb, #fff 4%, transparent);
 }
 
 .gallery-grid::-webkit-scrollbar-thumb {
@@ -185,7 +185,7 @@
     border-radius: 18px;
     overflow: visible;
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+        linear-gradient(180deg, color-mix(in srgb, #fff 6%, transparent), color-mix(in srgb, #fff 2%, transparent)),
         rgba(8, 15, 20, 0.62);
     border: 1px solid transparent;
     position: relative;
@@ -199,10 +199,10 @@
 
 .gallery-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(243, 186, 98, 0.14);
-    border-color: rgba(243, 186, 98, 0.24);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.26), 0 0 0 1px color-mix(in srgb, var(--app-accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 24%, transparent);
     background:
-        linear-gradient(180deg, rgba(243, 186, 98, 0.09), rgba(255, 255, 255, 0.02)),
+        linear-gradient(180deg, color-mix(in srgb, var(--app-accent) 9%, transparent), color-mix(in srgb, #fff 2%, transparent)),
         rgba(8, 15, 20, 0.86);
 }
 
@@ -308,8 +308,8 @@
 }
 
 .gallery-share-btn:hover {
-    background: rgba(243, 186, 98, 0.20);
-    border-color: rgba(243, 186, 98, 0.32);
+    background: color-mix(in srgb, var(--app-accent) 20%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 32%, transparent);
     transform: translateY(-1px) scale(1.08);
 }
 
@@ -333,7 +333,7 @@
 }
 
 .gallery-item-name:hover {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: color-mix(in srgb, #fff 8%, transparent);
     color: var(--app-text);
 }
 
@@ -351,7 +351,7 @@
 
 .gallery-item-name-input:focus {
     border-color: var(--app-border-strong);
-    box-shadow: 0 0 0 3px rgba(243, 186, 98, 0.16);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 16%, transparent);
 }
 
 .import-dialog-overlay {
@@ -365,13 +365,13 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    z-index: 9999 !important;
+    z-index: var(--z-modal-top-veil) !important;
     isolation: isolate !important;
 }
 
 .import-dialog {
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
+        linear-gradient(180deg, color-mix(in srgb, #fff 6%, transparent), color-mix(in srgb, #fff 3%, transparent)),
         var(--app-panel-strong) !important;
     border: 1px solid var(--app-border) !important;
     border-radius: 24px !important;
@@ -381,7 +381,7 @@
     max-height: 80vh !important;
     overflow-y: auto !important;
     position: relative !important;
-    z-index: 10000 !important;
+    z-index: var(--z-modal-top) !important;
     box-shadow: var(--app-shadow-lg) !important;
 }
 
@@ -413,7 +413,7 @@
 .import-textarea:focus {
     outline: none;
     border-color: var(--app-border-strong);
-    box-shadow: 0 0 0 3px rgba(243, 186, 98, 0.16);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 16%, transparent);
 }
 
 .import-dialog-buttons {
@@ -482,7 +482,7 @@
 /* 目录标签栏样式 */
 .directory-tabs {
     border-bottom: 1px solid var(--app-border);
-    background: rgba(255, 255, 255, 0.02);
+    background: color-mix(in srgb, #fff 2%, transparent);
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -494,7 +494,7 @@
 }
 
 .directory-tabs::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.04);
+    background: color-mix(in srgb, #fff 4%, transparent);
 }
 
 .directory-tabs::-webkit-scrollbar-thumb {
@@ -521,7 +521,7 @@
     padding: 8px 14px;
     min-width: 60px;
     max-width: 150px;
-    background: rgba(255, 255, 255, 0.05);
+    background: color-mix(in srgb, #fff 5%, transparent);
     border: 1px solid transparent;
     border-radius: 999px;
     cursor: pointer;
@@ -530,14 +530,14 @@
 }
 
 .directory-tab:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, #fff 8%, transparent);
     border-color: rgba(230, 237, 242, 0.08);
 }
 
 .directory-tab.active {
-    background: rgba(243, 186, 98, 0.14);
-    border-color: rgba(243, 186, 98, 0.32);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(243, 186, 98, 0.10);
+    background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 32%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 8%, transparent), 0 0 0 1px color-mix(in srgb, var(--app-accent) 10%, transparent);
 }
 
 .directory-tab-name {
@@ -568,7 +568,7 @@
 
 .directory-tab-input:focus {
     border-color: var(--app-border-strong);
-    box-shadow: 0 0 0 3px rgba(243, 186, 98, 0.16);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 16%, transparent);
 }
 
 .directory-tab-close {
@@ -602,7 +602,7 @@
     width: 28px;
     height: 28px;
     margin: 2px 0;
-    background: rgba(255, 255, 255, 0.05);
+    background: color-mix(in srgb, #fff 5%, transparent);
     border: 1px solid var(--app-border);
     border-radius: 999px;
     color: var(--app-text-muted);
@@ -614,26 +614,26 @@
 }
 
 .directory-tab-add:hover {
-    background: rgba(243, 186, 98, 0.13);
-    border-color: rgba(243, 186, 98, 0.30);
+    background: color-mix(in srgb, var(--app-accent) 13%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 30%, transparent);
     color: var(--app-text);
     transform: scale(1.14);
 }
 
 .gallery-export-btn:hover {
-    background: rgba(243, 186, 98, 0.16);
+    background: color-mix(in srgb, var(--app-accent) 16%, transparent);
     border-color: var(--app-border-strong);
     color: #ffe1ac;
 }
 
 .gallery-export-btn:active {
-    background: rgba(243, 186, 98, 0.2);
+    background: color-mix(in srgb, var(--app-accent) 20%, transparent);
 }
 
 /* 右键菜单 */
 .directory-context-menu {
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+        linear-gradient(180deg, color-mix(in srgb, #fff 7%, transparent), color-mix(in srgb, #fff 3%, transparent)),
         var(--app-panel-strong);
     border: 1px solid var(--app-border);
     border-radius: 16px;
@@ -653,7 +653,7 @@
 }
 
 .context-menu-item:hover {
-    background: rgba(243, 186, 98, 0.12);
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
     color: var(--app-text);
 }
 
@@ -661,7 +661,7 @@
 .mode-tab {
     flex: 1;
     padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.04);
+    background: color-mix(in srgb, #fff 4%, transparent);
     border: 1px solid var(--app-border);
     border-radius: 999px;
     cursor: pointer;
@@ -677,16 +677,16 @@
 }
 
 .mode-tab:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, #fff 8%, transparent);
     color: var(--app-text);
     border-color: var(--app-border-strong);
 }
 
 .mode-tab.active {
-    background: rgba(243, 186, 98, 0.14);
-    border-color: rgba(243, 186, 98, 0.32);
+    background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 32%, transparent);
     color: #ffe1ac;
-    box-shadow: 0 0 0 1px rgba(243, 186, 98, 0.12);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-accent) 12%, transparent);
 }
 
 /* 导入文件输入框 */

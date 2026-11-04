@@ -52,8 +52,8 @@ export class ErrorBoundary extends React.Component {
             margin: '15vh auto 0',
             padding: '28px 26px',
             borderRadius: '16px',
-            background: 'rgba(18, 26, 33, 0.96)',
-            color: '#e8eef4',
+            background: 'var(--app-panel-strong, rgba(18, 26, 33, 0.96))',
+            color: 'var(--app-text, #e8eef4)',
             fontFamily: 'system-ui, sans-serif',
             textAlign: 'center',
             boxShadow: '0 18px 48px rgba(0, 0, 0, 0.35)'
@@ -62,9 +62,9 @@ export class ErrorBoundary extends React.Component {
             margin: '0 6px',
             padding: '9px 18px',
             borderRadius: '999px',
-            border: '1px solid rgba(243, 186, 98, 0.4)',
-            background: 'rgba(243, 186, 98, 0.14)',
-            color: '#f3ba62',
+            border: '1px solid color-mix(in srgb, var(--app-accent) 40%, transparent)',
+            background: 'color-mix(in srgb, var(--app-accent) 14%, transparent)',
+            color: 'var(--app-accent, #f3ba62)',
             fontSize: '14px',
             cursor: 'pointer'
         };
@@ -80,7 +80,7 @@ export class ErrorBoundary extends React.Component {
                 </p>
                 <div>
                     <button style={buttonStyle} onClick={this.handleReload}>重新加载 / Reload</button>
-                    <button style={{ ...buttonStyle, borderColor: 'rgba(255, 107, 107, 0.45)', color: '#ff8787', background: 'rgba(255, 107, 107, 0.1)' }} onClick={this.handleReset}>
+                    <button style={{ ...buttonStyle, borderColor: 'color-mix(in srgb, var(--app-danger) 45%, transparent)', color: 'var(--app-danger, #ff8787)', background: 'color-mix(in srgb, var(--app-danger) 10%, transparent)' }} onClick={this.handleReset}>
                         清除数据并重置 / Reset
                     </button>
                 </div>

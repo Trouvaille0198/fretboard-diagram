@@ -31,7 +31,7 @@ function App() {
   // #/chords 本身 = 曲目列表（库）；#/chords?id=xxx = 某首曲子的编辑页（可刷新/可深链）
   const chordId = chords ? (new URLSearchParams((route.split('?')[1] || '')).get('id') || null) : null;
   const mode = (chords || sharing) ? 'chords' : (dynamic ? 'dynamic' : 'normal');
-  if (!ready) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: '#9fb2c0' }}>加载曲库…</div>;
+  if (!ready) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--app-text-fig-soft, #9fb2c0)' }}>加载曲库…</div>;
   return (
     <LanguageProvider>
       <TopNav mode={mode} />
