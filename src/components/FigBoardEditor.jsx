@@ -343,8 +343,6 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     <div className="figbe">
       <div className="figbe-top">
         <span className="figbe-title">指法图{chord ? ` · ${formatName(chord, viewKey || { root: 0, minor: false })}` : ""}</span>
-        {chord ? <button className="button sm" title={panelTab === 'recent' ? '查看形状库候选（按当前和弦匹配）' : '查看本曲同和弦的既有指法'}
-          onClick={() => setPanelTab(t => (t === 'recent' ? 'shapes' : 'recent'))}>{panelTab === 'recent' ? '形状库' : '最近同和弦'}</button> : null}
         <button className="button sm" onClick={openSave}>存为形状</button>
         {positions ? <button className="button sm" onClick={cyclePos}
           title={`形状不变，整体升高八度（当前 @${lastCand.rootFret} 品 → 下一个 @${(positions.same.find(c => c.rootFret > lastCand.rootFret) ?? positions.same[0]).rootFret} 品，到底回绕）`}>换把位</button> : null}
@@ -441,70 +439,37 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
               {conn.connectionMode ? <button className="button" onClick={() => conn.setConnectionMode(false)} title="退出连线（右键同）">✕</button> : null}
             </div>
           </div>
-          <div className="figbe-side-block">
-            <div className="figbe-side-title">预览</div>
-            <div className="figbe-preview" dangerouslySetInnerHTML={{
-              __html: (() => {
-                // 与 FigView 同口径:从 data 直推点集与品窗;划音幽灵起点(透明音)也带入(ghost:true)
-                const pts = [];
-                const ghostIds = new Set();
-                Object.values(data.connections || {}).forEach(c => { ghostIds.add(c.startNoteId); ghostIds.add(c.endNoteId); });
-                Object.entries(data).forEach(([id, n]) => {
-                  if (id === 'connections' || id.startsWith('conn-')) return;
-                  if (!n || (n.visibility !== 'visible' && n.visibility !== 'selected')) {
-                    if (ghostIds.has(id) && n) {
-                      const mg = /^(?:o|f(-?\d+))-s(\d)$/.exec(id);
-                      if (mg) pts.push({ string: +mg[2], fret: mg[1] === undefined ? 0 : +mg[1] + 1, ghost: true });
-                    }
-                    return;
-                  }
-                  const m = /^(?:o|f(-?\d+))-s(\d)$/.exec(id);
-                  if (m) pts.push({ string: +m[2], fret: m[1] === undefined ? 0 : +m[1] + 1 });
-                });
-                const pressed = pts.map(p => p.fret);
-                const startFret = pressed.length ? Math.min(...pressed) : 1;
-                const window = Math.max(4, Math.min(6, (pressed.length ? Math.max(...pressed) : startFret) - startFret + 1));
-                const links = [];
-                Object.values(data.connections || {}).forEach(c => {
-                  const idOf = (nid) => { const m = /^(?:o|f(-?\d+))-s(\d)$/.exec(nid); return m ? { string: +m[2], fret: m[1] === undefined ? 0 : +m[1] + 1 } : null; };
-                  const a = idOf(c.startNoteId), b = idOf(c.endNoteId);
-                  // 样式随主板预设带入(直线/弧、箭头)——与 boardFigData 同口径
-                  if (a && b) links.push({ a, b, type: c.type === 'arc' ? 'arc' : 'line', arrowDirection: c.arrowDirection || 'none' });
-                });
-                return figSvg({ points: pts, links, startFret, window, rootPc: null, fail: !pts.length }, figOpts || { degMode: 'chord' });
-              })(),
-            }} />
+          <div className="figbe-side-block figbe-panel">
+            <div className="figbe-side-head">
+              <div className="figbe-side-title">和弦图{chord ? '' : ' · 无和弦拍'}</div>
+              {chord ? <button className="button sm figbe-panel-toggle" title={panelTab === 'recent' ? '查看形状库候选（按当前和弦匹配）' : '查看本曲同和弦的既有指法'}
+                onClick={() => setPanelTab(t => (t === 'recent' ? 'shapes' : 'recent'))}>{panelTab === 'recent' ? '形状库' : '最近同和弦'}</button> : null}
+            </div>
+            {panelTab === 'recent' ? (
+              <div className="figbe-shapes-title">{(recentFigs || []).length ? `${recentFigs.length} 个同和弦指法 · 点击应用` : '本曲暂无相同和弦的指法图（或切「形状库」挑一个）'}</div>
+            ) : (
+              <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选 · 点击应用，右键重命名/删除` : '暂无形状'}</div>
+            )}
+            <div className="figbe-shapes-list figbe-panel-list">
+              {panelTab === 'recent'
+                ? (recentFigs || []).map((item, i) => (
+                  <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={`第${item.mi + 1}小节（点击应用）`}>
+                    <span dangerouslySetInnerHTML={{ __html: figSvg(boardFigData(item.fig, chord, viewKey || { root: 0, minor: false }), { degMode: figOpts?.degMode ?? 'chord', orientation: figOpts?.orientation, size: figOpts?.size ?? 44, key: viewKey || { root: 0, minor: false } }) }} />
+                    <em>{`第${item.mi + 1}小节`}</em>
+                  </button>
+                ))
+                : candidates.map((c, i) => (
+                  <button key={i} className="figbe-shape" onClick={() => applyCandidate(c)}
+                    onContextMenu={e => openCandMenu(e, c.shape)} title={`${c.shape.name} @${c.rootFret}品`}>
+                    <span dangerouslySetInnerHTML={{ __html: figSvg({ points: c.points.map(p => ({ string: p.string, fret: p.fret })), links: [], startFret: Math.min(...c.points.filter(p => p.fret > 0).map(p => p.fret), 13), window: 4, rootPc: c.rootPc, fail: false }, { degMode: 'none', size: 44 }) }} />
+                    <em>{c.rootFret === 0 ? '开放把' : c.rootFret + '品'}</em>
+                    <small>{c.shape.name}</small>
+                  </button>
+                ))}
+            </div>
           </div>
         </div>
       </div>
-
-      {panelTab === 'recent' ? (
-        <div className="figbe-shapes">
-          <div className="figbe-shapes-title">{(recentFigs || []).length ? `${recentFigs.length} 个同和弦指法 · 点击应用（按当前和弦的 Root 换算，永远是同一组唱名）` : '本曲暂无相同和弦的指法图（先在别处给这个和弦配个图，或切「形状库」挑一个）'}</div>
-          <div className="figbe-shapes-list">
-            {(recentFigs || []).map((item, i) => (
-              <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={`第${item.mi + 1}小节（点击应用）`}>
-                <span dangerouslySetInnerHTML={{ __html: figSvg(boardFigData(item.fig, chord, viewKey || { root: 0, minor: false }), { degMode: figOpts?.degMode ?? 'chord', orientation: figOpts?.orientation, size: figOpts?.size ?? 44, key: viewKey || { root: 0, minor: false } }) }} />
-                <em>{`第${item.mi + 1}小节`}</em>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="figbe-shapes">
-          <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选 · 点击应用，右键重命名/删除` : '暂无形状'}</div>
-          <div className="figbe-shapes-list">
-            {candidates.map((c, i) => (
-              <button key={i} className="figbe-shape" onClick={() => applyCandidate(c)}
-                onContextMenu={e => openCandMenu(e, c.shape)} title={`${c.shape.name} @${c.rootFret}品`}>
-                <span dangerouslySetInnerHTML={{ __html: figSvg({ points: c.points.map(p => ({ string: p.string, fret: p.fret })), links: [], startFret: Math.min(...c.points.filter(p => p.fret > 0).map(p => p.fret), 13), window: 4, rootPc: c.rootPc, fail: false }, { degMode: 'none', size: 44 }) }} />
-                <em>{c.rootFret === 0 ? '开放把' : c.rootFret + '品'}</em>
-                <small>{c.shape.name}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {candMenu ? (
         <div className="figbe-cmenu" style={{ left: Math.min(candMenu.x, window.innerWidth - 180), top: Math.min(candMenu.y, window.innerHeight - 110) }}>
