@@ -3165,6 +3165,51 @@ g.drag-fx-layer circle[stroke-dasharray] {
     background: var(--app-border, var(--app-line));
 }
 
+/* 导出菜单（v225 前全内联，收编为类；hover 由 CSS 接管，不再 JS 突变 style） */
+.dyn-export-veil {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-export-veil);
+}
+
+.dyn-export-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: var(--z-export-menu);
+    background: var(--background-color, #10161c);
+    border: 1px solid var(--border-color, #2a3542);
+    border-radius: 8px;
+    min-width: 220px;
+    padding: 4px 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); /* lint-allow-color 阴影黑 */
+}
+
+.dyn-export-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 8px 14px;
+    cursor: pointer;
+    font: inherit;
+}
+
+.dyn-export-item:hover:not(:disabled) {
+    background: color-mix(in srgb, #fff 6%, transparent);
+}
+
+.dyn-export-item-label {
+    font-weight: 600;
+}
+
+.dyn-export-item-hint {
+    font-size: 12px;
+    opacity: 0.65;
+}
+
 .dyn-settings-sep {
     margin: 8px 0 4px;
     font-size: var(--app-fs-sm);
