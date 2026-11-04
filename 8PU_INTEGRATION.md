@@ -42,10 +42,10 @@
 | 模块 | 现状 | 位置 |
 | --- | --- | --- |
 | 动图系统 | clip = `{id, name, frames[], transitions[]}`，技法 sl/rt/hp/pre/bd/chain，导出 GIF/WebM/MP4/SMIL-SVG/JSON（`fretboard-clip-data` v1），localStorage+云同步 | `useDynamicMode.js`、`clipModel.js`、`timeline.js` |
-| **SongScoreView** | **已按"8pu 式"设计的独立谱子页原型：小节（measureId 分组）+ 每小节 {chord, jianpu, lyrics} + 歌曲级 {bpm, beatsPerBar, isMinor} + 文本谱/动态谱两页签 + SVG/PNG 导出。但没接线——全仓库无 import 引用** | `SongScoreView.jsx`（挂起的原型） |
+| **SongScoreView** | **已删除（v228）：曾是"8pu 式"独立谱子页死代码原型（文本谱/动态谱两页签），全仓库无 import，随「动态谱」机制一并移除** | — |
 | 乐理基建 | `parseChordToken`/`chordDisplay`（级数⇄音名双向）、rootNote/enharmonic、computeNoteName（品+弦→音名） | `songStructure.js` |
 | 分享 | `fretboard://` LZ-string（单板面）、clip JSON（动图） | `fretboardShare.js` |
-| 缺口 | ① 无 pitch→(弦,品) 反向映射；② 无 MusicXML/MIDI 解析器；③ SongScoreView 未挂载；④ 歌曲视图帧与动图 clip 帧是两套数据 | — |
+| 缺口 | ① 无 pitch→(弦,品) 反向映射；② 无 MusicXML/MIDI 解析器；③ ~~SongScoreView 未挂载~~（v228 已删除）；④ 歌曲视图帧与动图 clip 帧是两套数据 | — |
 
 ## 三、串联方案（按可行性排序）
 

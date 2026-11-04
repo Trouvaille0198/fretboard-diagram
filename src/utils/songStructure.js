@@ -1,64 +1,4 @@
-import { CONSTS } from "../constants.js";
-
-// ============ 小节 / 帧结构 ============
-
-const META_KEY = "fretboard-measure-meta";
-
-export function readMeasureMeta() {
-	try {
-		return JSON.parse(localStorage.getItem(META_KEY) || "{}");
-	} catch (error) {
-		console.error("读取小节信息失败:", error);
-		return {};
-	}
-}
-
-export function writeMeasureMeta(meta) {
-	try {
-		localStorage.setItem(META_KEY, JSON.stringify(meta));
-	} catch (error) {
-		console.error("保存小节信息失败:", error);
-	}
-}
-
-export function measureIdOf(snapshot) {
-	return snapshot?.measureId || snapshot?.id;
-}
-
-// history 数组是"新的在前"，先反转成时间正序再按 measureId 分组
-// 没标 measureId 的旧快照各自成单帧小节（惰性迁移，不重写数据）
-export function deriveMeasures(historyStates, directoryId) {
-	const ordered = (historyStates || [])
-		.filter(s => s.directoryId === directoryId)
-		.slice()
-		.reverse();
-
-	const measures = [];
-	const byId = new Map();
-	ordered.forEach(snapshot => {
-		const mid = measureIdOf(snapshot);
-		if (!byId.has(mid)) {
-			const measure = { id: mid, frames: [] };
-			byId.set(mid, measure);
-			measures.push(measure);
-		}
-		byId.get(mid).frames.push(snapshot);
-	});
-	return measures;
-}
-
-// 展平的帧序列（播放用）
-export function flattenFrames(measures) {
-	const list = [];
-	measures.forEach((measure, m) => {
-		measure.frames.forEach((frame, f) => {
-			list.push({ measure, frame, m, f });
-		});
-	});
-	return list;
-}
-
-// ============ 帧差异（小节内"变化"的来源） ============
+// ============ 帧结构 ============
 
 // 一帧里正在发声的音符：可见且有颜色
 export function activeNoteIdsOf(state) {
@@ -78,32 +18,6 @@ export function stringOfNote(noteId) {
 	if (noteId.startsWith("o-s")) return parseInt(noteId.slice(3), 10);
 	const match = noteId.match(/-s(\d+)$/);
 	return match ? parseInt(match[1], 10) : null;
-}
-
-// 相邻两帧的差异：进入的音、退出的音、同弦配对（滑/击/勾的转移）
-export function diffFrames(prevState, nextState) {
-	const prev = activeNoteIdsOf(prevState);
-	const next = activeNoteIdsOf(nextState);
-	const removed = [...prev].filter(id => !next.has(id));
-	const added = [...next].filter(id => !prev.has(id));
-
-	const pairs = [];
-	const usedAdded = new Set();
-	const usedRemoved = new Set();
-	removed.forEach(fromId => {
-		const toId = added.find(id => !usedAdded.has(id) && stringOfNote(id) === stringOfNote(fromId));
-		if (toId !== undefined) {
-			pairs.push({ fromId, toId });
-			usedAdded.add(toId);
-			usedRemoved.add(fromId);
-		}
-	});
-
-	return {
-		entered: added.filter(id => !usedAdded.has(id)),
-		exited: removed.filter(id => !usedRemoved.has(id)),
-		pairs
-	};
 }
 
 // ============ 和弦：级数 ⇄ 音名 ============
