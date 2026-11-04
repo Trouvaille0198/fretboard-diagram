@@ -219,7 +219,8 @@ console.log("== chordLib：变化音与新质量 ==");
 		&& chordSignParts({ degree: 3, acc: -1, quality: "", bass: null }, "degree", C).degree === "b3");
 	A("signParts：maj7 用全称后缀、罗马/音名模式", chordSignParts({ degree: 4, acc: 0, quality: "maj7", bass: null }, "degree", C).suffix === "maj7"
 		&& chordSignParts({ degree: 5, acc: 0, quality: "7", bass: null }, "roman", C).degree === "V"
-		&& chordSignParts({ degree: 5, acc: 0, quality: "7", bass: null }, "name", C).flat === "G7");
+		&& chordSignParts({ degree: 5, acc: 0, quality: "7", bass: null }, "name", C).degree === "G"
+		&& chordSignParts({ degree: 5, acc: 0, quality: "7", bass: null }, "name", C).suffix === "7");
 		A("自然变化音 pcs：C7(9,13)", eq(chordPcs({ degree: 1, quality: "7", alt: ["9", "13"] }, C).pcs, [0, 2, 4, 7, 9, 10]));
 		A("b5/#5 pcs：C7b5 / C7#5", eq(chordPcs({ degree: 1, quality: "7", alt: ["b5"] }, C).pcs, [0, 4, 6, 10])
 			&& eq(chordPcs({ degree: 1, quality: "7", alt: ["#5"] }, C).pcs, [0, 4, 8, 10]));

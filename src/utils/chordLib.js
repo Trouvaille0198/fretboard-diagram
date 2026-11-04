@@ -234,10 +234,18 @@ export function formatRomanParts(chord, viewKey) {
 //   degree = 级数（含变音记号，罗马模式=罗马数字大小写）→ 装框
 //   suffix = 质量后缀 + 变化音（小字跟在框外）
 //   bass   = "/n" 转位低音（再小一号）
-// 音名模式不分层，返回 flat = 整个音名（音名本身自分隔）
+// 音名模式与数字/罗马同构：degree = 根音名(D#/Eb)，suffix = 质量+变化音(m9/b13…)，bass = "/G"——
+// 整个名字塞一个 span 会让音名比数字模式小一圈（实测 D#m9 整体 13px vs 数字 6 的 24px）
 export function chordSignParts(chord, display, viewKey) {
 	if (!chord) return null;
-	if (display === "name") return { degree: "", suffix: "", bass: "", flat: formatName(chord, viewKey) };
+	if (display === "name") {
+		const accPref = (a) => (a < 0 ? "flat" : a > 0 ? "sharp" : null);
+		const root = nameOfPc(degreePc(chord.degree, chord.acc, viewKey), viewKey, accPref(chord.acc || 0));
+		const q0 = resolvedQuality(chord, viewKey);
+		const suffix = (q0 === "M" ? "" : q0) + altText(chord); // 显式大三 M 不带后缀（A 就是 A 大三）
+		const bass = chord.bass ? "/" + nameOfPc(degreePc(chord.bass.degree, chord.bass.acc, viewKey), viewKey, accPref(chord.bass.acc || 0)) : "";
+		return { degree: root, suffix, bass };
+	}
 	if (display === "roman") {
 		const p = formatRomanParts(chord, viewKey);
 		const toks = p.sub ? p.sub.split(" ") : [];
