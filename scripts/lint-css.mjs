@@ -1,11 +1,10 @@
 // CSS 样式纪律 lint：token 化/分层/悬空变量/!important 四类规则（零依赖，配合提交前全绿）
 // 规则细则见 STYLE_GUIDE.md；违例 = 退出码 1
-// 用法：node scripts/lint-css.mjs [--strict-important]（P4 清完 !important 后去掉 flag 转常开）
+// 用法：node scripts/lint-css.mjs [--colors 查看设计色清单]
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
-const strictImportant = process.argv.includes('--strict-important');
 
 // JS 运行时注入的变量（colorConfig.js initColorCSSVariables 22 个 + ChordChartView 2 个），
 // CSS 里裸引用不算悬空；新增 setProperty 时同步维护这里
@@ -106,22 +105,18 @@ for (const f of files) {
             }
         }
 
-        // ④ !important：逐个清零中（--strict-important 时违例；否则计数警告）
+        // ④ !important：v225 起存量已全部分类标注（lint-allow-important + 理由）；新增必须显式声明理由
         if (/!important/.test(line) && !allowed('important')) {
-            (strictImportant ? problems : warn).push(strictImportant
-                ? `${rel}:${no}: !important 需清除或加 /* lint-allow-important */ 注明存在理由\n    | ${line.trim().slice(0, 120)}`
-                : `${rel}:${no}: !important ×1（P4 清理目标）`);
+            addProblem(rel, line, no, '!important 需注明存在理由：加 /* lint-allow-important 对抗内联|断点承载层|防御性覆写 */（细则见 STYLE_GUIDE）');
         }
     });
 }
 
 // ---------- 汇总 ----------
-const imp = warn.filter(w => w.includes('!important'));
-const colorWarn = warn.filter(w => !w.includes('!important'));
+const colorWarn = warn;
 console.log(`lint-css：扫描 ${files.length} 个文件`);
-if (imp.length) console.log(`⚠ !important 残留 ${imp.length} 处（宽松计数；P4 清完后 --strict-important 转违例）`);
 if (colorWarn.length && process.argv.includes('--colors')) colorWarn.forEach(w => console.log('⚠', w));
 else if (colorWarn.length) console.log(`⚠ 未识别颜色（存量设计色清单）${colorWarn.length} 处（--colors 查看；改动需带视觉对比）`);
 for (const p of problems) console.log('✗', p);
-console.log(problems.length ? `\n✗ ${problems.length} 处违例` : imp.length || colorWarn.length ? `\n✓ 硬性规则全过（警告 ${imp.length + colorWarn.length} 处）` : `\n✓ 全部通过`);
+console.log(problems.length ? `\n✗ ${problems.length} 处违例` : colorWarn.length ? `\n✓ 硬性规则全过（设计色存量警告 ${colorWarn.length} 处）` : `\n✓ 全部通过`);
 process.exit(problems.length ? 1 : 0);
