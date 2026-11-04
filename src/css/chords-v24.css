@@ -1,0 +1,758 @@
+/* chords-v24.css —— 自 fretboard.css 6744-7500 行拆出（v227 P6）；@import 顺序 = 原级联顺序，不可调换 */
+/* ============ 谱头：调 / 移调 / 谱中转调 / 生效调 ============ */
+.cc-transpose.on {
+    border-radius: var(--app-radius-xs);
+}
+
+.cc-transpose.on select {
+    border-color: var(--cc-accent);
+    color: var(--cc-accent-text);
+    font-weight: 600;
+}
+
+.cc-keyhere {
+    gap: 7px;
+}
+
+.cc-effective {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--app-fs-md);
+    font-weight: 600;
+    color: var(--cc-accent-text);
+    background: var(--cc-accent-weak);
+    border: 1px solid var(--cc-accent);
+    border-radius: 20px;
+    padding: 2px 10px;
+}
+
+/* 菜单里给格式补一行小字（.fbchart / .musicxml、有损提示） */
+.cc-menu-item small {
+    margin-left: 8px;
+    color: var(--app-text-soft);
+    font-size: var(--app-fs-xs);
+}
+
+.cc-menu-item small.cc-menu-warn {
+    color: var(--app-warning);
+}
+
+/* 对话框：多选一 + 多行输入 */
+.cc-dialog-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cc-dialog-choices .button {
+    justify-content: center;
+}
+
+.cc-dialog-area {
+    width: 100%;
+    resize: vertical;
+    font-family: inherit;
+    font-size: var(--app-fs-md);
+    line-height: 1.5;
+}
+
+/* ============ 和弦谱页 v24 重设计：紧凑 / 扁平 / 文字优先 ============
+   原则（这条块是页面的设计系统定义，覆盖上面各段的旧观感值）：
+   · 单一强调色：全页并回应用金色，强调色只标"当前 / 激活 / 播放"，不做装饰
+   · 扁平：圆角收敛 2-4px、1px 发丝线、无毛玻璃；阴影只给真正浮起来的层（菜单/弹窗）
+   · 紧凑：控件统一 27px 高，行距与留白收紧，一屏多看几行谱
+   · 文字优先：图标用排版符号（⇥ ⇪ ¶ ▶），不用 emoji */
+.cc-page {
+    --cc-radius: 3px;
+    --cc-radius-sm: 2px;
+    --cc-ctl-h: 27px;
+    font-size: var(--app-fs-md);
+}
+
+/* —— 工具栏 —— */
+.cc-page .cc-toolbar {
+    padding: 0 10px;
+}
+
+.cc-page .cc-tabs-row {
+    gap: 8px;
+    padding: 4px 0 0;
+}
+
+.cc-page .cc-tools-row {
+    gap: 6px;
+    padding: 5px 0;
+    min-height: 40px;
+}
+
+/* ← 返回按钮：不是页签——无底边亮条，规格走控件基线（提权越过 tooltabs 覆盖层） */
+.cc-page .cc-tooltabs .cc-songs-icon { border-bottom: none; padding: 0 9px; border-radius: var(--cc-ctl-radius); }
+
+.cc-page .cc-tooltabs {
+    gap: 2px;
+}
+
+.cc-page .cc-tooltabs button {
+    font-size: var(--app-fs-md);
+    padding: 5px 12px 4px;
+    border-radius: 0;
+}
+
+.cc-page .cc-toolbar .button,
+.cc-page .cc-preview-bar .button {
+    height: var(--cc-ctl-h);
+    padding: 0 10px;
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius);
+    box-shadow: none;
+}
+
+.cc-page .cc-toolbar select,
+.cc-page .cc-preview-bar select,
+.cc-page .cc-dyn-controls select {
+    height: var(--cc-ctl-h);
+    padding: 0 6px;
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius-sm);
+}
+
+.cc-page .cc-toolbar input[type="number"] {
+    height: var(--cc-ctl-h);
+    border-radius: var(--cc-radius-sm);
+}
+
+.cc-page .cc-tools-label {
+    font-size: var(--app-fs-sm);
+}
+
+.cc-page .cc-iconbtn {
+    font-size: var(--app-fs-sm);
+    gap: 3px;
+}
+
+.cc-page .cc-sep {
+    margin: 0 2px;
+}
+
+.cc-page .cc-key-stepper {
+    gap: 4px;
+}
+
+.cc-page .cc-key-stepper .cc-key-root .ui-select-btn {
+    font-size: var(--app-fs-sm);
+    height: 24px;
+    border-radius: var(--cc-radius-sm);
+}
+
+.cc-page .cc-key-stepper > button:not(.cc-key-mode) {
+    width: 26px;
+    height: 24px;
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius-sm);
+}
+
+/* 主音触发器是 .ui-select 的子按钮，不吃上面的 26px 钉宽（旧样式把"1 = C ▾"挤到按钮外） */
+.cc-key-stepper .cc-key-root .ui-select-btn {
+    width: auto;
+    min-width: 0;
+}
+
+/* 悬浮菜单：绝对定位在触发器下方，不挤占同行兄弟组件 */
+.ui-select.menu-absolute {
+    position: relative;
+}
+.ui-select.menu-absolute .ui-select-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: var(--z-panel-float);
+    box-shadow: 0 12px 34px color-mix(in srgb, #000 40%, transparent);
+    min-width: 240px;
+}
+
+/* 调式单按钮（大调/小调，点击切换）：文字钮，宽度跟内容 */
+.cc-key-stepper .cc-key-mode {
+    width: auto;
+    min-width: 0;
+    height: 24px;
+    padding: 0 10px;
+    font-size: var(--app-fs-sm);
+    background: var(--app-bg-secondary);
+    border: 1px solid var(--app-border);
+    border-radius: var(--cc-radius-sm);
+    color: var(--app-text);
+    white-space: nowrap;
+}
+.cc-key-stepper .cc-key-mode.minor,
+.cc-key-stepper .cc-key-mode:active {
+    border-color: var(--cc-accent);
+    color: var(--cc-accent-text);
+}
+.cc-key-stepper .cc-key-mode:hover {
+    border-color: var(--cc-accent);
+}
+
+/* —— 曲目入口 / 面板 —— */
+.cc-page .cc-songs-btn {
+    height: var(--cc-ctl-h);
+    padding: 0 10px;
+    font-size: var(--app-fs-md);
+    gap: 6px;
+    border-radius: var(--cc-radius);
+}
+
+.cc-page .cc-songs-btn small {
+    border-radius: var(--cc-radius-sm);
+    font-size: var(--app-fs-xs);
+    padding: 0 6px;
+}
+
+.cc-page .cc-modal {
+    border-radius: 5px;
+    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
+}
+
+.cc-page .cc-modal-mask {
+    background: rgba(4, 8, 12, 0.62);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.cc-page .cc-songs {
+    border-radius: 5px;
+}
+
+.cc-page .cc-songs-actions {
+    gap: 6px;
+}
+
+.cc-page .cc-songs-actions .button {
+    height: var(--cc-ctl-h);
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius);
+    box-shadow: none;
+}
+
+.cc-page .cc-songs-search {
+    height: var(--cc-ctl-h);
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius-sm);
+}
+
+.cc-page .cc-song-row {
+    border-radius: var(--cc-radius);
+    padding: 7px 10px;
+}
+
+.cc-page .cc-song-name {
+    font-size: var(--app-fs-md);
+}
+
+.cc-page .cc-song-cur {
+    border-radius: var(--cc-radius-sm);
+    font-size: var(--app-fs-2xs);
+    padding: 0 5px;
+    line-height: 14px;
+}
+
+.cc-page .cc-song-meta {
+    font-size: var(--app-fs-xs);
+    gap: 10px;
+    margin-top: 3px;
+}
+
+.cc-page .cc-song-btns .button {
+    height: 24px;
+    min-width: 28px;
+    padding: 0 7px;
+    font-size: var(--app-fs-sm);
+    border-radius: var(--cc-radius-sm);
+    box-shadow: none;
+}
+
+/* —— 谱面卡 —— */
+.cc-page .cc-body {
+    padding: 12px;
+}
+
+.cc-page .cc-score {
+    border-radius: 4px;
+    padding: 12px 26px 12px 12px;
+    box-shadow: none;
+}
+
+.cc-page .cc-score-head {
+    gap: 6px;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+
+.cc-page .cc-score-title {
+    font-size: 15px;
+}
+
+.cc-page .cc-score-meta {
+    gap: 12px;
+}
+
+.cc-page .cc-meta {
+    font-size: var(--app-fs-sm);
+    gap: 4px;
+}
+
+.cc-page .cc-meta select,
+.cc-page .cc-meta input[type="number"] {
+    font-size: var(--app-fs-sm);
+    border-radius: var(--cc-radius-sm);
+}
+
+.cc-page .cc-meta input[type="number"] {
+    width: 42px;
+}
+
+.cc-page .cc-transpose,
+.cc-page .cc-keyhere {
+    font-size: var(--app-fs-sm);
+}
+
+.cc-page .cc-effective {
+    font-size: var(--app-fs-sm);
+    border-radius: var(--cc-radius-sm);
+    padding: 1px 8px;
+}
+
+.cc-page .cc-line {
+    margin-bottom: 28px; /* 行间呼吸空间：内嵌图行变高后 18px 仍显挤，行与行之间再放开些 */
+}
+
+.cc-page .cc-cell-slots {
+    min-height: 58px;
+    gap: var(--cc-beat-gap); /* 拍距单一来源：内嵌图行 grid 列距同用，图与拍格列对列对齐 */
+}
+
+.cc-page .cc-cell {
+    padding: 3px 7px 2px 13px;
+}
+
+.cc-page .cc-beat {
+    border-radius: var(--cc-radius-sm);
+    border-width: 1px;
+}
+
+.cc-page .cc-beat-unit {
+    border-radius: var(--cc-radius-sm);
+}
+
+.cc-page .cc-cell-lyrics {
+    font-size: var(--app-fs-sm);
+}
+
+.cc-page .cc-sectionmark,
+.cc-page .cc-house {
+    border-radius: var(--cc-radius-sm);
+}
+
+.cc-page .cc-keymark {
+    border-radius: var(--cc-radius-sm);
+    font-size: var(--app-fs-xs);
+    padding: 0 4px;
+    line-height: 14px;
+}
+
+/* —— 常用和弦栏 / 预览子栏 —— */
+.cc-page 
+
+.cc-page 
+
+.cc-page 
+
+.cc-page .cc-preview-tabs {
+    gap: 3px;
+}
+
+.cc-page .cc-preview-tabs button {
+    border-radius: var(--cc-radius-sm);
+    padding: 4px 12px;
+    font-size: var(--app-fs-md);
+}
+
+.cc-page .cc-display-seg button {
+    padding: 4px 10px;
+    font-size: var(--app-fs-sm);
+    border-radius: var(--cc-radius-sm);
+}
+
+/* —— 浮层（唯一允许阴影的地方） —— */
+.cc-page .cc-menu {
+    border-radius: 4px;
+    padding: 4px;
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 40%, transparent);
+}
+
+.cc-page .cc-menu-item {
+    border-radius: var(--cc-radius-sm);
+    padding: 5px 9px;
+    font-size: var(--app-fs-md);
+}
+
+.cc-page .cc-menu-item small {
+    font-size: var(--app-fs-xs);
+    margin-left: 6px;
+}
+
+.cc-page .cc-mmenu {
+    border-radius: 4px;
+}
+
+.cc-page .cc-cp {
+    border-radius: 5px;
+    box-shadow: 0 12px 32px color-mix(in srgb, #000 40%, transparent);
+}
+
+.cc-page .cc-dialog-input {
+    border-radius: var(--cc-radius-sm);
+    font-size: var(--app-fs-md);
+}
+
+.cc-page .cc-dialog-text {
+    font-size: var(--app-fs-md);
+}
+
+/* 亮色下去掉卡片投影（扁平：靠 1px 边线分层，不靠阴影） */
+html[data-theme="light"] .cc-page .cc-score {
+    box-shadow: none;
+}
+
+html[data-theme="light"] .cc-page .cc-cell-tools {
+    box-shadow: none;
+}
+
+/* 弹窗内按钮（对话框脚部、配图弹层等不在工具栏作用域里）一并收敛 */
+.cc-page .cc-modal .button {
+    height: var(--cc-ctl-h);
+    padding: 0 12px;
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius);
+    box-shadow: none;
+}
+
+.cc-page .cc-dialog-choices .button {
+    height: 30px;
+}
+
+/* —— 就地和弦面板 v24.1：给足空间、一律单行、13 种质量全平铺不折叠 —— */
+.cc-page .cc-cp {
+    width: 404px;
+    padding: 12px;
+    gap: 8px;
+}
+
+.cc-page .cc-cp-menu {
+    gap: 5px;
+}
+
+.cc-page .cc-cp-menu button {
+    border-radius: var(--cc-radius);
+}
+
+.cc-page .cc-cp-degrees {
+    gap: 6px;
+}
+
+.cc-page .cc-cp-deg {
+    padding: 8px 0 6px;
+    font-size: 18px;
+    border-radius: var(--cc-radius);
+}
+
+.cc-page .cc-cp-deg small {
+    font-size: 9.5px;
+}
+
+.cc-page .cc-cp-quals {
+    gap: 6px;
+}
+
+.cc-page .cc-cp-quals button {
+    flex: 1 1 auto;
+    min-width: 48px;
+    height: 30px;
+    padding: 0 8px;
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius);
+    white-space: nowrap;
+}
+
+.cc-page .cc-cp-accrow {
+    gap: 6px;
+}
+
+.cc-page .cc-cp-accrow button {
+    height: 30px;
+    min-width: 56px;
+    font-size: var(--app-fs-lg);
+    border-radius: var(--cc-radius);
+}
+
+.cc-page .cc-cp-rhythms {
+    gap: 6px;
+}
+
+.cc-page .cc-cp-rhythms button {
+    height: 30px;
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius);
+    white-space: nowrap;
+}
+
+.cc-page .cc-cp-tabs {
+    gap: 6px;
+    padding-top: 9px;
+}
+
+.cc-page .cc-cp-tabs button {
+    flex: 1 1 auto;
+    white-space: nowrap;
+    /* 页签文字绝不折行（低音（转位）断成两行就是这个缺的） */
+    padding: 7px 10px;
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius);
+}
+
+.cc-page .cc-cp-tabs kbd {
+    border-radius: 3px;
+}
+
+.cc-page .cc-cp-attach {
+    margin-left: 0;
+    flex: none;
+    padding: 7px 10px;
+    font-size: var(--app-fs-md);
+    border-radius: var(--cc-radius);
+    white-space: nowrap;
+}
+
+/* 变化音行（♭9 ♯9 ♭11 ♯11 ♭13 ♯13）：可叠加开关，样式沿用变音行 */
+.cc-page .cc-cp-altrow .cc-cp-typing {
+    font-size: var(--app-fs-sm);
+}
+
+/* 拍格里变化音和弦名较长（57b9b13）：自适应缩小，不溢出拍格 */
+.cc-chordsign.long {
+    font-size: var(--app-fs-md);
+}
+
+.cc-chordsign-compact.long {
+    font-size: var(--app-fs-xs);
+}
+
+/* —— 就地和弦面板 v24.2：质量/变音/变化音整理成带行标签的分组表 —— */
+/* 结构：44px 标签列 + 7 列对齐网格；一行一族（三/七/九/挂留/变音级/变化音），扫一眼就知道去哪点 */
+.cc-page .cc-cp-table {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid var(--app-border);
+    padding-top: 9px;
+}
+
+.cc-page .cc-cp-qgroup {
+    display: grid;
+    grid-template-columns: 44px repeat(7, 1fr);
+    gap: 6px;
+    align-items: center;
+}
+
+.cc-page .cc-cp-qlabel {
+    font-size: var(--app-fs-xs);
+    color: var(--app-text-soft);
+    text-align: right;
+    padding-right: 2px;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.cc-page .cc-cp-q {
+    width: 100%;
+    min-width: 0;
+    height: 30px;
+    padding: 0 2px;
+    background: var(--app-bg-secondary);
+    border: 1px solid var(--app-border);
+    border-radius: var(--cc-radius);
+    color: var(--app-text);
+    font-size: var(--app-fs-sm);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.cc-page .cc-cp-q:hover:not(:disabled) {
+    border-color: var(--app-border-strong);
+}
+
+.cc-page .cc-cp-q.on {
+    border-color: var(--cc-accent);
+    color: var(--cc-accent-text);
+    background: var(--cc-accent-weak);
+    font-weight: 600;
+}
+
+.cc-page .cc-cp-q:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.cc-page .cc-cp-qgroup .cc-cp-hint {
+    grid-column: 5 / -1;
+    /* 提示文字横跨剩余列 */
+    font-size: var(--app-fs-sm);
+    color: var(--app-text-soft);
+    white-space: nowrap;
+}
+
+.cc-page .cc-cp-qgroup .cc-cp-typing {
+    font-size: var(--app-fs-sm);
+    color: var(--cc-accent-text);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* —— 曲目列表页（#/chords 落地面）：顶 tab 即库，点进某首才进编辑 —— */
+.cc-songs-page-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--app-text);
+    letter-spacing: 0.3px;
+}
+
+.cc-songs-page-box {
+    max-width: 880px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.cc-songs-page-box-inner {
+    background: var(--app-panel);
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    padding: 14px 16px 16px;
+    box-shadow: none;
+}
+
+.cc-songs-page-box .cc-songs-list {
+    max-height: calc(100vh - 300px);
+}
+
+/* —— 和弦记号：8pu 正字法 —— 无外框，和弦占满拍格；
+   级数大字居中，质量数字上标到右上角（57 的 7 顶上去），转位低音落右下 */
+.csign {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    justify-content: center;
+    max-width: 100%;
+    line-height: 1;
+    color: var(--app-text);
+    white-space: nowrap;
+}
+
+.csign-deg {
+    font-size: inherit;
+    font-weight: 700;
+    align-self: center;
+}
+
+.csign-sfx {
+    font-size: 0.8em;
+    font-weight: 700;
+    align-self: center;
+}
+
+.csign-sup .csign-sfx {
+    font-size: 0.64em;
+    /* 只有数字开头的后缀才缩小上标 */
+    align-self: flex-start;
+    /* 顶到右上：上标位（贴记号顶线） */
+    margin: -1px 0 0 1px;
+}
+
+.csign-bass {
+    font-size: 0.55em;
+    color: var(--app-text-muted);
+    align-self: flex-end;
+    /* 落到右下：低音位 */
+    margin: 0 1px 1px 1px;
+}
+
+.csign-sup .csign-bass {
+    font-size: 0.48em;
+}
+
+.csign-sm .csign-deg {
+    font-size: 0.7em;
+}
+
+.csign-sm .csign-sfx {
+    font-size: 0.8em;
+}
+
+.csign-sm.csign-sup .csign-sfx {
+    font-size: 0.62em;
+    margin-top: 1px;
+}
+
+/* 拍格里尽可能大、占满 */
+.cc-beat .csign-deg {
+    font-size: 24px;
+}
+
+.cc-beat .csign-sfx {
+    font-size: 19px;
+}
+
+.cc-beat .csign-sup .csign-sfx {
+    font-size: 15px;
+}
+/* 上标里只有前导数字（7/9）放大；b/♯/m 等变化音保持小字 */
+.cc-beat .csign-sup .csign-num { font-size: 19px; }
+.csign-sup .csign-num { font-size: 0.7em; }
+
+.cc-beat .csign-bass {
+    font-size: var(--app-fs-sm);
+}
+
+.cc-beat .csign-sm .csign-deg {
+    font-size: 15px;
+}
+
+.cc-beat .csign-sm .csign-sfx {
+    font-size: var(--app-fs-sm);
+}
+
+.cc-beat .csign-sm.csign-sup .csign-sfx {
+    font-size: 9.5px;
+}
+.cc-beat .csign-sm.csign-sup .csign-num { font-size: var(--app-fs-md); }
+.csign-sm.csign-sup .csign-num { font-size: 0.68em; }
+
+/* 休止/延音字跟随放大，保持行内节奏一致 */
+.cc-beat .cc-glyph {
+    font-size: 20px;
+}
+
+/* 常用和弦栏 / 动态条 */
+
+.cc-dyn-chord .csign-deg {
+    font-size: 15px;
+}
+
+.cc-dyn-chord .csign-sfx {
+    font-size: var(--app-fs-sm);
+}
+
+.cc-dyn-chord .csign-sup .csign-sfx {
+    font-size: 9.5px;
+}
+
+/* 常用和弦栏/动态条：按钮本身就是容器，记号芯片去框融入 */
+

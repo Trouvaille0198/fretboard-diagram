@@ -27,19 +27,23 @@
 
 ## 3. 前缀分区（BEM 之外的本文约定）
 
-| 前缀 | 域 | 主场文件 |
+| 前缀 | 域 | 主场文件（v227 P6 拆分后） |
 |---|---|---|
-| `.cc-*` | 和弦谱页（格子功能谱） | fretboard.css / ChordChartView |
-| `.sc-*` | 序列谱视图 | fretboard.css |
-| `.dyn-*` | 动效编辑/播放 | fretboard.css / DynamicToolbar |
-| `.stitch-*` | 拼接坞 | fretboard.css / StitchDock |
-| `.score-*` | 曲谱 | fretboard.css / ScorePieces |
-| `.figbe-*` | 形状库/fig 编辑 | fretboard.css / FigBoardEditor |
-| `.tl-*` | 时间轴 | fretboard.css |
-| `.top-*` `.menu-*` `.toolbar-*` `.dock-*` `.ui-*` | 通用 chrome | fretboard.css / TopNav 等 |
+| （token） | :root 表 + light 主题 | `src/css/tokens-base.css` |
+| `.menu-*` | 菜单面板/调色盘 | `src/css/menu-panel.css` |
+| `.sc-*` | 序列谱视图 | `src/css/seq-score.css` |
+| `.tl-*` | 时间轴 | `src/css/timeline.css` |
+| `.score-*` | 独立谱子页 | `src/css/score-page.css` |
+| `.dyn-*` | 动效编辑/播放 | `src/css/dynamic.css` / DynamicToolbar |
+| `.top-*` | 顶部导航 | `src/css/topnav.css` / TopNav |
+| `.cc-*` | 和弦谱页 | `src/css/chords.css` + `chords-v24.css` / ChordChartView |
+| （曲目） | 曲目入口/小控件 | `src/css/songs.css` |
+| `.stitch-*` | 拼接坞 | `src/css/stitch.css` / StitchDock |
+| `.figbe-*` | 形状库/fig 编辑 | `src/css/figbe.css` / FigBoardEditor |
+| （杂项浮层） | 回收站/同步徽标/¶钮 | `src/css/overlays-misc.css` |
 | 组件私有 | 新组件 | 与组件同目录的 `X.css`（参考 Toast/LoginModal） |
 
-新组件样式**必须**放组件旁独立 CSS；往 fretboard.css 加新域之前先三思（拆分进行中）。
+`fretboard.css` 现在是 **manifest**（纯 @import 链，顺序 = 原级联顺序，**不可调换**）。新域样式进对应分区文件；新组件放组件旁独立 CSS，**不要**往 manifest 加 import 之外的东西。
 
 ## 4. 内联 style 纪律
 
@@ -50,7 +54,7 @@
 ## 5. 版本链
 
 - `index.html → main.jsx?v=N`、`main.jsx → fretboard.css?v=N`，大改 bump 同步；顶栏水印 vN。
-- `fretboard.css` 只在 `main.jsx` 引入一次（Fretboard/PianoKeyboard 不许再 import，会双份注入）。
+- `fretboard.css`（manifest）只在 `main.jsx` 引入一次（Fretboard/PianoKeyboard 不许再 import，会双份注入）；改 token 进 `src/css/tokens-base.css`。
 - 组件 CSS 不带版本参数（Vite 构建自带 hash）。
 
 ## 6. !important 政策（P4 定案）

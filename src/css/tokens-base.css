@@ -1,0 +1,669 @@
+/* tokens-base.css —— 自 fretboard.css 1-668 行拆出（v227 P6）；@import 顺序 = 原级联顺序，不可调换 */
+/*
+ * 颜色配置说明：
+ * 第一层级和第二层级的颜色配置在 src/colorConfig.js 文件中。
+ * 修改颜色时，请同时更新 colorConfig.js 和本文件中的对应颜色值，
+ * 或者统一改为由 CSS 变量管理。
+ */
+
+:root {
+    --app-bg: #080e12;
+    --app-bg-secondary: #0e1820;
+    --app-panel: rgba(13, 21, 28, 0.92);
+    --app-panel-strong: rgba(16, 27, 35, 0.97);
+    --app-panel-soft: var(--app-sheen);
+    --app-input-bg: var(--app-sheen);
+    --app-input-bg-focus: color-mix(in srgb, #fff 9%, transparent);
+    --app-border: rgba(150, 200, 230, 0.13);
+    --app-border-strong: rgba(180, 218, 232, 0.28);
+    --app-text: #e8eff4;
+    --app-text-muted: rgba(232, 239, 244, 0.74);
+    --app-text-soft: rgba(232, 239, 244, 0.50);
+    --app-accent: #f3ba62;
+    --app-accent-strong: #de9d42;
+    --app-accent-warm: #f7cf8d;
+    --app-accent-text: #ffe1ac;
+    --app-success: #88d39f;
+    --app-danger: #f08a84;
+    --app-warning: #f3ba62;
+    --app-control-thumb-bg: #ffffff;
+    --app-control-thumb-border: #e4a54b;
+    --app-control-thumb-border-hover: #f3c67d;
+    --app-shadow-lg: 0 28px 64px rgba(0, 0, 0, 0.46), 0 0 0 1px rgba(0, 0, 0, 0.20);
+    --app-shadow-md: 0 16px 36px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(0, 0, 0, 0.12);
+    --app-radius-xl: 24px;
+    --app-radius-lg: 18px;
+    --app-radius-md: 14px;
+    --app-radius-sm: 10px;
+    --app-radius-xs: 8px;
+    --app-radius-pill: 999px;
+
+    /* 线/描边色阶（一次定义，主题可覆写）。
+       注意：var() 自引用 = 循环引用 = 变量失效，所有用点回退初始值（页底变白的事故根因）——必须给真实值 */
+    --app-line: var(--app-border);
+    --app-line-soft: rgba(150, 200, 230, 0.08);
+    --app-line-strong: var(--app-border-strong);
+    --app-line-lighter: rgba(150, 200, 230, 0.06);
+    --app-sheen: rgba(255, 255, 255, 0.05);
+
+    /* 强调色上的深色文字（金底按钮）；强调色 alpha 梯度统一 color-mix(var(--app-accent)) 派生 */
+    --app-ink-on-accent: #10161c;
+    /* 形状库/fig 编辑区文字灰阶（历史值，暂不随主题；需亮色适配时在下方 light 块覆写） */
+    --app-text-fig: #dfe7ee;
+    --app-text-fig-soft: #9fb2c0;
+    --app-text-fig-muted: #8ba0b0;
+    /* 和弦谱强调色 root 兜底（.cc-page 内另有同值定义；保证任何渲染位置都解析，
+       各处 var() 的蓝色死回退（#3d8bff/#2f7ae8/#6fb0ff）已删） */
+    --cc-accent: var(--app-accent);
+    --cc-accent-weak: color-mix(in srgb, var(--app-accent) 13%, transparent);
+    --cc-text: #dfe7ee; /* 和弦谱谱面墨色（历史上是 var 活回退，v225 起正式定义） */
+    --cc-accent-text: var(--app-accent-text);
+
+    /* z-index 分层表（同值即同层，互叠靠 DOM 顺序；调层级只改这里）
+       段位约定：十位=页内浮层 | 百位=菜单/吸顶 | 千位=chrome·遮罩 | 万位=模态顶层 */
+    /* —— 十位：页内浮层 —— */
+    --z-popover-tint: 30;          /* 移动端着色弹出面板 */
+    --z-export-veil: 40;           /* 动效工具条导出菜单遮罩 */
+    --z-export-menu: 41;
+    --z-popover-tint-parent: 50;   /* 其父级菜单容器 */
+    --z-panel-float: 60;           /* 页内浮动设置面板/下拉 */
+    --z-panel-settings: 70;
+    --z-modal-fig: 90;
+    /* —— 百位：菜单/吸顶 —— */
+    --z-menu: 300;
+    --z-popover-lg: 500;
+    --z-nav-menu: 560;
+    --z-copybar: 590;
+    --z-toolbar-sticky: 600;
+    /* —— 千位：chrome·遮罩（901~905 为和弦谱舞台角标/FAB 簇） —— */
+    --z-build-ver: 901;
+    --z-stage-float: 904;
+    --z-stage-fab: 905;
+    --z-dock-toggle: 999;
+    --z-dock: 1000;
+    --z-chrome: 1100;              /* 主题/语言开关、dock */
+    --z-stitch-dock: 1180;
+    --z-top-nav: 1200;
+    --z-overlay: 1300;             /* 模态遮罩类（盖过吸顶导航） */
+    --z-context-menu: 1350;
+    --z-modal-mask: 2000;
+    /* —— 万位：模态顶层 —— */
+    --z-modal-top-veil: 9999;      /* 导入对话框遮罩（刚好压同层 10000 组） */
+    --z-modal-top: 10000;          /* 登录框/Toast/导入对话框 */
+    --z-max: 10100;                /* 形状库右键菜单（v225 前是 100000，收编进万位段；与 10000 间无其他层，顺序不变） */
+
+    /* 字号阶（消除 10/10.5/11/11.5/12/12.5/13/14 八档并存） */
+    --app-fs-2xs: 10px;
+    --app-fs-xs: 11px;
+    --app-fs-sm: 12px;
+    --app-fs-md: 13px;
+    --app-fs-lg: 14px;
+    --background-color: var(--app-bg);
+    --text-color: var(--app-text-muted);
+    color-scheme: dark;
+}
+
+/* Light mode tokens */
+html[data-theme="light"] {
+    --app-bg: #e8eef6;
+    --app-bg-secondary: #dce5ef;
+    --app-panel: rgba(255, 255, 255, 0.94);
+    --app-panel-strong: rgba(255, 255, 255, 0.985);
+    --app-panel-soft: rgba(24, 52, 80, 0.06);
+    --app-input-bg: rgba(24, 52, 80, 0.06);
+    --app-input-bg-focus: rgba(24, 52, 80, 0.1);
+    --app-border: rgba(44, 76, 109, 0.18);
+    --app-border-strong: rgba(37, 74, 112, 0.32);
+    --app-text: #162736;
+    --app-text-muted: rgba(22, 39, 54, 0.82);
+    --app-text-soft: rgba(22, 39, 54, 0.60);
+    --app-shadow-lg: 0 24px 56px rgba(53, 84, 115, 0.18), 0 0 0 1px rgba(60, 88, 116, 0.08);
+    --app-shadow-md: 0 14px 32px rgba(53, 84, 115, 0.14), 0 0 0 1px rgba(60, 88, 116, 0.08);
+    /* 强调色文字：深色主题的 #ffe1ac 在白底上几乎看不见（顶栏当前页签就中招），亮色改用深金 */
+    --app-accent-text: #8a5a12;
+    --background-color: #edf3f9;
+    --text-color: #304454;
+    color-scheme: light;
+}
+
+html[data-theme="light"],
+html[data-theme="light"] body {
+    background:
+        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, rgba(90, 160, 220, 0.09) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.06) 0%, transparent 58%),
+        linear-gradient(180deg, #eef2f7 0%, #f5f8fc 100%);
+}
+
+/* 日间模式：#app 同步亮色背景（否则内容限宽外露出夜色底，两侧出现黑条） */
+html[data-theme="light"] #app {
+    background:
+        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, rgba(90, 160, 220, 0.09) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.06) 0%, transparent 58%),
+        linear-gradient(180deg, #eef2f7 0%, #f5f8fc 100%);
+}
+
+html[data-theme="light"] .title-header h1 {
+    background: linear-gradient(135deg, #1a2a36 0%, rgba(26, 42, 54, 0.60) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+html[data-theme="light"] .title-header .datetime {
+    color: color-mix(in srgb, var(--app-text) 68%, transparent);
+}
+
+html[data-theme="light"] .menu-left,
+html[data-theme="light"] .menu-right {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 253, 0.94)),
+        var(--app-panel);
+    border-color: rgba(44, 76, 109, 0.14);
+    box-shadow:
+        0 22px 42px rgba(70, 100, 130, 0.14),
+        0 0 0 1px rgba(255, 255, 255, 0.72),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] .menu-tint-variants {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 252, 0.95)),
+        var(--app-panel-strong);
+    border-color: rgba(44, 76, 109, 0.12);
+    box-shadow:
+        0 16px 30px rgba(70, 100, 130, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme="light"] .menu-tint-variants::after {
+    border-top-color: rgba(44, 76, 109, 0.12);
+    border-right-color: rgba(44, 76, 109, 0.12);
+    background: rgba(250, 252, 255, 0.98);
+}
+
+html[data-theme="light"] .button,
+html[data-theme="light"] .enharmonic-button {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 251, 0.96));
+    color: var(--app-text-muted);
+    border-color: rgba(44, 76, 109, 0.14);
+    box-shadow: 0 3px 10px rgba(91, 120, 149, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+html[data-theme="light"] .menu-global-actions .button,
+html[data-theme="light"] .menu-global-actions .enharmonic-button,
+html[data-theme="light"] .menu-connection-presets .button {
+    background: linear-gradient(180deg, rgba(248, 251, 254, 0.99), rgba(231, 238, 246, 0.97));
+    color: #33485a;
+    border-color: rgba(52, 83, 114, 0.22);
+    border-width: 1px;
+    font-weight: 600;
+    box-shadow:
+        0 8px 18px rgba(91, 120, 149, 0.10),
+        inset 0 1px 0 rgba(255, 255, 255, 0.98),
+        inset 0 -1px 0 rgba(172, 189, 207, 0.18);
+}
+
+html[data-theme="light"] .button:hover,
+html[data-theme="light"] .enharmonic-button:hover {
+    background: linear-gradient(180deg, rgba(255, 252, 245, 0.98), rgba(250, 243, 229, 0.96));
+    border-color: color-mix(in srgb, var(--app-accent-strong) 34%, transparent);
+    color: var(--app-text);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--app-accent-strong) 12%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme="light"] .menu-global-actions .button:hover,
+html[data-theme="light"] .menu-global-actions .enharmonic-button:hover,
+html[data-theme="light"] .menu-connection-presets .button:hover {
+    background: linear-gradient(180deg, rgba(255, 252, 245, 0.99), rgba(248, 238, 216, 0.97));
+    border-color: color-mix(in srgb, var(--app-accent-strong) 40%, transparent);
+    color: #263847;
+    box-shadow:
+        0 10px 22px color-mix(in srgb, var(--app-accent-strong) 16%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.98),
+        inset 0 -1px 0 color-mix(in srgb, var(--app-accent-strong) 10%, transparent);
+}
+
+html[data-theme="light"] .button.selected {
+    background: linear-gradient(180deg, rgba(255, 244, 222, 0.98), rgba(249, 232, 196, 0.96));
+    border-color: color-mix(in srgb, var(--app-accent-strong) 44%, transparent);
+    color: #8a5a15;
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--app-accent-strong) 16%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+html[data-theme="light"] .menu-global-actions .button.selected,
+html[data-theme="light"] .menu-connection-presets .button.selected {
+    color: #7d5111;
+    border-color: color-mix(in srgb, var(--app-accent-strong) 52%, transparent);
+    box-shadow:
+        0 10px 22px color-mix(in srgb, var(--app-accent-strong) 18%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.94),
+        inset 0 -1px 0 rgba(213, 160, 74, 0.12);
+}
+
+html[data-theme="light"] .menu-checkbox {
+    color: var(--app-text-muted);
+}
+
+html[data-theme="light"] .menu-checkbox input {
+    filter: saturate(1.15) contrast(1.05);
+}
+
+html[data-theme="light"] .theme-switch__track {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(44, 76, 109, 0.16);
+}
+
+html[data-theme="light"] .piano-keys {
+    border-color: rgba(44, 76, 109, 0.14);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 247, 251, 0.96));
+    box-shadow: 0 12px 24px rgba(70, 100, 130, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+html[data-theme="light"] .fret-value-tooltip {
+    color: var(--app-text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-color: var(--app-bg);
+    }
+}
+
+*:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--app-accent) 55%, transparent);
+    outline-offset: 2px;
+}
+
+html {
+    min-height: 100%;
+    background:
+        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 13%, transparent) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.07) 0%, transparent 58%),
+        linear-gradient(180deg, #0b1318 0%, #060c10 100%);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    /* #app 定宽，避免 flex shrink-to-fit 让谱子页布局漂移 */
+}
+
+#app {
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+    /* clip（而非 hidden）：hidden 会把 #app 变成滚动容器，子孙的 position:sticky 全部失效（tab 行钉顶实测踩雷） */
+    overflow-x: clip;
+    color: var(--app-text);
+    font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+    background:
+        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 13%, transparent) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.07) 0%, transparent 58%),
+        linear-gradient(180deg, #0b1318 0%, #060c10 100%);
+}
+
+main {
+    width: 100%;
+    max-width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: clip;
+    box-sizing: border-box;
+    padding: 0 20px 80px;
+    transition: margin-left 0.3s ease;
+}
+
+/* Title header */
+.title-header {
+    width: min(100%, 680px);
+    min-height: auto;
+    padding: 8px 0 10px;
+    margin: 18px 0 10px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.title-header-inner {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.title-header h1 {
+    margin: 0;
+    font-size: clamp(24px, 3vw, 32px);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    line-height: 1.2;
+    padding-bottom: 0.06em;
+    background: linear-gradient(135deg, var(--app-text) 0%, rgba(232, 239, 244, 0.70) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* 主题切换开关 - 固定右上角 */
+.theme-switch {
+    position: fixed;
+    top: 18px;
+    right: 22px;
+    z-index: var(--z-chrome);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.lang-switch {
+    position: fixed;
+    top: 18px;
+    right: 90px;
+    z-index: var(--z-chrome);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 28px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-panel-strong);
+    border: 1px solid var(--app-border);
+    box-shadow: var(--app-shadow-md), inset 0 1px 3px color-mix(in srgb, #000 22%, transparent);
+    backdrop-filter: blur(16px);
+    padding: 0;
+    font-size: var(--app-fs-sm);
+    font-weight: 700;
+    color: var(--text-secondary, #aaa);
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.2s, background 0.2s;
+}
+
+.lang-switch:hover {
+    color: var(--accent, #f3ba62);
+}
+
+.theme-switch:focus-visible .theme-switch__track {
+    outline: 2px solid color-mix(in srgb, var(--app-accent) 55%, transparent);
+    outline-offset: 2px;
+}
+
+.theme-switch__track {
+    display: flex;
+    align-items: center;
+    width: 56px;
+    height: 28px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-panel-strong);
+    border: 1px solid var(--app-border);
+    box-shadow: var(--app-shadow-md), inset 0 1px 3px color-mix(in srgb, #000 22%, transparent);
+    backdrop-filter: blur(16px);
+    position: relative;
+    transition: background 0.28s ease, border-color 0.28s ease, box-shadow 0.28s ease;
+}
+
+.theme-switch--light .theme-switch__track {
+    background: rgba(240, 248, 255, 0.92);
+    border-color: rgba(30, 80, 140, 0.18);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10), inset 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.theme-switch__thumb {
+    position: absolute;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--app-accent) 90%, transparent), rgba(222, 157, 66, 0.95));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.32), 0 0 0 1px color-mix(in srgb, var(--app-accent) 22%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: left 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background 0.28s ease,
+        box-shadow 0.28s ease;
+}
+
+.theme-switch--light .theme-switch__thumb {
+    left: calc(56px - 22px - 3px);
+    background: linear-gradient(145deg, #ffe47a, var(--app-accent));
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--app-accent) 42%, transparent), 0 0 0 1px color-mix(in srgb, var(--app-accent) 30%, transparent);
+}
+
+.theme-switch__icon {
+    font-size: var(--app-fs-md);
+    line-height: 1;
+    user-select: none;
+}
+
+/* 登录状态 - 固定在右上角 */
+.login-status {
+    position: fixed;
+    top: 20px;
+    right: 80px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: var(--z-dock);
+}
+
+.title-header .datetime {
+    font-size: var(--app-fs-lg);
+    color: var(--app-text-soft);
+}
+
+.title-header .selected-state-name {
+    margin-top: 4px;
+    font-size: var(--app-fs-md);
+    color: var(--app-success);
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: var(--app-radius-pill);
+    border: 1px solid color-mix(in srgb, var(--app-success) 28%, transparent);
+    background: color-mix(in srgb, var(--app-success) 10%, transparent);
+    display: inline-block;
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.title-header .selected-state-name:hover {
+    background: color-mix(in srgb, var(--app-success) 16%, transparent);
+    border-color: color-mix(in srgb, var(--app-success) 42%, transparent);
+    /* hover 不上浮：overflow 容器会裁顶 */
+}
+
+/* Fretboard diagram */
+
+g.note.transparent:hover {
+    opacity: 1;
+}
+
+g.note {
+    fill: var(--background-color);
+    stroke-width: 1.5px;
+    stroke: var(--text-color);
+    transition: opacity 0.6s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+g.note.selected>circle {
+    opacity: 1;
+    stroke-dasharray: 4, 4;
+    stroke-width: 3px;
+    stroke: var(--text-color);
+}
+
+g.note.hidden {
+    opacity: 0;
+}
+
+g.note.transparent {
+    opacity: 0.3;
+}
+
+/* transparent 状态下，文字保持完全不透明，并保持原有颜色 */
+g.note.transparent>text {
+    opacity: 1;
+    /* 确保文字颜色不被透明状态影响 */
+    color: inherit;
+}
+
+/* 当toggle处于hidden状态时，强制trans note显示为0.3透明度 */
+g.note.force-transparent {
+    opacity: 0.5 !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+}
+
+/* force-transparent 状态下，文字保持完全不透明 */
+g.note.force-transparent>text {
+    opacity: 1 !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+}
+
+g.note.visible {
+    opacity: 1;
+    /* fill: var(--background-color); */
+}
+
+/* 颜色配置在 src/colorConfig.js 中，通过CSS变量自动应用 */
+g.note.blue {
+    fill: var(--color-level1-blue-fill);
+}
+
+g.note.blue>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.trans {
+    fill: var(--color-level1-trans-fill);
+}
+
+g.note.trans>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.mono {
+    fill: #e8eef4;
+}
+
+g.note.mono>text {
+    stroke: #0d141a;
+    fill: #0d141a;
+}
+
+g.note.gray {
+    fill: var(--color-level1-gray-fill);
+}
+
+g.note.gray>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.red {
+    fill: var(--color-level1-red-fill);
+}
+
+g.note.red>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.green {
+    fill: var(--color-level1-green-fill);
+}
+
+g.note.green>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.brown {
+    fill: var(--color-level1-brown-fill);
+}
+
+g.note.brown>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.navy {
+    fill: var(--color-level1-navy-fill);
+}
+
+g.note.navy>text {
+    stroke: white;
+    fill: white;
+}
+
+g.note.crimson {
+    fill: var(--color-level1-crimson-fill);
+}
+
+g.note.crimson>text {
+    stroke: white;
+    fill: white;
+}
+
+path.string {
+    stroke: var(--text-color) !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+    fill: none;
+    pointer-events: none;
+    stroke-width: 1px !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+}
+
+path.frets {
+    stroke: var(--text-color) !important; /* lint-allow-important 对抗 SVG/JS 内联样式（CSS 赢内联的唯一手段） */
+    stroke-width: 1px;
+    fill: none;
+}
+
+g.note>text {
+    stroke: var(--text-color);
+    stroke-width: 0px;
+    fill: var(--text-color);
+    text-anchor: middle;
+    dominant-baseline: middle;
+    font-size: 20px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+#editable-div {
+    text-align: center;
+    font-size: 20px;
+}
+
+.fretboard-stage {
+    padding-top: 10px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+    z-index: 1;
+    overflow-x: auto;
+    box-sizing: border-box;
+}
+
+/* Main menu layout */
+

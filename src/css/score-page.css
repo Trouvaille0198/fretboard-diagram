@@ -1,0 +1,344 @@
+/* score-page.css —— 自 fretboard.css 2546-2888 行拆出（v227 P6）；@import 顺序 = 原级联顺序，不可调换 */
+/* ============ 独立谱子页（8pu 式） ============ */
+.sc-page {
+    width: 100%;
+    max-width: 1560px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 8px 0 90px;
+}
+
+.sc-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--app-border, var(--app-line));
+    padding-bottom: 12px;
+}
+
+.sc-back {
+    white-space: nowrap;
+}
+
+.sc-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--app-text, #e8eef4);
+    margin: 0;
+}
+
+.sc-song-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: var(--app-fs-lg);
+}
+
+.sc-song-meta select,
+.sc-song-meta input[type="number"] {
+    background: var(--app-sheen);
+    color: var(--app-text, #e8eef4);
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-xs);
+    padding: 3px 6px;
+    font-size: var(--app-fs-md);
+}
+
+.sc-song-meta input[type="number"] {
+    width: 54px;
+}
+
+.sc-minor {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.sc-tabs {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.sc-tab {
+    background: color-mix(in srgb, #fff 4%, transparent);
+    border: 1px solid var(--app-border, var(--app-line));
+    color: var(--app-text-muted, #9fb2c0);
+    border-radius: var(--app-radius-pill);
+    padding: 6px 16px;
+    font-size: var(--app-fs-lg);
+    cursor: pointer;
+}
+
+.sc-tab.on {
+    background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--app-accent) 40%, transparent);
+    color: var(--app-accent-text, #f3ba62);
+}
+
+.sc-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.sc-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--app-text-muted, #9fb2c0);
+    border: 1px dashed var(--app-border, rgba(230, 237, 242, 0.15));
+    border-radius: var(--app-radius-xl, 18px);
+}
+
+/* 文本谱：小节卡网格 */
+.sc-sheet {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px;
+}
+
+.sc-measure {
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-xl, 18px);
+    background: var(--app-panel, rgba(15, 22, 28, 0.6));
+    padding: 12px 14px;
+}
+
+.sc-measure-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.sc-no {
+    min-width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--app-ink-on-accent);
+    background: var(--app-accent, #f3ba62);
+    font-size: var(--app-fs-lg);
+}
+
+.sc-chord {
+    background: color-mix(in srgb, var(--app-accent) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 30%, transparent);
+    color: var(--app-accent-text, #f3ba62);
+    border-radius: var(--app-radius-pill);
+    padding: 5px 14px;
+    font-size: var(--app-fs-lg);
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 48px;
+}
+
+.sc-chord-input {
+    width: 110px;
+    background: color-mix(in srgb, #fff 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
+    color: var(--app-text, #e8eef4);
+    border-radius: var(--app-radius-pill);
+    padding: 5px 12px;
+    font-size: var(--app-fs-lg);
+    outline: none;
+}
+
+.sc-add {
+    margin-left: auto;
+    background: transparent;
+    border: 1px dashed var(--app-line-lighter);
+    color: var(--app-text-muted, #9fb2c0);
+    border-radius: var(--app-radius-pill);
+    padding: 4px 10px;
+    font-size: var(--app-fs-md);
+    cursor: pointer;
+}
+
+.sc-add:hover {
+    color: var(--app-accent-text, #f3ba62);
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
+}
+
+.sc-frames {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.sc-fields {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.sc-field {
+    flex: 1;
+    min-width: 90px;
+    background: var(--app-sheen);
+    border: 1px solid var(--app-border, var(--app-line));
+    color: var(--app-text, #e8eef4);
+    border-radius: var(--app-radius-sm);
+    padding: 7px 12px;
+    font-size: var(--app-fs-lg);
+    outline: none;
+}
+
+.sc-field:focus {
+    border-color: color-mix(in srgb, var(--app-accent) 45%, transparent);
+}
+
+/* 动态谱：大舞台 + 时间轴 */
+.sc-dynamic {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.sc-stage-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.sc-stage {
+    position: relative;
+    width: min(900px, 100%);
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-xl, 18px);
+    background: var(--app-panel, rgba(15, 22, 28, 0.6));
+    padding: 14px;
+    box-sizing: border-box;
+}
+
+.sc-stage-board svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.sc-stage svg * {
+    pointer-events: none;
+}
+
+.sc-stage-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: var(--app-fs-lg);
+}
+
+.sc-timeline {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-xl, 18px);
+    background: var(--app-panel, rgba(15, 22, 28, 0.6));
+    padding: 10px 12px;
+    overflow-x: auto;
+}
+
+.sc-tl-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.sc-tl-play {
+    min-width: 46px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
+    background: color-mix(in srgb, var(--app-accent) 10%, transparent);
+    color: var(--app-accent-text, #f3ba62);
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.sc-tl-play.on {
+    background: color-mix(in srgb, var(--app-accent) 22%, transparent);
+}
+
+.sc-tl-controls select {
+    background: var(--app-sheen);
+    color: var(--app-text-muted, #9fb2c0);
+    border: 1px solid var(--app-border, var(--app-line));
+    border-radius: var(--app-radius-sm);
+    padding: 4px 6px;
+    font-size: var(--app-fs-sm);
+}
+
+.sc-tl-strip {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    flex: 1;
+}
+
+.sc-tl-measure {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid var(--app-line-soft);
+    border-radius: 12px;
+}
+
+.sc-tl-measure.current {
+    border-color: color-mix(in srgb, var(--app-accent) 50%, transparent);
+}
+
+.sc-tl-label {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: var(--app-fs-sm);
+}
+
+.sc-tl-label b {
+    color: var(--app-accent-text, #f3ba62);
+    font-size: var(--app-fs-md);
+}
+
+.sc-tl-frame {
+    flex: 0 0 96px;
+    border: 2px solid transparent;
+    border-radius: var(--app-radius-sm);
+    overflow: hidden;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.sc-tl-frame.active {
+    border-color: var(--app-accent, #f3ba62);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 18%, transparent);
+}
+
+.sc-tl-frame svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    pointer-events: none;
+}
+
+html[data-theme="light"] .sc-measure,
+html[data-theme="light"] .sc-stage,
+html[data-theme="light"] .sc-timeline {
+    background: rgba(248, 251, 254, 0.92);
+}
+

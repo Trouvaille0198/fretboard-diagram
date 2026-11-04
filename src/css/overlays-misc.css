@@ -1,0 +1,152 @@
+/* overlays-misc.css —— 自 fretboard.css 8456-8606 行拆出（v227 P6）；@import 顺序 = 原级联顺序，不可调换 */
+/* ===== 回收站弹层（曲目列表页） ===== */
+.cc-trash-modal { max-width: 480px; }
+.cc-trash-list { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; }
+.cc-trash-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--app-border); border-radius: 9px; background: color-mix(in srgb, #fff 3%, transparent); }
+.cc-trash-kind { flex: none; font-size: 11px; padding: 2px 7px; border-radius: 6px; background: rgba(120, 160, 200, 0.14); color: var(--app-text-muted); }
+.cc-trash-kind.clips { background: color-mix(in srgb, var(--app-accent) 14%, transparent); }
+.cc-trash-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-weight: 600; }
+.cc-trash-days { flex: none; font-size: 11px; color: var(--app-text-soft); }
+.cc-trash-empty { text-align: center; color: var(--app-text-soft); padding: 28px 0; }
+
+/* ===== 云同步状态徽标（顶栏，登录后显示；syncEngine 派发）===== */
+
+.top-nav-sync {
+    font-size: var(--app-fs-2xs);
+    border: none;
+    border-radius: 10px;
+    padding: 3px 9px;
+    margin-right: 4px;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    background: transparent;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap; /* 窄屏被挤压时绝不竖排（曾出现"已/同/步"三字叠排） */
+    flex-shrink: 0;
+}
+/* 窄屏顶栏寸土寸金：≤480px 徽标缩成 10px 状态圆点（title 仍有完整提示、点击仍可重试），
+   版本号让位隐藏，用户名过长截断——320px 实测三 tab + 徽标 + 图标零重叠 */
+@media (max-width: 480px) {
+    .top-nav-sync {
+        width: 10px;
+        height: 10px;
+        padding: 0;
+        margin: 0 8px 0 2px;
+        border-radius: 50%;
+        font-size: 0;
+        line-height: 0;
+    }
+    .top-nav-sync.ok { background: #6fd99c; box-shadow: 0 0 5px rgba(111, 217, 156, 0.45); }
+    .top-nav-sync.offline { background: #f0aa6c; }
+    .top-nav-sync.error { background: var(--app-danger); }
+    .top-nav-sync.error:hover { background: var(--app-danger); }
+    .top-nav-ver { display: none; }
+    .top-nav-tabs { min-width: max-content; } /* 容器不许被压到内容宽以下（曾压到 92px，末 tab 溢出压住徽标） */
+    .top-nav-user-name {
+        max-width: 64px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+.top-nav-sync.ok { color: var(--app-text-soft); opacity: 0.75; }
+.top-nav-sync.ok:hover { opacity: 1; }
+.top-nav-sync.syncing { color: #7ec8ff; animation: sync-pulse 1.2s ease-in-out infinite; }
+.top-nav-sync.offline { color: #f0aa6c; }
+.top-nav-sync.error { color: var(--app-danger); }
+.top-nav-sync.error:hover { background: color-mix(in srgb, var(--app-danger) 12%, transparent); }
+
+.top-nav-sync.ok { color: var(--app-text-soft); opacity: 0.75; }
+.top-nav-sync.ok:hover { opacity: 1; }
+.top-nav-sync.syncing { color: #7ec8ff; animation: sync-pulse 1.2s ease-in-out infinite; }
+.top-nav-sync.offline { color: #f0aa6c; }
+.top-nav-sync.error { color: var(--app-danger); }
+.top-nav-sync.error:hover { background: color-mix(in srgb, var(--app-danger) 12%, transparent); }
+@keyframes sync-pulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+}
+
+/* ============ 段落跳转 ¶ 钮（tab 行内嵌，hover 展开全曲段落标记；点击滚到对应行） ============ */
+.cc-nav-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.cc-nav-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--app-line-strong);
+    background: transparent;
+    color: var(--app-text-soft);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.12s, color 0.12s;
+}
+
+.cc-nav-btn:hover,
+.cc-nav-btn.on {
+    border-color: var(--app-control-thumb-border, #e4a54b);
+    color: var(--app-control-thumb-border, #e4a54b);
+}
+
+.cc-nav-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 180px;
+    max-height: 50vh;
+    overflow-y: auto;
+    background: var(--app-panel-strong, #10161c);
+    border: 1px solid var(--app-line-strong);
+    border-radius: var(--app-radius-sm);
+    box-shadow: 0 12px 34px color-mix(in srgb, #000 40%, transparent);
+    padding: 4px;
+    z-index: var(--z-nav-menu);
+}
+
+.cc-nav-menu button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--app-text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    font-size: var(--app-fs-sm);
+}
+
+.cc-nav-menu button:hover {
+    background: color-mix(in srgb, #fff 8%, transparent);
+}
+
+.cc-nav-name {
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cc-nav-mi {
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: var(--app-fs-xs);
+    white-space: nowrap;
+}
+
+.cc-nav-mi {
+    color: var(--app-text-muted, #9fb2c0);
+    font-size: var(--app-fs-xs);
+    white-space: nowrap;
+}
+
