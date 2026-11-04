@@ -1433,106 +1433,14 @@ html[data-theme="light"] .cc-page {
     font-size: var(--app-fs-sm);
 }
 
-/* 右下角指板预览悬浮卡（8pu 无侧栏；舞台不占版面） */
-.cc-stage-fab {
-    position: fixed;
-    right: 14px;
-    bottom: 14px;
-    z-index: var(--z-stage-fab);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--app-panel-strong);
-    border: 1px solid var(--app-border-strong);
-    border-radius: var(--app-radius-sm);
-    color: var(--app-text);
-    font-size: var(--app-fs-md);
-    padding: 6px 12px;
-    cursor: pointer;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-}
-
-.cc-stage-fab:hover {
-    border-color: var(--cc-accent);
-}
-
-.cc-stage-float {
-    position: fixed;
-    right: 14px;
-    bottom: 58px;
-    z-index: var(--z-stage-float);
-    width: 300px;
-    background: var(--app-panel-strong);
-    border: 1px solid var(--app-border-strong);
-    border-radius: 12px;
-    padding: 10px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
-    max-height: calc(100vh - 260px);
-    overflow: auto;
-}
-
-.cc-stage-float svg {
-    max-width: 100%;
-    height: auto;
-}
-
 /* 旧侧栏（保留旧规则无害，已不使用） */
-/* 侧栏：舞台 + 和弦面板 */
+/* 侧栏：和弦面板 */
 .cc-side {
     display: flex;
     flex-direction: column;
     gap: 12px;
     position: sticky;
     top: 62px;
-}
-
-.cc-stage {
-    background: var(--app-panel);
-    border: 1px solid var(--app-border);
-    border-radius: 12px;
-    padding: 10px;
-    min-height: 130px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: auto;
-}
-
-.cc-stage {
-    flex-direction: column;
-    gap: 4px;
-}
-
-.cc-stage-label {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    font-size: 15px;
-    color: var(--app-text);
-    align-self: flex-start;
-    padding: 2px 4px 0;
-}
-
-.cc-stage-label b {
-    color: var(--app-accent-text);
-    font-size: 16px;
-}
-
-.cc-stage-pos {
-    color: var(--app-text-soft);
-    font-size: var(--app-fs-sm);
-}
-
-.cc-stage svg {
-    max-width: 100%;
-    height: auto;
-}
-
-.cc-stage-empty {
-    color: var(--app-text-soft);
-    font-size: var(--app-fs-sm);
-    text-align: center;
-    padding: 18px;
 }
 
 .cc-panel {
@@ -1692,7 +1600,6 @@ html[data-theme="light"] .cc-page {
 }
 
 html[data-theme="light"] .cc-score,
-html[data-theme="light"] .cc-stage,
 html[data-theme="light"] .cc-panel,
 html[data-theme="light"] .cc-toolbar {
     background: #ffffff;
@@ -1780,10 +1687,6 @@ html[data-theme="light"] .cc-cell-tools {
 
 .cc-page .cc-beat.cur .cc-glyph.empty {
     color: var(--cc-accent);
-}
-
-.cc-page .cc-stage-label b {
-    color: var(--cc-accent-text);
 }
 
 /* 和弦槽旁的小＋（拆分） */
@@ -2039,70 +1942,6 @@ html[data-theme="light"] .cc-cell-tools {
     line-height: 14px;
 }
 
-/* 查看模式：动态谱视图 */
-.cc-dynview {
-    max-width: 1560px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.cc-dyn-stage {
-    background: var(--app-panel);
-    border: 1px solid var(--app-border);
-    border-radius: var(--app-radius-md);
-    padding: 16px;
-    min-height: 300px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.cc-dyn-stage svg {
-    max-width: min(860px, 100%);
-    height: auto;
-}
-
-.cc-dyn-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.cc-dyn-strip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    background: var(--app-panel);
-    border: 1px solid var(--app-border);
-    border-radius: 12px;
-    padding: 10px;
-}
-
-.cc-dyn-chord {
-    background: var(--app-bg-secondary);
-    border: 1px solid var(--app-border);
-    border-radius: var(--app-radius-xs);
-    color: var(--app-text);
-    font-size: var(--app-fs-lg);
-    font-weight: 600;
-    padding: 8px 13px;
-    cursor: pointer;
-    transition: all 0.1s;
-}
-
-.cc-dyn-chord.cur {
-    border-color: var(--cc-accent);
-    color: var(--cc-accent-text);
-    background: var(--cc-accent-weak);
-    transform: scale(1.06);
-}
-
 /* 工具行：文本/着色/不适用态 */
 .cc-tools-label2 {
     color: var(--app-text-muted);
@@ -2322,8 +2161,7 @@ html[data-theme="light"] .cc-cell-tools {
 
 /* ===== 工具行控件统一规格（#6 尺寸审计对齐）：高 32 / 字 12.5 / 圆角 8 ===== */
 .cc-tabs-row select,
-.cc-preview-bar select,
-.cc-dyn-controls select {
+.cc-preview-bar select {
     box-sizing: border-box;
     height: 32px;
     padding: 0 8px;
@@ -2814,7 +2652,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 .cc-cell:has(.cc-cell-tags.in-flow) .cc-bardots { top: calc(var(--cc-fig-h) + 59px); }
 .cc-cell:has(.cc-cell-tags.in-flow) .cc-repeat-times { top: calc(var(--cc-fig-h) + 34px); }
 
-/* 预览子栏（预览页签内容区自己的 文本谱/动态谱 页签，不占工具栏） */
+/* 预览子栏（预览页签内容区的工具条：记谱形式/升降号/分享导出，不占工具栏） */
 .cc-preview-bar {
     max-width: 1560px;
     width: 100%;

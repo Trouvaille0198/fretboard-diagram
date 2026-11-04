@@ -31,9 +31,8 @@
 |---|---|---|
 | （token） | :root 表 + light 主题 | `src/css/tokens-base.css` |
 | `.menu-*` | 菜单面板/调色盘 | `src/css/menu-panel.css` |
-| `.sc-*` | 序列谱视图 | `src/css/seq-score.css` |
+| `.score-fx` | 过渡特效层（TransitionFx 兜底容器） | `src/css/seq-score.css` |
 | `.tl-*` | 时间轴 | `src/css/timeline.css` |
-| `.score-*` | 独立谱子页 | `src/css/score-page.css` |
 | `.dyn-*` | 动效编辑/播放 | `src/css/dynamic.css` / DynamicToolbar |
 | `.top-*` | 顶部导航 | `src/css/topnav.css` / TopNav |
 | `.cc-*` | 和弦谱页 | `src/css/chords.css` + `chords-v24.css` / ChordChartView |

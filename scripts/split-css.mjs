@@ -27,7 +27,7 @@ const SECTIONS = [
   ['menu-panel.css', 669],    // 菜单面板样式层（.menu/.menu-left/调色盘/移动端断点）
   ['seq-score.css', 1906],    // 序列谱视图
   ['timeline.css', 2296],     // 时间轴
-  ['score-page.css', 2546],   // 独立谱子页
+  // score-page.css（独立谱子页，原 2546 行）已随「动态谱」机制删除（v228），manifest 里同步移除
   ['dynamic.css', 2889],      // 动态编辑工具条
   ['topnav.css', 3450],       // 顶部导航
   ['chords.css', 3576],       // 和弦谱主区（含页面级强调色/UiSelect/工具行控件规格——按区间归属，语义混合已注释）

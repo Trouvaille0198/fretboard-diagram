@@ -1,4 +1,4 @@
-// 和弦谱 → 指板帧 / 动图 clip（"看到=听到"：舞台帧与播放同源 voicing）
+// 和弦谱 → 指板帧 / 动图 clip（按法与播放同源 voicing）
 import { voiceChord, voicingWindow } from "./voicing.js";
 import { buildEvents } from "./chartPlayback.js";
 import { newChartId } from "./chordChartModel.js";
@@ -21,16 +21,6 @@ export function voicingFrame(voicing, song, colorFn) {
 		rootNote: song.key ? song.key.root : null,
 		visibility: "transparent"
 	};
-}
-
-// 舞台帧（编辑选中/播放中的和弦，统一中档色）
-export function stageFrame(chord, song, viewKey) {
-	if (!chord) return null;
-	const voicing = voiceChord(chord, viewKey);
-	if (!voicing) return null;
-	const scheme = song.colorScheme || "navy";
-	const mid = tintAt(scheme, 1 / 3);
-	return voicingFrame(voicing, song, () => ({ name: scheme, custom: mid }));
 }
 
 // 整曲 → 动图 clip：每个和弦变化一帧；出生帧色（出生档随帧位加深）；同弦移动自动标 sl

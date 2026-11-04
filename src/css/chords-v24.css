@@ -108,8 +108,7 @@
 }
 
 .cc-page .cc-toolbar select,
-.cc-page .cc-preview-bar select,
-.cc-page .cc-dyn-controls select {
+.cc-page .cc-preview-bar select {
     height: var(--cc-ctl-h);
     padding: 0 6px;
     font-size: var(--app-fs-md);
@@ -739,20 +738,3 @@ html[data-theme="light"] .cc-page .cc-cell-tools {
 .cc-beat .cc-glyph {
     font-size: 20px;
 }
-
-/* 常用和弦栏 / 动态条 */
-
-.cc-dyn-chord .csign-deg {
-    font-size: 15px;
-}
-
-.cc-dyn-chord .csign-sfx {
-    font-size: var(--app-fs-sm);
-}
-
-.cc-dyn-chord .csign-sup .csign-sfx {
-    font-size: 9.5px;
-}
-
-/* 常用和弦栏/动态条：按钮本身就是容器，记号芯片去框融入 */
-

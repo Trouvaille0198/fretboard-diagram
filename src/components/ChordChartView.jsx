@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../i18n";
 import { SECTION_TINTS } from "../colorConfig";
-import { ScoreBoard } from "./ScorePieces";
 import { ChordPopup } from "./ChordPopup";
 import { FigView } from "./ChordFig.jsx";
 import { FigBoardEditor } from "./FigBoardEditor.jsx";
@@ -30,7 +29,7 @@ function richLyric(text, ranges) {
 	return out;
 }
 
-import { chordParts, formatInline, formatName, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken, degreePc, effectiveEnharmonic } from "../utils/chordLib";
+import { formatInline, formatDegree, resolvedQuality, diatonicSeventh, chordFromNameToken, degreePc, effectiveEnharmonic } from "../utils/chordLib";
 import { createPortal } from "react-dom";
 import { ChordSign } from "./ChordSign";
 import { KeyPicker } from "./KeyPicker";
@@ -41,7 +40,7 @@ import {
 } from "../utils/chordChartModel";
 import { expandSong } from "../utils/chartPlayback";
 import { remoteIsNewer } from "../utils/syncEngine";
-import { buildSongClip, stageFrame } from "../utils/chartFrames";
+import { buildSongClip } from "../utils/chartFrames";
 import { exportMusicXml, importMusicXml } from "../utils/musicxmlChart";
 import { packChart, unpackChartBundle, chartShareCode, isChartPack } from "../utils/chartPack";
 import { createShareLink } from "../utils/shareModel";
@@ -113,7 +112,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	// 工具栏页签：和弦 | 小节 | 预览；分享查看态钉死在预览（任何 setToolTab 都不生效）
 	const [toolTabRaw, setToolTab] = useState(shared ? "preview" : "chord");
 	const toolTab = shared ? "preview" : toolTabRaw;
-	const [viewTab, setViewTab] = useState("text"); // 查看：文本谱 | 动态谱
 	// 预览记谱形式（编辑态恒为数字功能谱）：number=1-7 | roman=I/vi | name=Am/Dmaj7
 	const [previewDisplay, setPreviewDisplay] = useState(song.display === "name" ? "name" : "number");
 	// Q 复制模式：选相邻小节段 → Ctrl+C 复制 → Ctrl+V 整段插入到光标小节之后
@@ -1407,16 +1405,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	};
 	const figChordOf = (u, mi, si, half) => u.chord || nearestPrevChord(mi, si, half);
 
-	const stageChord = currentUnit && currentUnit.kind === "chord" ? currentUnit.chord : null;
-	const stageSnapshot = useMemo(() => {
-		const frame = stageChord ? stageFrame(stageChord, song, keyAt(cursor.mi)) : null;
-		return frame ? { state: frame } : null;
-	}, [stageChord, song.colorScheme, song.key?.root, song.enharmonic, cursor.mi]);
-	const stagePos = { mi: cursor.mi, si: cursor.si };
-	const stageSign = stageChord
-		? `${chordParts(stageChord, "degree", keyAt(cursor.mi)).main.replace(/M$/, "")} · ${formatName(stageChord, keyAt(cursor.mi))}`
-		: "";
-
 	// 拍格内容（和弦竖排记号 / 休止 / 延音 / 空）——编辑恒数字级数，预览按三态选择
 	const scoreDisplay = editing ? "degree" : previewDisplay;
 	const beatContent = (u, compact, mi, si, half) => {
@@ -1959,10 +1947,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 
 			{!editing ? (
 				<div className="cc-preview-bar">
-					<nav className="cc-preview-tabs">
-						<button className={viewTab === "text" ? "on" : ""} onClick={() => setViewTab("text")}>{ts.viewText ?? "文本谱"}</button>
-						<button className={viewTab === "dynamic" ? "on" : ""} onClick={() => setViewTab("dynamic")}>{ts.viewDynamic ?? "动态谱"}</button>
-					</nav>
 					<nav className="cc-preview-tabs cc-display-seg" title={ts.displayFormTip ?? "记谱形式（只在预览生效；编辑恒为数字级数）"}>
 						<button className={previewDisplay === "number" ? "on" : ""} onClick={() => setPreviewDisplay("number")}>{ts.dispNumber ?? "数字"}</button>
 						<button className={previewDisplay === "roman" ? "on" : ""} onClick={() => setPreviewDisplay("roman")}>{ts.dispRoman ?? "罗马"}</button>
@@ -1983,35 +1967,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				</div>
 			) : null}
 
-			{!editing && viewTab === "dynamic" ? (
-				<div className="cc-dynview">
-					<div className="cc-dyn-stage">
-						{stageSnapshot ? (
-							<>
-								<div className="cc-stage-label"><b>{stageSign}</b>
-									<span className="cc-stage-pos">M{(stagePos.mi) + 1} · {(ts.beatLabel ?? "拍")}{(stagePos.si) + 1}</span>
-								</div>
-								<ScoreBoard snapshot={stageSnapshot} />
-							</>
-						) : <div className="cc-stage-empty">{ts.stageEmpty ?? "选中或播放和弦，这里显示指板按法"}</div>}
-					</div>
-					<div className="cc-dyn-controls" />
-					<div className="cc-dyn-strip">
-						{song.measures.map((m, mi) => (m.slots || []).map((sl, si) => (sl.split || [sl]).map((u, h) => {
-							if (u.kind !== "chord" || !u.chord) return null;
-							const isCur = cursor.mi === mi && cursor.si === si && (cursor.half ?? null) === (sl.split ? h : null);
-							return (
-								<button key={`${mi}-${si}-${h}`} className={`cc-dyn-chord ${isCur ? "cur" : ""}`}
-									onClick={() => { setCursor({ mi, si, half: sl.split ? h : null }); }}>
-									<ChordSign chord={u.chord} display={previewDisplay} viewKey={keyAt(mi)} compact={!!sl.split} />
-								</button>
-							);
-						})))}
-					</div>
-				</div>
-			) : null}
-
-			<div className="cc-body" style={!editing && viewTab === "dynamic" ? { display: "none" } : undefined}>
+			<div className="cc-body">
 				<div className="cc-score" ref={scoreRef}>
 					{/* 歌名仍在原位（谱面上方居中，24px）——不进 tab 行 */}
 					<input className="cc-score-title" value={song.name} readOnly={!editing}
@@ -2106,7 +2062,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v227</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v228</div>
 
 
 			{dialog ? (
