@@ -4,6 +4,7 @@ import { SECTION_TINTS } from "../colorConfig";
 import { ChordPopup } from "./ChordPopup";
 import { FigView } from "./ChordFig.jsx";
 import { FigBoardEditor } from "./FigBoardEditor.jsx";
+import { FigPanel } from "./FigPanel.jsx";
 import { UiSelect } from "./UiSelect";
 import { Toast } from "./Toast";
 
@@ -35,7 +36,7 @@ import { ChordSign } from "./ChordSign";
 import { KeyPicker } from "./KeyPicker";
 import {
 	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong, deleteBeatInSong,
-	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText, normalizeBoldRanges, toggleBoldRange, collectSameChordFigs,
+	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText, normalizeBoldRanges, toggleBoldRange,
 	FIG_SIZES, defaultFigOpts, normalizeFigOpts
 } from "../utils/chordChartModel";
 import { expandSong } from "../utils/chartPlayback";
@@ -109,11 +110,11 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		ro.observe(tb);
 		return () => ro.disconnect();
 	}, []);
-	// 工具栏页签：和弦 | 小节 | 预览；分享查看态钉死在预览（任何 setToolTab 都不生效）
+	// 工具栏页签：和弦 | 小节（v229 删预览页签）；分享查看态钉死在预览渲染（任何 setToolTab 都不生效）
 	const [toolTabRaw, setToolTab] = useState(shared ? "preview" : "chord");
 	const toolTab = shared ? "preview" : toolTabRaw;
-	// 预览记谱形式（编辑态恒为数字功能谱）：number=1-7 | roman=I/vi | name=Am/Dmaj7
-	const [previewDisplay, setPreviewDisplay] = useState(song.display === "name" ? "name" : "number");
+	// 分享查看态的记谱形式（编辑态恒为数字功能谱，v229 起不可切换）：number=1-7 | roman=I/vi | name=Am/Dmaj7
+	const [previewDisplay] = useState(song.display === "name" ? "name" : "number");
 	// Q 复制模式：选相邻小节段 → Ctrl+C 复制 → Ctrl+V 整段插入到光标小节之后
 	const [copyMode, setCopyMode] = useState(false);
 	const [sel, setSel] = useState({ anchor: null, end: null }); // 选区（小节索引；end=null 表示还没成段）
@@ -1760,7 +1761,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					) : (
 						<nav className="cc-tooltabs">
 							<button className="cc-songs-btn cc-songs-icon" onClick={goSongList} title={ts.songsTip ?? "回曲目列表"}>←</button>
-							<button className={toolTab === "preview" ? "on" : ""} onClick={() => setToolTab("preview")}>{ts.tabPreview ?? "预览"}</button>
 							<button className={toolTab === "chord" ? "on" : ""} onClick={() => setToolTab("chord")}>{ts.tabChord ?? "和弦"}</button>
 							<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure ?? "小节"}</button>
 						</nav>
@@ -1945,26 +1945,10 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				) : null}
 			</header>
 
-			{!editing ? (
-				<div className="cc-preview-bar">
-					<nav className="cc-preview-tabs cc-display-seg" title={ts.displayFormTip ?? "记谱形式（只在预览生效；编辑恒为数字级数）"}>
-						<button className={previewDisplay === "number" ? "on" : ""} onClick={() => setPreviewDisplay("number")}>{ts.dispNumber ?? "数字"}</button>
-						<button className={previewDisplay === "roman" ? "on" : ""} onClick={() => setPreviewDisplay("roman")}>{ts.dispRoman ?? "罗马"}</button>
-						<button className={previewDisplay === "name" ? "on" : ""} onClick={() => setPreviewDisplay("name")}>{ts.dispName ?? "音名"}</button>
-					</nav>
-					{/* 音名模式的升降号拼写切换（D♯/E♭）：写进曲子数据（song.enharmonic），随谱保存/同步 */}
-					{previewDisplay === "name" ? (
-						<button className={`cc-compact-btn${(song.enharmonic ?? effectiveEnharmonic({ root: song.key?.root ?? 0, minor: !!song.key?.minor })) === 0 ? " on" : ""}`}
-							title={ts.enharmTip ?? "音名的升降号拼写：♯ 升号 / ♭ 降号（会写进曲子数据）"}
-							onClick={() => setSong(s => ({ ...s, enharmonic: effectiveEnharmonic({ root: s.key?.root ?? 0, minor: !!s.key?.minor, enharmonic: s.enharmonic }) === 1 ? 0 : 1 }))}>
-							{(song.enharmonic ?? effectiveEnharmonic({ root: song.key?.root ?? 0, minor: !!song.key?.minor })) === 1 ? "♭ 降号" : "♯ 升号"}
-						</button>
-					) : null}
-					<span className="cc-flex" />
-					<button className="button sm" onClick={shareLink} title={ts.shareLinkTip ?? "生成查看链接：对方不用登录，打开就能看"}>🔗 {ts.shareLinkBtn ?? "链接"}</button>
-					<button className="button sm" onClick={shareChart} title={ts.shareCodeTip ?? "复制分享码：对方粘贴即可 100% 还原整首谱"} >{ts.shareBtn ?? "分享码"}</button>
-					<button className="button sm accent" onClick={doExportChart} title={ts.exportPackTip ?? "工程文件：体积最小且 100% 还原（含配图/标色/节奏型）"}>⇩ {ts.exportBtn ?? "导出"}</button>
-				</div>
+			{/* 套和弦图面板（v229 起迁到原预览槽位）：最近同和弦 ↔ 形状库，点击应用到光标拍格 */}
+			{!shared ? (
+				<FigPanel measures={song.measures} cursor={cursor} unitAt={unitAt} keyAt={keyAt}
+					patchUnit={patchUnit} figOpts={figOpts} showToast={showToast} />
 			) : null}
 
 			<div className="cc-body">
@@ -2040,10 +2024,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			const preFig = (!u?.fig || !Object.keys(u.fig).length)
 				? prevSameChordFig(figTarget.mi, figTarget.si, figTarget.half, u?.chord)
 				: null;
-			// 全曲同和弦的既有指法（最近在前,内容去重）——编辑器默认面板"最近同和弦"展示
-			const sameFigs = u?.chord && u.chord.degree != null
-				? collectSameChordFigs(song.measures, degreePc(u.chord.degree, u.chord.acc || 0, keyAt(figTarget.mi)), u.chord.quality === "M" ? "" : (u.chord.quality || ""), keyAt)
-				: [];
 			return createPortal(
 				<div className="figbe-mask" onMouseDown={e => { if (e.target === e.currentTarget) setFigTarget(null); }}>
 					<div className="figbe-box">
@@ -2052,17 +2032,16 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							chord={u?.chord}
 							viewKey={keyAt(figTarget.mi)}
 							figOpts={figOpts}
-							recentFigs={sameFigs}
 							showToast={showToast}
 							onAutoSave={figData => patchUnit(figTarget.mi, figTarget.si, figTarget.half, { fig: figData || undefined })}
 							onClose={() => setFigTarget(null)} />
-						</div>
-					</div>,
-					document.body
-				);
-			})() : null}
+					</div>
+				</div>,
+				document.body
+			);
+		})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v228</div>
+			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v229</div>
 
 
 			{dialog ? (
