@@ -1549,7 +1549,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		// 反复结束紧跟反复开始（同一条小节线，且两格同在一行）：并成标准 :||:，而不是两套符号并排
 		const repeatJoint = m.endBar === "repeatEnd" && !!song.measures[mi + 1]?.repeatStart && (mi + 1) % autoPer !== 0;
 		return (
-			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${repeatJoint ? "repeat-joint" : ""} ${editing && cursor.mi === mi ? "cur" : ""} ${inSel ? "sel" : ""} ${selRange != null && mi === selRange[0] ? "sel-first" : ""} ${selRange != null && mi === selRange[1] ? "sel-last" : ""}`}
+			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${repeatJoint ? "repeat-joint" : ""} ${editing && cursorOn && cursor.mi === mi ? "cur" : ""} ${inSel ? "sel" : ""} ${selRange != null && mi === selRange[0] ? "sel-first" : ""} ${selRange != null && mi === selRange[1] ? "sel-last" : ""}`}
 				style={!copyMode && m.tint && TINTS[m.tint] ? { background: TINTS[m.tint].bg } : undefined}
 				onMouseDown={e => { if (copyMode) { e.preventDefault(); beginSelDrag(mi); } }}
 				onMouseOver={() => { if (copyMode) extendSelDrag(mi); }}
