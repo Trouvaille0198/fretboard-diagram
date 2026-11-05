@@ -223,7 +223,7 @@ export const zh = {
         keyChangeFrom: "本小节起",
         legendTitle: "和弦配图",
         legendHint: "一个和弦一张指法图",
-        attachTip: "给该拍画一张黑点指法小图（可挑选形状/手捏/存形状库）",
+        attachTip: "给该拍画一张黑点指法小图",
         attachViewTip: "查看/编辑该拍的黑点指法小图",
         copyTitle: "复制模式",
         copyHint: "按住小节拖动选择，←/→ 微调选区",
@@ -303,7 +303,7 @@ export const zh = {
         confirmImport: "确认导入",
         cancel: "取消",
         contextExportDir: "导出该目录状态",
-        applyHint: (name) => `点击应用到当前指板 - ${name}`,
+        applyHint: (name) => `${name}`,
         confirmClearAll: "确定要清空整个指板堆吗？此操作不可恢复。",
         confirmDeleteDir: (name, count) =>
             count > 0
@@ -336,7 +336,7 @@ export const zh = {
         clear: "Clear",
         applyLatestTitle: (name) => `应用最近快照：${name}`,
         fallbackTitle: "指板堆",
-        itemTitle: (name) => `${name} · 点击应用，右键删除`,
+        itemTitle: (name) => `${name}`,
     },
 
     // LoginModal
@@ -377,7 +377,7 @@ export const zh = {
         clear: "Clear",
         applyLatestTitle: (name) => `应用最近快照：${name}`,
         fallbackTitle: "指板堆",
-        itemTitle: (name) => `${name} · 点击应用，右键删除`,
+        itemTitle: (name) => `${name}`,
         applyTitle: (name) => `应用：${name}`,
     },
 
