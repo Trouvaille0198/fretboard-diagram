@@ -478,14 +478,14 @@
 }
 
 .figbe-panel-list {
-    max-height: 96px;   /* 一行缩略图可见；更多往里滚，不把侧栏行顶高 */
+    max-height: 164px;  /* 两行 72px 缩略图可见；更多往里滚 */
     overflow-y: auto;
     align-content: flex-start;
 }
 
-/* figSvg 输出自带 ~119×144 固有尺寸，必须显式约束（页面拍格同款 44px 口径） */
+/* figSvg 输出自带 ~119×144 固有尺寸，必须显式约束；标签删除后空间让给图 */
 .figbe-panel-list .figbe-shape svg {
-    height: 44px;
+    height: 72px;
     width: auto;
 }
 
@@ -511,36 +511,20 @@
     flex-wrap: wrap;
 }
 
+/* 缩略图 = 纯图按钮（v229 起无文字标签，信息走悬停 title；尺寸放大让图看清） */
 .figbe-shape {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 2px;
     border: 1px solid var(--app-line-strong);
     background: transparent;
     border-radius: var(--app-radius-xs);
-    padding: 5px 7px;
+    padding: 4px;
     cursor: pointer;
     color: inherit;
 }
 
 .figbe-shape:hover {
     border-color: var(--app-accent);
-}
-
-.figbe-shape em {
-    font-style: normal;
-    font-size: var(--app-fs-2xs);
-    color: var(--app-accent);
-}
-
-.figbe-shape small {
-    font-size: var(--app-fs-2xs);
-    color: var(--app-text-fig-muted);
-    max-width: 64px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .figbe-saveform-row {

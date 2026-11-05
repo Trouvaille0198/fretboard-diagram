@@ -445,25 +445,17 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
               {chord ? <button className="button sm figbe-panel-toggle"
                 onClick={() => setPanelTab(t => (t === 'recent' ? 'shapes' : 'recent'))}>{panelTab === 'recent' ? '形状库' : '最近同和弦'}</button> : null}
             </div>
-            {panelTab === 'recent' ? (
-              <div className="figbe-shapes-title">{(recentFigs || []).length ? `${recentFigs.length} 个同和弦指法` : '暂无同和弦指法'}</div>
-            ) : (
-              <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选` : '暂无形状'}</div>
-            )}
             <div className="figbe-shapes-list figbe-panel-list">
               {panelTab === 'recent'
                 ? (recentFigs || []).map((item, i) => (
                   <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={`第${item.mi + 1}小节`}>
                     <span dangerouslySetInnerHTML={{ __html: figSvg(boardFigData(item.fig, chord, viewKey || { root: 0, minor: false }), { degMode: figOpts?.degMode ?? 'chord', orientation: figOpts?.orientation, size: figOpts?.size ?? 44, key: viewKey || { root: 0, minor: false } }) }} />
-                    <em>{`第${item.mi + 1}小节`}</em>
                   </button>
                 ))
                 : candidates.map((c, i) => (
                   <button key={i} className="figbe-shape" onClick={() => applyCandidate(c)}
                     onContextMenu={e => openCandMenu(e, c.shape)} title={`${c.shape.name} @${c.rootFret}品`}>
                     <span dangerouslySetInnerHTML={{ __html: figSvg({ points: c.points.map(p => ({ string: p.string, fret: p.fret })), links: [], startFret: Math.min(...c.points.filter(p => p.fret > 0).map(p => p.fret), 13), window: 4, rootPc: c.rootPc, fail: false }, { degMode: 'none', size: 44 }) }} />
-                    <em>{c.rootFret === 0 ? '开放把' : c.rootFret + '品'}</em>
-                    <small>{c.shape.name}</small>
                   </button>
                 ))}
             </div>
