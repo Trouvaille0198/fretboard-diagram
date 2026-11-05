@@ -235,6 +235,19 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
   }, [candMenu]);
 
+  // ESC = 「完成」（关闭弹窗）；右键菜单/重命名/存形状表单开着时先让位给它们各自的 ESC 语义
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (candMenu || renameForm || saveForm) return;
+      if (e.target instanceof Element && e.target.closest('input, textarea, select')) return;
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [candMenu, renameForm, saveForm, onClose]);
+
   // 最近一次应用的形状候选：换把位按钮的轮换基准（ref 供逻辑读，state 驱动按钮显隐）
   const lastCandRef = useRef(null);
   const [lastCand, setLastCand] = useState(null);
