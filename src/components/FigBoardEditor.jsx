@@ -455,7 +455,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
                 : candidates.map((c, i) => (
                   <button key={i} className="figbe-shape" onClick={() => applyCandidate(c)}
                     onContextMenu={e => openCandMenu(e, c.shape)} title={`${c.shape.name} @${c.rootFret}品`}>
-                    <span dangerouslySetInnerHTML={{ __html: figSvg({ points: c.points.map(p => ({ string: p.string, fret: p.fret })), links: [], startFret: Math.min(...c.points.filter(p => p.fret > 0).map(p => p.fret), 13), window: 4, rootPc: c.rootPc, fail: false }, { degMode: 'none', size: 44 }) }} />
+                    <span dangerouslySetInnerHTML={{ __html: figSvg({ points: c.points.map(p => ({ string: p.string, fret: p.fret })), links: [], startFret: Math.min(...c.points.filter(p => p.fret > 0).map(p => p.fret), 13), window: 4, rootPc: c.rootPc, fail: false }, { degMode: 'none', orientation: figOpts?.orientation, size: figOpts?.size ?? 44 }) }} />
                   </button>
                 ))}
             </div>

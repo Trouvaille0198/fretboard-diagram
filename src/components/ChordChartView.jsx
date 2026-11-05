@@ -84,6 +84,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		if (routedId && !loadCharts().some(c => c.id === routedId)) window.location.replace('#/chords');
 	}, [routedId]);
 	const [cursor, setCursor] = useState({ mi: 0, si: 0, half: null });
+	const [cursorOn, setCursorOn] = useState(false); // 光标选中态：点拍点亮，点谱面外熄灭（v229 前常亮）
 	const [menuOpen, setMenuOpen] = useState(false); // 工具行「更多」菜单
 	const [settingsOpen, setSettingsOpen] = useState(false); // 谱头「设置」面板
 	// 菜单（⚙设置 / ⋯更多 / 小节右键）：点击任何菜单外区域即关闭
@@ -93,6 +94,18 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			if (e.target.closest(".cc-menu, .cc-more-btn")) return;
 			if (e.target.closest(".cc-mmenu")) return;
 			setSettingsOpen(false); setMenuOpen(false); setCellMenu(null);
+		};
+		document.addEventListener("mousedown", onDocDown);
+		return () => document.removeEventListener("mousedown", onDocDown);
+	}, []);
+	// 光标熄灭：点击拍格/弹层/菜单/工具行之外的任意区域 = 撤销选中（v229 前光标常亮）
+	useEffect(() => {
+		const onDocDown = (e) => {
+			if (e.target.closest(".cc-beat, .cc-cp-wrap, .cc-toolbar, .cc-settings, .cc-menu, .cc-mmenu, .cc-prefs, .cc-copybar, .cc-nav-menu, .cc-dialog, .cc-modal-mask, .cc-figview, .cc-figmodal, .figbe-mask, .cc-cell-menu")) return;
+			if (e.target.closest("[class*=popup], [class*=dialog]")) return;
+			setCursorOn(false);
+			setPopupOpen(false);
+			setCopyMode(false);
 		};
 		document.addEventListener("mousedown", onDocDown);
 		return () => document.removeEventListener("mousedown", onDocDown);
@@ -971,6 +984,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				if (e.shiftKey) redo(); else undo();
 				return;
 			}
+			// 无选中（光标熄灭）时编辑键位全部让路；Ctrl+Z 撤销/重做保持全局可用
+			if (!cursorOnRef.current) return;
 			if (copyMode) {
 				// 模式内只认：Q/Esc 退出、拖选后的 ←/→ 微调、Ctrl+C 复制、Ctrl+V 插入、Backspace 删除、Ctrl+Z 撤销
 				if (e.key === "q" || e.key === "Q" || e.key === "Escape") { e.preventDefault(); exitCopyMode(); return; }
@@ -1377,6 +1392,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const [figTarget, setFigTarget] = useState(null); // { mi, si, half }
 	const figTargetRef = useRef(null);
 	figTargetRef.current = figTarget; // 键盘守卫在 effect 里读（声明位置靠后，回调执行时已初始化）
+	const cursorOnRef = useRef(false);
+	cursorOnRef.current = cursorOn; // 键盘 effect 里读，避免重绑
 	const editFig = (mi, si, half) => {
 		setPopupOpen(false);
 		setFigTarget({ mi, si, half });
@@ -1448,7 +1465,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		const slot = song.measures[mi].slots[si];
 		const units = slot.split ? slot.split : [slot];
 		// 光标高亮只在编辑态出现：预览是拿出来给人看的，不该带编辑光标
-		const isCur = editing && cursor.mi === mi && cursor.si === si;
+		const isCur = editing && cursorOn && cursor.mi === mi && cursor.si === si;
 		return (
 			<div
 				key={si}
@@ -1457,7 +1474,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				data-si={si}
 				onMouseEnter={() => { hoverBeatRef.current = { mi, si, half: null }; }}
 				onMouseLeave={() => { const h = hoverBeatRef.current; if (h && h.mi === mi && h.si === si) hoverBeatRef.current = null; }}
-				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: null }); setPopupOpen(true); }}
+				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: null }); setCursorOn(true); setPopupOpen(true); }}
 			>
 				{slot.split ? <span className="cc-beat-splitmark" title={ts.splitTip ?? "反拍拆分（Enter 合并）"}>╱</span> : null}
 				{editing && isCur && !slot.split && slot.kind === "chord" ? (
@@ -1469,7 +1486,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						return (
 							<div key={h}
 								className={`cc-beat-unit ${active ? "cur" : ""}`}
-								onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: slot.split ? h : null }); setPopupOpen(true); }}
+								onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: slot.split ? h : null }); setCursorOn(true); setPopupOpen(true); }}
 							>
 								{beatContent(u, !!slot.split, mi, si, slot.split ? h : null)}
 								{u.rhythm ? <span className="cc-rhythm-mark">{u.rhythm === "ballad" ? "∼" : u.rhythm === "block" ? "▮" : u.rhythm === "waltz" ? "③" : ""}</span> : null}
@@ -1501,7 +1518,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const compactPairView = (mi, siA, siB) => {
 		const units = compactPairUnits(mi, siA, siB);
 		const pair = siB != null ? [siA, siB] : [siA];
-		const isCur = editing && cursor.mi === mi && pair.includes(cursor.si);
+		const isCur = editing && cursorOn && cursor.mi === mi && pair.includes(cursor.si);
 		const first = units[0] || { si: siA, half: null };
 		return (
 			<div
@@ -1511,13 +1528,13 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				data-si={siA}
 				onMouseEnter={() => { hoverBeatRef.current = { mi, si: siA, half: null }; }}
 				onMouseLeave={() => { const h = hoverBeatRef.current; if (h && h.mi === mi && h.si === siA) hoverBeatRef.current = null; }}
-				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si: first.si, half: first.half }); setPopupOpen(true); }}
+				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si: first.si, half: first.half }); setCursorOn(true); setPopupOpen(true); }}
 			>
 				{units.length > 1 ? <span className="cc-beat-splitmark" title={ts.splitTip ?? "两拍并一格（简略模式）"}>╱</span> : null}
 				<div className={`cc-beat-units ${units.length > 1 ? "halved" : ""}`}>
 					{units.map(({ u, si, half }, i) => (
 						<div key={i} className={`cc-beat-unit ${isCur && cursor.si === si && (half == null || cursor.half === half) ? "cur" : ""}`}
-							onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half }); setPopupOpen(true); }}>
+							onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half }); setCursorOn(true); setPopupOpen(true); }}>
 							{beatContent(u, units.length > 1, mi, si, half)}
 							{u.rhythm ? <span className="cc-rhythm-mark">{u.rhythm === "ballad" ? "∼" : u.rhythm === "block" ? "▮" : u.rhythm === "waltz" ? "③" : ""}</span> : null}
 						</div>
