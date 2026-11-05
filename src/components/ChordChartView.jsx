@@ -984,6 +984,12 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				if (e.shiftKey) redo(); else undo();
 				return;
 			}
+			// ESC：关拍子弹层/小节右键菜单并立刻熄灭拍子+小节高亮（须在光标门控之前——右键菜单可开在无光标态）
+			if (e.key === "Escape" && !copyMode) {
+				e.preventDefault();
+				if (popupOpen || cellMenu) { setPopupOpen(false); setCellMenu(null); setCursorOn(false); }
+				return;
+			}
 			// 无选中（光标熄灭）时编辑键位全部让路；Ctrl+Z 撤销/重做保持全局可用
 			if (!cursorOnRef.current) return;
 			if (copyMode) {
@@ -1008,7 +1014,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				enterCopyMode();
 				return;
 			}
-			if (e.key === "Escape") { e.preventDefault(); if (popupOpen) setPopupOpen(false); return; }
+			if (e.key === "Escape") { e.preventDefault(); return; }
 			if (popupOpen && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
 				const k2 = e.key.toLowerCase();
 				// 跟打进行中 b 优先当降号修饰（如 1 b = b1 / b7）；不跟打时才切弹层页签（8pu 的 C/B/R）
@@ -2037,7 +2043,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								hasAttach={!!(currentUnit?.kind === "chord" && currentUnit.fig)}
 								onAttach={() => editFig(cursor.mi, cursor.si, cursor.half)}
 								canSplit={canSplitCurrent} onPatchUnit={patchUnitFromPanel} onSetKind={onPanelSetKind}
-								onToggleSplit={toggleSplit} onClose={() => setPopupOpen(false)} t={t}
+								onToggleSplit={toggleSplit} onClose={() => { setPopupOpen(false); setCursorOn(false); }} t={t}
 								keyHere={editing ? keyStepper(cursor.mi) : null}
 								tab={cpTab} onTab={setCpTab} />
 						</div>
