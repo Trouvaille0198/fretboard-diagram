@@ -78,7 +78,7 @@ export function boardFigData(data, chord, viewKey) {
 	const links = [];
 	conns.forEach(c => {
 		const a = byId.get(c.startNoteId), b = byId.get(c.endNoteId);
-		if (a && b) links.push({ a, b, type: c.type === "arc" ? "arc" : "line", arrowDirection: c.arrowDirection || "none", ghost: !!c.ghost });
+		if (a && b) links.push({ a, b, type: c.type === "arc" ? "arc" : "line", arrowDirection: c.arrowDirection || "none", ghost: !!c.ghost, arcCurvature: c.arcCurvature });
 	});
 	// 和弦内度数的根音(该拍有和弦才给;无和弦拍退化为调内/无标注由调用方决定)
 	let rootPc = null;
@@ -250,16 +250,23 @@ export function figSvg(fig, opts = {}) {
 		const dx = o.x - px.x, dy = o.y - px.y, len = Math.hypot(dx, dy) || 1;
 		return { x: px.x + dx / len * rGhost, y: px.y + dy / len * rGhost };
 	};
-	(fig.links || []).forEach(({ a, b, type = "line", arrowDirection = "none" }) => {
+	(fig.links || []).forEach(({ a, b, type = "line", arrowDirection = "none", arcCurvature }) => {
 		const pa = anchor(a, b), pb = anchor(b, a);
 		const dx = pb.x - pa.x, dy = pb.y - pa.y;
 		const len = Math.hypot(dx, dy) || 1;
-		let P1 = null, P2 = null;
+		let P1 = null, P2 = null, QC = null;
 		let d = `M ${pa.x.toFixed(2)} ${pa.y.toFixed(2)}`;
-		if (type === "arc") {
+		if (type === "arc" && typeof arcCurvature === "number") {
+			// 编辑时为准：与主板 calculateArcPath 同式——正=向上拱，Q 曲线，拱高=|k|·距离·0.3
+			// （h 版谱面坐标整体转置，同一公式在转置坐标系里自然给出转置后的弯曲，画面与编辑一致）
+			const h = Math.abs(arcCurvature) * len * 0.3;
+			const sign = arcCurvature > 0 ? -1 : 1;
+			QC = { x: (pa.x + pb.x) / 2 + (-dy / len) * h * sign, y: (pa.y + pb.y) / 2 + (dx / len) * h * sign };
+			d += ` Q ${QC.x.toFixed(2)} ${QC.y.toFixed(2)}, ${pb.x.toFixed(2)} ${pb.y.toFixed(2)}`;
+		} else if (type === "arc") {
 			const bend = 0.55 * cell;
 			let nx = -dy / len, ny = dx / len; // 连线方向的垂直线
-			if (ny > 0 || (ny === 0 && nx > 0)) { nx = -nx; ny = -ny; } // 弧统一拱向谱面上方/左侧
+			if (ny > 0 || (ny === 0 && nx > 0)) { nx = -nx; ny = -ny; } // 旧数据无弧度字段：沿用启发式，弧统一拱向谱面上方/左侧
 			P1 = { x: pa.x + nx * bend, y: pa.y + ny * bend };
 			P2 = { x: pb.x + nx * bend, y: pb.y + ny * bend };
 			d += ` C ${P1.x.toFixed(2)} ${P1.y.toFixed(2)}, ${P2.x.toFixed(2)} ${P2.y.toFixed(2)}, ${pb.x.toFixed(2)} ${pb.y.toFixed(2)}`;
@@ -267,9 +274,10 @@ export function figSvg(fig, opts = {}) {
 			d += ` L ${pb.x.toFixed(2)} ${pb.y.toFixed(2)}`;
 		}
 		svg += `<path d="${d}" fill="none" stroke="${th.link}" stroke-width="${linkStroke}" stroke-linecap="round" opacity="0.9"/>`;
-		// 路径上 t∈[0,1] 的点(直线/cubic 同一入口,箭头按采样走向摆——弧线末端方向≠两音连线方向)
+		// 路径上 t∈[0,1] 的点(直线/Q/cubic 同一入口,箭头按采样走向摆——弧线末端方向≠两音连线方向)
 		const at = (t) => {
 			if (type !== "arc") return { x: pa.x + dx * t, y: pa.y + dy * t };
+			if (QC) { const s = 1 - t; return { x: s * s * pa.x + 2 * s * t * QC.x + t * t * pb.x, y: s * s * pa.y + 2 * s * t * QC.y + t * t * pb.y }; }
 			const s = 1 - t, k0 = s * s * s, k1 = 3 * s * s * t, k2 = 3 * s * t * t, k3 = t * t * t;
 			return { x: k0 * pa.x + k1 * P1.x + k2 * P2.x + k3 * pb.x, y: k0 * pa.y + k1 * P1.y + k2 * P2.y + k3 * pb.y };
 		};
