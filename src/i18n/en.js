@@ -222,7 +222,7 @@ export const en = {
         keyChangeFrom: "from this bar",
         legendTitle: "Chord diagrams",
         legendHint: "one diagram per chord",
-        attachTip: "Draw a black-dot fret diagram for this beat (pick a shape / hand-craft / save to library)",
+        attachTip: "Draw a black-dot fret diagram for this beat",
         attachViewTip: "View / edit this beat's diagram",
         copyTitle: "Copy mode",
         copyHint: "Press and drag across measures to select; ←/→ adjusts",
@@ -303,7 +303,7 @@ export const en = {
         confirmImport: "Import",
         cancel: "Cancel",
         contextExportDir: "Export this directory",
-        applyHint: (name) => `Click to apply – ${name}`,
+        applyHint: (name) => `${name}`,
         confirmClearAll:
             "Clear the entire state gallery? This cannot be undone.",
         confirmDeleteDir: (name, count) =>
@@ -382,7 +382,7 @@ export const en = {
         clear: "Clear",
         applyLatestTitle: (name) => `Apply latest snapshot: ${name}`,
         fallbackTitle: "Stack",
-        itemTitle: (name) => `${name} · click to apply, right-click to delete`,
+        itemTitle: (name) => `${name}`,
         applyTitle: (name) => `Apply: ${name}`,
     },
 

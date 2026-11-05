@@ -441,19 +441,19 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
           </div>
           <div className="figbe-side-block figbe-panel">
             <div className="figbe-side-head">
-              <div className="figbe-side-title">和弦图{chord ? '' : ' · 无和弦拍'}</div>
-              {chord ? <button className="button sm figbe-panel-toggle" title={panelTab === 'recent' ? '查看形状库候选（按当前和弦匹配）' : '查看本曲同和弦的既有指法'}
+              <div className="figbe-side-title">和弦图</div>
+              {chord ? <button className="button sm figbe-panel-toggle"
                 onClick={() => setPanelTab(t => (t === 'recent' ? 'shapes' : 'recent'))}>{panelTab === 'recent' ? '形状库' : '最近同和弦'}</button> : null}
             </div>
             {panelTab === 'recent' ? (
-              <div className="figbe-shapes-title">{(recentFigs || []).length ? `${recentFigs.length} 个同和弦指法 · 点击应用` : '本曲暂无相同和弦的指法图（或切「形状库」挑一个）'}</div>
+              <div className="figbe-shapes-title">{(recentFigs || []).length ? `${recentFigs.length} 个同和弦指法` : '暂无同和弦指法'}</div>
             ) : (
-              <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选 · 点击应用，右键重命名/删除` : '暂无形状'}</div>
+              <div className="figbe-shapes-title">{candidates.length ? `${candidates.length} 个候选` : '暂无形状'}</div>
             )}
             <div className="figbe-shapes-list figbe-panel-list">
               {panelTab === 'recent'
                 ? (recentFigs || []).map((item, i) => (
-                  <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={`第${item.mi + 1}小节（点击应用）`}>
+                  <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={`第${item.mi + 1}小节`}>
                     <span dangerouslySetInnerHTML={{ __html: figSvg(boardFigData(item.fig, chord, viewKey || { root: 0, minor: false }), { degMode: figOpts?.degMode ?? 'chord', orientation: figOpts?.orientation, size: figOpts?.size ?? 44, key: viewKey || { root: 0, minor: false } }) }} />
                     <em>{`第${item.mi + 1}小节`}</em>
                   </button>
@@ -498,7 +498,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
       {saveForm ? (
         <div className="figbe-shapes figbe-saveform">
-          <div className="figbe-shapes-title">未识别质量 · 手动选择后存入</div>
+          <div className="figbe-shapes-title">未识别质量</div>
           <div className="figbe-saveform-row">
             <UiSelect value={saveForm.quality ?? ''} onChange={q => setSaveForm(f => ({ ...f, quality: q }))}
               options={[{ value: '', label: '— 选择质量 —' }, ...QUALITIES.map(q => ({ value: q, label: q || '三和弦' }))]} />
