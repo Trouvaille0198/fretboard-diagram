@@ -478,9 +478,15 @@
 }
 
 .figbe-panel-list {
-    max-height: 132px;   /* 两行 44px 缩略图；更多往里滚，不再把弹窗底顶出去 */
+    max-height: 96px;   /* 一行缩略图可见；更多往里滚，不把侧栏行顶高 */
     overflow-y: auto;
     align-content: flex-start;
+}
+
+/* figSvg 输出自带 ~119×144 固有尺寸，必须显式约束（页面拍格同款 44px 口径） */
+.figbe-panel-list .figbe-shape svg {
+    height: 44px;
+    width: auto;
 }
 
 .figbe-shapes {
