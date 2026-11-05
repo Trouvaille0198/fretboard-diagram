@@ -98,7 +98,8 @@
     border-radius: 0;
 }
 
-.cc-page .cc-toolbar .button {
+.cc-page .cc-toolbar .button,
+.cc-page .cc-preview-bar .button {
     height: var(--cc-ctl-h);
     padding: 0 10px;
     font-size: var(--app-fs-md);
@@ -106,7 +107,8 @@
     box-shadow: none;
 }
 
-.cc-page .cc-toolbar select {
+.cc-page .cc-toolbar select,
+.cc-page .cc-preview-bar select {
     height: var(--cc-ctl-h);
     padding: 0 6px;
     font-size: var(--app-fs-md);
@@ -354,6 +356,29 @@
     font-size: var(--app-fs-xs);
     padding: 0 4px;
     line-height: 14px;
+}
+
+/* —— 常用和弦栏 / 预览子栏 —— */
+.cc-page 
+
+.cc-page 
+
+.cc-page 
+
+.cc-page .cc-preview-tabs {
+    gap: 3px;
+}
+
+.cc-page .cc-preview-tabs button {
+    border-radius: var(--cc-radius-sm);
+    padding: 4px 12px;
+    font-size: var(--app-fs-md);
+}
+
+.cc-page .cc-display-seg button {
+    padding: 4px 10px;
+    font-size: var(--app-fs-sm);
+    border-radius: var(--cc-radius-sm);
 }
 
 /* —— 浮层（唯一允许阴影的地方） —— */

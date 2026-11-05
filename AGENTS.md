@@ -27,4 +27,4 @@
 
 - 组件按 i18n 分块取词：`const ts = t?.chords ?? {}` + `ts.xxx ?? "中文默认"` 双兜底。
 - 和弦谱数据模型在 `src/utils/chordChartModel.js`（localStorage `fretboard-chordcharts`，滚动备份 ×3）。
-- 和弦谱页（`#/chords`）工具页签：**和弦 / 小节** 两个（v229 删预览页签）；原预览槽位（工具栏与谱面之间）是**套和弦图面板** FigPanel（最近同和弦 ↔ 形状库，点击应用到光标拍格，右键管理形状）；figbe 弹窗只留编辑板本体。
+- 和弦谱页（`#/chords`）的 7 个工具页签**永远不变**：预览是其中之一，内容区单独渲染预览子栏，不换 tab 栏。
