@@ -81,10 +81,11 @@ export function stitchLayout(items, { gap = 26 } = {}) {
 	return { w: x, h: unionH, y0: unionY, segs, dividers, gap };
 }
 
-// 复制/下载输出分辨率：目标高约 560px，段太多时按总宽上限收缩（下限只防退化成 0）
-export function stitchScale(layout, { targetHeight = 560, maxWidth = 8192 } = {}) {
+// 复制/下载输出分辨率：3 倍 SVG 单位，与单板复制 canvas 的 scale=3 一致；
+// 超高/超宽拼接按上限收缩（下限只防退化成 0）
+export function stitchScale(layout, { targetHeight = 1440, maxWidth = 8192, maxScale = 3 } = {}) {
 	if (!layout || !layout.h || !layout.w) return 1;
-	return Math.max(0.05, Math.min(targetHeight / layout.h, maxWidth / layout.w, 2.5));
+	return Math.max(0.05, Math.min(targetHeight / layout.h, maxWidth / layout.w, maxScale));
 }
 
 // #rrggbb / rgb() → rgba()（分割线取主题文字色降透明度；解析失败原样返回）

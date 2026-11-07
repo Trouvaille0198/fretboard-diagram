@@ -106,11 +106,12 @@ console.log("拼接区 stitchModel 冒烟");
 	A("单段无分割线", stitchLayout([items[0]]).dividers.length === 0);
 	A("空列表零尺寸", (() => { const e = stitchLayout([]); return e.w === 0 && e.segs.length === 0; })());
 
-	// 分辨率：钳制范围内
+	// 分辨率：钳制范围内；常规尺寸拼接恰为 3 倍（与单板复制一致，勿漂移）
 	const k = stitchScale(L);
-	A("输出分辨率在安全范围", k > 0 && k <= 2.5, `k=${k.toFixed(2)}`);
+	A("输出分辨率在安全范围", k > 0 && k <= 3, `k=${k.toFixed(2)}`);
+	A("常规拼接=单板同款3倍", stitchScale({ w: 800, h: 400 }) === 3, `k=${stitchScale({ w: 800, h: 400 }).toFixed(2)}`);
 	const kWide = stitchScale({ w: 99999, h: 412 });
-	A("超宽拼接自动降分辨率", kWide <= 2.5 && 99999 * kWide <= 8192 + 1, `k=${kWide}`);
+	A("超宽拼接自动降分辨率", kWide <= 3 && 99999 * kWide <= 8192 + 1, `k=${kWide}`);
 }
 
 // 4. 存储往返 + 滚动备份
