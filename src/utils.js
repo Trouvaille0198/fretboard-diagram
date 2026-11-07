@@ -503,6 +503,22 @@ export function reduceColorSaturation(colorName, saturationFactor = 0.5) {
     return rgbToHex(newRgb.r, newRgb.g, newRgb.b);
 }
 
+// 任意颜色值（名称字符串 或 {name, custom} 异色对象）→ 降饱和后的可见 hex。
+// 异色的 custom 是 rgb()/rgba() 字符串（色板 tint 变体），必须按它本身降饱和——
+// 否则同 base 的深浅异色（如淡蓝/深蓝）都会落到基础名的同一颜色，视觉不可分
+export function reduceColorSaturationOfValue(color, saturationFactor = 0.6) {
+    if (color && typeof color === 'object' && typeof color.custom === 'string') {
+        const m = color.custom.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+        if (m) {
+            const hsl = rgbToHsl(Number(m[1]), Number(m[2]), Number(m[3]));
+            hsl.s = Math.max(0, hsl.s * saturationFactor);
+            const c = hslToRgb(hsl.h, hsl.s, hsl.l);
+            return rgbToHex(c.r, c.g, c.b);
+        }
+    }
+    return reduceColorSaturation(getColorName(color), saturationFactor);
+}
+
 // 计算连线颜色
 export function calculateConnectionColor(startNoteData, endNoteData, connectionId) {
     const startColor = startNoteData?.color || 'white';
