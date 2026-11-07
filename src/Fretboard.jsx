@@ -7,7 +7,7 @@ import { useConnectionState } from './hooks/useConnectionState';
 import { useHistory } from './hooks/useHistory';
 import { useNoteEditing } from './hooks/useNoteEditing';
 import { computeNoteIndex, computeNoteName, generateNotes, generateMarkers, generateFretPath, generateStringPath, getNotePosition } from './utils/fretboardCalculations';
-import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors } from './utils/connectionUtils';
+import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors, nextConnectionColor } from './utils/connectionUtils';
 import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow, replaceAllTintNotes } from './utils/fretboardActions';
 import { generateTintVariants, getLevel1FillColor, getLevel2Color, tintAt, tintPosition, resolveNoteVisualStyle } from './colorConfig';
 import { createNoteClickHandler, createNoteContextMenuHandler, createDeleteNoteHandler, createFinishEditingHandler, createNoteMouseDownHandler, createConnectionDragEndHandler } from './handlers/noteHandlers';
@@ -880,8 +880,9 @@ function Fretboard({ mode = 'normal' }) {
     baseNoteMouseDown(event, noteId);
   }, [baseNoteMouseDown]);
 
-  // 中键：动态编辑态=帧内链音手势；普通模式连线拖拽中=切换颜色层级（预览线与落线随之变色，
-  // 连线功能初版行为恢复）；其余回落分半模式切换（FretboardSVG 内联）
+  // 中键：动态编辑态=帧内链音手势；普通模式回落分半模式切换（FretboardSVG 内联）。
+  // 旧「连线拖拽中中键=切 color1↔color2 层级」已移除：连线改色改为
+  // hover 已完成连线 + 中键循环（handleConnectionMiddleDown）
   const handleNoteMiddleDown = useCallback((noteId) => {
     const dyn = dynamicRef.current;
     if (dyn.isDynamic) {
@@ -889,17 +890,24 @@ function Fretboard({ mode = 'normal' }) {
       if (playingIdx !== null) setPlayingIdx(null);
       return dyn.beginChainDrag(noteId);
     }
-    // 连线已选起点：中键点击双层色音符 = 全局切 color1↔color2；无双层色不消费（原样回落）
-    if (connectionMode && connectionStartNote) {
-      const noteData = data[noteId];
-      if (noteData && noteData.color2 !== undefined && noteData.color2 !== null) {
-        if (previewHoverNote !== noteId) setPreviewHoverNote(noteId);
-        setUseColor2Level(v => !v);
-        return true;
-      }
-    }
     return false;
-  }, [connectionMode, connectionStartNote, data, previewHoverNote, setPreviewHoverNote, setUseColor2Level]);
+  }, [playingIdx, setPlayingIdx, showToast]);
+
+  // hover 已完成连线 + 中键：连线颜色在两端点全部颜色（各 color+color2，最多 4 种）间循环；
+  // 手动色存 conn.colorCycle（渲染优先于自动色，updateConnectionColors 对其跳过；
+  // 音符变色后候选即随之漂移，循环序列始终取自当前数据）
+  const handleConnectionMiddleDown = useCallback((connId) => {
+    if (dynamicRef.current?.isDynamic) return;
+    const conn = connections[connId];
+    if (!conn) return;
+    const next = nextConnectionColor(conn, data[conn.startNoteId], data[conn.endNoteId]);
+    if (!next) return;
+    setData(prev => {
+      const c = prev.connections?.[connId];
+      if (!c) return prev;
+      return { ...prev, connections: { ...prev.connections, [connId]: { ...c, colorCycle: next } } };
+    });
+  }, [connections, data, setData]);
 
   // 动态模式：全局拖拽跟踪（移动即重置悬停；实时反馈动画），并屏蔽连线模式
   const [dragPos, setDragPos] = useState(null); // 拖拽中的指针位置（client 坐标，跟手反馈用）
@@ -1142,8 +1150,8 @@ function Fretboard({ mode = 'normal' }) {
 
   // svg 层按下：动态模式整体屏蔽（连线预览/拖染刷子让位给滑弦拖拽，防止路过音符被染色）
   const baseSvgMouseDown = useCallback(createSvgMouseDownHandler({
-    connectionMode, connectionStartNote, previewHoverNote, data, visibility, useColor2Level, setUseColor2Level, startBrushPaint
-  }), [connectionMode, connectionStartNote, previewHoverNote, data, visibility, useColor2Level, setUseColor2Level, startBrushPaint]);
+    connectionMode, startBrushPaint
+  }), [connectionMode, startBrushPaint]);
 
   const handleSvgMouseDown = useCallback((event, ...rest) => {
     if (dynamicRef.current.isDynamic) return;
@@ -1794,6 +1802,7 @@ function Fretboard({ mode = 'normal' }) {
           getNotePositionMemo={getNotePositionMemo}
           handleConnectionClickMemo={handleConnectionClickMemo}
           handleConnectionContextMenuMemo={handleConnectionContextMenuMemo}
+          onConnectionMiddleDown={handleConnectionMiddleDown}
           connectionStartPosition={connectionStartPosition}
           mousePosition={mousePosition}
           useColor2Level={useColor2Level}

@@ -1,5 +1,33 @@
-import { calculateConnectionColor, calculateArcPath, getPointOnPathAtDistance } from '../utils.js';
+import { calculateConnectionColor, calculateArcPath, getPointOnPathAtDistance, getColorName } from '../utils.js';
 import { CONSTS } from '../constants.js';
+
+// ============ 连线颜色循环（hover 已完成连线 + 中键） ============
+// 候选 = 两端点上的全部颜色（每点 color+color2 最多 2 种，共最多 4 种），去重保序；
+// white 视为无色不参与（white 连线默认灰），自定义颜色对象取其名。
+const normalizeCycleColor = (color) => {
+    if (!color || color === 'white') return null;
+    return typeof color === 'object' ? getColorName(color) : String(color);
+};
+
+export function connectionColorCandidates(startData, endData) {
+    const raw = [
+        startData?.color, startData?.color2,
+        endData?.color, endData?.color2,
+    ];
+    const out = [];
+    for (const c of raw.map(normalizeCycleColor)) {
+        if (c && !out.includes(c)) out.push(c);
+    }
+    return out;
+}
+
+// 下一个循环色：当前色在候选内 → 顺移一位（环形）；不在（初始/音符变色后候选漂移）→ 首个候选；无候选 → null
+export function nextConnectionColor(conn, startData, endData) {
+    const candidates = connectionColorCandidates(startData, endData);
+    if (!candidates.length) return null;
+    const idx = candidates.indexOf(conn?.colorCycle);
+    return idx === -1 ? candidates[0] : candidates[(idx + 1) % candidates.length];
+}
 
 // 音符是否为"实音"（板上真正点亮的端点）：visible/selected 且带一二级颜色。
 // 与动图内核 isNoteActive 同语义；空音符（无色圆圈）返回 false——半音划音的幽灵起点
@@ -206,6 +234,8 @@ export function updateConnectionColors(data, setData, calculateConnectionColor) 
     Object.keys(data.connections).forEach(connId => {
         const conn = data.connections[connId];
         if (!conn.startNoteId || !conn.endNoteId) return;
+        // 中键手动循环色（colorCycle）：颜色由用户接管，不再随音符自动重算
+        if (conn.colorCycle) return;
 
         const startNoteData = data[conn.startNoteId];
         const endNoteData = data[conn.endNoteId] || {};
