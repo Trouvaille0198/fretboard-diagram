@@ -1,61 +1,13 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { ScoreBoard, renderBoardImage } from './ScorePieces';
-import { stitchLayout, stitchScale, withAlpha, unifyStitchState } from '../utils/stitchModel';
+import { ScoreBoard } from './ScorePieces';
+import { stitchLayout, unifyStitchState } from '../utils/stitchModel';
+import { copyStitchImage, downloadStitchImage } from '../utils/stitchExport';
 import { CANVAS_COLORS } from '../colorConfig';
 
 // 拼接区悬浮舱（普通图片模式）：右上角 FAB，hover 展开实时拼接预览
 // 预览 = DOM 版拼接画布（各段按指板坐标上下对齐、段间分割线），
-// 复制/下载 = 离屏逐段 renderBoardImage → canvas 合成 PNG（与预览同一套布局数据，所见即所得）
+// 复制/下载 = stitchExport 离屏逐段 renderBoardImage → canvas 合成 PNG（与预览同一套布局数据，所见即所得）
 // unify（统一色系）= 渲染期重涂（unifyStitchState），条目快照数据不动，勾/取消即时切换
-
-const cssVar = (name, fallback) => {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
-};
-
-// 拼接布局 → 一张 PNG canvas（k = 像素/SVG单位；段顺序=条目顺序，从左到右）
-async function composeStitchCanvas(items, layout, unify) {
-  const k = stitchScale(layout);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(layout.w * k));
-  canvas.height = Math.max(1, Math.round(layout.h * k));
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = cssVar('--background-color', CANVAS_COLORS.bgFallback);
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  for (let i = 0; i < items.length; i++) {
-    const seg = layout.segs[i];
-    const opts = items[i].opts || {};
-    const state = unify ? unifyStitchState(items, i) : items[i].state;
-    const img = await renderBoardImage(state, Math.max(1, Math.round(seg.vb.w * k)), {
-      includeMarkers: opts.includeMarkers,
-      showNotes: opts.showNotes,
-      cropBox: seg.vb,
-    });
-    ctx.drawImage(img, Math.round(seg.x * k), Math.round(seg.y * k), Math.round(seg.vb.w * k), Math.round(seg.vb.h * k));
-  }
-  // 段间分割竖线（位于留白中央，主题文字色降透明度——深浅主题都清晰）
-  ctx.strokeStyle = withAlpha(cssVar('--app-text', CANVAS_COLORS.textFallback), 0.5);
-  ctx.lineWidth = Math.max(2, Math.round(k * 2));
-  layout.dividers.forEach(dx => {
-    const px = Math.round(dx * k) + 0.5;
-    ctx.beginPath();
-    ctx.moveTo(px, 0);
-    ctx.lineTo(px, canvas.height);
-    ctx.stroke();
-  });
-  return canvas;
-}
-
-function downloadBlob(blob, name) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-}
 
 // 单段预览：外框=裁剪后的窗口（vb），内嵌整板 svg 按偏移推移——
 // CSS 宽高与 viewBox 严格同比，映射 1:1，无 letterbox，多段间像素级对齐。
@@ -170,39 +122,15 @@ export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, uni
   const onCopy = async () => {
     if (!items.length || busy) return;
     setBusy('copy');
-    try {
-      const canvas = await composeStitchCanvas(items, layout, unify);
-      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-      if (!blob) throw new Error('PNG 编码失败');
-      if (navigator.clipboard && window.ClipboardItem) {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        showToast(L('toastCopied', `已复制拼接图（${items.length} 张）`, items.length), 'success');
-      } else {
-        downloadBlob(blob, `fretboard-stitch-${Date.now()}.png`);
-        showToast(L('toastFallback', '剪贴板不可用（非安全上下文），已改为下载 PNG'), 'info');
-      }
-    } catch (error) {
-      showToast(`${L('toastCopyFail', '复制拼接图失败')}：${error.message}`, 'error');
-    } finally {
-      setBusy(null);
-    }
+    await copyStitchImage(items, { unify, layout, t, showToast });
+    setBusy(null);
   };
 
   const onDownload = async () => {
     if (!items.length || busy) return;
     setBusy('download');
-    try {
-      const canvas = await composeStitchCanvas(items, layout, unify);
-      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-      if (!blob) throw new Error('PNG 编码失败');
-      const name = `fretboard-stitch-${Date.now()}.png`;
-      downloadBlob(blob, name);
-      showToast(`${L('toastDownloaded', '已下载 PNG')}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
-    } catch (error) {
-      showToast(`${L('toastSaveFail', '下载拼接图失败')}：${error.message}`, 'error');
-    } finally {
-      setBusy(null);
-    }
+    await downloadStitchImage(items, { unify, layout, t, showToast });
+    setBusy(null);
   };
 
   const hasItems = items.length > 0;
