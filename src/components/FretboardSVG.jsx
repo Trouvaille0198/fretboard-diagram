@@ -84,8 +84,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
   connections,
   getNotePositionMemo,
   handleConnectionClickMemo,
-  handleConnectionContextMenuMemo,
-  onConnectionMiddleDown,
+  onConnectionColorCycle,
   connectionStartPosition,
   mousePosition,
   useColor2Level,
@@ -574,14 +573,12 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                 markerStart={hasArrowStart ? `url(#arrowhead-start-${connId})` : undefined}
                 markerEnd={hasArrowEnd ? `url(#arrowhead-end-${connId})` : undefined}
                 onClick={(e) => handleConnectionClickMemo(e, connId)}
-                onContextMenu={(e) => handleConnectionContextMenuMemo(e, connId)}
-                onMouseDown={(e) => {
-                  // hover 已完成连线 + 中键：颜色在两端点全部颜色间循环（候选取当前数据，见 connectionUtils）
-                  if (e.button === 1 && onConnectionMiddleDown) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onConnectionMiddleDown(connId);
-                  }
+                onContextMenu={(e) => {
+                  // hover 已完成连线 + 右键：颜色在两端点全部颜色间循环（候选取当前数据，见 connectionUtils）；
+                  // 左键仍是打开连线工具栏。stopPropagation 防止冒泡到 svg 根（连线模式下右键空白=退出连线模式）
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onConnectionColorCycle?.(connId);
                 }}
                 onMouseEnter={() => setHoveredConnectionId(connId)}
                 onMouseLeave={() => setHoveredConnectionId(null)}
