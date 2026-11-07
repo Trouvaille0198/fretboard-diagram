@@ -1,6 +1,6 @@
 import React from 'react';
 import { CONSTS } from '../constants';
-import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, getPointOnNoteEdge, getColorName, getNoteSplitMode, resolveNoteColorValue } from '../utils';
+import { getLevel2Color, calculateConnectionColor, reduceColorSaturation, reduceColorSaturationOfValue, getPointOnNoteEdge, getColorName, getNoteSplitMode, resolveNoteColorValue } from '../utils';
 import { buildConnectionPath, adaptiveArcCurvature } from '../utils/connectionUtils';
 import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor, CANVAS_COLORS } from '../colorConfig';
 import { CONNECTION_PRESETS, matchConnectionPreset } from '../hooks/useConnectionState';
@@ -497,12 +497,13 @@ export const FretboardSVG = React.memo(function FretboardSVG({
           const isTransConnection = (startColorName === 'trans' || endColorName === 'trans');
           const connectionOpacity = (visibility === 'hidden' && isTransConnection) ? 0.3 : undefined;
 
-          // 计算连线颜色：中键循环手动色（conn.colorCycle）最优先——整线单色（同色连线同式降饱和）；
-          // 其次渐变ID引用 url；否则用起点颜色
+          // 计算连线颜色：中键循环手动色（conn.colorCycle，可为异色对象）最优先——整线单色（同色连线同式降饱和，
+          // 异色按 custom 本身降饱和，深浅变体可分）；其次渐变ID引用 url；否则用起点颜色
           const cycleColor = conn.colorCycle;
+          const cycleStroke = cycleColor ? reduceColorSaturationOfValue(cycleColor, 0.6) : null;
           const isGradient = !cycleColor && conn.color && conn.color.startsWith('gradient-');
-          let strokeColor = cycleColor
-            ? reduceColorSaturation(cycleColor, 0.6)
+          let strokeColor = cycleStroke
+            ? cycleStroke
             : (isGradient ? `url(#${conn.color})` : (conn.color || (startColorName === 'white' || startColorName === 'trans' ? CANVAS_COLORS.lineWhite : reduceColorSaturation(startColor, 0.6))));
 
           // 如果启用了灰色效果，使用半透明灰色
@@ -520,10 +521,10 @@ export const FretboardSVG = React.memo(function FretboardSVG({
           };
           let startArrowColor = getArrowColor(startColor);
           let endArrowColor = getArrowColor(endColor);
-          // 手动循环色：箭头跟随整线单色（isGrayed 分支保持最后覆盖，置灰仍最优先）
-          if (cycleColor) {
-            startArrowColor = getArrowColor(cycleColor);
-            endArrowColor = getArrowColor(cycleColor);
+          // 手动循环色：箭头跟随整线单色（含异色解析；isGrayed 分支保持最后覆盖，置灰仍最优先）
+          if (cycleStroke) {
+            startArrowColor = cycleStroke;
+            endArrowColor = cycleStroke;
           }
 
           // 如果启用了灰色效果，箭头也使用灰色

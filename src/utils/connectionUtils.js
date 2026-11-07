@@ -1,13 +1,19 @@
-import { calculateConnectionColor, calculateArcPath, getPointOnPathAtDistance, getColorName } from '../utils.js';
+import { calculateConnectionColor, calculateArcPath, getPointOnPathAtDistance } from '../utils.js';
 import { CONSTS } from '../constants.js';
 
 // ============ 连线颜色循环（hover 已完成连线 + 右键） ============
 // 候选 = 两端点上的全部颜色（每点 color+color2 最多 2 种，共最多 4 种），去重保序；
-// white 视为无色不参与（white 连线默认灰），自定义颜色对象取其名。
-// 严格只循环端点色——不引入任何画布色板兜底（否则与端点无关的颜色会混进来）。
-const normalizeCycleColor = (color) => {
-    if (!color || color === 'white') return null;
-    return typeof color === 'object' ? getColorName(color) : String(color);
+// white 视为无色不参与（white 连线默认灰）。
+// 身份键：异色是 {name, custom} 对象——同 base 的深浅变体（淡蓝/深蓝）custom 不同即不同候选，
+// 严禁按 base 名塌缩（否则「淡蓝 深蓝 红」会被错并成「蓝 红」两个）。
+const colorIdentityKey = (color) => {
+    if (!color) return null;
+    if (typeof color === 'object') {
+        if (!color.name && !color.custom) return null;
+        return `obj:${color.name ?? ''}|${color.custom ?? ''}`;
+    }
+    if (color === 'white') return null;
+    return `str:${color}`;
 };
 
 export function connectionColorCandidates(startData, endData) {
@@ -16,18 +22,22 @@ export function connectionColorCandidates(startData, endData) {
         endData?.color, endData?.color2,
     ];
     const out = [];
-    for (const c of raw.map(normalizeCycleColor)) {
-        if (c && !out.includes(c)) out.push(c);
+    for (const c of raw) {
+        const key = colorIdentityKey(c);
+        if (!key) continue;
+        if (!out.some(x => colorIdentityKey(x) === key)) out.push(c);
     }
     return out;
 }
 
-// 下一个循环色：当前色在候选内 → 顺移一位（环形）；不在（初始/音符变色后候选漂移）→ 下一个候选；
-// 端点只有一个候选（两端同色最常见）→ 原色返回（无可切，右键无可见变化）；无候选 → null
+// 下一个循环色（返回原始颜色值，异色即对象）：当前色在候选内 → 顺移一位（环形）；
+// 不在（初始/音符变色后候选漂移）→ 下一个候选；端点只有一个候选 → 原色返回（无可切）；
+// 无候选 → null
 export function nextConnectionColor(conn, startData, endData) {
     const candidates = connectionColorCandidates(startData, endData);
     if (!candidates.length) return null;
-    const idx = candidates.indexOf(conn?.colorCycle);
+    const curKey = colorIdentityKey(conn?.colorCycle);
+    const idx = candidates.findIndex(c => colorIdentityKey(c) === curKey);
     if (idx === -1) return candidates[Math.min(1, candidates.length - 1)];
     return candidates[(idx + 1) % candidates.length];
 }
