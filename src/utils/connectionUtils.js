@@ -1,17 +1,14 @@
 import { calculateConnectionColor, calculateArcPath, getPointOnPathAtDistance, getColorName } from '../utils.js';
 import { CONSTS } from '../constants.js';
-import { LEVEL1_COLORS } from '../colorConfig.js';
 
 // ============ 连线颜色循环（hover 已完成连线 + 右键） ============
 // 候选 = 两端点上的全部颜色（每点 color+color2 最多 2 种，共最多 4 种），去重保序；
 // white 视为无色不参与（white 连线默认灰），自定义颜色对象取其名。
+// 严格只循环端点色——不引入任何画布色板兜底（否则与端点无关的颜色会混进来）。
 const normalizeCycleColor = (color) => {
     if (!color || color === 'white') return null;
     return typeof color === 'object' ? getColorName(color) : String(color);
 };
-
-// 端点候选不足 2 种时的兜底循环序：一级色系色（排除透明/单色点/灰——非色系语义色）
-const CYCLE_FALLBACK = Object.keys(LEVEL1_COLORS).filter(c => !['trans', 'mono', 'gray'].includes(c));
 
 export function connectionColorCandidates(startData, endData) {
     const raw = [
@@ -25,18 +22,14 @@ export function connectionColorCandidates(startData, endData) {
     return out;
 }
 
-// 下一个循环色：当前色在候选内 → 顺移一位（环形）；不在（初始/音符变色后候选漂移）→ 下一个候选。
-// 端点候选不足 2 种（两端同色/单色系板面最常见）时补全一级色系序兜底——保证每次右键都有可见的颜色变化。
+// 下一个循环色：当前色在候选内 → 顺移一位（环形）；不在（初始/音符变色后候选漂移）→ 下一个候选；
+// 端点只有一个候选（两端同色最常见）→ 原色返回（无可切，右键无可见变化）；无候选 → null
 export function nextConnectionColor(conn, startData, endData) {
-    let candidates = connectionColorCandidates(startData, endData);
-    if (candidates.length < 2) {
-        candidates = [...candidates, ...CYCLE_FALLBACK.filter(c => !candidates.includes(c))];
-    }
-    if (candidates.length < 2) return null;
+    const candidates = connectionColorCandidates(startData, endData);
+    if (!candidates.length) return null;
     const idx = candidates.indexOf(conn?.colorCycle);
-    return idx === -1
-        ? candidates[1]  // 首次右键就切到下一个候选（候选 ≥2 时必然异色，第一下就可见）
-        : candidates[(idx + 1) % candidates.length];
+    if (idx === -1) return candidates[Math.min(1, candidates.length - 1)];
+    return candidates[(idx + 1) % candidates.length];
 }
 
 // 音符是否为"实音"（板上真正点亮的端点）：visible/selected 且带一二级颜色。
