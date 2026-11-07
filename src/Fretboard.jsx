@@ -880,14 +880,26 @@ function Fretboard({ mode = 'normal' }) {
     baseNoteMouseDown(event, noteId);
   }, [baseNoteMouseDown]);
 
-  // 中键：帧内链音手势（同帧新建音符依次激活）——动态编辑态专用，普通模式仍走分色
+  // 中键：动态编辑态=帧内链音手势；普通模式连线拖拽中=切换颜色层级（预览线与落线随之变色，
+  // 连线功能初版行为恢复）；其余回落分半模式切换（FretboardSVG 内联）
   const handleNoteMiddleDown = useCallback((noteId) => {
     const dyn = dynamicRef.current;
-    if (!dyn.isDynamic) return false;
-    if (dyn.viewMode !== 'edit') { showToast('中键链音只在编辑态可用（Q 切回编辑）', 'info'); return true; }
-    if (playingIdx !== null) setPlayingIdx(null);
-    return dyn.beginChainDrag(noteId);
-  }, []);
+    if (dyn.isDynamic) {
+      if (dyn.viewMode !== 'edit') { showToast('中键链音只在编辑态可用（Q 切回编辑）', 'info'); return true; }
+      if (playingIdx !== null) setPlayingIdx(null);
+      return dyn.beginChainDrag(noteId);
+    }
+    // 连线已选起点：中键点击双层色音符 = 全局切 color1↔color2；无双层色不消费（原样回落）
+    if (connectionMode && connectionStartNote) {
+      const noteData = data[noteId];
+      if (noteData && noteData.color2 !== undefined && noteData.color2 !== null) {
+        if (previewHoverNote !== noteId) setPreviewHoverNote(noteId);
+        setUseColor2Level(v => !v);
+        return true;
+      }
+    }
+    return false;
+  }, [connectionMode, connectionStartNote, data, previewHoverNote, setPreviewHoverNote, setUseColor2Level]);
 
   // 动态模式：全局拖拽跟踪（移动即重置悬停；实时反馈动画），并屏蔽连线模式
   const [dragPos, setDragPos] = useState(null); // 拖拽中的指针位置（client 坐标，跟手反馈用）
