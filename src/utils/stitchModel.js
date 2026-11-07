@@ -2,7 +2,7 @@
 // 条目 = 板面快照（state）+ 展示设置（opts，含水平/垂直截断）。
 // 拼接核心不变量：指板 Y 向几何恒定（不随品窗变化），各图按指板坐标上下对齐；
 // 垂直截断只裁掉上下留白，剩余部分按其所在位置参与对齐。
-// 本模块保持纯 JS（可被 node 冒烟测试），渲染相关能力在 StitchDock.jsx。
+// 本模块保持纯 JS（可被 node 冒烟测试），渲染相关能力在 StitchDock.jsx / stitchExport.js。
 
 import { boardGeometry } from "./fretboardCalculations.js";
 import { cropBoxOfNotes } from "./animStage.js";

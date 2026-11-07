@@ -20,6 +20,7 @@ import { DynamicToolbar } from './components/DynamicToolbar';
 import { useDynamicMode } from './hooks/useDynamicMode';
 import { TECHNIQUES, loadClips, deleteClip, renameClip } from './utils/clipModel';
 import { loadStitch, persistStitch, newStitchId, unifySchemeOf } from './utils/stitchModel';
+import { copyStitchImage } from './utils/stitchExport';
 import { StitchDock } from './components/StitchDock';
 import { authUser } from './utils/authModel';
 import { pullAll } from './utils/syncEngine';
@@ -205,6 +206,11 @@ function Fretboard({ mode = 'normal' }) {
     setStitchItems(next);
     showToast(`已加入拼接区（第 ${next.length} 张）— 悬停右上角查看`, 'success');
   }, [captureBoard, includeMarkers, showNotes, horizontalCrop, verticalCrop, showToast]);
+
+  // Ctrl+Shift+C（普通模式）：复制拼接图（与悬浮舱「复制拼接图」同路）；拼接区为空时静默无事发生
+  const copyStitchToClipboard = useCallback(() => {
+    copyStitchImage(stitchItems, { unify: stitchUnify, t, showToast });
+  }, [stitchItems, stitchUnify, t, showToast]);
 
   // 拼接区拖动换位：把 from 段插到 to 段的位置（同样以 localStorage 为准，多标签不互踩）
   const reorderStitch = useCallback((from, to) => {
@@ -1649,7 +1655,8 @@ function Fretboard({ mode = 'normal' }) {
 	      extinguishNote: dynamic.extinguishNote
     },
     deleteHoveredPair,
-    stitchAdd: addToStitch
+    stitchAdd: addToStitch,
+    stitchCopy: copyStitchToClipboard
   };
 
   useEffect(() => {

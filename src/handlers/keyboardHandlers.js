@@ -33,16 +33,19 @@ export function createKeyboardHandler(params) {
         copyUnionSnapshot,
         selectedColorLevel,
         selectConnectionPreset,
-        stitchAdd
+        stitchAdd,
+        stitchCopy
     } = params;
 
     return (event) => {
-        // Ctrl+Shift+C（动态模式）：复制「整图所有点都在」的静态快照（累积态终帧 PNG，色深浅=加入顺序）；
-        // 非动态模式不拦截（保留浏览器默认行为）
+        // Ctrl+Shift+C：动态页=复制并帧快照（累积态终帧 PNG，色深浅=加入顺序）；
+        // 普通模式=复制拼接图（拼接区为空时静默无事发生）
         if (event.ctrlKey && event.shiftKey && event.code === 'KeyC') {
+            event.preventDefault();
             if (copyUnionSnapshot && dynamic?.isDynamic) {
-                event.preventDefault();
                 copyUnionSnapshot();
+            } else if (stitchCopy) {
+                stitchCopy();
             }
             return;
         }
