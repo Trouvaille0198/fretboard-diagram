@@ -152,10 +152,6 @@ export function createSvgMouseMoveHandler(params) {
 export function createSvgMouseDownHandler(params) {
     const {
         connectionMode,
-        connectionStartNote,
-        previewHoverNote,
-        data,
-        setUseColor2Level,
         startBrushPaint
     } = params;
 
@@ -165,18 +161,8 @@ export function createSvgMouseDownHandler(params) {
             return;
         }
 
-        // 连线拖拽中（已选起点）：中键 = 全局切 color1↔color2 层级（悬停音优先，其次起点音，
-        // 双层色音符才可切），预览线与落线颜色随之改变——连线功能初版行为（89284c1 中键改发声时移除，此处恢复）。
-        // 音符上的中键在 note 级 onPointerDown 被 stopPropagation，由 Fretboard.handleNoteMiddleDown 同语义处理。
-        if (connectionMode && connectionStartNote && e.button === 1) {
-            e.preventDefault();
-            const targetNoteId = previewHoverNote || connectionStartNote;
-            const noteData = data[targetNoteId];
-            if (noteData && noteData.color2 !== undefined && noteData.color2 !== null) {
-                setUseColor2Level?.(prev => !prev);
-            }
-            return;
-        }
+        // （旧「连线拖拽中中键=切 color1↔color2 层级」已移除：连线改色改为
+        // hover 已完成连线 + 中键循环，事件在 FretboardSVG 连线 path 上处理）
 
         if (e.button === 0) {
             // 连线模式：音符上的按下是拖连线的领地，不武装刷染；

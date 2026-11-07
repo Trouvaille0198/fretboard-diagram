@@ -85,6 +85,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
   getNotePositionMemo,
   handleConnectionClickMemo,
   handleConnectionContextMenuMemo,
+  onConnectionMiddleDown,
   connectionStartPosition,
   mousePosition,
   useColor2Level,
@@ -497,9 +498,13 @@ export const FretboardSVG = React.memo(function FretboardSVG({
           const isTransConnection = (startColorName === 'trans' || endColorName === 'trans');
           const connectionOpacity = (visibility === 'hidden' && isTransConnection) ? 0.3 : undefined;
 
-          // 计算连线颜色：如果是渐变ID，使用url引用；否则使用起点颜色
-          const isGradient = conn.color && conn.color.startsWith('gradient-');
-          let strokeColor = isGradient ? `url(#${conn.color})` : (conn.color || (startColorName === 'white' || startColorName === 'trans' ? CANVAS_COLORS.lineWhite : reduceColorSaturation(startColor, 0.6)));
+          // 计算连线颜色：中键循环手动色（conn.colorCycle）最优先——整线单色（同色连线同式降饱和）；
+          // 其次渐变ID引用 url；否则用起点颜色
+          const cycleColor = conn.colorCycle;
+          const isGradient = !cycleColor && conn.color && conn.color.startsWith('gradient-');
+          let strokeColor = cycleColor
+            ? reduceColorSaturation(cycleColor, 0.6)
+            : (isGradient ? `url(#${conn.color})` : (conn.color || (startColorName === 'white' || startColorName === 'trans' ? CANVAS_COLORS.lineWhite : reduceColorSaturation(startColor, 0.6))));
 
           // 如果启用了灰色效果，使用半透明灰色
           const isGrayed = conn.isGrayed || false;
@@ -516,6 +521,11 @@ export const FretboardSVG = React.memo(function FretboardSVG({
           };
           let startArrowColor = getArrowColor(startColor);
           let endArrowColor = getArrowColor(endColor);
+          // 手动循环色：箭头跟随整线单色（isGrayed 分支保持最后覆盖，置灰仍最优先）
+          if (cycleColor) {
+            startArrowColor = getArrowColor(cycleColor);
+            endArrowColor = getArrowColor(cycleColor);
+          }
 
           // 如果启用了灰色效果，箭头也使用灰色
           if (isGrayed) {
@@ -565,6 +575,14 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                 markerEnd={hasArrowEnd ? `url(#arrowhead-end-${connId})` : undefined}
                 onClick={(e) => handleConnectionClickMemo(e, connId)}
                 onContextMenu={(e) => handleConnectionContextMenuMemo(e, connId)}
+                onMouseDown={(e) => {
+                  // hover 已完成连线 + 中键：颜色在两端点全部颜色间循环（候选取当前数据，见 connectionUtils）
+                  if (e.button === 1 && onConnectionMiddleDown) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onConnectionMiddleDown(connId);
+                  }
+                }}
                 onMouseEnter={() => setHoveredConnectionId(connId)}
                 onMouseLeave={() => setHoveredConnectionId(null)}
                 style={{
