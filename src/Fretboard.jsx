@@ -7,7 +7,7 @@ import { useConnectionState } from './hooks/useConnectionState';
 import { useHistory } from './hooks/useHistory';
 import { useNoteEditing } from './hooks/useNoteEditing';
 import { computeNoteIndex, computeNoteName, generateNotes, generateMarkers, generateFretPath, generateStringPath, getNotePosition } from './utils/fretboardCalculations';
-import { detectDropdownDirection, openConnectionToolbar, handleConnectionContextMenu, handleConnectionClick, updateConnectionColors, nextConnectionColor } from './utils/connectionUtils';
+import { detectDropdownDirection, openConnectionToolbar, handleConnectionClick, updateConnectionColors, nextConnectionColor } from './utils/connectionUtils';
 import { selectColor, cycleLevel1Color, cycleLevel2Color, toggleVisibility, toggleEnharmonic, reset, saveSVG, setFretWindow, replaceAllTintNotes } from './utils/fretboardActions';
 import { generateTintVariants, getLevel1FillColor, getLevel2Color, tintAt, tintPosition, resolveNoteVisualStyle } from './colorConfig';
 import { createNoteClickHandler, createNoteContextMenuHandler, createDeleteNoteHandler, createFinishEditingHandler, createNoteMouseDownHandler, createConnectionDragEndHandler } from './handlers/noteHandlers';
@@ -882,7 +882,7 @@ function Fretboard({ mode = 'normal' }) {
 
   // 中键：动态编辑态=帧内链音手势；普通模式回落分半模式切换（FretboardSVG 内联）。
   // 旧「连线拖拽中中键=切 color1↔color2 层级」已移除：连线改色改为
-  // hover 已完成连线 + 中键循环（handleConnectionMiddleDown）
+  // hover 已完成连线 + 右键循环（handleConnectionColorCycle）
   const handleNoteMiddleDown = useCallback((noteId) => {
     const dyn = dynamicRef.current;
     if (dyn.isDynamic) {
@@ -893,10 +893,10 @@ function Fretboard({ mode = 'normal' }) {
     return false;
   }, [playingIdx, setPlayingIdx, showToast]);
 
-  // hover 已完成连线 + 中键：连线颜色在两端点全部颜色（各 color+color2，最多 4 种）间循环；
+  // hover 已完成连线 + 右键：连线颜色在两端点全部颜色（各 color+color2，最多 4 种）间循环；
   // 手动色存 conn.colorCycle（渲染优先于自动色，updateConnectionColors 对其跳过；
   // 音符变色后候选即随之漂移，循环序列始终取自当前数据）
-  const handleConnectionMiddleDown = useCallback((connId) => {
+  const handleConnectionColorCycle = useCallback((connId) => {
     if (dynamicRef.current?.isDynamic) return;
     const conn = connections[connId];
     if (!conn) return;
@@ -1169,10 +1169,6 @@ function Fretboard({ mode = 'normal' }) {
     openConnectionToolbar(connectionId, connections, getNotePositionMemo,
       setConnectionToolbarPosition, setSelectedConnection, setConnectionToolbarVisible, setToolbarDropdown);
   }, [connections, getNotePositionMemo, setConnectionToolbarPosition, setSelectedConnection, setConnectionToolbarVisible, setToolbarDropdown]);
-
-  const handleConnectionContextMenuMemo = useCallback((event, connectionId) => {
-    handleConnectionContextMenu(event, connectionId, openConnectionToolbarMemo);
-  }, [openConnectionToolbarMemo]);
 
   const handleConnectionClickMemo = useCallback((event, connectionId) => {
     handleConnectionClick(event, connectionId, openConnectionToolbarMemo);
@@ -1801,8 +1797,7 @@ function Fretboard({ mode = 'normal' }) {
           connections={dynamic.isDynamic ? {} : connections}
           getNotePositionMemo={getNotePositionMemo}
           handleConnectionClickMemo={handleConnectionClickMemo}
-          handleConnectionContextMenuMemo={handleConnectionContextMenuMemo}
-          onConnectionMiddleDown={handleConnectionMiddleDown}
+          onConnectionColorCycle={handleConnectionColorCycle}
           connectionStartPosition={connectionStartPosition}
           mousePosition={mousePosition}
           useColor2Level={useColor2Level}

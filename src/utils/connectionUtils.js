@@ -213,12 +213,6 @@ export function openConnectionToolbar(connectionId, connections, getNotePosition
     setToolbarDropdown(null);
 }
 
-export function handleConnectionContextMenu(event, connectionId, openConnectionToolbar) {
-    event.preventDefault();
-    event.stopPropagation();
-    openConnectionToolbar(connectionId);
-}
-
 export function handleConnectionClick(event, connectionId, openConnectionToolbar) {
     event.stopPropagation();
     openConnectionToolbar(connectionId);

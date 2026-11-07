@@ -87,7 +87,6 @@ export const ScoreBoard = React.memo(function ScoreBoard({ snapshot, options }) 
       connections={s.data?.connections || {}}
       getNotePositionMemo={getNotePositionMemo}
       handleConnectionClickMemo={noOp}
-      handleConnectionContextMenuMemo={noOp}
       connectionStartPosition={null}
       mousePosition={null}
       useColor2Level={false}

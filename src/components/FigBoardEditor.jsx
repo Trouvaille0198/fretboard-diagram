@@ -405,7 +405,6 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
             connections={data.connections || {}}
             getNotePositionMemo={getNotePositionMemo}
             handleConnectionClickMemo={noOp}
-            handleConnectionContextMenuMemo={noOp}
             connectionStartPosition={conn.connectionStartPosition}
             mousePosition={conn.mousePosition}
             useColor2Level={false}
