@@ -112,11 +112,12 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 							</div>
 						))}
 
-						{/* 变音级：改变级数本身的升降（b3/#4 这类） */}
+						{/* 变音级：改变级数本身的升降（b3/#4 这类）；悬停显示升降后的根音名（小调里 b3=F#、3=G 一眼分清） */}
 						<div className="cc-cp-qgroup">
 							<span className="cc-cp-qlabel">{ts.qAcc ?? "变音级"}</span>
 							{ACCS.map(({ v, label }) => (
 								<button key={v} className={`cc-cp-q ${hasChord && (chord.acc || 0) === v ? "on" : ""}`} disabled={!hasChord}
+									title={hasChord ? `${label} → ${formatName({ ...chord, acc: v, alt: undefined, bass: null }, key)}` : undefined}
 									onClick={() => setChord({ acc: v })}>{label}</button>
 							))}
 							<span className="cc-cp-hint">
