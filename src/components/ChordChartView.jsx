@@ -1014,6 +1014,13 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				if (popupOpen || cellMenu) { setPopupOpen(false); setCellMenu(null); setCursorOn(false); }
 				return;
 			}
+			// Q = 复制模式开关，不受光标门控（点谱面空白熄灭光标后 q 失效的实测反馈）：
+			// 进/出都是模式切换而非编辑键，无选中也应可用；复制模式内 q=退出
+			if ((e.key === "q" || e.key === "Q") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+				e.preventDefault();
+				if (copyMode) exitCopyMode(); else enterCopyMode();
+				return;
+			}
 			// 无选中（光标熄灭）时编辑键位全部让路；Ctrl+Z 撤销/重做保持全局可用
 			if (!cursorOnRef.current) return;
 			if (copyMode) {
