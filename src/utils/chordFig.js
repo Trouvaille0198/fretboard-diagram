@@ -58,8 +58,9 @@ export function boardFigData(data, chord, viewKey) {
 	conns.forEach(c => {
 		for (const nid of [c.startNoteId, c.endNoteId]) {
 			if (points.some(p => p.id === nid)) continue;
-			const n = (data || {})[nid];
-			if (!n) continue;
+			// 纯幽灵起点在主板上根本没有 data 条目（空音符从未着色）——noteId 本身带弦/品位，直接补点；
+			// 非幽灵连线的熄灭端点照旧丢弃（与主板同款：删音连线不渲染）
+			if (!c.ghost) continue;
 			const m = /^(?:o|f(-?\d+))-s(\d)$/.exec(nid);
 			if (!m) continue;
 			const string = parseInt(m[2], 10);

@@ -53,10 +53,19 @@ export function isSolidNoteData(noteData, globalVisibility) {
     return hasColor1 || hasColor2;
 }
 
-// 音符 id → 品号（o-s2 开放弦=0；f5-s2=5；解析不出返回 null）
+// 音符 id → 品号（o-s2 开放弦=品0；f5-s2=5；解析不出返回 null）
 export function fretOfNoteId(noteId) {
     if (typeof noteId !== 'string') return null;
     if (noteId.startsWith('o-s')) return 0;
+    const m = noteId.match(/^f(-?\d+)-s\d+$/);
+    return m ? parseInt(m[1], 10) : null;
+}
+
+// 音符 id → 半音坐标（与 fretOfNoteId 的区别：f-ids 是 0 基品 idx，f0=品1，
+// 开放弦品0 折算为 -1 才与 f0 相邻——半音划音配对按此比较）
+export function semitoneOfNoteId(noteId) {
+    if (typeof noteId !== 'string') return null;
+    if (noteId.startsWith('o-s')) return -1;
     const m = noteId.match(/^f(-?\d+)-s\d+$/);
     return m ? parseInt(m[1], 10) : null;
 }
@@ -69,10 +78,12 @@ export function stringOfNoteId(noteId) {
 }
 
 // 半音划音配对：同弦且品距恰为一品（±1，开放弦=0 品也参与）
+// 注意坐标系：f-ids 是 0 基品 idx（f0=品1），开放弦品0 折算为 -1——
+// 原实现开弦按 0 与 f0 的 0 相撞：开弦↔品1 的真半音被拒、开弦↔品2 的全音反被放行（实测踩雷）
 export function isSemitoneSlidePair(fromId, toId) {
     const fs = stringOfNoteId(fromId), ts = stringOfNoteId(toId);
     if (fs === null || ts === null || fs !== ts) return false;
-    const ff = fretOfNoteId(fromId), tf = fretOfNoteId(toId);
+    const ff = semitoneOfNoteId(fromId), tf = semitoneOfNoteId(toId);
     return ff !== null && tf !== null && Math.abs(ff - tf) === 1;
 }
 
