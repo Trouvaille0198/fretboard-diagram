@@ -248,6 +248,30 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     return () => window.removeEventListener('keydown', onKey);
   }, [candMenu, renameForm, saveForm, onClose]);
 
+  // S = 切换连线模式（与主板面同键位同语义）；退出时清起选点/落点/预览；
+  // 输入框聚焦、表单/菜单开着时不抢；修饰键组合（Ctrl+S 等）不碰
+  React.useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 's' && e.key !== 'S') return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+      if (candMenu || renameForm || saveForm) return;
+      if (e.target instanceof Element && e.target.closest('input, textarea, select')) return;
+      e.preventDefault();
+      conn.setConnectionMode(prev => {
+        if (prev) {
+          conn.setConnectionStartNote(null);
+          conn.setConnectionStartPosition(null);
+          conn.setMousePosition(null);
+          conn.setPreviewHoverNote(null);
+          conn.setUseColor2Level(false);
+        }
+        return !prev;
+      });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [candMenu, renameForm, saveForm, conn]);
+
   // 最近一次应用的形状候选：换把位按钮的轮换基准（ref 供逻辑读，state 驱动按钮显隐）
   const lastCandRef = useRef(null);
   const [lastCand, setLastCand] = useState(null);
@@ -448,7 +472,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
                   <ConnectionPresetIcon presetId={p.id} />
                 </button>
               ))}
-              {conn.connectionMode ? <button className="button" onClick={() => conn.setConnectionMode(false)} title="退出连线（右键同）">✕</button> : null}
+              {conn.connectionMode ? <button className="button" onClick={() => conn.setConnectionMode(false)} title="退出连线（S / 右键同）">✕</button> : null}
             </div>
           </div>
           <div className="figbe-side-block figbe-panel">
