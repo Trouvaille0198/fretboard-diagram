@@ -108,7 +108,9 @@ export function chordFromDegreeToken(token) {
 
 export function formatDegree(chord) {
 	if (!chord) return "";
-	let out = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}${chord.quality || ""}${altText(chord)}`;
+	// 显式大三 "M" 不展示（1 就是 1，不写 1M——与音名/罗马显示同规则）
+	const q = chord.quality === "M" ? "" : (chord.quality || "");
+	let out = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}${q}${altText(chord)}`;
 	if (chord.bass) out += `/${ACC_SIGN[String(chord.bass.acc || 0)]}${chord.bass.degree}`;
 	return out;
 }
@@ -223,7 +225,8 @@ export function formatRomanParts(chord, viewKey) {
 	const lowerTriad = q.startsWith("dim") || q === "m" || (q.startsWith("m") && !q.startsWith("maj")); // dim 族、m/m7/m6/m9… 小写，maj7 除外
 	const main = lowerTriad ? head.toLowerCase() : head;
 	let sub = "";
-	if (q !== "" && q !== "m") {
+	// 显式大三 "M" 无副行（I 就是 I，不写 I M）
+	if (q !== "" && q !== "m" && q !== "M") {
 		const extMap = { "5": "5", maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", m9: "9", maj9: "maj9", "13": "13", "9sus4": "9sus4", "m7-5": "7-5", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
 		sub = extMap[q] ?? (chord.quality || "");
 	}
@@ -259,7 +262,7 @@ export function chordSignParts(chord, display, viewKey) {
 	}
 	const q = resolvedQuality(chord, viewKey);
 	const head = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}`;
-	const triadMap = { "": "", m: "m" };
+	const triadMap = { "": "", m: "m", M: "" }; // 显式大三 "M" ≡ ""（1 就是 1，不写 1M）
 	const triadOf = { m7: "m", m6: "m", m9: "m", "m7-5": "m" };
 	const extMap = { maj7: "maj7", "7": "7", m7: "7", "9": "9", m9: "9", maj9: "maj9", "13": "13", "9sus4": "9sus4", "m7-5": "7-5", add9: "add9", "6": "6", m6: "6", sus4: "sus4", sus2: "sus2", dim: "°", dim7: "dim7", aug: "+", "5": "5" };
 	let suffix;
@@ -291,7 +294,7 @@ export function chordParts(chord, display, viewKey) {
 	const q = resolvedQuality(chord, viewKey);
 	const head = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}`;
 	let main = head, sub = "";
-	const triadMap = { "": "", m: "m" }; // 大三和弦省字母（1 不写 1M），小三写 m
+	const triadMap = { "": "", m: "m", M: "" }; // 大三和弦省字母（1 不写 1M，显式 M 同样不写），小三写 m
 	const extMap = { "5": "5", maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", m9: "9", maj9: "maj9", "13": "13", "9sus4": "9sus4", "m7-5": "7-5", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
 	if (triadMap[q] !== undefined) {
 		main = head + triadMap[q];
