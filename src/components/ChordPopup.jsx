@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { formatName, ALT_ORDER } from "../utils/chordLib";
 import { ChordSign } from "./ChordSign";
 
-// 质量按钮：常用族在前，扩展族在后（一次全部平铺，17 种三行放得下）
+// 质量按钮：常用族在前，扩展族在后（一次全部平铺，18 种三行放得下）
 // 质量按族分组，一行一族（标签列 + 7 列对齐网格）：三 / 七 / 九 / 挂留
 const QUALITY_GROUPS = [
 	{ key: "qTriad", items: [
@@ -13,7 +13,7 @@ const QUALITY_GROUPS = [
 		{ q: "m7-5", label: "m7-5" }, { q: "dim7", label: "dim7" }, { q: "6", label: "6" }, { q: "m6", label: "m6" }
 	] },
 	{ key: "qNinth", items: [
-		{ q: "9", label: "9" }, { q: "m9", label: "m9" }, { q: "maj9", label: "maj9" }, { q: "add9", label: "add9" }
+		{ q: "9", label: "9" }, { q: "m9", label: "m9" }, { q: "maj9", label: "maj9" }, { q: "add9", label: "add9" }, { q: "13", label: "13" }
 	] },
 	{ key: "qSus", items: [
 		{ q: "sus4", label: "sus4" }, { q: "sus2", label: "sus2" }

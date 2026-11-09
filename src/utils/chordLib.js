@@ -21,6 +21,7 @@ export const CHORD_INTERVALS = {
 	m6: [0, 3, 7, 9],
 	9: [0, 4, 7, 10, 14],
 	add9: [0, 4, 7, 14],
+	13: [0, 4, 7, 10, 21],
 	sus4: [0, 5, 7],
 	sus2: [0, 2, 7],
 	dim: [0, 3, 6],
@@ -222,7 +223,7 @@ export function formatRomanParts(chord, viewKey) {
 	const main = lowerTriad ? head.toLowerCase() : head;
 	let sub = "";
 	if (q !== "" && q !== "m") {
-		const extMap = { "5": "5", maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", m9: "9", maj9: "maj9", "m7-5": "7-5", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
+		const extMap = { "5": "5", maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", m9: "9", maj9: "maj9", "13": "13", "m7-5": "7-5", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
 		sub = extMap[q] ?? (chord.quality || "");
 	}
 	sub += altText(chord);
@@ -259,7 +260,7 @@ export function chordSignParts(chord, display, viewKey) {
 	const head = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}`;
 	const triadMap = { "": "", m: "m" };
 	const triadOf = { m7: "m", m6: "m", m9: "m", "m7-5": "m" };
-	const extMap = { maj7: "maj7", "7": "7", m7: "7", "9": "9", m9: "9", maj9: "maj9", "m7-5": "7-5", add9: "add9", "6": "6", m6: "6", sus4: "sus4", sus2: "sus2", dim: "°", dim7: "dim7", aug: "+", "5": "5" };
+	const extMap = { maj7: "maj7", "7": "7", m7: "7", "9": "9", m9: "9", maj9: "maj9", "13": "13", "m7-5": "7-5", add9: "add9", "6": "6", m6: "6", sus4: "sus4", sus2: "sus2", dim: "°", dim7: "dim7", aug: "+", "5": "5" };
 	let suffix;
 	if (triadMap[q] !== undefined) suffix = triadMap[q];
 	else if (extMap[q] !== undefined) suffix = (triadOf[q] || "") + extMap[q];
@@ -290,7 +291,7 @@ export function chordParts(chord, display, viewKey) {
 	const head = `${ACC_SIGN[String(chord.acc || 0)]}${chord.degree}`;
 	let main = head, sub = "";
 	const triadMap = { "": "", m: "m" }; // 大三和弦省字母（1 不写 1M），小三写 m
-	const extMap = { "5": "5", maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", m9: "9", maj9: "maj9", "m7-5": "7-5", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
+	const extMap = { "5": "5", maj7: "maj7", m7: "7", "7": "7", 6: "6", m6: "6", "9": "9", m9: "9", maj9: "maj9", "13": "13", "m7-5": "7-5", add9: "add9", sus4: "sus4", sus2: "sus2", dim: "dim", dim7: "dim7", aug: "aug" };
 	if (triadMap[q] !== undefined) {
 		main = head + triadMap[q];
 		sub = altText(chord);
@@ -374,6 +375,7 @@ export const QUALITY_TO_KIND = {
 	dim7: "diminished-seventh",
 	maj9: "major-ninth",
 	m9: "minor-ninth",
+	13: "dominant-13th",
 	"m7-5": "half-diminished"
 };
 
