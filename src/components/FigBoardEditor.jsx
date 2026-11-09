@@ -375,6 +375,13 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     const t = setTimeout(() => { onAutoSave && onAutoSave(serializeBoard(dataRef.current)); }, 300);
     return () => clearTimeout(t);
   }, [data, onAutoSave, serializeBoard]);
+  // 卸载兜底：改完立刻 Esc/关弹窗时，防抖计时器随卸载被清，改动就没落过盘（实测丢档）。
+  // 与打开时不同且未被删除路径接管的，当场补一次；删除按钮先置空 dataRef 表示已接管
+  React.useEffect(() => () => {
+    if (!autoSaveRef.current || dataRef.current == null) return;
+    if (sameAsOriginal(dataRef.current, originalRef.current)) return;
+    onAutoSave && onAutoSave(serializeBoard(dataRef.current));
+  }, []);
 
   return (
     <div className="figbe">
@@ -385,7 +392,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
           title={`形状不变，整体升高八度（当前 @${lastCand.rootFret} 品 → 下一个 @${(positions.same.find(c => c.rootFret > lastCand.rootFret) ?? positions.same[0]).rootFret} 品，到底回绕）`}>换把位</button> : null}
         {!sameAsOriginal(data, originalRef.current) ? <button className="button sm" onClick={restoreOriginal}
           title="还原为打开本编辑器时的指法——形状覆盖多少次都回到最初">还原</button> : null}
-        <button className="button sm danger" onClick={() => { onAutoSave && onAutoSave(null); onClose(); }}>删除</button>
+        <button className="button sm danger" onClick={() => { dataRef.current = null; onAutoSave && onAutoSave(null); onClose(); }}>删除</button>
         <button className="button sm accent" onClick={onClose}>完成</button>
       </div>
 
