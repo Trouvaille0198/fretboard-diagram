@@ -2063,9 +2063,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			const preFig = (!u?.fig || !Object.keys(u.fig).length)
 				? prevSameChordFig(figTarget.mi, figTarget.si, figTarget.half, u?.chord)
 				: null;
-			// 全曲同和弦的既有指法（最近在前,内容去重）——编辑器默认面板"最近同和弦"展示
+			// 全曲同和弦的既有指法（最近在前,内容去重）——编辑器默认面板"最近同和弦"展示；排除正在编辑的这张
 			const sameFigs = u?.chord && u.chord.degree != null
-				? collectSameChordFigs(song.measures, degreePc(u.chord.degree, u.chord.acc || 0, keyAt(figTarget.mi)), u.chord.quality === "M" ? "" : (u.chord.quality || ""), keyAt)
+				? collectSameChordFigs(song.measures, degreePc(u.chord.degree, u.chord.acc || 0, keyAt(figTarget.mi)), u.chord.quality === "M" ? "" : (u.chord.quality || ""), keyAt, figTarget)
 				: [];
 			return createPortal(
 				<div className="figbe-mask" onMouseDown={e => { if (e.target === e.currentTarget) setFigTarget(null); }}>

@@ -83,13 +83,15 @@ export function toggleBoldRange(ranges, s, e, len) {
 // ===== 同和弦既有指法（编辑器默认面板"最近同和弦"）=====
 // 全曲收集与给定和弦(解析根音 pc + 质量)相同的指法图；靠后的小节(=最近画过)在前,内容去重。
 // keyAtMi:按小节取生效调(谱内转调自动隔离——B 段的 4maj7 不会匹配 D 段的 4maj7)
-export function collectSameChordFigs(measures, rootPc, quality, keyAtMi) {
+// skip:{mi,si,half} 排除正在编辑的这一拍——历史参考列表不该包含当前这张
+export function collectSameChordFigs(measures, rootPc, quality, keyAtMi, skip = null) {
 	const seen = new Set();
 	const list = [];
 	for (let m = (measures || []).length - 1; m >= 0; m--) {
 		const mm = measures[m];
-		(mm.slots || []).forEach(sl => {
-			(sl.split ? sl.split : [sl]).forEach(u => {
+		(mm.slots || []).forEach((sl, si) => {
+			(sl.split ? sl.split : [sl]).forEach((u, hi) => {
+				if (skip && m === skip.mi && si === skip.si && hi === (skip.half || 0)) return;
 				if (!u || u.kind !== "chord" || !u.chord || !u.fig || !Object.keys(u.fig).length) return;
 				let uRoot = null;
 				try { uRoot = degreePc(u.chord.degree, u.chord.acc || 0, keyAtMi ? keyAtMi(m) : { root: 0, minor: false }); } catch (e) { /* 坏数据跳过 */ }
