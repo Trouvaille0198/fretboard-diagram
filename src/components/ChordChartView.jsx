@@ -603,6 +603,30 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	};
 
 	const patchUnit = (mi, si, half, patch) => {
+		// 和弦一变，拍上的指法图要跟着变：图是「这个和弦」的记谱（点位按旧和弦画的，度数标签按新和弦渲染，
+		// 不跟着换就是错图）。按新和弦就近重带一张（同和弦优先、只看前方、排除本拍——与打开编辑器的
+		// 自动带入同口径），历史里没有就摘掉；无图或和弦没动（含 ""↔"M" 等音记法互切）不折腾。
+		if (patch && patch.kind === "chord" && patch.chord) {
+			const cur = unitOf(mi, si, half);
+			const old = cur?.kind === "chord" ? cur.chord : null;
+			const next = patch.chord;
+			const nq = (q) => (q === "M" ? "" : q || "");
+			const altKey = (c) => (Array.isArray(c.alt) ? c.alt.join(",") : "");
+			const bassKey = (c) => (c.bass ? `${c.bass.acc || 0}|${c.bass.degree}` : "");
+			const changed = !old
+				|| old.degree !== next.degree
+				|| (old.acc || 0) !== (next.acc || 0)
+				|| nq(old.quality) !== nq(next.quality)
+				|| altKey(old) !== altKey(next)
+				|| bassKey(old) !== bassKey(next);
+			const hasFig = cur?.fig && Object.keys(cur.fig).length;
+			if (changed && hasFig) {
+				const carried = prevSameChordFig(mi, si, half, next, true);
+				patch = carried
+					? { ...patch, fig: JSON.parse(JSON.stringify(carried)) } // 克隆防跨拍别名共享
+					: { ...patch, fig: undefined };
+			}
+		}
 		patchMeasure(mi, m => {
 			if (si < 0 || si >= m.slots.length) return m; // 光标越界（如刚缩拍号）不产生幽灵槽
 			const slots = m.slots.slice();
@@ -1359,7 +1383,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	// 空指法图自动带入：在当前小节之前找"实际音高 + 质量"都相同的和弦（按 resolved pc 匹配，
 	// 转调段自动隔离——B 段的 4maj7 不会带入 D 段的 4maj7），取最近的一个指法图。
 	// 相同和弦的按法往往相似，画过一次后面直接改，提效。
-	const prevSameChordFig = (mi, si, half, chord) => {
+	// strict=true（和弦变更时的拍面重带）：只认同和弦的，没有就返回 null——
+	// 拍面持久图必须对应它自己的和弦，"就近任意图"只属于编辑器打开时的草稿带入
+	const prevSameChordFig = (mi, si, half, chord, strict = false) => {
 		// 取当前位置之前最近的指法图：优先同和弦（同和弦按法往往相似，画过一次直接改）；
 		// 没有同和弦（或拍上根本没和弦）就取最近的一张——拍上无和弦也允许建图，默认带入上一张再改。
 		// 同和弦优先受转调段隔离（B 段不带入 D 段）；"最近"兜底不受限。
@@ -1386,7 +1412,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				}
 			}
 		}
-		return found || nearest;
+		return strict ? found : (found || nearest);
 	};
 
 	const unitAt = (mi, si, half) => {
