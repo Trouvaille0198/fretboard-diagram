@@ -1679,7 +1679,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				    （与拍格/反复线重叠实测踩雷）；整行每格都渲染这条带（空也占位），拍格横向对齐不破 */}
 				{(figsTags || m.house || m.section || m.keyRoot != null) ? (
 					<div className={`cc-cell-tags${figsTags ? " in-flow" : ""}`}>
-						{m.house ? <span className="cc-house">{m.house}.</span> : null}
 						{m.section ? (
 							<span className="cc-sectionmark"
 								title={ts.sectionEditTip ?? "点击编辑段落标记"}
@@ -1690,6 +1689,12 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						{m.keyRoot != null ? <span className="cc-keymark">{keyLabelText(m.keyLetter ?? keySpellOf(m.keyRoot).letter, m.keyAcc ?? 0, !!m.keyMinor)}</span> : null}
 					</div>
 				) : null}
+				{/* 跳房子 volta 括线：同号连续小节连成一条横线，段首带竖钩+编号（1./2.）——
+				    跨小节读法靠相邻格的线自然相连；编号只标段首，续行格只延线 */}
+				{m.house ? (() => {
+					const voltaFirst = (song.measures[mi - 1]?.house || 0) !== m.house;
+					return <span className={`cc-volta${voltaFirst ? " volta-start" : ""}`}>{voltaFirst ? `${m.house}.` : ""}</span>;
+				})() : null}
 				<div className="cc-cell-slots">{compactView
 					? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => compactPairView(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null))
 					: m.slots.map((_, si) => slotView(mi, si))}

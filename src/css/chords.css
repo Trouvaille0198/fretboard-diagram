@@ -1074,15 +1074,26 @@
     z-index: 2;
 }
 
-/* 跳房子：小节上方数字+短横 */
-.cc-house {
-    font-size: var(--app-fs-xs);
-    color: var(--app-accent-text);
-    padding: 0 6px 0 2px;
-    border-top: 1.5px solid var(--app-accent);
-    border-right: 1.5px solid var(--app-accent);
-    border-radius: 0 6px 0 0;
+/* 跳房子 volta 括线：同号连续小节连成一条横线（每格 span 全格宽，相邻格自然相连）；
+   段首（上一格不是同号房子）加左竖钩 + 编号。有图行时顶部是 20px 标记带（文字底对齐），线压带顶不压字 */
+.cc-volta {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 12px;
+    border-top: 1.5px solid var(--cc-bar-ink);
+    font-size: 12px;
+    font-weight: 700;
     line-height: 12px;
+    color: var(--app-text);
+    padding-left: 2px;
+    pointer-events: none;
+    z-index: 3;
+}
+.cc-volta.volta-start {
+    border-left: 1.5px solid var(--cc-bar-ink);
+    color: var(--app-accent-text);
 }
 
 .cc-add-cell {
@@ -1697,11 +1708,6 @@ html[data-theme="light"] .cc-cell-tools {
 .cc-page .cc-line-section,
 .cc-page .cc-panel-pos {
     color: var(--cc-accent-text);
-}
-
-.cc-page .cc-house {
-    color: var(--cc-accent-text);
-    border-color: var(--cc-accent);
 }
 
 .cc-page .cc-cell:hover .cc-glyph.empty {
