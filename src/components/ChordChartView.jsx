@@ -99,9 +99,11 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		return () => document.removeEventListener("mousedown", onDocDown);
 	}, []);
 	// 光标熄灭：点击拍格/弹层/菜单/工具行之外的任意区域 = 撤销选中（v229 前光标常亮）
+	// .cc-cell 必须在白名单：复制模式拖选小节从小节格按下起手（空谱拍格元素不占位，按下落在格上）——
+	// 格不在白名单时 q 进复制模式后一按下就退出（实测踩雷）
 	useEffect(() => {
 		const onDocDown = (e) => {
-			if (e.target.closest(".cc-beat, .cc-cp-wrap, .cc-toolbar, .cc-settings, .cc-menu, .cc-mmenu, .cc-prefs, .cc-copybar, .cc-nav-menu, .cc-dialog, .cc-modal-mask, .cc-figview, .cc-figmodal, .figbe-mask, .cc-cell-menu")) return;
+			if (e.target.closest(".cc-beat, .cc-cell, .cc-cp-wrap, .cc-toolbar, .cc-settings, .cc-menu, .cc-mmenu, .cc-prefs, .cc-copybar, .cc-nav-menu, .cc-dialog, .cc-modal-mask, .cc-figview, .cc-figmodal, .figbe-mask, .cc-cell-menu")) return;
 			if (e.target.closest("[class*=popup], [class*=dialog]")) return;
 			setCursorOn(false);
 			setPopupOpen(false);
@@ -1021,8 +1023,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				if (copyMode) exitCopyMode(); else enterCopyMode();
 				return;
 			}
-			// 无选中（光标熄灭）时编辑键位全部让路；Ctrl+Z 撤销/重做保持全局可用
-			if (!cursorOnRef.current) return;
+			// 无选中（光标熄灭）时编辑键位全部让路；复制模式键位自成体系（q/Esc/Ctrl+C/V/方向键）不需要光标；
+			// Ctrl+Z 撤销/重做保持全局可用
+			if (!cursorOnRef.current && !copyMode) return;
 			if (copyMode) {
 				// 模式内只认：Q/Esc 退出、拖选后的 ←/→ 微调、Ctrl+C 复制、Ctrl+V 插入、Backspace 删除、Ctrl+Z 撤销
 				if (e.key === "q" || e.key === "Q" || e.key === "Escape") { e.preventDefault(); exitCopyMode(); return; }
