@@ -69,9 +69,13 @@ const ACC_SIGN = { "-1": "b", "0": "", "1": "#" };
 export const stepsOf = (key) => (key.minor ? MINOR_STEPS : MAJOR_STEPS);
 
 // 级数(+变音) → 根音 pitch class
+// 小调里 3/6/7 级的 ♭ 不再叠加半音：小调级数按大调相对系记谱（♭3/♭6/♭7 就是自然小调级
+// ——Em 小调的 b3maj7 = ♭IIImaj7 = Gmaj7，用户实测按此约定画图），♭ 与 ♮ 同音，♯ 才是升高
 export function degreePc(degree, acc, key) {
 	const steps = stepsOf(key);
-	return ((((key.root || 0) + (acc || 0) + steps[degree - 1]) % 12) + 12) % 12;
+	let a = acc || 0;
+	if (key.minor && a < 0 && (degree === 3 || degree === 6 || degree === 7)) a = 0;
+	return ((((key.root || 0) + a + steps[degree - 1]) % 12) + 12) % 12;
 }
 
 // 调内七和弦：级数点击的默认形态——大调 5 级属七，其余大三 maj7、小三 m7、减 dim7
