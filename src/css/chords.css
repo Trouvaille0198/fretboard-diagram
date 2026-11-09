@@ -1400,6 +1400,29 @@ html[data-theme="light"] .cc-page {
     background: var(--app-panel-soft);
 }
 
+/* 反复遍数自定义输入框：与行内按钮同框感（窄数字框，隐藏 spinner 防挤压） */
+.cc-mmenu-row .cc-mmenu-custom {
+    width: 52px;
+    background: var(--app-bg-secondary);
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    color: var(--app-text);
+    font: inherit;
+    padding: 4px 6px;
+    text-align: center;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.cc-mmenu-row .cc-mmenu-custom::-webkit-outer-spin-button,
+.cc-mmenu-row .cc-mmenu-custom::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.cc-mmenu-row .cc-mmenu-custom:focus {
+    outline: none;
+    border-color: var(--app-accent);
+}
+
 .cc-mmenu-row button.danger {
     color: var(--app-danger);
 }

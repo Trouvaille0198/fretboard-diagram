@@ -1767,6 +1767,23 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 									×{n}
 								</button>
 							))}
+							{/* 自定义遍数：预设之外的任意 ≥2 整数；回车/失焦生效，清空或 2 = 回默认。
+								key 带遍数与所在小节——切小节/点预设按钮时重挂刷新显示 */}
+							<input type="number" min="2" step="1" className="cc-mmenu-custom"
+								key={`${m.id}-${m.repeatTimes || 2}`}
+								defaultValue={m.repeatTimes || 2}
+								title={ts.repeatCustomTip ?? "自定义遍数（≥2，回车或点外生效）"}
+								onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
+								onBlur={e => {
+									const v = Math.floor(Number(e.target.value));
+									const times = Number.isFinite(v) && v >= 2 ? v : 2;
+									e.target.value = String(times);
+									patchMeasure(mi, x => ({
+										...x,
+										repeatTimes: times === 2 ? undefined : times,
+										endBar: times === 2 ? x.endBar : "repeatEnd",
+									}));
+								}} />
 						</div>
 						<div className="cc-mmenu-label">{ts.houseLabel ?? "跳房子"}</div>
 						<div className="cc-mmenu-row">
