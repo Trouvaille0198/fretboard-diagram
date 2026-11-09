@@ -3,16 +3,37 @@
 
 import { voiceChord } from "./voicing.js";
 
+// 有效房子推导：房子标记在段首小节，括线一路延伸到「反复结束」线（结束的标志就是反复结束本身——
+// 反复结束之前的小节即使没标房子也归属该房子：渲染括线连过去、播放同样跳过）。
+// 规则：显式房子开一段；段向后延伸到下一个 endBar==='repeatEnd'（含）为止；中途遇到新的显式房子即换段；
+// 之后没有「反复结束」收口就不延伸（默认就是当前小节）。返回每小节的有效房子（0=无）。
+export function effectiveHouses(measures) {
+	const ms = measures || [];
+	const eff = ms.map(m => m.house || 0);
+	for (let j = 0; j < ms.length; j++) {
+		if (!ms[j].house) continue;
+		let k = -1;
+		for (let t = j + 1; t < ms.length; t++) {
+			if (ms[t].house) break; // 新显式房子开新段
+			if (ms[t].endBar === "repeatEnd") { k = t; break; }
+		}
+		if (k === -1) continue;
+		for (let t = j + 1; t <= k; t++) if (!eff[t]) eff[t] = ms[j].house;
+	}
+	return eff;
+}
+
 // 展开反复/跳房子 → 线性小节索引序列（支持一层反复×自定义遍数；房子 1 第一遍、房子 2 第二遍起）
 export function expandSong(song) {
 	const ms = song.measures || [];
+	const eff = effectiveHouses(ms);
 	const seq = [];
 	const jumpCount = new Map(); // repeatEnd 小节索引 → 已回跳次数（默认反复 2 遍 = 回跳 1 次）
 	const maxTimes = Math.max(2, ...ms.map(m => m.repeatTimes || 2)); // 防呆上限跟着遍数走
 	let i = 0, pass = 1, guard = 0;
 	while (i < ms.length && guard++ <= ms.length * maxTimes + 10) {
 		const m = ms[i];
-		const skip = (m.house === 1 && pass >= 2) || (m.house === 2 && pass === 1);
+		const skip = (eff[i] === 1 && pass >= 2) || (eff[i] === 2 && pass === 1);
 		if (skip) { i++; continue; }
 		seq.push(i);
 		if (m.endBar === "final") break;
