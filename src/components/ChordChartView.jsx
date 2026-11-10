@@ -1236,11 +1236,11 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				if (isChartPack(text)) { const { song: packed, clips } = unpackChartBundle(text); handlePackImport(packed, clips); return; }
 				const imported = importMusicXml(text, file.name.replace(/\.musicxml$|\.xml$/i, ""));
 				if (!imported) {
-					setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importFail ?? "没解析出和弦骨架（工程文件或带 harmony 的 MusicXML）" });
+					setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importFail ?? "未识别到有效和弦数据（请导入工程文件或包含 harmony 标签的 MusicXML）" });
 					return;
 				}
 				adoptImported(imported);
-				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importXmlWarn ?? "已导入 MusicXML。注意：配图、小节标色、节奏型、记谱形式等应用私有内容 MusicXML 装不下，需要它们请改用工程文件（.fbchart）。" });
+				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importXmlWarn ?? "已导入 MusicXML。提示：MusicXML 仅支持通用乐谱数据，自定义配图与标色未包含。完整备份请使用工程文件（.fbchart）。" });
 			} catch (err) {
 				console.error(err);
 				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: (ts.importFailShort ?? "导入失败") + "：" + err.message });
@@ -1657,7 +1657,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					<div className={`cc-cell-tags${figsTags ? " in-flow" : ""}`}>
 						{m.section ? (
 							<span className="cc-sectionmark"
-								title={ts.sectionEditTip ?? "点击编辑段落标记"}
+								title={ts.sectionEditTip ?? "编辑段落标记"}
 								onClick={e => { e.stopPropagation(); promptSection(mi); }}>
 								{m.section}
 							</span>
@@ -1718,8 +1718,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure ?? "删除小节"}</button>
 						</div>
 						<div className="cc-mmenu-row">
-							<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
-							<button className="danger" onClick={() => { removeBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.delBeatTip ?? "删除光标处的拍：后面的拍整体前移（跨小节流动），末尾补空拍；末小节被掏空自动缩掉"}>⇤ {ts.delBeat ?? "删除一拍"}</button>
+							<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
+							<button className="danger" onClick={() => { removeBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.delBeatTip ?? "删除光标处的一拍（Delete）"}>⇤ {ts.delBeat ?? "删除一拍"}</button>
 						</div>
 						<div className="cc-mmenu-row">
 							<button onClick={() => { setCellMenu(null); promptSection(mi); }}>¶ {ts.sectionBtn ?? "段落标记"}</button>
@@ -1939,7 +1939,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				{/* 段落跳转 ¶ 钮：hover/click 展开全曲段落标记菜单（编辑/预览都可看到） */}
 				{sections.length ? (
 					<span className="cc-nav-wrap">
-						<button className="cc-nav-btn" title={ts.sectionNavTip ?? "段落跳转：点击跳到对应行"}
+						<button className="cc-nav-btn" title={ts.sectionNavTip ?? "段落跳转"}
 							onClick={() => setNavOpen(v => !v)}
 							onMouseEnter={navOpenNow} onMouseLeave={navCloseSoon}>¶</button>
 						<div className="cc-nav-menu" style={{ display: navOpen ? "block" : "none" }}
@@ -2123,7 +2123,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本（刷新后应为此版本）">v229</div>
+			<div className="cc-build-ver" title="界面版本">v229</div>
 
 
 			{dialog ? (

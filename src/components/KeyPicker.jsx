@@ -25,13 +25,13 @@ export function KeyPicker({ letter, acc, minor, marked, onChange, onClear, disab
 				<i className="ui-select-arrow">▾</i>
 			</UiSelect>
 			<button type="button" className={`cc-key-mode${minor ? " minor" : ""}`} disabled={disabled}
-				title="点击在大调/小调之间切换" onClick={() => onChange(letter, accI, !minor)}>
+				title="切换大调/小调" onClick={() => onChange(letter, accI, !minor)}>
 				{minor ? "小调" : "大调"}
 			</button>
-			<button type="button" disabled={disabled} title={accI <= -1 ? "已是降号" : "加降号（♭）"} onClick={() => setAcc(-1)}>♭</button>
-			<button type="button" disabled={disabled} title={accI >= 1 ? "已是升号" : "加升号（♯）"} onClick={() => setAcc(1)}>♯</button>
+			<button type="button" disabled={disabled} title={accI <= -1 ? "已是降号" : "降号 (♭)"} onClick={() => setAcc(-1)}>♭</button>
+			<button type="button" disabled={disabled} title={accI >= 1 ? "已是升号" : "升号 (♯)"} onClick={() => setAcc(1)}>♯</button>
 			{marked && onClear ? (
-				<button type="button" className="cc-key-clear" title="清除转调（跟随前段/回原调）" onClick={onClear}>×</button>
+				<button type="button" className="cc-key-clear" title="清除转调（恢复原调）" onClick={onClear}>×</button>
 			) : null}
 			<span className="cc-key-pc" hidden>{keyLabelText(letter, accI, minor)}</span>
 		</span>

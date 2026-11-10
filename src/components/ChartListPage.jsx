@@ -209,9 +209,9 @@ export function ChartListPage() {
 					return;
 				}
 				const imported = importMusicXml(text, file.name.replace(/\.musicxml$|\.xml$/i, ""));
-				if (!imported) throw new Error(ts.importFail ?? "没解析出和弦骨架");
+				if (!imported) throw new Error(ts.importFail ?? "未识别到有效和弦数据");
 				adoptImported(imported, []);
-				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importXmlWarn ?? "已导入 MusicXML。注意：配图、标色等应用私有内容 MusicXML 装不下。" });
+				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importXmlWarn ?? "已导入 MusicXML。提示：MusicXML 仅支持通用乐谱数据，自定义配图与标色未包含。" });
 			} catch (err) {
 				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: (ts.importFailShort ?? "导入失败") + "：" + err.message });
 			}

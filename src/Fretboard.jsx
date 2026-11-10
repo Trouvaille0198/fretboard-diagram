@@ -1990,7 +1990,7 @@ function Fretboard({ mode = 'normal' }) {
               className="dyn-thumb-add"
               onClick={() => dynamic.addFrame(dynamic.frames.length - 1)}
               disabled={playingIdx !== null}
-              title="追加新帧（复制末帧板面）"
+              title="追加新帧"
             >＋</button>
           )}
         </div>

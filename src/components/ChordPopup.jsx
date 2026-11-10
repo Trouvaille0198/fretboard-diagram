@@ -63,20 +63,20 @@ export function ChordPopup({ song, viewKey, unit, typedHint, canSplit, onPatchUn
 			<div className="cc-cp-menu">
 				{/* 当前拍和弦预览（✕ 左边）：谱面同款记号 + 音名，改没改一目了然 */}
 				{hasChord ? (
-					<span className="cc-cp-cur" title={ts.curChordTip ?? "该拍当前和弦"}>
+					<span className="cc-cp-cur" title={ts.curChordTip ?? "当前和弦"}>
 						<ChordSign chord={chord} display="degree" viewKey={key} />
 						<small>{formatName(chord, key)}</small>
 					</span>
 				) : null}
-				<button className="danger" onClick={() => onSetKind("empty")} disabled={!unit || unit.kind === "empty"} title={ts.clearHint ?? "删（⌫）"}><span>✕</span></button>
+				<button className="danger" onClick={() => onSetKind("empty")} disabled={!unit || unit.kind === "empty"} title={ts.clearHint ?? "清空 (Backspace)"}><span>✕</span></button>
 				{onAttach ? (
 					<button className={`cc-cp-attach cc-cp-back ${hasAttach ? "has" : ""}`}
-						title={hasAttach ? (ts.attachViewTip ?? "查看/编辑该拍的黑点指法小图") : (ts.attachTip ?? "给该拍画一张黑点指法小图（默认带入上一张，可挑选形状/手捏/存形状库）")}
+						title={hasAttach ? (ts.attachViewTip ?? "查看或编辑和弦指法图") : (ts.attachTip ?? "添加吉他和弦指法图")}
 						onClick={onAttach}>{ts.attachTab ?? "指法图"}{hasAttach ? " ✓" : ""}</button>
 				) : null}
 				{keyHere ? (
 					<button className={`cc-cp-keytoggle ${keyRowOpen ? "on" : ""}`}
-						title={ts.keyChangeTip ?? "从该拍所在小节起转调（之后的拍全部跟随，直到下一个转调；调回全局调 = 清除标记）"}
+						title={ts.keyChangeTip ?? "从当前小节起转调（与原调相同时清除标记）"}
 						onClick={() => setKeyRowOpen(v => !v)}>{ts.keyChange ?? "转调"}</button>
 				) : null}
 			</div>

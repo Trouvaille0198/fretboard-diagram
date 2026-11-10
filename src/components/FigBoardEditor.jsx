@@ -389,9 +389,9 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
         <span className="figbe-title">指法图{chord ? ` · ${formatName(chord, viewKey || { root: 0, minor: false })}` : ""}</span>
         <button className="button sm" onClick={openSave}>存为形状</button>
         {positions ? <button className="button sm" onClick={cyclePos}
-          title={`形状不变，整体升高八度（当前 @${lastCand.rootFret} 品 → 下一个 @${(positions.same.find(c => c.rootFret > lastCand.rootFret) ?? positions.same[0]).rootFret} 品，到底回绕）`}>换把位</button> : null}
+          title={`切换八度把位（当前第 ${lastCand.rootFret} 品）`}>换把位</button> : null}
         {!sameAsOriginal(data, originalRef.current) ? <button className="button sm" onClick={restoreOriginal}
-          title="还原为打开本编辑器时的指法——形状覆盖多少次都回到最初">还原</button> : null}
+          title="还原初始指法">还原</button> : null}
         <button className="button sm danger" onClick={() => { dataRef.current = null; onAutoSave && onAutoSave(null); onClose(); }}>删除</button>
         <button className="button sm accent" onClick={onClose}>完成</button>
       </div>
@@ -479,7 +479,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
                   <ConnectionPresetIcon presetId={p.id} />
                 </button>
               ))}
-              {conn.connectionMode ? <button className="button" onClick={() => conn.setConnectionMode(false)} title="退出连线（S / 右键同）">✕</button> : null}
+              {conn.connectionMode ? <button className="button" onClick={() => conn.setConnectionMode(false)} title="退出连线 (S)">✕</button> : null}
             </div>
           </div>
           <div className="figbe-side-block figbe-panel">

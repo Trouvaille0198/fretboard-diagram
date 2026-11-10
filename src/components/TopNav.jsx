@@ -180,10 +180,10 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="界面版本：刷新后应显示 v1.1.1">v1.1.1</span>
+				<span className="top-nav-ver" title="当前版本 v1.1.1">v1.1.1</span>
 				{syncBadge ? (
 					<button className={`top-nav-sync ${syncBadge.cls}`}
-						title={syncBadge.cls === "error" ? "云端同步出错，点此重试" : "云端同步状态"}
+						title={syncBadge.cls === "error" ? "云端同步出错，点击重试" : "云端同步状态"}
 						onClick={() => { flushOutbox(); pullAll(); }}>
 						{syncBadge.text}
 					</button>
@@ -200,13 +200,13 @@ export function TopNav({ mode }) {
 					</div>
 				) : null}
 				{user ? (
-					<span className="top-nav-user" title={user + (cloudFail ? "（⚠ 云同步失败：改动只存在本机，稍后会自动重试或重新登录）" : "")}>
-						{cloudFail ? <span className="top-nav-cloudfail" title="云同步失败：改动只存在本机">⚠</span> : null}
+					<span className="top-nav-user" title={user + (cloudFail ? "（云同步失败，当前为离线状态）" : "")}>
+						{cloudFail ? <span className="top-nav-cloudfail" title="云同步失败，当前为离线状态">⚠</span> : null}
 						<span className="top-nav-user-name">{user}</span>
 						<button className="top-nav-icon" onClick={() => setLogoutAsk(true)} title="退出登录">⏻</button>
 					</span>
 				) : (
-					<button className="top-nav-icon" onClick={() => setLoginOpen(true)} title="登录 / 注册（数据云端同步）">👤</button>
+					<button className="top-nav-icon" onClick={() => setLoginOpen(true)} title="登录 / 注册">👤</button>
 				)}
 				{loginOpen ? (
 					<LoginModal onLoggedIn={() => setLoginOpen(false)} onGuest={() => {}} onClose={() => setLoginOpen(false)} />

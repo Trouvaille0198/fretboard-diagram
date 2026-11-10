@@ -112,11 +112,11 @@ export function FretboardDock({
       onMouseLeave={scheduleCloseDock}
     >
       <div className="dock-tabs">
-        <span className="dock-label">{td.clipsTitle ?? '动图堆'}</span>
+        <span className="dock-label">{td.clipsTitle ?? '动画片段'}</span>
         <span className="dock-count">{countLabel}</span>
         <button
           className="dock-examples"
-          title={td.examplesHint ?? '载入六种技法/样式的示例动图（重复点击会刷新示例，不影响你自己的动图）'}
+          title={td.examplesHint ?? '加载技巧示例动画'}
           onClick={onExamples}
         >
           {td.examples ?? '示例'}
@@ -126,7 +126,7 @@ export function FretboardDock({
       {isExpanded && (
         <div className="dock-content">
           {clips.length === 0 && (
-            <div className="dock-empty">{td.emptyHint ?? '还没有动图：画好一帧按 Q 进入动态编辑，Ctrl+S 逐帧定格'}</div>
+            <div className="dock-empty">{td.emptyHint ?? '暂无动图：按 Q 进入动图模式，按 Ctrl+S 保存关键帧'}</div>
           )}
           {clips.map(clip => (
             <div
@@ -135,7 +135,7 @@ export function FretboardDock({
               onMouseEnter={() => setHoveredId(clip.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
-              <div className="dock-clip-board" onClick={() => onLoad?.(clip)} title={td.loadHint ?? '载入续编（追加帧）'}>
+              <div className="dock-clip-board" onClick={() => onLoad?.(clip)} title={td.loadHint ?? '加载并继续编辑'}>
                 <ClipPreview clip={clip} play={hoveredId === clip.id} />
               </div>
               <div className="dock-clip-info">

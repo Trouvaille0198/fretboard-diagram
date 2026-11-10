@@ -66,7 +66,7 @@ export function DynamicToolbar({
           <button
             className={`dyn-btn dyn-scheme ${transTool ? 'on' : ''}`}
             onClick={onToggleTransTool}
-            title="透明音：开启后点击音符涂背景色幽灵音（独立于色系，换色系不变）；按住 Ctrl 点击等效"
+            title="透明音（Ctrl+点击）"
           >
             <span className="dyn-scheme-dot" style={{ background: 'var(--background-color)', boxShadow: `inset 0 0 0 2px ${CANVAS_COLORS.ghostRing}` }} />
           </button>
@@ -84,7 +84,7 @@ export function DynamicToolbar({
             className="dyn-btn dyn-commit"
             onClick={dynamic.persistClip}
             disabled={playing}
-            title="保存/更新到动图堆（Ctrl+S）"
+            title="保存当前关键帧（Ctrl+S）"
           >
             保存
           </button>
@@ -98,7 +98,7 @@ export function DynamicToolbar({
         className={`dyn-btn dyn-play ${playing ? 'on' : ''}`}
         onClick={onTogglePlay}
         disabled={!canPlay}
-        title={td.playHint ?? '播放当前动图'}
+        title={td.playHint ?? '播放动图'}
       >
         {playing ? '⏹' : '▶'}
       </button>
@@ -112,13 +112,13 @@ export function DynamicToolbar({
       <button
         className={`dyn-btn ${cumulative ? 'on' : ''}`}
         onClick={onToggleCumulative}
-        title={td.cumulativeHint ?? '累积预览：激活过的音不熄灭，随播放逐音铺满（Ctrl+C 按当前样式导出）'}
+        title={td.cumulativeHint ?? '音符轨迹累积预览'}
       >
         迹
       </button>
 
       <span className="dyn-sep" />
-      <button className="dyn-btn dyn-right" onClick={() => setSettingsOpen(v => !v)} title={td.settingsHint ?? '动效节奏设置'}>
+      <button className="dyn-btn dyn-right" onClick={() => setSettingsOpen(v => !v)} title={td.settingsHint ?? '动画设置'}>
         ⚙
       </button>
       <div className="dyn-export-wrap" style={{ position: 'relative' }}>
@@ -126,7 +126,7 @@ export function DynamicToolbar({
           className="dyn-btn"
           disabled={!canPlay || exporting !== null}
           onClick={() => setExportOpen(v => !v)}
-          title="下载 / 导出（GIF · SVG · MP4 · WebM）"
+          title="导出动图"
         >
           {exporting !== null ? '…' : '⬇ 导出'}
         </button>
@@ -135,12 +135,12 @@ export function DynamicToolbar({
             <div className="dyn-export-veil" onClick={() => setExportOpen(false)} />
             <div className="dyn-export-menu">
               {[
-                { id: 'gif', label: 'GIF 动图', hint: '通用动图，任何地方能开' },
-                { id: 'svganim', label: 'SVG 矢量动图', hint: '无限清晰体积小（浏览器打开/网页嵌入）' },
+                { id: 'gif', label: 'GIF 动图', hint: '通用动态图格式' },
+                { id: 'svganim', label: 'SVG 矢量动图', hint: '无损矢量动画' },
                 ...(typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E')
-                  ? [{ id: 'mp4', label: 'MP4 视频', hint: '微信等聊天软件直接播放' }] : []),
-                { id: 'webm', label: 'WebM 视频', hint: '视频格式，适合长序列' },
-                { id: 'json', label: '数据 JSON', hint: '导出完整动图数据（排障/分析用）' },
+                  ? [{ id: 'mp4', label: 'MP4 视频', hint: '标准视频格式' }] : []),
+                { id: 'webm', label: 'WebM 视频', hint: '高质量视频格式' },
+                { id: 'json', label: '数据 JSON', hint: '完整项目工程数据' },
               ].map(item => (
                 <button
                   key={item.id}

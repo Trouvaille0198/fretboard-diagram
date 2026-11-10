@@ -462,7 +462,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		saveClip({ ...sessionClip, frames: stamped, transitions });
 		setClipVersion(v => v + 1);
 		setPersistedOnce(true);
-		toast?.(`已保存到动图堆（${frames.length} 帧）`, "success");
+		toast?.(`已保存动画片段（共 ${frames.length} 帧）`, "success");
 		return true;
 	}, [isDynamic, sessionClip, toast, flushBoard]);
 
