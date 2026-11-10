@@ -66,19 +66,12 @@ fi
 echo ""
 echo "3. 检查前端代码集成..."
 
-# 检查 Fretboard.jsx
-if grep -q "useAuth" src/Fretboard.jsx && grep -q "LoginModal" src/Fretboard.jsx; then
-    echo "  ✓ Fretboard.jsx 已集成登录功能"
+# 登录 UI 在 TopNav（LoginModal + authModel），主工作区经 syncEngine 拉云端
+if grep -q "LoginModal" src/components/TopNav.jsx && grep -q "authModel" src/components/LoginModal.jsx \
+   && grep -q "authModel" src/Fretboard.jsx && grep -q "syncEngine" src/Fretboard.jsx; then
+    echo "  ✓ 前端已集成登录与云同步"
 else
-    echo "  ✗ Fretboard.jsx 未正确集成"
-    exit 1
-fi
-
-# 检查键盘处理器
-if grep -q "saveToServer" src/handlers/keyboardHandlers.js; then
-    echo "  ✓ 键盘处理器已添加服务器保存"
-else
-    echo "  ✗ 键盘处理器未更新"
+    echo "  ✗ 前端登录/云同步集成缺失"
     exit 1
 fi
 
