@@ -271,7 +271,8 @@
 
 /* —— 谱面卡 —— */
 .cc-page .cc-body {
-    padding: 12px;
+    /* 左右 0：谱卡直接铺到面板边缘，暗带不再占宽（外壳 20px 条已与谱纸同色） */
+    padding: 12px 0;
 }
 
 .cc-page .cc-score {
