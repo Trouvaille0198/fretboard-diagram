@@ -630,7 +630,7 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	const KEYC = { root: 0, minor: false };
 	const chM = { degree: 6, acc: 0, quality: "M" };
 	A("质量 M:音名不带 M 后缀(6M → A)", formatName(chM, KEYC) === "A");
-	A("质量 M:数字带 M 后缀(6M)", formatInline(chM, "degree", KEYC) === "6M");
+	A("质量 M:数字谱不展示 M(6M → 6，901cf07 起显式大三与默认大三展示一致)", formatInline(chM, "degree", KEYC) === "6");
 	A("质量 M:音高 = 大三和弦(A C♯ E)", (() => { const { root, pcs } = chordPcs(chM, KEYC); return root === 9 && pcs.join(",") === "1,4,9"; })());
 	const mkq = (q, key) => { const m = createMeasure(4); m.slots[0] = { kind: "chord", chord: { degree: 6, acc: 0, quality: q, bass: null }, fig: { [key]: { visibility: "visible", color: "mono", color2: null } } }; return m; };
 	// 两图内容不同（不同品）：匹配归一（M ≡ 调内）后两张都收集；若无归一，M 图会被质量过滤掉只剩 1 张
