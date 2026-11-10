@@ -278,11 +278,13 @@ html[data-theme="light"] .fret-value-tooltip {
 
 html {
     min-height: 100%;
+    /* 外壳底色必须走 var(--app-bg) 随主题切换：写死暗色时，暗主题下面板(--app-bg 近黑)两侧会
+       露出比面板亮的辉光带、亮主题下则直接一圈黑边——用户实测报告为"左右灰色空隙"bug */
     background:
-        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 13%, transparent) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 100% 8%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 55%),
-        radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.07) 0%, transparent 58%),
-        linear-gradient(180deg, #0b1318 0%, #060c10 100%);
+        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 6%, transparent) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, color-mix(in srgb, var(--app-accent) 4%, transparent) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.04) 0%, transparent 58%),
+        linear-gradient(180deg, var(--app-bg) 0%, color-mix(in srgb, var(--app-bg) 82%, #000) 100%);
 }
 
 body {
@@ -302,10 +304,10 @@ body {
     color: var(--app-text);
     font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
     background:
-        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 13%, transparent) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 100% 8%, color-mix(in srgb, var(--app-accent) 9%, transparent) 0%, transparent 55%),
-        radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.07) 0%, transparent 58%),
-        linear-gradient(180deg, #0b1318 0%, #060c10 100%);
+        radial-gradient(ellipse 60% 50% at 0% 0%, color-mix(in srgb, var(--app-accent) 6%, transparent) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 100% 8%, color-mix(in srgb, var(--app-accent) 4%, transparent) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 60% at 88% 100%, rgba(70, 150, 200, 0.04) 0%, transparent 58%),
+        linear-gradient(180deg, var(--app-bg) 0%, color-mix(in srgb, var(--app-bg) 82%, #000) 100%);
 }
 
 main {
