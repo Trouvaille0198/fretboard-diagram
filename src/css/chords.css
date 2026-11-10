@@ -1095,6 +1095,9 @@
     border-left: 1.5px solid var(--cc-bar-ink);
     color: var(--app-accent-text);
 }
+.cc-volta.volta-end {
+    border-right: 1.5px solid var(--cc-bar-ink); /* 段尾收尾竖钩：跨小节延伸到此为止的可见标志 */
+}
 
 .cc-add-cell {
     flex: 0 0 44px;
