@@ -1,32 +1,55 @@
-# 项目规约
+# 项目开发与协作规约
 
-## 浏览器 / Chrome 使用规矩（硬性，违反即事故）
+## 浏览器与自动化测试规范
 
-1. **禁止新建 Chrome 窗口或实例。** 测试一律复用已开的浏览器：
-   - 自动化测试只用调试端口 **9223** 上已运行的实例（专用 profile `Chroly/browser-profile`）。
-   - 启动前必须先探活：`sh scripts/ensure-testchrome.sh`（内部已实现"活着就复用，死了才拉起"），**不允许**直接调 `chrome.exe --remote-debugging-port=...`。
-   - 需要给用户看效果时，往**用户当前已有的 Chrome 窗口**开新标签页（`chrome.exe "url"` 会自动复用已运行实例），绝不带 `--user-data-dir` 另起实例。
-2. 测试结束必须 `agent-browser close` 收拾干净（关标签/会话，不关用户的浏览器）。
-3. 曾经的教训：一轮需求里反复 `chrome.exe about:blank` 启动，因 Chrome 同 profile 单例机制，每次都往用户桌面塞一个空白标签页，攒了"一万个窗口"，用户震怒。此规约因此而生。
+严禁新建独立的 Chrome 窗口或进程实例，所有页面调试与验证均须复用既有浏览器：
 
-## 提交 / 推送规约（硬性）
+1. **自动化测试环境**：
+   - 自动化测试仅允许复用调试端口 **9223** 上的专属实例（Profile：`Chroly/browser-profile`）。
+   - 运行前必须先执行探活脚本：`sh scripts/ensure-testchrome.sh`（脚本会自动复用存活实例，仅在无实例时拉起），**严禁**直接调用 `chrome.exe --remote-debugging-port=...`。
+   - 测试结束后必须执行 `agent-browser close` 清理测试标签页与会话，不得关闭用户的主浏览器。
+2. **页面效果展示**：
+   - 向用户展示页面效果时，统一在**用户当前的 Chrome 窗口**中打开新标签页（通过 `chrome.exe "<url>"` 自动接入当前运行的实例）。
+   - **严禁**携带 `--user-data-dir` 启动新实例，避免因 Chrome 单例机制冲突向桌面重复生成空白窗口。
 
-1. **改动完成只做本地 commit，不主动 push**。批量改动收尾或用户明确说"提交推送"时才推送。
-2. **用户指出问题时：撤回上一次提交（`git reset --soft HEAD~1` 或 amend），整理好代码重新提交**，不要追加 "fix 上一条" 式的垃圾提交链。
-3. 推送前自查：改动是否只包含用户要求的部分——改过头/顺手改别的都属于事故。
-4. **commit message 格式**：subject 一行 ≤ 50 字符，只写"改了什么"；根因/细节/验证全放 body（subject 后空一行）。禁止把根因分析长段塞进 subject。
+---
 
-## 开发环境
+## Git 提交与代码管理规范
 
-- Vite dev server：端口 5173；`vite.config.js` 已强制 `no-store`（WSL 下文件监视失效 + Chrome 304 缓存会喂旧模块，导致"改了不生效"）。
-- 版本链：`index.html` 引 `main.jsx?v=N`、`main.jsx` 引 `fretboard.css?v=N`，大改后同步 bump（顶栏水印 vN 供用户自查）。
-- 纯逻辑测试：`node scripts/smoke-chords.mjs`（和弦谱）+ `node scripts/smoke-core.mjs`（动效内核），提交前全绿。
-- 样式纪律 lint：`node scripts/lint-css.mjs`（v225 起提交前全绿；规则见 `STYLE_GUIDE.md`）。
-- 测试浏览器探活脚本：`scripts/ensure-testchrome.sh`。
+1. **本地提交优先**：改动完成后仅在本地创建 `commit`，**严禁主动 push**。仅在批量任务收尾或用户明确发出推送指令时方可执行 push。
+2. **提交记录整洁**：当用户指出问题时，必须撤回上一次提交（使用 `git reset --soft HEAD~1` 或 `git commit --amend`），整理后重新提交，严禁产生追补式的多余提交。
+3. **改动范围收敛**：严格限定改动范围，仅包含用户明确要求的文件与功能，严禁顺带修改无关代码。
+4. **Commit Message 格式要求**：
+   - **Subject**：单行且不超过 50 个字符，准确概括改动内容；
+   - **Body**：与 Subject 之间空一行，详细说明改动背景、关键细节与验证方法。严禁将长篇分析直接塞入 Subject。
 
-## 代码约定
+---
 
-- 组件按 i18n 分块取词：`const ts = t?.chords ?? {}` + `ts.xxx ?? "中文默认"` 双兜底。
-- **交互文案不写操作说明**：「· 点击应用」「（点击应用）」「右键重命名/删除」「（可挑选/手捏/存库）」这类教学后缀**一概不加**——按钮/条目自己说明自己；数量、把位、禁用原因等状态信息保留。
-- 和弦谱数据模型在 `src/utils/chordChartModel.js`（localStorage `fretboard-chordcharts`，滚动备份 ×3）。
-- 和弦谱页（`#/chords`）的 7 个工具页签**永远不变**：预览是其中之一，内容区单独渲染预览子栏，不换 tab 栏。
+## 开发与构建环境
+
+- **开发服务器**：Vite 默认运行于 5173 端口；`vite.config.js` 强制启用了 `no-store`，防止 WSL 环境下文件监视失效与浏览器 304 缓存导致代码改动未生效。
+- **缓存破坏与版本标识**：
+  - 依赖链路：`index.html` 引用 `main.jsx?v=N`，`main.jsx` 引用 `fretboard.css?v=N`；
+  - 发生核心功能或重要样式调整时同步递增版本号（页面顶栏附有版本水印供对照）。
+- **自动化测试校验（提交前必须全部通过）**：
+  - 和弦谱领域模型校验：`node scripts/smoke-chords.mjs`
+  - 动效内核逻辑校验：`node scripts/smoke-core.mjs`
+  - 样式规范校验：`node scripts/lint-css.mjs`（规范细则参见 `STYLE_GUIDE.md`）
+- **测试环境就绪探活**：`scripts/ensure-testchrome.sh`
+
+---
+
+## 架构与代码设计规范
+
+- **国际化（i18n）取词与兜底**：
+  - 按功能模块解构取词：`const ts = t?.chords ?? {}`；
+  - 统一采用双重兜底机制：`ts.xxx ?? "中文默认文案"`。
+- **交互文案简洁原则**：
+  - **杜绝冗余教学与操作说明后缀**：严禁在按钮或菜单中附加「· 点击应用」、「（点击应用）」、「右键重命名/删除」等引导性后缀，控件应当自解释；
+  - **保留必要状态与参数**：数量统计、把位范围、禁用原因等业务状态应完整保留。
+- **和弦谱数据持久化**：
+  - 领域数据模型位于 `src/utils/chordChartModel.js`；
+  - 本地缓存使用 localStorage 键 `fretboard-chordcharts`，内置 3 份滚动备份机制保障数据安全。
+- **和弦谱页面布局规范**：
+  - 和弦谱页面（`#/chords`）顶部的 7 个工具标签保持固定；
+  - 预览功能作为其中一个子栏在内容区独立呈现，禁止改变或重构主 Tab 栏结构。
