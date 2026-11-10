@@ -7,8 +7,13 @@ WORKDIR /app
 # 复制package文件
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# 安装pnpm
-RUN npm install -g pnpm
+# 原生模块编译工具链：根 package.json 混着服务端的 better-sqlite3（musl 无预编译，需现场编译；
+# 与 server/Dockerfile 的 glibc+工具链先例同理），多阶段构建不进最终镜像
+RUN apk add --no-cache python3 make g++
+
+# 安装pnpm（钉主版本：不钉的话 latest 一漂移就崩——pnpm 12 段错误 / pnpm 11.22 要 Node≥22）；
+# pnpm 10 支持 Node 20 且与 lockfileVersion 9.0 兼容（宿主 pnpm 11 生成，9/10 同格式）
+RUN npm install -g pnpm@10
 
 # 安装依赖
 RUN pnpm install --frozen-lockfile
