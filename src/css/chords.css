@@ -2400,6 +2400,7 @@ html[data-theme="light"] .cc-cell-tools {
 
 .cc-dialog-input {
     width: 100%;
+    box-sizing: border-box; /* width:100% + padding/border 下 content-box 会横向溢出弹窗（出横向滚动条） */
     background: var(--app-panel-soft, var(--app-sheen));
     border: 1px solid var(--app-border-strong);
     border-radius: 9px;
