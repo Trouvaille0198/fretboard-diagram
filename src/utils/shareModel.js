@@ -7,6 +7,7 @@
 // 经 SSE 自动跟进；作者删谱后回退到最后直播过的版本。内嵌链永远冻结（数据在 URL 里，无后端可跟）。
 import { authUser, api } from "./authModel.js";
 import { packChart, chartShareCode, unpackChartBundle } from "./chartPack.js";
+import { getT, fmt } from "../i18n/getT.js";
 
 const baseUrl = () => `${location.origin}${location.pathname}`;
 
@@ -27,11 +28,12 @@ export async function createShareLink(song, { live } = {}) {
 // 按链接参数取谱子：{ id } 短链 | { code } 内嵌链
 // → { song, clips, live, rev }（clips = 随包内嵌的动图，保存到曲库时落回本机；live/rev 仅实时短链有）
 export async function fetchShared({ id, code }) {
+	const s = getT().share;
 	if (code) return { ...(await unpackChartBundle(code)), live: false, rev: 0 };
-	if (!id) throw new Error("链接不完整");
+	if (!id) throw new Error(s.incompleteLink);
 	const res = await fetch(`/api/share/${encodeURIComponent(id)}`); // 公开接口，不带 token
-	if (res.status === 404) throw new Error("这个分享不存在或已被撤销");
-	if (!res.ok) throw new Error(`读取失败（${res.status}）`);
+	if (res.status === 404) throw new Error(s.notFound);
+	if (!res.ok) throw new Error(fmt(s.loadFailed, { status: res.status }));
 	const d = await res.json();
 	const { song, clips } = await unpackChartBundle(d.data);
 	return { song, clips, live: !!d.live, rev: Number(d.rev) || 0 };

@@ -5,6 +5,7 @@ import {
 	formatName, chordFromNameToken, KIND_TO_QUALITY, QUALITY_TO_KIND, resolvedQuality
 } from "./chordLib.js";
 import { createMeasure, createSong } from "./chordChartModel.js";
+import { getT } from "../i18n/getT.js";
 
 const PC_TO_FIFTHS_MAJOR = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6, 1: 7, 5: -1, 10: -2, 3: -3, 8: -4 };
 const FIFTHS_TO_PC_MAJOR = Object.fromEntries(Object.entries(PC_TO_FIFTHS_MAJOR).map(([pc, f]) => [f, Number(pc)]));
@@ -174,7 +175,7 @@ function harmonyToChord(h, key) {
 }
 
 // MusicXML 文本 → song（null=解析不出和弦骨架）
-export function importMusicXml(text, fallbackName = "导入谱") {
+export function importMusicXml(text, fallbackName = getT().chords.importedChartName) {
 	const root = parseXml(text);
 	const part = kid(root, "score-partwise") || root;
 	const measures = kids(kid(part, "part") || part, "measure");

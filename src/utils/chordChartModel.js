@@ -2,6 +2,7 @@ import { sameContent, queuePush, queueDelete, setApplier, setPuller, setConflict
 import { createBigStore } from "./idbStore.js";
 import { trashPut } from "./trashModel.js";
 import { degreePc } from "./chordLib.js";
+import { getT, fmt } from "../i18n/getT.js";
 
 // 和弦谱（8pu 式功能谱）歌曲模型与本地存储
 // song = { id, name, createdAt, updatedAt,
@@ -136,7 +137,7 @@ export function keyLabelText(letter, acc, minor) {
   return "1 = " + KEY_LETTERS[letter] + (acc > 0 ? "♯" : acc < 0 ? "♭" : "") + (minor ? "m" : "");
 }
 
-export function createSong(name = "未命名") {
+export function createSong(name = getT().chords.untitled) {
 	return {
 		id: newChartId(),
 		name,
@@ -371,10 +372,11 @@ setConflictHandler("charts", (entry, serverItem) => {
 	const charts = loadCharts();
 	const i = charts.findIndex(c => c.id === entry.id);
 	if (i !== -1 && serverItem) charts[i] = serverItem;
+	const t = getT();
 	const copy = {
 		...entry.item,
 		id: newChartId(),
-		name: `${entry.item.name || "未命名"}（冲突副本）`,
+		name: `${entry.item.name || t.chords.untitled}${t.utils.conflictSuffix}`,
 		createdAt: Date.now(),
 		updatedAt: Date.now()
 	};
@@ -382,6 +384,6 @@ setConflictHandler("charts", (entry, serverItem) => {
 	persistCharts(charts);
 	window.dispatchEvent(new CustomEvent("fretboard:charts-synced"));
 	window.dispatchEvent(new CustomEvent("fretboard:toast", {
-		detail: { msg: `「${entry.item.name}」云端已有更新版本，已采用云端版本；你的改动另存为「${copy.name}」` }
+		detail: { msg: fmt(t.utils.conflictToast, { name: entry.item.name, copy: copy.name }) }
 	}));
 });

@@ -7,6 +7,7 @@ import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 import { describeTransition, sampleTransition, elsToSvgString } from './transitionAnimator';
 import { stateClock, END_PAUSE_MS } from './timeline';
 import { CANVAS_COLORS } from '../colorConfig';
+import { getT } from '../i18n/getT.js';
 
 function svgToImage(svgString) {
 	return new Promise((resolve, reject) => {
@@ -14,7 +15,7 @@ function svgToImage(svgString) {
 		const url = URL.createObjectURL(blob);
 		const img = new Image();
 		img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-		img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG 图片解码失败')); };
+		img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(getT().utils.svgDecodeFail)); };
 		img.src = url;
 	});
 }

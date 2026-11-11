@@ -7,6 +7,7 @@
 
 import { CHORD_INTERVALS, QUALITIES, chordPcs, resolvedQuality } from "./chordLib.js";
 import { OPEN_SHAPES, E_SHAPES, A_SHAPES } from "./voicing.js";
+import { getT, fmt } from "../i18n/getT.js";
 
 const KEY = "fretboard-chordshapes";
 
@@ -43,24 +44,25 @@ function linksBetweenStrings(frets) { // 内置形状无连线；占位以便结
 }
 
 export function builtinShapes() {
+	const f = getT().fig;
 	const out = [];
 	Object.entries(OPEN_SHAPES).forEach(([k, v]) => {
 		const [rootPc, quality] = k.split(":");
 		// 根音弦 = 最低发声弦（表内注释保证其 pc = 根音）
 		let rootString = -1;
-		v.frets.forEach((f, s) => { if (f !== null && f !== undefined) rootString = Math.max(rootString, s); });
+		v.frets.forEach((fr, s) => { if (fr !== null && fr !== undefined) rootString = Math.max(rootString, s); });
 		const rootFret = v.frets[rootString];
 		out.push({
-			id: `bi-open-${k.replace(/[:#]/g, "_")}`, name: `开放 ${rootPc}:${quality || "三和弦"}`, builtin: true,
+			id: `bi-open-${k.replace(/[:#]/g, "_")}`, name: fmt(f.openShape, { root: rootPc, q: quality || f.triad }), builtin: true,
 			quality: quality || "", rootString, rootPc: +rootPc, rootFret,
-			rel: relFromAbs(v.frets, rootString, rootFret), open: v.frets.some(f => f === 0),
+			rel: relFromAbs(v.frets, rootString, rootFret), open: v.frets.some(fr => fr === 0),
 			links: [], createdAt: 0,
 		});
 	});
 	const addMovable = (table, rootString, rootPc, tag) => {
 		Object.entries(table).forEach(([q, frets]) => {
 			out.push({
-				id: `bi-${tag}-${q || "tri"}`, name: `${tag}型 ${q || "三和弦"}`, builtin: true,
+				id: `bi-${tag}-${q || "tri"}`, name: fmt(f.cagedShape, { tag, q: q || f.triad }), builtin: true,
 				quality: q, rootString, rootPc, rootFret: 0,
 				rel: frets.slice(), open: false, links: [], createdAt: 0,
 			});
@@ -174,7 +176,8 @@ function mkCandidate(shape, rootString, rootFret, rootPc) {
 		a: { s: l.a.s, f: rootFret + l.a.r },
 		b: { s: l.b.s, f: rootFret + l.b.r },
 	}));
-	return { shape, name: shape.name || (shape.builtin ? "内置" : "自定义"), rootString, rootFret, points, links, rootPc };
+	const f = getT().fig;
+	return { shape, name: shape.name || (shape.builtin ? f.builtinLabel : f.customLabel), rootString, rootFret, points, links, rootPc };
 }
 
 // 候选 → 普通图 data（noteId 体系 + connections），直接可挂拍格小图

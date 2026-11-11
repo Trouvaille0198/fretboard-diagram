@@ -5,7 +5,7 @@ import { buildConnectionPath, adaptiveArcCurvature } from '../utils/connectionUt
 import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel1FillColor, CANVAS_COLORS } from '../colorConfig';
 import { CONNECTION_PRESETS, matchConnectionPreset } from '../hooks/useConnectionState';
 import { ConnectionPresetIcon } from './ConnectionPresetIcon';
-import { useLanguage } from '../i18n';
+import { useLanguage, zh } from '../i18n';
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
 const LEVEL2_COLOR_ORDER = Object.keys(LEVEL2_COLORS);
@@ -114,8 +114,8 @@ export const FretboardSVG = React.memo(function FretboardSVG({
   hideInactiveNotes
 }) {
   const { t } = useLanguage();
-  const ts = t?.svg ?? {};
-  const tc = t?.connection ?? {};
+  const ts = t?.svg ?? zh.svg;
+  const tc = t?.connection ?? zh.connection;
 
   const selectedConnectionData = selectedConnection ? connections[selectedConnection] : null;
   const activePreset = matchConnectionPreset(selectedConnectionData);
@@ -861,6 +861,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
               <div className="toolbar-icon-wrapper">
                 <button
                   className="toolbar-icon-btn"
+                  data-tool="width"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -872,9 +873,9 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  title={ts.connWidth ?? 'Width'}
+                  title={ts.connWidth}
                 >
-                  {ts.connWidthBtn ?? '≡'}
+                  {ts.connWidthBtn}
                 </button>
                 {toolbarDropdown === 'width' && (
                   <div
@@ -917,6 +918,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                 <div className="toolbar-icon-wrapper">
                   <button
                     className="toolbar-icon-btn"
+                    data-tool="curvature"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -928,9 +930,9 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                       e.preventDefault();
                       e.stopPropagation();
                     }}
-                    title={ts.connCurvature ?? 'Curve'}
+                    title={ts.connCurvature}
                   >
-                    {ts.connCurvatureBtn ?? '⌒'}
+                    {ts.connCurvatureBtn}
                   </button>
                   {toolbarDropdown === 'curvature' && (
                     <div
@@ -1012,7 +1014,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                         return newData;
                       });
                     }}
-                    title={ts.connReverse ?? 'Flip curve'}
+                    title={ts.connReverse}
                   >
                     ↻
                   </button>
@@ -1061,9 +1063,9 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                       return newData;
                     });
                   }}
-                  title={ts.connGray ?? 'Frosted glass'}
+                  title={ts.connGray}
                 >
-                  {ts.connGrayBtn ?? '◑'}
+                  {ts.connGrayBtn}
                 </button>
               </div>
 
@@ -1081,7 +1083,7 @@ export const FretboardSVG = React.memo(function FretboardSVG({
                   setConnectionToolbarVisible(false);
                   setSelectedConnection(null);
                 }}
-                title={ts.connDelete ?? 'Delete connection'}
+                title={ts.connDelete}
               >
                 ×
               </button>

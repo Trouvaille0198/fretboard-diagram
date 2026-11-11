@@ -1,6 +1,7 @@
 import { LEVEL1_COLORS, LEVEL2_COLORS, CANVAS_COLORS } from '../colorConfig';
 import { CONSTS } from '../constants';
 import { reduceColorSaturation } from '../utils';
+import { getT, fmt } from '../i18n/getT.js';
 
 /**
  * 转义 CSS 选择器中的特殊字符
@@ -160,7 +161,7 @@ export async function parseSVGToFretboardState(svgInput) {
     } else if (typeof svgInput === 'string') {
         svgText = svgInput;
     } else {
-        throw new Error('无效的 SVG 输入');
+        throw new Error(getT().utils.svgInvalidInput);
     }
 
     // 解析 SVG
@@ -170,7 +171,7 @@ export async function parseSVGToFretboardState(svgInput) {
 
     // 检查是否是有效的 SVG
     if (svgElement.tagName !== 'svg') {
-        throw new Error('无效的 SVG 文件');
+        throw new Error(getT().utils.svgInvalidFile);
     }
 
     // 从 SVG 元数据中读取显示模式信息
@@ -1162,7 +1163,7 @@ export async function parseSVGToFretboardState(svgInput) {
 
     return {
         version: 1,
-        name: `导入自SVG (${new Date().toLocaleString()})`,
+        name: fmt(getT().utils.svgImportedName, { time: new Date().toLocaleString() }),
         state: {
             data: data,
             startFret: startFret,

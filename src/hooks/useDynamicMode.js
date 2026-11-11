@@ -7,6 +7,7 @@
 // 新增/删除音不标技法，帧间 diff 自动出环亮/淡出动画
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getT, fmt } from "../i18n/getT.js";
 import { stringOfNote, saveClip, loadClips } from "../utils/clipModel";
 import { generateTintVariants, getLevel1FillColor, tintPosition, frameTintFromData } from "../colorConfig";
 
@@ -462,7 +463,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		saveClip({ ...sessionClip, frames: stamped, transitions });
 		setClipVersion(v => v + 1);
 		setPersistedOnce(true);
-		toast?.(`已保存动画片段（共 ${frames.length} 帧）`, "success");
+		toast?.(fmt(getT().dynamic.clipSaved, { n: frames.length }), "success");
 		return true;
 	}, [isDynamic, sessionClip, toast, flushBoard]);
 
@@ -472,7 +473,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		const data = dataRef.current;
 		if (!pendingFrom) {
 			if (!isNoteActive(data[noteId], visibility)) {
-				toast?.("源音必须是当前亮着的音", "error");
+				toast?.(getT().dynamic.slideSourceActive, "error");
 				return true;
 			}
 			setPendingFrom(noteId);
@@ -483,7 +484,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			return true;
 		}
 		if (stringOfNote(noteId) !== stringOfNote(pendingFrom)) {
-			toast?.("目标必须与源音同弦", "error");
+			toast?.(getT().dynamic.slideSameString, "error");
 			return true;
 		}
 
@@ -626,7 +627,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 				const slides = (f.preSlides || []).filter(s => !(s.from === d.from && s.to === to));
 				return { ...f, preSlides: [...slides, { from: d.from, to }] };
 			}));
-			toast?.("已设前置划弦（B 闪现滑到 A）", "success");
+			toast?.(getT().dynamic.preSlideAdded, "success");
 			return true;
 		}
 		// 推弦提交：板面不动（A 全程保持），只把 {from,to,technique:'bd'} 记进本帧的进入过渡；
@@ -637,7 +638,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			const from = d.from;
 			const idx = editIdxRef.current;
 			if (idx <= 0) {
-				toast?.("推弦标在「进入本帧」的过渡上——第 1 帧没有进入过渡，先加一帧再标", "info");
+				toast?.(getT().dynamic.bendNeedFrame, "info");
 				return true;
 			}
 			setTransitions(prev => prev.map((t, i) => {
@@ -647,7 +648,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 				pairs.push({ from, to, technique: "bd" });
 				return { ...spec, pairs };
 			}));
-			toast?.("已设推弦（弯弓推出 → 搭箭停满 → 放箭弹回）", "success");
+			toast?.(getT().dynamic.bendAdded, "success");
 			return true;
 		};
 		if (d.bendTo && isBendTarget(d.from, d.bendTo)) return commitBend(d.bendTo);
@@ -696,12 +697,12 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 	const beginChainDrag = useCallback((noteId) => {
 		if (viewMode !== "edit") return false;
 		if (!isNoteActive(dataRef.current[noteId], visibility)) {
-			toast?.("链音需从激活的音符开始", "info");
+			toast?.(getT().dynamic.chainStartActive, "info");
 			return true; // 消费手势（不落到分色等默认行为）
 		}
 		chainDragRef.current = { from: noteId, hoverId: null };
 		clearTimeout(chainDwellRef.current);
-		toast?.("链音中：拖到激活的音符上松手", "info");
+		toast?.(getT().dynamic.chainDragHint, "info");
 		return true;
 	}, [viewMode, toast, dataRef, visibility]);
 	const isChainDragging = useCallback(() => chainDragRef.current !== null, []);
@@ -731,9 +732,10 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 		const d = chainDragRef.current;
 		chainDragRef.current = null;
 		if (!d) return false;
-		if (!targetId) { toast?.("链音需松手在音符上", "info"); return false; }
+		const td = getT().dynamic;
+		if (!targetId) { toast?.(td.chainDropNote, "info"); return false; }
 		if (targetId === d.from) return false;
-		if (!isNoteActive(dataRef.current[targetId], visibility)) { toast?.("目标音符也需是激活的", "info"); return false; }
+		if (!isNoteActive(dataRef.current[targetId], visibility)) { toast?.(td.chainTargetActive, "info"); return false; }
 		const from = d.from, to = targetId;
 		const idx = editIdxRef.current;
 		// 链接表：一帧可有多条独立链（各链内部依次激活）；同一条边去重，其余一律允许
@@ -745,10 +747,10 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			for (let k = 1; k < cur.length; k++) links.push({ from: cur[k - 1], to: cur[k] });
 		}
 		const dup = links.some(l => l.from === from && l.to === to);
-		if (dup) { toast?.("这条链已存在", "info"); return false; }
+		if (dup) { toast?.(td.chainDuplicate, "info"); return false; }
 		const next = [...links, { from, to }];
 		setFrames(prev => prev.map((f, i) => (i === idx ? { ...f, chain: next } : f)));
-		toast?.("已连接：本帧内按顺序依次激活", "success");
+		toast?.(td.chainConnected, "success");
 		return true;
 	}, [toast]);
 
@@ -826,7 +828,7 @@ export function useDynamicMode({ dataRef, setData, visibility, captureBoard, toa
 			}
 			return f;
 		}));
-		toast?.("已删除该划弦/击勾/推弦标注", "info");
+		toast?.(getT().dynamic.markDeleted, "info");
 		return true;
 	}, [toast]);
 

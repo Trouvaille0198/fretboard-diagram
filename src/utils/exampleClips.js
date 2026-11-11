@@ -3,6 +3,7 @@
 
 import { loadClips, persistClips } from './clipModel';
 import { getLevel1FillColor, generateTintVariants } from '../colorConfig';
+import { getT } from '../i18n/getT.js';
 function tints(name) {
 	return generateTintVariants(getLevel1FillColor(name));
 }
@@ -32,24 +33,25 @@ export function buildExampleClips() {
 		transitions
 	});
 
+	const c = getT().clips;
 	return [
-		clip('sl', '示例·滑弦 sl（A→B）',
+		clip('sl', c.sl,
 			[[['f5-s2', pale], ['f5-s3', pale]], [['f8-s2', vivid], ['f8-s3', vivid]]],
 			[{ technique: 'sl', pairs: [{ from: 'f5-s2', to: 'f8-s2' }, { from: 'f5-s3', to: 'f8-s3' }] }]
 		),
-		clip('rt', '示例·原位滑弦 sl↺（A→B→A）',
+		clip('rt', c.rt,
 			[[['f5-s2', pale]], [['f5-s2', pale]]],
 			[{ technique: 'rt', pairs: [{ from: 'f5-s2', to: 'f8-s2' }] }]
 		),
-		clip('add', '示例·新增音符（纯 diff，无需标注）',
+		clip('add', c.add,
 			[[['f5-s2', pale]], [['f5-s2', pale], ['f7-s2', vivid], ['f7-s3', vivid]]],
 			[{ technique: null, pairs: [] }]
 		),
-		clip('del', '示例·删除音符（纯 diff，无需标注）',
+		clip('del', c.del,
 			[[['f5-s2', pale], ['f7-s2', vivid], ['f7-s3', vivid]], [['f5-s2', pale]]],
 			[{ technique: null, pairs: [] }]
 		),
-		clip('melody', '示例·单音旋律（逐帧增删）',
+		clip('melody', c.melody,
 			[
 				[['f5-s2', pale]],
 				[['f5-s2', pale], ['f7-s2', vivid]],
@@ -58,7 +60,7 @@ export function buildExampleClips() {
 			],
 			[{ technique: null, pairs: [] }, { technique: null, pairs: [] }, { technique: null, pairs: [] }]
 		),
-		clip('emphasis', '示例·和弦强调音（浅底+强色）',
+		clip('emphasis', c.emphasis,
 			[
 				[['f5-s2', pale], ['f5-s3', pale], ['f5-s4', pale], ['f7-s2', pale]],
 				[['f5-s2', pale], ['f5-s3', pale], ['f5-s4', pale], ['f7-s2', pale], ['f8-s2', vivid], ['f8-s3', vivid]]

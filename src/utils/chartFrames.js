@@ -4,6 +4,7 @@ import { buildEvents } from "./chartPlayback.js";
 import { newChartId } from "./chordChartModel.js";
 import { tintAt, frameTintFromData } from "../colorConfig.js";
 import { stringOfNote } from "./clipModel.js";
+import { getT } from "../i18n/getT.js";
 
 // 单个按法 → 指板帧（captureBoard 形状）；colorFn(noteId) → { name, custom }
 export function voicingFrame(voicing, song, colorFn) {
@@ -89,7 +90,7 @@ export function buildSongClip(song, viewKey) {
 	});
 
 	return {
-		clip: { id: newChartId(), name: song.name || "和弦谱", createdAt: Date.now(), frames: stamped, transitions },
+		clip: { id: newChartId(), name: song.name || getT().rail.chords, createdAt: Date.now(), frames: stamped, transitions },
 		chordCount: N
 	};
 }

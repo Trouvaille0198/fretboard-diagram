@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useLanguage, fmt, zh } from "../i18n";
 import { ChordChartView } from "./ChordChartView";
 import { fetchShared, subscribeShare } from "../utils/shareModel";
 
@@ -7,6 +8,8 @@ import { fetchShared, subscribeShare } from "../utils/shareModel";
 // 实时短链（作者开了开关）：订阅服务端推送，作者一保存就自动跟进最新版本——
 // 500ms 去抖合并（作者连续编辑不刷屏），内容签名（rev|live）没变不重渲染，顶部轻提示 2 秒消失。
 export function SharedChartPage({ shareId, code }) {
+	const { t } = useLanguage();
+	const ts = t?.share ?? zh.share;
 	const [state, setState] = useState({ loading: true, error: null, song: null, clips: [], live: false, rev: 0 });
 	const [updated, setUpdated] = useState(false);
 	const sigRef = useRef(""); // 上次内容签名：重拉结果没变就不动 DOM
@@ -47,11 +50,11 @@ export function SharedChartPage({ shareId, code }) {
 		return () => { alive = false; clearTimeout(pending); clearTimeout(hint); unsub(); };
 	}, [shareId, code]);
 
-	if (state.loading) return <div className="cc-share-state">正在打开分享的谱子…</div>;
-	if (state.error) return <div className="cc-share-state cc-share-error">打不开这个分享：{state.error}</div>;
+	if (state.loading) return <div className="cc-share-state">{ts.loading}</div>;
+	if (state.error) return <div className="cc-share-state cc-share-error">{fmt(ts.openFail, { msg: state.error })}</div>;
 	return (
 		<div className="cc-share-wrap">
-			{updated ? <div className="cc-share-updated">↻ 已更新到最新版本</div> : null}
+			{updated ? <div className="cc-share-updated">↻ {ts.updated}</div> : null}
 			<ChordChartView key={"shared-" + (shareId || "c")} sharedSong={state.song} sharedClips={state.clips} />
 		</div>
 	);

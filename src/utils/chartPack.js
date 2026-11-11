@@ -22,6 +22,7 @@
 import LZString from "lz-string";
 import { createSong, newChartId, newMeasureId, normalizeFigOpts, keySpellOf } from "./chordChartModel.js";
 import { loadClips } from "./clipModel.js";
+import { getT, fmt } from "../i18n/getT.js";
 
 const PREFIX = "fretboard-chart";
 const VERSION = 1;
@@ -319,10 +320,11 @@ function decodeMeasure(o) {
 }
 
 export function expandChart(o) {
-	if (!o || typeof o !== "object") throw new Error("工程数据为空");
-	if (o.v > VERSION) throw new Error(`工程版本 ${o.v} 比当前支持的 ${VERSION} 新，请升级后再导入`);
-	if (!Array.isArray(o.m)) throw new Error("工程数据里没有谱面（measures）");
-	const song = createSong(o.n || "导入的谱子");
+	const t = getT();
+	if (!o || typeof o !== "object") throw new Error(t.utils.packEmpty);
+	if (o.v > VERSION) throw new Error(fmt(t.utils.packNewerVersion, { v: o.v, cur: VERSION }));
+	if (!Array.isArray(o.m)) throw new Error(t.utils.packNoMeasures);
+	const song = createSong(o.n || t.chords.importedChartName);
 	song.id = o.id || newChartId();
 	song.createdAt = o.ct || Date.now();
 	song.updatedAt = Date.now();
@@ -382,15 +384,16 @@ export function isChartsBundle(text) {
 // 解批量包：[{song, clips}, ...]（clips 由调用方逐首落回本机）
 export function unpackChartsBundle(text) {
 	const o = JSON.parse(String(text || "").trim());
-	if (!o || o.kind !== "fretboard-charts" || !Array.isArray(o.charts)) throw new Error("不是本应用的批量工程包");
+	if (!o || o.kind !== "fretboard-charts" || !Array.isArray(o.charts)) throw new Error(getT().utils.packNotBundle);
 	return o.charts.map(t => unpackChartBundle(t));
 }
 
 // 解包：同时接受 工程文件文本 / 分享码 / 裸紧凑 JSON。
 // 返回 { song, clips }：clips 是文件里内嵌的动图（含全部帧数据），由调用方落回本机存储。
 export function unpackChartBundle(text) {
+	const t = getT();
 	const s = String(text || "").trim();
-	if (!s) throw new Error("内容是空的");
+	if (!s) throw new Error(t.utils.packContentEmpty);
 	const payload = s.startsWith(PREFIX + ":") ? s.slice(s.indexOf(":", PREFIX.length + 1) + 1) : s;
 	let json = null;
 	if (s.startsWith(PREFIX + ":")) {
@@ -400,12 +403,12 @@ export function unpackChartBundle(text) {
 	} else {
 		json = LZString.decompressFromEncodedURIComponent(payload);
 	}
-	if (!json) throw new Error("解压失败（不是本应用的工程文件或分享码）");
+	if (!json) throw new Error(t.utils.packDecompressFail);
 	let obj;
 	try {
 		obj = JSON.parse(json);
 	} catch (e) {
-		throw new Error("工程数据损坏，无法解析");
+		throw new Error(t.utils.packCorrupt);
 	}
 	const song = expandChart(obj);
 	const clips = Array.isArray(obj.cl) ? obj.cl.map(decodeClip) : [];

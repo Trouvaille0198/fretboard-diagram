@@ -5,6 +5,7 @@
 import { renderBoardImage } from '../components/ScorePieces';
 import { stitchLayout, stitchScale, withAlpha, unifyStitchState } from './stitchModel';
 import { CANVAS_COLORS } from '../colorConfig';
+import { getT } from '../i18n/getT.js';
 
 const cssVar = (name, fallback) => {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -56,28 +57,29 @@ export function downloadBlob(blob, name) {
 }
 
 // 词条解析（与 StitchDock 的 L() 同式：t.stitch[key] 支持函数式带参）
-function stitchToast(t, key, fallback, ...args) {
-  const f = t?.stitch?.[key] ?? fallback;
+function stitchToast(t, key, ...args) {
+  const f = (t?.stitch ? t : getT()).stitch[key];
   return typeof f === 'function' ? f(...args) : f;
 }
 
 // 拼接图 → 剪贴板 PNG；拼接区为空静默返回 false（无事发生，不弹任何提示）
 export async function copyStitchImage(items, { unify = false, layout, t, showToast } = {}) {
   if (!items?.length) return false;
+  const dict = t?.fretboard ? t : getT();
   try {
     const canvas = await composeStitchCanvas(items, layout ?? stitchLayout(items), unify);
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-    if (!blob) throw new Error('PNG 编码失败');
+    if (!blob) throw new Error(dict.fretboard.pngEncodeFail);
     if (navigator.clipboard && window.ClipboardItem) {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      showToast?.(stitchToast(t, 'toastCopied', `已复制拼接图（${items.length} 张）`, items.length), 'success');
+      showToast?.(stitchToast(dict, 'toastCopied', items.length), 'success');
     } else {
       downloadBlob(blob, `fretboard-stitch-${Date.now()}.png`);
-      showToast?.(stitchToast(t, 'toastFallback', '剪贴板不可用（非安全上下文），已改为下载 PNG'), 'info');
+      showToast?.(stitchToast(dict, 'toastFallback'), 'info');
     }
     return true;
   } catch (error) {
-    showToast?.(`${stitchToast(t, 'toastCopyFail', '复制拼接图失败')}：${error.message}`, 'error');
+    showToast?.(`${stitchToast(dict, 'toastCopyFail')}: ${error.message}`, 'error');
     return false;
   }
 }
@@ -85,16 +87,17 @@ export async function copyStitchImage(items, { unify = false, layout, t, showToa
 // 拼接图 → 下载 PNG 文件；拼接区为空静默返回 false
 export async function downloadStitchImage(items, { unify = false, layout, t, showToast } = {}) {
   if (!items?.length) return false;
+  const dict = t?.fretboard ? t : getT();
   try {
     const canvas = await composeStitchCanvas(items, layout ?? stitchLayout(items), unify);
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-    if (!blob) throw new Error('PNG 编码失败');
+    if (!blob) throw new Error(dict.fretboard.pngEncodeFail);
     const name = `fretboard-stitch-${Date.now()}.png`;
     downloadBlob(blob, name);
-    showToast?.(`${stitchToast(t, 'toastDownloaded', '已下载 PNG')}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
+    showToast?.(`${stitchToast(dict, 'toastDownloaded')} (${(blob.size / 1024).toFixed(0)} KB)`, 'success');
     return true;
   } catch (error) {
-    showToast?.(`${stitchToast(t, 'toastSaveFail', '下载拼接图失败')}：${error.message}`, 'error');
+    showToast?.(`${stitchToast(dict, 'toastSaveFail')}: ${error.message}`, 'error');
     return false;
   }
 }

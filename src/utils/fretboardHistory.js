@@ -1,5 +1,8 @@
 import { inlineCSS } from "../utils";
 import { buildExportSvg } from "./exportSvgBuilder";
+import { getT, fmt } from "../i18n/getT.js";
+
+const hOf = (t) => (t?.history ? t : getT()).history;
 
 function getSnapshotName(suffix = "") {
 	return (
@@ -246,11 +249,12 @@ export function saveFretboardState({
 		setHistoryStates(historyArray);
 
 		// 显示提示
-		setToastMessage(isUpdate ? "状态已更新！" : "状态已保存！");
+		const u = getT().utils;
+		setToastMessage(isUpdate ? u.histUpdated : u.histSaved);
 		setToastType("success");
 	} catch (error) {
 		console.error("保存状态失败:", error);
-		setToastMessage("保存失败：" + error.message);
+		setToastMessage(fmt(getT().utils.histSaveFail, { msg: error.message }));
 		setToastType("error");
 	}
 }
@@ -312,7 +316,7 @@ export function saveFretboardStateSilently({
 					day: "2-digit",
 					hour: "2-digit",
 					minute: "2-digit",
-				}) + " (" + (autoSaveLabel ?? 'autosave') + ")",
+				}) + " (" + (autoSaveLabel || getT().history.autoSaveLabel) + ")",
 			thumbnail: null,
 			state: {
 				data: JSON.parse(JSON.stringify(data)), // 深拷贝，包括 connections
@@ -437,11 +441,12 @@ export function restoreFretboardState(
 		}
 
 		// 显示提示
-		setToastMessage(t?.history?.restored ?? 'State restored!');
+		const h = hOf(t);
+		setToastMessage(h.restored);
 		setToastType("success");
 	} catch (error) {
 		console.error("Restore state failed:", error);
-		setToastMessage(t?.history?.restoreFail ? t.history.restoreFail(error.message) : 'Restore failed: ' + error.message);
+		setToastMessage(hOf(t).restoreFail(error.message));
 		setToastType("error");
 	}
 }
@@ -529,10 +534,11 @@ export function generateUniqueDirName(directories, baseName = "new") {
 
 // 验证目录名称合法性
 export function validateDirectoryName(name, directories, currentDirId = null, t = null) {
+	const h = hOf(t);
 	const trimmedName = name.trim();
 
 	if (!trimmedName) {
-		return { valid: false, message: t?.history?.dirNameEmpty ?? 'Directory name cannot be empty' };
+		return { valid: false, message: h.dirNameEmpty };
 	}
 
 	const isDuplicate = directories.some(
@@ -542,7 +548,7 @@ export function validateDirectoryName(name, directories, currentDirId = null, t 
 	);
 
 	if (isDuplicate) {
-		return { valid: false, message: t?.history?.dirNameExists ?? 'Directory name already exists' };
+		return { valid: false, message: h.dirNameExists };
 	}
 
 	return { valid: true, name: trimmedName };
@@ -552,6 +558,7 @@ export function validateDirectoryName(name, directories, currentDirId = null, t 
 
 // 导出所有数据为 JSON
 export function exportAllData(t = null) {
+	const h = hOf(t);
 	try {
 		const directories = JSON.parse(
 			localStorage.getItem("fretboard-directories") || "[]"
@@ -589,30 +596,31 @@ export function exportAllData(t = null) {
 		document.body.removeChild(link);
 		URL.revokeObjectURL(url);
 
-		return { success: true, message: t?.history?.exportSuccess ?? 'Export successful!' };
+		return { success: true, message: h.exportSuccess };
 	} catch (error) {
 		console.error("Export failed:", error);
-		return { success: false, message: t?.history?.exportFail ? t.history.exportFail(error.message) : 'Export failed: ' + error.message };
+		return { success: false, message: h.exportFail(error.message) };
 	}
 }
 
 // 验证导入数据格式
 export function validateImportData(data, t = null) {
+	const h = hOf(t);
 	try {
 		if (!data || typeof data !== "object") {
-			return { valid: false, message: t?.history?.invalidFormat ?? 'Invalid data format' };
+			return { valid: false, message: h.invalidFormat };
 		}
 
 		if (!data.version || typeof data.version !== "string") {
-			return { valid: false, message: t?.history?.missingVersion ?? 'Missing version information' };
+			return { valid: false, message: h.missingVersion };
 		}
 
 		if (!Array.isArray(data.directories)) {
-			return { valid: false, message: t?.history?.invalidDirFormat ?? 'Invalid directory data format' };
+			return { valid: false, message: h.invalidDirFormat };
 		}
 
 		if (!Array.isArray(data.historyStates)) {
-			return { valid: false, message: t?.history?.invalidStateFormat ?? 'Invalid state data format' };
+			return { valid: false, message: h.invalidStateFormat };
 		}
 
 		for (const dir of data.directories) {
@@ -622,7 +630,7 @@ export function validateImportData(data, t = null) {
 				typeof dir.createdAt !== "number" ||
 				typeof dir.isDefault !== "boolean"
 			) {
-				return { valid: false, message: t?.history?.invalidDirStructure ?? 'Incomplete directory data structure' };
+				return { valid: false, message: h.invalidDirStructure };
 			}
 		}
 
@@ -634,13 +642,13 @@ export function validateImportData(data, t = null) {
 				!state.name ||
 				!state.state
 			) {
-				return { valid: false, message: t?.history?.invalidStateStructure ?? 'Incomplete state data structure' };
+				return { valid: false, message: h.invalidStateStructure };
 			}
 		}
 
 		return { valid: true };
 	} catch (error) {
-		return { valid: false, message: t?.history?.validationFail ? t.history.validationFail(error.message) : 'Data validation failed: ' + error.message };
+		return { valid: false, message: h.validationFail(error.message) };
 	}
 }
 
@@ -738,11 +746,10 @@ export function importBatchData(jsonData, t = null) {
 		localStorage.setItem("fretboard-directories", JSON.stringify(updatedDirs));
 		localStorage.setItem("fretboard-history", JSON.stringify(updatedStates));
 
+		const h = hOf(t);
 		const newDirCount = newDirs.length;
 		const stateCount = resolvedStates.length;
-		const message = t?.history?.importBatchSuccess
-			? t.history.importBatchSuccess(newDirCount, mergeCount, stateCount)
-			: `Imported ${newDirCount + mergeCount} directories (${mergeCount} merged) and ${stateCount} states`;
+		const message = h.importBatchSuccess(newDirCount, mergeCount, stateCount);
 
 		return {
 			success: true,
@@ -752,6 +759,6 @@ export function importBatchData(jsonData, t = null) {
 		};
 	} catch (error) {
 		console.error("Batch import failed:", error);
-		return { success: false, message: t?.history?.importFail ? t.history.importFail(error.message) : 'Import failed: ' + error.message };
+		return { success: false, message: hOf(t).importFail(error.message) };
 	}
 }

@@ -1,25 +1,22 @@
 import React, { createContext, useContext, useState } from "react";
-import { zh } from "./zh";
-import { en } from "./en";
-
-const translations = { zh, en };
+import { getLang, getT, fmt, zh, en } from "./getT.js";
 
 const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
-    const [lang, setLang] = useState(
-        () => localStorage.getItem("fretboard-lang") || "zh",
-    );
+    const [lang, setLang] = useState(getLang);
 
     const toggleLang = () => {
         setLang((prev) => {
             const next = prev === "zh" ? "en" : "zh";
-            localStorage.setItem("fretboard-lang", next);
+            try {
+                localStorage.setItem("fretboard-lang", next);
+            } catch { /* ignore storage errors */ }
             return next;
         });
     };
 
-    const t = translations[lang];
+    const t = getT(lang);
 
     return (
         <LanguageContext.Provider value={{ lang, toggleLang, t }}>
@@ -34,3 +31,5 @@ export function useLanguage() {
         throw new Error("useLanguage must be used inside LanguageProvider");
     return ctx;
 }
+
+export { getT, fmt, zh, en };

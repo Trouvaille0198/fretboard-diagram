@@ -3,6 +3,7 @@
 // 云端被删时（SSE 广播 deleted）同样把数据捞回来进本地回收站——否则另一端删了就没法还原。
 import { authUser } from "./authModel.js";
 import { createBigStore } from "./idbStore.js";
+import { getT, fmt } from "../i18n/getT.js";
 
 const TRASH_KEY = "fretboard-trash";
 // 回收站大键已迁 IndexedDB（v188）：条目是被删对象的完整数据，批量删歌后它是 localStorage 最大的尾巴之一
@@ -83,7 +84,7 @@ async function api(path, options = {}) {
 	const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
 	if (au && au.token) headers["x-auth-token"] = au.token;
 	const res = await fetch("/api" + path, { ...options, headers });
-	if (!res.ok) throw new Error("回收站请求失败：" + res.status);
+	if (!res.ok) throw new Error(fmt(getT().utils.trashReqFail, { status: res.status }));
 	return res.json();
 }
 

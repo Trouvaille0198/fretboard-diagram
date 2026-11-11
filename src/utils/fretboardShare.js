@@ -1,4 +1,5 @@
 import LZString from 'lz-string';
+import { getT, fmt } from '../i18n/getT.js';
 
 // 分享字符串前缀，用于识别
 const SHARE_PREFIX = 'fretboard://';
@@ -10,9 +11,10 @@ const CURRENT_VERSION = 1;
  * @returns {string} 压缩后的分享字符串
  */
 export function exportFretboardState(stateSnapshot) {
+    const u = getT().utils;
     try {
         if (!stateSnapshot || !stateSnapshot.state) {
-            throw new Error('无效的状态数据');
+            throw new Error(u.shareInvalidData);
         }
 
         // 构建要序列化的数据对象
@@ -40,7 +42,7 @@ export function exportFretboardState(stateSnapshot) {
         return SHARE_PREFIX + compressed;
     } catch (error) {
         console.error('导出状态失败:', error);
-        throw new Error('导出失败：' + error.message);
+        throw new Error(fmt(u.shareExportFail, { msg: error.message }));
     }
 }
 
@@ -50,21 +52,22 @@ export function exportFretboardState(stateSnapshot) {
  * @returns {Object|null} 解析后的状态对象，失败返回null
  */
 export function importFretboardState(shareString) {
+    const u = getT().utils;
     try {
         if (!shareString || typeof shareString !== 'string') {
-            throw new Error('无效的分享字符串');
+            throw new Error(u.shareInvalidStr);
         }
 
         // 检查前缀
         if (!shareString.startsWith(SHARE_PREFIX)) {
-            throw new Error('不支持的分享字符串格式');
+            throw new Error(u.shareUnsupportedFmt);
         }
 
         // 移除前缀
         const compressed = shareString.substring(SHARE_PREFIX.length);
 
         if (!compressed) {
-            throw new Error('分享字符串为空');
+            throw new Error(u.shareEmptyStr);
         }
 
         // 解压缩（支持两种格式：URI编码和Base64，向后兼容）
@@ -75,7 +78,7 @@ export function importFretboardState(shareString) {
         }
 
         if (!jsonString) {
-            throw new Error('解压缩失败，可能数据已损坏');
+            throw new Error(u.shareDecompressFail);
         }
 
         // 解析JSON
@@ -83,18 +86,18 @@ export function importFretboardState(shareString) {
 
         // 验证版本和数据结构
         if (!importData.version || !importData.state) {
-            throw new Error('无效的数据格式');
+            throw new Error(u.shareBadSchema);
         }
 
         // 检查版本兼容性（当前只支持版本1）
         if (importData.version !== CURRENT_VERSION) {
-            throw new Error(`不支持的版本：${importData.version}，当前版本：${CURRENT_VERSION}`);
+            throw new Error(fmt(u.shareUnsupportedVer, { v: importData.version, cur: CURRENT_VERSION }));
         }
 
         // 验证必需字段
         const state = importData.state;
         if (typeof state.startFret !== 'number' || typeof state.endFret !== 'number') {
-            throw new Error('无效的品范围数据');
+            throw new Error(u.shareBadFrets);
         }
 
         return importData;
@@ -137,7 +140,7 @@ export async function copyToClipboard(text) {
         }
     } catch (error) {
         console.error('复制到剪贴板失败:', error);
-        throw new Error('复制失败：' + error.message);
+        throw new Error(fmt(getT().utils.shareCopyFail, { msg: error.message }));
     }
 }
 
@@ -146,6 +149,7 @@ export async function copyToClipboard(text) {
  * @returns {Promise<string>} 剪贴板内容
  */
 export async function readFromClipboard() {
+    const u = getT().utils;
     try {
         // 使用现代的 Clipboard API
         if (navigator.clipboard && navigator.clipboard.readText) {
@@ -155,13 +159,13 @@ export async function readFromClipboard() {
             } catch (clipboardError) {
                 // 如果是权限错误，给出更明确的提示
                 if (clipboardError.name === 'NotAllowedError' || clipboardError.name === 'SecurityError') {
-                    throw new Error('剪贴板访问被拒绝。请确保：1) 使用HTTPS访问 2) 浏览器允许剪贴板权限');
+                    throw new Error(u.clipDenied);
                 }
                 throw clipboardError;
             }
         } else {
             // 降级方案：提示用户手动粘贴
-            throw new Error('浏览器不支持自动读取剪贴板。请手动复制分享字符串，然后使用 Ctrl+V 粘贴到输入框');
+            throw new Error(u.clipReadUnsupported);
         }
     } catch (error) {
         // 重新抛出错误，让调用者处理

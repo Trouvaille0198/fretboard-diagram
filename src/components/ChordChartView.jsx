@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useLanguage } from "../i18n";
+import { useLanguage, getT, fmt, zh } from "../i18n";
 import { SECTION_TINTS } from "../colorConfig";
 import { ChordPopup } from "./ChordPopup";
 import { FigView } from "./ChordFig.jsx";
@@ -49,25 +49,23 @@ import { saveClip } from "../utils/clipModel";
 const PC_KEY = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 // 小节标色（着色页签）：段落视觉标记
 const TINTS = {
-	red: { name: "红", bg: SECTION_TINTS.red },
-	blue: { name: "蓝", bg: SECTION_TINTS.blue },
-	green: { name: "绿", bg: SECTION_TINTS.green },
-	gold: { name: "金", bg: SECTION_TINTS.gold }
+	red: SECTION_TINTS.red,
+	blue: SECTION_TINTS.blue,
+	green: SECTION_TINTS.green,
+	gold: SECTION_TINTS.gold
 };
 
 const END_BARS = [
-	{ v: "single", label: "|", name: "单线" },
-	{ v: "double", label: "‖", name: "双线" },
-	{ v: "final", label: "⏨", name: "终止" },
-	{ v: "repeatEnd", label: ":‖", name: "反复结束" }
+	{ v: "single", label: "|" },
+	{ v: "double", label: "‖" },
+	{ v: "final", label: "⏨" },
+	{ v: "repeatEnd", label: ":‖" }
 ];
 
-// 和弦谱页（8pu 式和弦谱复刻）：格子谱面 + 键盘编辑 + 播放 + 移调 + MusicXML + 一键动图
-// sharedSong：分享链接打开的只读查看态（不登录也能看）——谱子不进本机曲库、不落盘、不同步、不可进编辑；
-// 顶部横幅给「保存到我的曲库」，保存后才变成自己的谱子
+// 和弦谱页：格子谱面 + 键盘编辑 + 播放 + 移调 + MusicXML + 动图生成
 export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const { t } = useLanguage();
-	const ts = t?.chords ?? {};
+	const ts = t?.chords ?? zh.chords;
 	const shared = !!sharedSong;
 
 	const routedId = songId || null;
@@ -76,7 +74,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const [song, setSong] = useState(() => {
 		if (sharedSong) return sharedSong;
 		const list = loadCharts();
-		return (routedId && list.find(c => c.id === routedId)) || list[0] || createSong(ts.firstSong ?? "第一首歌");
+		return (routedId && list.find(c => c.id === routedId)) || list[0] || createSong(ts.firstSong);
 	});
 	// 路由 id 不存在（被删/链错）：退回曲目列表页（分享查看态不走库）
 	useEffect(() => {
@@ -162,7 +160,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const showToast = (msg) => setToast({ msg, key: Date.now() });
 	// 本机存储写满（persistCharts 广播）：编辑页的防抖保存撞配额也要让人知道"没存上"
 	useEffect(() => {
-		const onFull = () => showToast(ts.storageFull ?? "本机存储已满，刚才的改动没存上！请删几首曲目或清空回收站后再试");
+		const onFull = () => showToast(getT().chords.storageFull);
 		window.addEventListener("fretboard:storage-full", onFull);
 		return () => window.removeEventListener("fretboard:storage-full", onFull);
 	}, []);
@@ -668,8 +666,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	// 段落标记（应用内对话框，替代原生 prompt）
 	const promptSection = (mi) => setDialog({
 		type: "prompt",
-		title: ts.sectionBtn ?? "段落标记",
-		label: ts.sectionPrompt ?? "段落名（如 主歌1）",
+		title: ts.sectionBtn,
+		label: ts.sectionPrompt,
 		value: song.measures[mi]?.section || "",
 		onOk: (v) => patchMeasure(mi, x => ({ ...x, section: String(v ?? "").trim() || null })),
 		onDelete: song.measures[mi]?.section ? () => patchMeasure(mi, x => ({ ...x, section: null })) : null,
@@ -700,14 +698,14 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		setSel({ anchor: null, end: null });
 		setCopiedCount(0);
 		setCursor(c => ({ mi: Math.max(0, Math.min(c.mi, song.measures.length - 1 - n)), si: c.si, half: null }));
-		showToast((ts.deletedToast ?? "已删除 {n} 小节（Ctrl+Z 可撤销）").replace("{n}", String(n)));
+		showToast(fmt(ts.deletedToast, { n }));
 	};
 	const copySelection = () => {
 		if (sel.anchor == null) return;
 		const a = Math.min(sel.anchor, sel.end ?? sel.anchor), b = Math.max(sel.anchor, sel.end ?? sel.anchor);
 		clipRef.current = { type: "measures", measures: JSON.parse(JSON.stringify(song.measures.slice(a, b + 1))) };
 		setCopiedCount(b - a + 1);
-		showToast((ts.copiedToast ?? "已复制 {n} 小节 —— 退出后 Ctrl+V 插入到光标小节之后").replace("{n}", String(b - a + 1)));
+		showToast(fmt(ts.copiedToast, { n: b - a + 1 }));
 	};
 	// 整段插入：复制的小节 splice 到光标小节之后（新 id；和弦剪贴板仍写入当前槽）
 	const pasteClip = () => {
@@ -882,7 +880,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			setSong(s => insertBeatInSong(s, mi, at));
 			setCursor({ mi, si: at, half: null });
 		}
-		showToast(ts.insertBeatToast ?? "已插入一拍，后面的拍整体后移");
+		showToast(ts.insertBeatToast);
 	};
 
 	// 删除一拍：插入一拍的逆操作——光标处的拍移除，后面的拍整体前移（跨小节流动），末尾补空拍
@@ -895,7 +893,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		setSong(next);
 		// 末小节可能被自动缩掉：光标钳回仍存在的小节
 		setCursor({ mi: Math.min(mi, next.measures.length - 1), si: at, half: null });
-		showToast(ts.delBeatToast ?? "已删除一拍，后面的拍整体前移");
+		showToast(ts.delBeatToast);
 	};
 
 	const removeMeasure = (mi) => {
@@ -946,7 +944,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			song.measures.forEach(m => m.slots.slice(n).forEach(sl => {
 				if (sl.kind === "chord" || (sl.split && sl.split.some(u => u.kind === "chord"))) dropped++;
 			}));
-			if (dropped > 0) showToast((ts.resizeDrop ?? "拍号缩小：丢弃了 {n} 个有和弦的拍").replace("{n}", String(dropped)));
+			if (dropped > 0) showToast(fmt(ts.resizeDrop, { n: dropped }));
 		}
 		setSong(s => ({ ...s, timeSig: n, measures: s.measures.map(m => resizeMeasure(m, n)) }));
 		// 光标钳回合法槽位（防幽灵拍）
@@ -1058,7 +1056,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				if (u && u.kind === "chord" && u.chord) clipRef.current = { type: "chord", chord: u.chord };
 				else if (song.measures[cursor.mi]) {
 					clipRef.current = { type: "measures", measures: [JSON.parse(JSON.stringify(song.measures[cursor.mi]))] };
-					showToast(ts.copiedToast?.replace("{n}", "1") ?? "已复制 1 小节 —— Ctrl+V 插入到光标小节之后");
+					showToast(fmt(ts.copiedToast, { n: 1 }));
 				}
 				return;
 			}
@@ -1137,22 +1135,22 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	// 工程文件（.fbchart）：无损、体积约 MusicXML 的 1/18 —— 主导出通道
 	const doExportChart = async () => {
 		await downloadText(packChart(song), `${song.name || "chord-chart"}.fbchart`, "text/plain;charset=utf-8");
-		showToast(ts.exportedPack ?? "已导出工程文件（含配图、标色等全部内容）");
+		showToast(ts.exportedPack);
 	};
 
 	// MusicXML：给 MuseScore 这类通用记谱软件用的交换格式，
 	// 记谱形式/等音/每行小节数/动图色系/标色/休止延音/节奏型/配图 它装不下，会丢——导出后提示用户
 	const doExportXml = async () => {
 		await downloadText(exportMusicXml(song, keyAtFn), `${song.name || "chord-chart"}.musicxml`, "application/xml;charset=utf-8");
-		showToast(ts.xmlLossy ?? "已导出 MusicXML：配图/标色/节奏型等应用私有内容不会包含");
+		showToast(ts.xmlLossy);
 	};
 
 	const shareChart = async () => {
 		try {
 			await navigator.clipboard.writeText(chartShareCode(song));
-			showToast(ts.sharedCode ?? "分享码已复制（对方在和弦谱页「从分享码导入」即可 100% 还原）");
+			showToast(ts.sharedCode);
 		} catch (e) {
-			showToast(ts.shareFail ?? "复制失败，请改用「导出工程文件」");
+			showToast(ts.shareFail);
 		}
 	};
 
@@ -1166,22 +1164,22 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			try { await navigator.clipboard.writeText(url); copied = true; } catch (e) { /* 非安全上下文 */ }
 			setDialog({
 				type: "share",
-				title: ts.shareLinkTitle ?? (kind === "short" ? "分享链接（对方不用登录，打开即可查看）" : "分享链接（数据内嵌在链接里，较长）"),
+				title: ts.shareLinkTitle,
 				url, short: kind === "short", live,
 				onToggleLive: async (on) => {
 					try {
 						const r = await createShareLink(song, { live: on }); // 同谱同 id：服务端只切模式
-						if (r.kind !== "short") { showToast(ts.shareLiveNeedLogin ?? "实时链接需要登录同步服务"); return; }
+						if (r.kind !== "short") { showToast(ts.shareLiveNeedLogin); return; }
 						setDialog(cur => (cur && cur.type === "share" ? { ...cur, live: on } : cur));
-						showToast(on ? (ts.shareLiveOn ?? "已开启实时：链接将跟随你的最新版本") : (ts.shareLiveOff ?? "已切回快照：链接定格当前内容"));
+						showToast(on ? ts.shareLiveOn : ts.shareLiveOff);
 					} catch (e) {
-						showToast((ts.shareLinkFail ?? "生成分享链接失败：") + (e.message || e));
+						showToast(ts.shareLinkFail + (e.message || e));
 					}
 				},
 			});
-			showToast(copied ? (ts.shareLinkCopied ?? "链接已复制到剪贴板") : (ts.shareLinkManual ?? "请手动复制弹框里的链接"));
+			showToast(copied ? ts.shareLinkCopied : ts.shareLinkManual);
 		} catch (e) {
-			showToast((ts.shareLinkFail ?? "生成分享链接失败：") + (e.message || e));
+			showToast(ts.shareLinkFail + (e.message || e));
 		}
 	};
 
@@ -1189,7 +1187,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const adoptShared = () => {
 		(sharedClips || []).forEach(c => { try { saveClip(c); } catch (e) { /* 忽略 */ } });
 		const saved = saveChart(song);
-		showToast((ts.sharedSaved ?? "已保存到我的曲库：「{n}」").replace("{n}", saved.name || ""));
+		showToast(fmt(ts.sharedSaved, { n: saved.name || "" }));
 		window.location.hash = '#/chords?id=' + saved.id;
 	};
 
@@ -1212,14 +1210,14 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const handlePackImport = (imported, clips) => {
 		const restoreClips = () => (clips || []).forEach(c => saveClip(c));
 		const clash = charts.find(c => c.id === imported.id);
-		if (!clash) { restoreClips(); adoptImported(imported); showToast(ts.importedPack ?? "已导入工程文件"); return; }
+		if (!clash) { restoreClips(); adoptImported(imported); showToast(ts.importedPack); return; }
 		setDialog({
 			type: "choose",
-			title: ts.importConflict ?? "同名曲目已存在",
-			text: (ts.importConflictText ?? "工程文件里的曲目「{n}」在这台机器上已存在。").replace("{n}", clash.name || imported.name),
+			title: ts.importConflict,
+			text: fmt(ts.importConflictText, { n: clash.name || imported.name }),
 			options: [
-				{ label: ts.overwrite ?? "覆盖现有曲目", danger: true, onPick: () => { restoreClips(); saveChart({ ...imported, id: clash.id }); adoptImported({ ...imported, id: clash.id }); showToast(ts.overwrote ?? "已覆盖"); } },
-				{ label: ts.importAsNew ?? "作为新曲目导入", onPick: () => { restoreClips(); adoptImported(imported); showToast(ts.importedPack ?? "已导入工程文件"); } }
+				{ label: ts.overwrite, danger: true, onPick: () => { restoreClips(); saveChart({ ...imported, id: clash.id }); adoptImported({ ...imported, id: clash.id }); showToast(ts.overwrote); } },
+				{ label: ts.importAsNew, onPick: () => { restoreClips(); adoptImported(imported); showToast(ts.importedPack); } }
 			]
 		});
 	};
@@ -1236,30 +1234,30 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				if (isChartPack(text)) { const { song: packed, clips } = unpackChartBundle(text); handlePackImport(packed, clips); return; }
 				const imported = importMusicXml(text, file.name.replace(/\.musicxml$|\.xml$/i, ""));
 				if (!imported) {
-					setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importFail ?? "未识别到有效和弦数据（请导入工程文件或包含 harmony 标签的 MusicXML）" });
+					setDialog({ type: "alert", title: ts.importTitle, text: ts.importFail });
 					return;
 				}
 				adoptImported(imported);
-				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importXmlWarn ?? "已导入 MusicXML。提示：MusicXML 仅支持通用乐谱数据，自定义配图与标色未包含。完整备份请使用工程文件（.fbchart）。" });
+				setDialog({ type: "alert", title: ts.importTitle, text: ts.importXmlWarn });
 			} catch (err) {
 				console.error(err);
-				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: (ts.importFailShort ?? "导入失败") + "：" + err.message });
+				setDialog({ type: "alert", title: ts.importTitle, text: ts.importFailShort + "：" + err.message });
 			}
 		};
 		reader.readAsText(file);
 	};
 
-	// 从分享码导入（贴一段码即可）
+	// 从分享码导入
 	const promptImportCode = () => setDialog({
 		type: "prompt", multiline: true,
-		title: ts.importCode ?? "从分享码导入",
-		label: ts.importCodePh ?? "粘贴分享码（fg… 或 fretboard-chart:1:…）",
+		title: ts.importCode,
+		label: ts.importCodePh,
 		value: "",
 		onOk: (v) => {
 			const code = String(v || "").trim();
 			if (!code) return;
 			try { const { song: packed, clips } = unpackChartBundle(code); handlePackImport(packed, clips); }
-			catch (err) { setDialog({ type: "alert", title: ts.importCode ?? "从分享码导入", text: err.message }); }
+			catch (err) { setDialog({ type: "alert", title: ts.importCode, text: err.message }); }
 		}
 	});
 
@@ -1297,7 +1295,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const navCloseSoon = () => { clearTimeout(navTimerRef.current); navTimerRef.current = setTimeout(() => setNavOpen(false), 280); };
 
 	const newSong = () => {
-		const base = ts.newSong ?? "新歌";
+		const base = ts.newSong;
 		const used = charts.filter(c => (c.name || "").startsWith(base)).length;
 		const sn = createSong(used ? `${base} ${used + 1}` : base);
 		saveChart(sn);
@@ -1308,10 +1306,10 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		const src = charts.find(c => c.id === id);
 		if (!src) return;
 		const copy = { ...JSON.parse(JSON.stringify(src)), id: undefined };
-		const sn = createSong(`${src.name || "未命名"} ${ts.copySuffix ?? "副本"}`);
+		const sn = createSong(`${src.name || ts.untitled} ${ts.copySuffix}`);
 		const saved = saveChart({ ...copy, id: sn.id, createdAt: Date.now() });
 		setCharts(loadCharts());
-		showToast((ts.duplicated ?? "已复制为「{n}」").replace("{n}", saved.name));
+		showToast(fmt(ts.duplicated, { n: saved.name }));
 	};
 
 	const renameChart = (id, name) => {
@@ -1333,13 +1331,13 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			setCharts(rest);
 			if (id === currentId) { window.location.hash = '#/chords'; return; } // 删的就是这首 → 回列表
 			setCharts(loadCharts());
-			showToast((ts.deleted ?? "已删除「{n}」").replace("{n}", target.name || ""));
+			showToast(fmt(ts.deleted, { n: target.name || "" }));
 		};
 		if (skipConfirm) { doDelete(); return; }
 		setDialog({
 			type: "confirm",
-			title: ts.delSong ?? "删除这首歌",
-			text: (ts.delConfirmOne ?? "删除「{n}」？（不可撤销）").replace("{n}", target.name || ""),
+			title: ts.delSong,
+			text: fmt(ts.delConfirmOne, { n: target.name || "" }),
 			onOk: doDelete
 		});
 	};
@@ -1349,13 +1347,13 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		const target = charts.find(c => c.id === id);
 		if (!target) return;
 		await downloadText(packChart(target), `${target.name || "chord-chart"}.fbchart`, "text/plain;charset=utf-8");
-		showToast((ts.exportedOne ?? "已导出「{n}」").replace("{n}", target.name || ""));
+		showToast(fmt(ts.exportedOne, { n: target.name || "" }));
 	};
 
 	const makeClip = () => {
 		const built = buildSongClip(song, keyAtFn);
 		if (!built) {
-			setDialog({ type: "alert", title: ts.makeClip ?? "生成动图", text: ts.noChords ?? "还没有和弦，先按 1-7 输入" });
+			setDialog({ type: "alert", title: ts.makeClip, text: ts.noChords });
 			return;
 		}
 		saveClip(built.clip);
@@ -1494,9 +1492,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				onMouseLeave={() => { const h = hoverBeatRef.current; if (h && h.mi === mi && h.si === si) hoverBeatRef.current = null; }}
 				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: null }); setCursorOn(true); setPopupOpen(true); }}
 			>
-				{slot.split ? <span className="cc-beat-splitmark" title={ts.splitTip ?? "反拍拆分（Enter 合并）"}>╱</span> : null}
+				{slot.split ? <span className="cc-beat-splitmark" title={ts.splitTip}>╱</span> : null}
 				{editing && isCur && !slot.split && slot.kind === "chord" ? (
-					<button className="cc-add-beat-btn" title={ts.splitHint ?? "拆分当前拍（＋后半拍）"} onClick={e => { e.stopPropagation(); toggleSplit(); }}>＋</button>
+					<button className="cc-add-beat-btn" title={ts.splitHint} onClick={e => { e.stopPropagation(); toggleSplit(); }}>＋</button>
 				) : null}
 				<div className={`cc-beat-units ${slot.split ? "halved" : ""}`}>
 					{units.map((u, h) => {
@@ -1548,7 +1546,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				onMouseLeave={() => { const h = hoverBeatRef.current; if (h && h.mi === mi && h.si === siA) hoverBeatRef.current = null; }}
 				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si: first.si, half: first.half }); setCursorOn(true); setPopupOpen(true); }}
 			>
-				{units.length > 1 ? <span className="cc-beat-splitmark" title={ts.splitTip ?? "两拍并一格（简略模式）"}>╱</span> : null}
+				{units.length > 1 ? <span className="cc-beat-splitmark" title={ts.splitTip}>╱</span> : null}
 				<div className={`cc-beat-units ${units.length > 1 ? "halved" : ""}`}>
 					{units.map(({ u, si, half }, i) => (
 						<div key={i} className={`cc-beat-unit ${isCur && cursor.si === si && (half == null || cursor.half === half) ? "cur" : ""}`}
@@ -1568,7 +1566,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		const repeatJoint = m.endBar === "repeatEnd" && !!song.measures[mi + 1]?.repeatStart && (mi + 1) % autoPer !== 0;
 		return (
 			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${repeatJoint ? "repeat-joint" : ""} ${editing && cursorOn && cursor.mi === mi ? "cur" : ""} ${inSel ? "sel" : ""} ${selRange != null && mi === selRange[0] ? "sel-first" : ""} ${selRange != null && mi === selRange[1] ? "sel-last" : ""}`}
-				style={!copyMode && m.tint && TINTS[m.tint] ? { background: TINTS[m.tint].bg } : undefined}
+				style={!copyMode && m.tint && TINTS[m.tint] ? { background: TINTS[m.tint] } : undefined}
 				onMouseDown={e => { if (copyMode) { e.preventDefault(); beginSelDrag(mi); } }}
 				onMouseOver={() => { if (copyMode) extendSelDrag(mi); }}
 				onContextMenu={e => {
@@ -1592,12 +1590,11 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					const si = firstEmpty === -1 ? 0 : firstEmpty;
 					setCursor({ mi, si, half: null });
 					setPopupOpen(true);
-				}}
-				title={editing ? (ts.cellRightClickTip ?? "右键小节：插入 / 复制 / 删除 / 转调 / 标色") : undefined}>
+				}}>
 				{m.repeatStart ? <span className="cc-bardots start" /> : null}
 				{m.endBar === "repeatEnd" ? <span className="cc-bardots end" /> : null}
 				{m.endBar === "repeatEnd" && m.repeatTimes > 1 ? (
-					<span className="cc-repeat-times" title={`此反复段共 ${m.repeatTimes} 遍`}>×{m.repeatTimes}</span>
+					<span className="cc-repeat-times" title={fmt(ts.repeatTimesBadge, { n: m.repeatTimes })}>×{m.repeatTimes}</span>
 				) : null}
 				{/* 内嵌模式的独立图行：小节各拍的指法小图横排（拍格上方，拍格自身不受图影响，记号永远同线） */}
 				{figOpts.mode === "inline" ? (() => {
@@ -1657,7 +1654,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					<div className={`cc-cell-tags${figsTags ? " in-flow" : ""}`}>
 						{m.section ? (
 							<span className="cc-sectionmark"
-								title={ts.sectionEditTip ?? "编辑段落标记"}
+								title={ts.sectionEditTip}
 								onClick={e => { e.stopPropagation(); promptSection(mi); }}>
 								{m.section}
 							</span>
@@ -1679,13 +1676,13 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					: m.slots.map((_, si) => slotView(mi, si))}
 					{/* 末小节尾部加拍钮：很窄一条＋，点了在曲尾追加一拍（拍满自动开新小节，终止线跟着走） */}
 					{editing && mi === song.measures.length - 1 ? (
-						<button className="cc-append-beat" title={ts.appendBeatTip ?? "在小节末尾加一拍（拍满会自动开新小节承接）"}
+						<button className="cc-append-beat" title={ts.appendBeatTip}
 							onClick={e => { e.stopPropagation(); insertBeat(mi, m.slots.length); }}>＋</button>
 					) : null}</div>
 				{lyricsOn ? (
 					<span key={`clw-${m.id}-${m.lyrics}`} className={`cc-lyrics-wrap${m.lyrics ? " has" : ""}`}>
 						<input className={`cc-cell-lyrics${m.lyrics ? " has" : ""}${m.lyricsBold?.length ? " has-b" : ""}`} defaultValue={m.lyrics || ""}
-							readOnly={!editing} placeholder={editing ? "" : (ts.lyricsFor ?? "当前小节歌词")}
+							readOnly={!editing} placeholder={editing ? "" : ts.lyricsFor}
 							onKeyDown={e => {
 								// Ctrl+B 加粗:有选中 → 切换选中段;无选中 → 整句切换。渲染走覆盖层(.cc-lyrics-rich),输入文字透明只留光标
 								if (!((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === "b" || e.key === "B"))) return;
@@ -1714,52 +1711,49 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					<div ref={cellMenuRef} className="cc-mmenu" style={{ left: cellMenu.x + 6, top: cellMenu.y + 6 }} onClick={e => e.stopPropagation()}>
 						{/* 结构操作两两一行（插入/删除配对），比单列省一半高度 */}
 						<div className="cc-mmenu-row">
-							<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure ?? "插入小节"}</button>
-							<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure ?? "删除小节"}</button>
+							<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure}</button>
+							<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure}</button>
 						</div>
 						<div className="cc-mmenu-row">
-							<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip ?? "在光标处插入一拍（Insert / Shift+Enter）"}>⇥ {ts.insertBeat ?? "插入一拍"}</button>
-							<button className="danger" onClick={() => { removeBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.delBeatTip ?? "删除光标处的一拍（Delete）"}>⇤ {ts.delBeat ?? "删除一拍"}</button>
+							<button onClick={() => { insertBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.insertBeatTip}>⇥ {ts.insertBeat}</button>
+							<button className="danger" onClick={() => { removeBeat(mi, cursor.mi === mi ? cursor.si : 0); setCellMenu(null); }} title={ts.delBeatTip}>⇤ {ts.delBeat}</button>
 						</div>
 						<div className="cc-mmenu-row">
-							<button onClick={() => { setCellMenu(null); promptSection(mi); }}>¶ {ts.sectionBtn ?? "段落标记"}</button>
+							<button onClick={() => { setCellMenu(null); promptSection(mi); }}>¶ {ts.sectionBtn}</button>
 						</div>
 						<div className="cc-menu-sep" />
-						<div className="cc-mmenu-label">{ts.barlineLabel ?? "小节线"}</div>
+						<div className="cc-mmenu-label">{ts.barlineLabel}</div>
 						<div className="cc-mmenu-row">
 							{END_BARS.filter(b => b.v !== "repeatEnd").map(b => (
-								<button key={b.v} className={m.endBar === b.v ? "on" : ""} title={b.name}
+								<button key={b.v} className={m.endBar === b.v ? "on" : ""} title={ts.barNames[b.v]}
 									onClick={() => patchMeasure(mi, x => ({ ...x, endBar: b.v }))}>
-									{b.name ?? b.v}
+									{ts.barNames[b.v] ?? b.v}
 								</button>
 							))}
 						</div>
-						{/* 反复一对放同一行：开始/结束并列，不再"结束混在普通线里、开始孤零零在下行" */}
 						<div className="cc-mmenu-row">
-							<button className={m.repeatStart ? "on" : ""} title={ts.repeatStart ?? "反复开始"}
-								onClick={() => patchMeasure(mi, x => ({ ...x, repeatStart: !x.repeatStart }))}>‖: {ts.repeatStart ?? "反复开始"}</button>
-							<button className={m.endBar === "repeatEnd" ? "on" : ""} title={ts.repeatEnd ?? "反复结束"}
-								onClick={() => patchMeasure(mi, x => ({ ...x, endBar: x.endBar === "repeatEnd" ? "single" : "repeatEnd" }))}>:‖ {ts.repeatEnd ?? "反复结束"}</button>
+							<button className={m.repeatStart ? "on" : ""} title={ts.repeatStart}
+								onClick={() => patchMeasure(mi, x => ({ ...x, repeatStart: !x.repeatStart }))}>‖: {ts.repeatStart}</button>
+							<button className={m.endBar === "repeatEnd" ? "on" : ""} title={ts.repeatEnd}
+								onClick={() => patchMeasure(mi, x => ({ ...x, endBar: x.endBar === "repeatEnd" ? "single" : "repeatEnd" }))}>:‖ {ts.repeatEnd}</button>
 						</div>
-						<div className="cc-mmenu-label">{ts.repeatTimesLabel ?? "反复遍数"}</div>
+						<div className="cc-mmenu-label">{ts.repeatTimesLabel}</div>
 						<div className="cc-mmenu-row">
 							{[2, 3, 4, 5].map(n => (
 								<button key={n} className={(m.repeatTimes || 2) === n ? "on" : ""}
-									title={n === 2 ? (ts.repeatDefaultTip ?? "默认：反复 2 遍（取消自定义遍数）") : `反复 ${n} 遍（自动设反复结束线）`}
+									title={n === 2 ? ts.repeatDefaultTip : fmt(ts.repeatTimesTip, { n })}
 									onClick={() => patchMeasure(mi, x => ({
 										...x,
 										repeatTimes: (x.repeatTimes || 2) === n ? undefined : n,
-										endBar: (x.repeatTimes || 2) === n ? x.endBar : "repeatEnd", // 设遍数即设反复结束线，标识立即生效
+										endBar: (x.repeatTimes || 2) === n ? x.endBar : "repeatEnd",
 									}))}>
 									×{n}
 								</button>
 							))}
-							{/* 自定义遍数：预设之外的任意 ≥2 整数；回车/失焦生效，清空或 2 = 回默认。
-								key 带遍数与所在小节——切小节/点预设按钮时重挂刷新显示 */}
 							<input type="number" min="2" step="1" className="cc-mmenu-custom"
 								key={`${m.id}-${m.repeatTimes || 2}`}
 								defaultValue={m.repeatTimes || 2}
-								title={ts.repeatCustomTip ?? "自定义遍数（≥2，回车或点外生效）"}
+								title={ts.repeatCustomTip}
 								onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
 								onBlur={e => {
 									const v = Math.floor(Number(e.target.value));
@@ -1772,25 +1766,25 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 									}));
 								}} />
 						</div>
-						<div className="cc-mmenu-label">{ts.houseLabel ?? "跳房子"}</div>
+						<div className="cc-mmenu-label">{ts.houseLabel}</div>
 						<div className="cc-mmenu-row">
 							{[0, 1, 2].map(h => (
 								<button key={h} className={(m.house || 0) === h ? "on" : ""}
 									onClick={() => patchMeasure(mi, x => ({ ...x, house: h === 0 ? null : h }))}>
-									{h === 0 ? (ts.none ?? "无") : h + "."}
+									{h === 0 ? ts.none : h + "."}
 								</button>
 							))}
 						</div>
 						<div className="cc-menu-sep" />
-						<div className="cc-mmenu-label">{ts.keyChange ?? "转调"}（{ts.keyChangeFrom ?? "本小节起"}）</div>
+						<div className="cc-mmenu-label">{ts.keyChange}（{ts.keyChangeFrom}）</div>
 						<div className="cc-mmenu-row">{keyStepper(mi)}</div>
-						<div className="cc-mmenu-label">{ts.tintLabel ?? "小节标色"}</div>
+						<div className="cc-mmenu-label">{ts.tintLabel}</div>
 						<div className="cc-mmenu-row">
-							{Object.entries(TINTS).map(([k, v]) => (
+							{Object.keys(TINTS).map(k => (
 								<button key={k} className={`cc-tint ${k} ${(m.tint || "") === k ? "on" : ""}`}
-									title={v.name} onClick={() => patchMeasure(mi, x => ({ ...x, tint: k }))} />
+									title={ts.tintNames[k]} onClick={() => patchMeasure(mi, x => ({ ...x, tint: k }))} />
 							))}
-							<button onClick={() => patchMeasure(mi, x => ({ ...x, tint: null }))}>{ts.tintClear ?? "清除"}</button>
+							<button onClick={() => patchMeasure(mi, x => ({ ...x, tint: null }))}>{ts.tintClear}</button>
 						</div>
 					</div>,
 					document.body
@@ -1816,92 +1810,88 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				<div className="cc-tabs-row">
 					{shared ? (
 						<nav className="cc-tooltabs">
-							<span className="cc-share-banner">🔗 {ts.sharedView ?? "分享的谱子 · 只读查看"}</span>
+							<span className="cc-share-banner">🔗 {ts.sharedView}</span>
 						</nav>
 					) : (
 						<nav className="cc-tooltabs">
-							<button className="cc-songs-btn cc-songs-icon" onClick={goSongList} title={ts.songsTip ?? "回曲目列表"}>←</button>
-							<button className={toolTab === "preview" ? "on" : ""} onClick={() => setToolTab("preview")}>{ts.tabPreview ?? "预览"}</button>
-							<button className={toolTab === "chord" ? "on" : ""} onClick={() => setToolTab("chord")}>{ts.tabChord ?? "和弦"}</button>
-							<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure ?? "小节"}</button>
+							<button className="cc-songs-btn cc-songs-icon" onClick={goSongList} title={ts.songsTip}>←</button>
+							<button className={toolTab === "preview" ? "on" : ""} onClick={() => setToolTab("preview")}>{ts.tabPreview}</button>
+							<button className={toolTab === "chord" ? "on" : ""} onClick={() => setToolTab("chord")}>{ts.tabChord}</button>
+							<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure}</button>
 						</nav>
 					)}
-					{/* 曲谱设置条（调/拍号/简略/歌词）+ 歌名：从谱头行迁入 tab 行——整行 sticky 钉顶，下滚始终可见 */}
+					{/* 曲谱设置条 */}
 					<div className="cc-score-meta">
-						<button className={`cc-settings-btn${settingsOpen ? " on" : ""}`} title={ts.settingsTip ?? "设置：调 / 拍号 / 速度 / 和弦图"}
+						<button className={`cc-settings-btn${settingsOpen ? " on" : ""}`} title={ts.settingsTip}
 							onClick={() => setSettingsOpen(v => !v)}>
 							⚙ {keyLabelText(song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter, song.key?.acc ?? 0, !!song.key?.minor)} · {song.timeSig ?? 4}/4 · ♩={song.bpm ?? 72}
 						</button>
 						<button className={`cc-compact-btn${compactView ? " on" : ""}`}
-							title={ts.compactTip ?? "简略模式：两拍并成一格；两拍都有和弦时并成一对反拍，反拍只显示前半——谱面更紧凑，便于观看（不影响数据）"}
+							title={ts.compactTip}
 							onClick={() => setCompactView(v => !v)}>
-							{ts.compactLabel ?? "简略"}
+							{ts.compactLabel}
 						</button>
 						<button className={`cc-compact-btn${lyricsOn ? " on" : ""}`}
-							title={ts.lyricsToggleTip ?? "显示/隐藏歌词行：关掉后谱面高度变矮（歌词数据保留，不影响导出）"}
+							title={ts.lyricsToggleTip}
 							onClick={() => setLyricsOn(v => !v)}>
-							{ts.lyricsToggle ?? "歌词"}
+							{ts.lyricsToggle}
 						</button>
-						{/* 新增一行：从 ⚙ 二级面板上移到设置条里，样式与相邻按钮统一 */}
 						{editing ? (
-							<button className="cc-compact-btn" title={ts.addRowTip ?? "在谱尾新增一整行空小节（末行残缺先补满）"}
+							<button className="cc-compact-btn" title={ts.addRowTip}
 								onClick={() => addRow()}>
-								＋ {ts.addRow ?? "新增一行"}
+								＋ {ts.addRow}
 							</button>
 						) : null}
-						{/* 生效调：谱中转调真正起作用时才出现，避免"改了却看不出" */}
 						{(() => {
 							const ek = keyAt(cursor.mi);
 							const deviates = ek.root !== (song.key?.root ?? 0) || !!ek.minor !== !!song.key?.minor;
 							if (!deviates) return null;
-							return <span className="cc-effective" title={ts.effectiveTip ?? "当前光标处实际生效的调（谱中转调后）"}>⇒ 1 = {PC_KEY[ek.root]}{ek.minor ? "m" : ""}</span>;
+							return <span className="cc-effective" title={ts.effectiveTip}>⇒ 1 = {PC_KEY[ek.root]}{ek.minor ? "m" : ""}</span>;
 						})()}
 					{settingsOpen ? (
 						<div className="cc-settings" onClick={e => e.stopPropagation()}>
 							<div className="cc-settings-group">
-								<div className="cc-settings-label">{ts.gSong ?? "曲谱"}</div>
-								<div className="cc-settings-row"><span className="cc-settings-k">{ts.keyLabel ?? "调"}</span>
+								<div className="cc-settings-label">{ts.gSong}</div>
+								<div className="cc-settings-row"><span className="cc-settings-k">{ts.keyLabel}</span>
 									<span className="cc-settings-v">
 										<KeyPicker letter={song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter} acc={song.key?.acc ?? 0}
 											minor={!!song.key?.minor} marked={false} disabled={!editing}
 											onChange={(letter, acc, minor) => setSong(s0 => ({ ...s0, key: { root: keyPcOf(letter, acc), letter, acc, minor } }))} />
 									</span>
 								</div>
-								<div className="cc-settings-row"><span className="cc-settings-k">{ts.timeSigLabel ?? "拍号"}</span>
+								<div className="cc-settings-row"><span className="cc-settings-k">{ts.timeSigLabel}</span>
 									<span className="cc-settings-v">
 										<UiSelect value={song.timeSig} disabled={!editing} onChange={v => setTimeSig(Number(v))}
 											options={[2, 3, 4, 6].map(b => ({ value: b, label: b + "/4" }))} />
 									</span>
 								</div>
-									{/* BPM 设置行已随播放/发声功能移除：song.bpm 字段保留（工程文件/分享码兼容），界面不再可改；新增一行已上移到歌名旁 */}
 							</div>
 							<div className="cc-settings-group">
-								<div className="cc-settings-label">{ts.gFigures ?? "和弦图"}</div>
-								<div className="cc-settings-row"><span className="cc-settings-k">{ts.figDir ?? "方向"}</span>
+								<div className="cc-settings-label">{ts.gFigures}</div>
+								<div className="cc-settings-row"><span className="cc-settings-k">{ts.figDir}</span>
 									<span className="cc-settings-seg">
-										<button className={figOpts.orientation === "v" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "v" }))}>↕ 竖</button>
-										<button className={figOpts.orientation === "h" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "h" }))}>↔ 横</button>
+										<button className={figOpts.orientation === "v" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "v" }))}>{ts.dirVertical}</button>
+										<button className={figOpts.orientation === "h" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, orientation: "h" }))}>{ts.dirHorizontal}</button>
 									</span>
 								</div>
-								<div className="cc-settings-row"><span className="cc-settings-k">{ts.figDeg ?? "度数标注"}</span>
+								<div className="cc-settings-row"><span className="cc-settings-k">{ts.figDeg}</span>
 									<span className="cc-settings-seg">
-										<button className={figOpts.degMode === "chord" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "chord" }))}>{ts.degChord ?? "和弦内"}</button>
-										<button className={figOpts.degMode === "scale" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "scale" }))}>{ts.degScale ?? "调内"}</button>
-										<button className={figOpts.degMode === "none" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "none" }))}>{ts.degNone ?? "无"}</button>
+										<button className={figOpts.degMode === "chord" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "chord" }))}>{ts.degChord}</button>
+										<button className={figOpts.degMode === "scale" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "scale" }))}>{ts.degScale}</button>
+										<button className={figOpts.degMode === "none" ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, degMode: "none" }))}>{ts.degNone}</button>
 									</span>
 								</div>
-								{/* 尺寸只在悬浮模式生效(内嵌的图随拍宽/半拍简版自适应,给这个档位是无效控件) */}
 								{figOpts.mode === "hover" ? (
-									<div className="cc-settings-row"><span className="cc-settings-k">{ts.figSize ?? "尺寸"}</span>
+									<div className="cc-settings-row"><span className="cc-settings-k">{ts.figSize}</span>
 										<span className="cc-settings-seg">
 											{FIG_SIZES.map(s2 => <button key={s2} className={figOpts.size === s2 ? "on" : ""} onClick={() => setFigOpts(o => ({ ...o, size: s2 }))}>{s2}</button>)}
 										</span>
 									</div>
 									) : null}
-									<div className="cc-settings-row"><span className="cc-settings-k">{ts.figMode ?? "展示"}</span>
+									<div className="cc-settings-row"><span className="cc-settings-k">{ts.figMode}</span>
 							<span className="cc-settings-seg">
-										<button className={figOpts.mode === "inline" ? "on" : ""} title={ts.inlineTip ?? "图行显示在拍格上方（同行占位，记号同线）"} onClick={() => setFigOpts(o => ({ ...o, mode: "inline" }))}>{ts.modeInline ?? "内嵌"}</button>
-										<button className={figOpts.mode === "hover" ? "on" : ""} title={ts.hoverTip ?? "默认隐藏，悬停该拍浮出大图（谱面紧凑）"} onClick={() => setFigOpts(o => ({ ...o, mode: "hover" }))}>{ts.modeHover ?? "悬浮"}</button>
+										<button className={figOpts.mode === "inline" ? "on" : ""} title={ts.inlineTip} onClick={() => setFigOpts(o => ({ ...o, mode: "inline" }))}>{ts.modeInline}</button>
+										<button className={figOpts.mode === "hover" ? "on" : ""} title={ts.hoverTip} onClick={() => setFigOpts(o => ({ ...o, mode: "hover" }))}>{ts.modeHover}</button>
 									</span>
 								</div>
 							</div>
@@ -1910,36 +1900,36 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					</div>
 					<span className="cc-flex" />
 					{shared ? (
-						<button className="button sm accent" onClick={adoptShared} title={ts.sharedSaveTip ?? "存一份到自己的曲库，之后可以编辑"}>⬇ {ts.sharedSave ?? "保存到我的曲库"}</button>
+						<button className="button sm accent" onClick={adoptShared} title={ts.sharedSaveTip}>⬇ {ts.sharedSave}</button>
 					) : null}
 					{editing ? (
 						<>
 							<span className="cc-more-wrap">
-								<button className="button sm cc-more-btn" onClick={() => setMenuOpen(v => !v)} title={ts.more ?? "更多"}>⋯</button>
+								<button className="button sm cc-more-btn" onClick={() => setMenuOpen(v => !v)} title={ts.more}>⋯</button>
 								{menuOpen ? (
 									<div className="cc-menu" onClick={() => setMenuOpen(false)}>
-										<button className="cc-menu-item" onClick={() => { setMenuOpen(false); makeClip(); }}>🎬 {ts.makeClip ?? "生成动图"}</button>
-										<button className="cc-menu-item" onClick={goSongList}>{ts.songsTitle ?? "曲目"}…</button>
-										<button className="cc-menu-item" onClick={newSong}>＋ {ts.newSong ?? "新歌"}</button>
-										<button className="cc-menu-item danger" onClick={() => { setMenuOpen(false); removeChartById(song.id); }}>✕ {ts.delSong ?? "删除这首歌"}</button>
+										<button className="cc-menu-item" onClick={() => { setMenuOpen(false); makeClip(); }}>🎬 {ts.makeClip}</button>
+										<button className="cc-menu-item" onClick={goSongList}>{ts.songsTitle}…</button>
+										<button className="cc-menu-item" onClick={newSong}>＋ {ts.newSong}</button>
+										<button className="cc-menu-item danger" onClick={() => { setMenuOpen(false); removeChartById(song.id); }}>✕ {ts.delSong}</button>
 										<div className="cc-menu-sep" />
-										<button className="cc-menu-item" onClick={doExportChart}>⇩ {ts.exportPack ?? "导出工程文件"}<small>.fbchart</small></button>
-										<button className="cc-menu-item" onClick={() => fileRef.current?.click()}>⇪ {ts.importBtn ?? "导入文件"}<small>.fbchart / .musicxml</small></button>
-										<button className="cc-menu-item" onClick={promptImportCode}>{ts.importCode ?? "从分享码导入"}</button>
-										<button className="cc-menu-item" onClick={() => { setMenuOpen(false); shareLink(); }}>🔗 {ts.shareLinkMenu ?? "分享链接"}<small>{ts.shareLinkMenuSub ?? "对方不用登录即可查看"}</small></button>
+										<button className="cc-menu-item" onClick={doExportChart}>⇩ {ts.exportPack}<small>.fbchart</small></button>
+										<button className="cc-menu-item" onClick={() => fileRef.current?.click()}>⇪ {ts.importBtn}<small>.fbchart / .musicxml</small></button>
+										<button className="cc-menu-item" onClick={promptImportCode}>{ts.importCode}</button>
+										<button className="cc-menu-item" onClick={() => { setMenuOpen(false); shareLink(); }}>🔗 {ts.shareLinkMenu}</button>
 										<div className="cc-menu-sep" />
-										<button className="cc-menu-item" onClick={shareChart}>{ts.copyCode ?? "复制分享码"}</button>
-										<button className="cc-menu-item" onClick={doExportXml}>⇩ {ts.exportXml ?? "导出 MusicXML"}<small className="cc-menu-warn">{ts.lossyWarn ?? "配图/标色不带"}</small></button>
+										<button className="cc-menu-item" onClick={shareChart}>{ts.copyCode}</button>
+										<button className="cc-menu-item" onClick={doExportXml}>⇩ {ts.exportXml}<small className="cc-menu-warn">{ts.lossyWarn}</small></button>
 								</div>
 								) : null}
 							</span>
 							<input ref={fileRef} type="file" accept=".fbchart,.musicxml,.xml,.txt" style={{ display: "none" }} onChange={doImportFile} />
 					</>
 				) : null}
-				{/* 段落跳转 ¶ 钮：hover/click 展开全曲段落标记菜单（编辑/预览都可看到） */}
+				{/* 段落跳转 ¶ 钮 */}
 				{sections.length ? (
 					<span className="cc-nav-wrap">
-						<button className="cc-nav-btn" title={ts.sectionNavTip ?? "段落跳转"}
+						<button className="cc-nav-btn" title={ts.sectionNavTip}
 							onClick={() => setNavOpen(v => !v)}
 							onMouseEnter={navOpenNow} onMouseLeave={navCloseSoon}>¶</button>
 						<div className="cc-nav-menu" style={{ display: navOpen ? "block" : "none" }}
@@ -1947,7 +1937,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							{sections.map(s => (
 								<button key={s.mi} onClick={() => { jumpToSection(s.mi); setNavOpen(false); }}>
 									<span className="cc-nav-name">{s.name}</span>
-									<span className="cc-nav-mi">{ts.measureShort ? ts.measureShort(s.mi + 1) : `M${s.mi + 1}`}</span>
+									<span className="cc-nav-mi">{ts.measureShort(s.mi + 1)}</span>
 								</button>
 							))}
 						</div>
@@ -1959,48 +1949,48 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						{toolTab === "measure" ? (
 							<div className="cc-measuretools">
 								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
-								<button className="button sm" onClick={() => addMeasure(cursor.mi)}>＋ {ts.addMeasure ?? "后插小节"}</button>
-								<button className="button sm" onClick={() => duplicateMeasure(cursor.mi)}>⧉ {ts.dupMeasure ?? "复制"}</button>
-								<button className="button sm danger" onClick={() => removeMeasure(cursor.mi)} disabled={song.measures.length <= 1}>✕ {ts.delMeasure ?? "删除"}</button>
+								<button className="button sm" onClick={() => addMeasure(cursor.mi)}>＋ {ts.addMeasure}</button>
+								<button className="button sm" onClick={() => duplicateMeasure(cursor.mi)}>⧉ {ts.dupMeasure}</button>
+								<button className="button sm danger" onClick={() => removeMeasure(cursor.mi)} disabled={song.measures.length <= 1}>✕ {ts.delMeasure}</button>
 								<button className="button sm" onClick={() => insertBeat(cursor.mi, cursor.si)}
-									title={ts.insertBeatTip ?? "在光标处插入一拍：后面的拍整体后移、内容不丢（Insert / Shift+Enter）"}>
-									⇥ {ts.insertBeat ?? "插入一拍"} <kbd>Ins</kbd>
+									title={ts.insertBeatTip}>
+									⇥ {ts.insertBeat} <kbd>Ins</kbd>
 								</button>
 								<span className="cc-sep" />
-								<UiSelect value={song.measures[cursor.mi]?.endBar || "single"} title={ts.barlineLabel ?? "小节线"}
+								<UiSelect value={song.measures[cursor.mi]?.endBar || "single"} title={ts.barlineLabel}
 									onChange={v => patchMeasure(cursor.mi, x => ({ ...x, endBar: v }))}
-									options={END_BARS.map(b => ({ value: b.v, label: b.name }))} />
-								<label className="cc-iconbtn" title={ts.repeatStart ?? "反复开始"}>
+									options={END_BARS.map(b => ({ value: b.v, label: ts.barNames[b.v] }))} />
+								<label className="cc-iconbtn" title={ts.repeatStart}>
 									<input type="checkbox" checked={!!song.measures[cursor.mi]?.repeatStart} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, repeatStart: e.target.checked }))} />‖:
 								</label>
-								<UiSelect value={song.measures[cursor.mi]?.house || 0} title={ts.houseLabel ?? "跳房子"}
+								<UiSelect value={song.measures[cursor.mi]?.house || 0} title={ts.houseLabel}
 									onChange={v => patchMeasure(cursor.mi, x => ({ ...x, house: v === 0 ? null : Number(v) }))}
-									options={[{ value: 0, label: ts.houseNone ?? "无房子" }, { value: 1, label: "1." }, { value: 2, label: "2." }]} />
-								<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn ?? "段落"}</button>
+									options={[{ value: 0, label: ts.houseNone }, { value: 1, label: "1." }, { value: 2, label: "2." }]} />
+								<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionShort}</button>
 								<span className="cc-sep" />
-								<label className="cc-field">{ts.keyChange ?? "转调"}（{ts.keyChangeFrom ?? "本小节起"}）</label>
+								<label className="cc-field">{ts.keyChange}（{ts.keyChangeFrom}）</label>
 								{keyStepper()}
 							</div>
 						) : toolTab === "text" ? (
 							<div className="cc-measuretools">
 								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
-								<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn ?? "段落标记"}</button>
+								<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn}</button>
 								<input className="cc-tools-lyrics" value={song.measures[cursor.mi]?.lyrics || ""} key={`ly-${cursor.mi}`}
-									placeholder={ts.lyricsPh ?? "歌词（空格对齐）"} title={ts.lyricsFor ?? "当前小节歌词"}
+									placeholder={ts.lyricsPh} title={ts.lyricsFor}
 									onChange={e => patchMeasure(cursor.mi, x => ({ ...x, lyrics: e.target.value }))} />
 							</div>
 						) : toolTab === "color" ? (
 							<div className="cc-measuretools">
 								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
-								<span className="cc-tools-label2">{ts.tintLabel ?? "小节标色"}</span>
-								{Object.entries(TINTS).map(([k, v]) => (
+								<span className="cc-tools-label2">{ts.tintLabel}</span>
+								{Object.keys(TINTS).map(k => (
 									<button key={k} className={`cc-tint ${k} ${(song.measures[cursor.mi]?.tint || "") === k ? "on" : ""}`}
-										title={v.name} onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: k }))} />
+										title={ts.tintNames[k]} onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: k }))} />
 								))}
-								<button className="button sm" onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: null }))}>{ts.tintClear ?? "清除"}</button>
+								<button className="button sm" onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: null }))}>{ts.tintClear}</button>
 							</div>
 						) : (
-							<div className="cc-tools-na">{ts.tabNA ?? "和弦谱无此类工具（8pu 的简谱/旋律功能页）"}</div>
+							<div className="cc-tools-na">{ts.tabNA}</div>
 						)}
 					</div>
 				) : null}
@@ -2008,47 +1998,45 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 
 			{!editing ? (
 				<div className="cc-preview-bar">
-					<nav className="cc-preview-tabs cc-display-seg" title={ts.displayFormTip ?? "记谱形式（只在预览生效；编辑恒为数字级数）"}>
-						<button className={previewDisplay === "number" ? "on" : ""} onClick={() => setPreviewDisplay("number")}>{ts.dispNumber ?? "数字"}</button>
-						<button className={previewDisplay === "roman" ? "on" : ""} onClick={() => setPreviewDisplay("roman")}>{ts.dispRoman ?? "罗马"}</button>
-						<button className={previewDisplay === "name" ? "on" : ""} onClick={() => setPreviewDisplay("name")}>{ts.dispName ?? "音名"}</button>
+					<nav className="cc-preview-tabs cc-display-seg" title={ts.displayFormTip}>
+						<button className={previewDisplay === "number" ? "on" : ""} onClick={() => setPreviewDisplay("number")}>{ts.dispNumberShort}</button>
+						<button className={previewDisplay === "roman" ? "on" : ""} onClick={() => setPreviewDisplay("roman")}>{ts.dispRomanShort}</button>
+						<button className={previewDisplay === "name" ? "on" : ""} onClick={() => setPreviewDisplay("name")}>{ts.dispNameShort}</button>
 					</nav>
-					{/* 音名模式的升降号拼写切换（D♯/E♭）：写进曲子数据（song.enharmonic），随谱保存/同步 */}
 					{previewDisplay === "name" ? (
 						<button className={`cc-compact-btn${(song.enharmonic ?? effectiveEnharmonic({ root: song.key?.root ?? 0, minor: !!song.key?.minor })) === 0 ? " on" : ""}`}
-							title={ts.enharmTip ?? "音名的升降号拼写：♯ 升号 / ♭ 降号（会写进曲子数据）"}
+							title={ts.enharmTip}
 							onClick={() => setSong(s => ({ ...s, enharmonic: effectiveEnharmonic({ root: s.key?.root ?? 0, minor: !!s.key?.minor, enharmonic: s.enharmonic }) === 1 ? 0 : 1 }))}>
-							{(song.enharmonic ?? effectiveEnharmonic({ root: song.key?.root ?? 0, minor: !!song.key?.minor })) === 1 ? "♭ 降号" : "♯ 升号"}
+							{(song.enharmonic ?? effectiveEnharmonic({ root: song.key?.root ?? 0, minor: !!song.key?.minor })) === 1 ? ts.enharmFlat : ts.enharmSharp}
 						</button>
 					) : null}
 					<span className="cc-flex" />
-					<button className="button sm" onClick={shareLink} title={ts.shareLinkTip ?? "生成查看链接：对方不用登录，打开就能看"}>🔗 {ts.shareLinkBtn ?? "链接"}</button>
-					<button className="button sm" onClick={shareChart} title={ts.shareCodeTip ?? "复制分享码：对方粘贴即可 100% 还原整首谱"} >{ts.shareBtn ?? "分享码"}</button>
-					<button className="button sm accent" onClick={doExportChart} title={ts.exportPackTip ?? "工程文件：体积最小且 100% 还原（含配图/标色/节奏型）"}>⇩ {ts.exportBtn ?? "导出"}</button>
+					<button className="button sm" onClick={shareLink} title={ts.shareLinkTip}>🔗 {ts.shareLinkBtn}</button>
+					<button className="button sm" onClick={shareChart} title={ts.shareCodeTip}>{ts.shareBtn}</button>
+					<button className="button sm accent" onClick={doExportChart} title={ts.exportPackTip}>⇩ {ts.exportBtn}</button>
 				</div>
 			) : null}
 
 			<div className="cc-body">
 				<div className="cc-score" ref={scoreRef}>
-					{/* 歌名仍在原位（谱面上方居中，24px）——不进 tab 行 */}
 					<input className="cc-score-title" value={song.name} readOnly={!editing}
 						onChange={e => setSong(s => ({ ...s, name: e.target.value }))}
-						onBlur={() => { if (dirtyRef.current) persistNow(); }} // 改名瞬间落盘：点"回列表"时先失焦，立刻存住
+						onBlur={() => { if (dirtyRef.current) persistNow(); }}
 						onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); persistNow(); e.target.blur(); } }} />
 
 					{copyMode ? (
 						<div className="cc-copybar">
-							<b>⧉ {ts.copyTitle ?? "复制模式"}</b>
+							<b>⧉ {ts.copyTitle}</b>
 							<span className="cc-copybar-state">
 								{selRange == null
-									? (ts.copyHint ?? "按住小节拖动选择，←/→ 微调选区")
+									? ts.copyHint
 									: (copiedCount > 0
-										? (ts.copyDone ?? "已复制 {n} 小节 · 光标移到目标小节，Ctrl+V 插入其后").replace("{n}", String(copiedCount))
-										: (ts.copySel ?? "已选 M{a}–M{b}（{n} 小节）· Ctrl+C 复制 · Backspace 删除").replace("{a}", String(selRange[0] + 1)).replace("{b}", String(selRange[1] + 1)).replace("{n}", String(selRange[1] - selRange[0] + 1)))}
+										? fmt(ts.copyDone, { n: copiedCount })
+										: fmt(ts.copySel, { a: selRange[0] + 1, b: selRange[1] + 1, n: selRange[1] - selRange[0] + 1 }))}
 							</span>
 							<span className="cc-flex" />
-							<button className="button sm accent" onClick={copySelection}>⧉ {ts.copyBtn ?? "复制"} <kbd>Ctrl+C</kbd></button>
-							<button className="button sm" onClick={exitCopyMode}>{ts.copyExit ?? "退出"} <kbd>Q</kbd></button>
+							<button className="button sm accent" onClick={copySelection}>⧉ {ts.copyBtn} <kbd>Ctrl+C</kbd></button>
+							<button className="button sm" onClick={exitCopyMode}>{ts.copyExit} <kbd>Q</kbd></button>
 						</div>
 					) : null}
 
@@ -2123,7 +2111,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title="界面版本">v229</div>
+			<div className="cc-build-ver" title={ts.buildVerTip}>v229</div>
 
 
 			{dialog ? (
@@ -2168,8 +2156,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 											<input type="checkbox" checked={!!dialog.live}
 												onChange={e => dialog.onToggleLive?.(e.target.checked)} />
 											<span>
-												<b>{ts.shareLive ?? "实时跟进我的最新版本"}</b>
-												<small>{ts.shareLiveHint ?? "开启后对方打开链接看到的是你的云端最新版，每次保存自动跟进；关闭则定格当前内容。链接不变。"}</small>
+												<b>{ts.shareLive}</b>
+												<small>{ts.shareLiveHint}</small>
 											</span>
 										</label>
 									) : null}
@@ -2179,9 +2167,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						<div className="cc-modal-foot">
 							{dialog.type === "prompt" && dialog.onDelete ? (
 								<button className="button sm danger" style={{ marginRight: "auto" }}
-									onClick={() => { const d = dialog; d.onDelete?.(); setDialog(cur => (cur === d ? null : cur)); }}>{ts.deleteMark ?? "删除标记"}</button>
+									onClick={() => { const d = dialog; d.onDelete?.(); setDialog(cur => (cur === d ? null : cur)); }}>{ts.deleteMark}</button>
 							) : null}
-							{dialog.type !== "alert" ? <button className="button sm" onClick={() => setDialog(null)}>{dialog.type === "share" ? (ts.closeBtn ?? "关闭") : (ts.cancel ?? "取消")}</button> : null}
+							{dialog.type !== "alert" ? <button className="button sm" onClick={() => setDialog(null)}>{dialog.type === "share" ? ts.closeBtn : ts.cancel}</button> : null}
 							{dialog.type === "choose" || dialog.type === "share" ? null : (
 								<button className={`button sm ${dialog.type === "confirm" ? "danger" : "accent"}`}
 									onClick={() => {
@@ -2190,7 +2178,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 										// onOk 里可能开了新弹层（如导入冲突选择、错误提示），那种情况不能顺手关掉
 										setDialog(cur => (cur === d ? null : cur));
 									}}>
-									{ts.ok ?? "确定"}
+									{ts.ok}
 								</button>
 							)}
 						</div>

@@ -2,6 +2,7 @@
 // 视图负责时钟与音频（audioService），这里只产出纯数据
 
 import { voiceChord } from "./voicing.js";
+import { getT } from "../i18n/getT.js";
 
 // 有效房子推导：房子标记在段首小节，括线一路延伸到「反复结束」线（结束的标志就是反复结束本身——
 // 反复结束之前的小节即使没标房子也归属该房子：渲染括线连过去、播放同样跳过）。
@@ -104,14 +105,14 @@ function sameEvChord(a, b) {
 // ============ 节奏型 ============
 // RHYTHMS：null/'strum' 扫弦 | 'ballad' 分解 | 'block' 柱式 | 'waltz' 华尔兹（3 拍低音-和弦-和弦）
 export const RHYTHMS = [
-	{ id: "strum", label: "扫弦", def: true },
-	{ id: "ballad", label: "分解" },
-	{ id: "block", label: "柱式" },
-	{ id: "waltz", label: "华尔兹" },
-	{ id: "rock8", label: "摇滚" },
-	{ id: "bossa", label: "波萨" },
-	{ id: "rumba", label: "伦巴" },
-	{ id: "slow", label: "慢魂" }
+	{ id: "strum", get label() { return getT().chords.rhythmLabels.strum; }, def: true },
+	{ id: "ballad", get label() { return getT().chords.rhythmLabels.ballad; } },
+	{ id: "block", get label() { return getT().chords.rhythmLabels.block; } },
+	{ id: "waltz", get label() { return getT().chords.rhythmLabels.waltz; } },
+	{ id: "rock8", get label() { return getT().chords.rhythmLabels.rock8; } },
+	{ id: "bossa", get label() { return getT().chords.rhythmLabels.bossa; } },
+	{ id: "rumba", get label() { return getT().chords.rhythmLabels.rumba; } },
+	{ id: "slow", get label() { return getT().chords.rhythmLabels.slow; } }
 ];
 
 // 节奏型 → 点火方案：[{ delayMs, idx, string, durMs }]（idx 为 audioService 品索引）

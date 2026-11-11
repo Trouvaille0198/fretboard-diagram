@@ -1,4 +1,5 @@
 import { updateNote, getNoteSplitMode, getSplitTargetFromPoint, getColorName, detectNoteAtPosition, calculateConnectionColor } from '../utils';
+import { getT } from '../i18n/getT.js';
 import { adaptiveArcCurvature, isSolidNoteData, isSemitoneSlidePair } from '../utils/connectionUtils';
 import { CONSTS } from '../constants';
 import { LEVEL1_COLORS } from '../colorConfig';
@@ -238,7 +239,7 @@ export function createConnectionDragEndHandler(params) {
         if (ghostDrag) {
             const dropSolid = isSolidNoteData(data[dropNote.id], visibility);
             if (!dropSolid || !isSemitoneSlidePair(connectionStartNote, dropNote.id)) {
-                toast?.('半音划音：只能从空音符连到同弦相邻一品（±1 品）的实音上', 'error');
+                toast?.(getT().dynamic.semiSlideRule, 'error');
                 clearPending();
                 return;
             }
@@ -256,7 +257,7 @@ export function createConnectionDragEndHandler(params) {
             setData
         });
         if (ghostDrag) {
-            toast?.('已画半音划音（空音滑入实音，样式随连线预设）', 'success');
+            toast?.(getT().dynamic.semiSlideAdded, 'success');
         }
         clearPending();
     };

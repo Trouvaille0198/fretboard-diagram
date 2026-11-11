@@ -4,7 +4,7 @@ import './FretboardGallery.css';
 import { exportFretboardState, importFretboardState, copyToClipboard, readFromClipboard } from '../utils/fretboardShare';
 import { parseSVGToFretboardState } from '../utils/svgImport';
 import { exportAllData, importBatchData } from '../utils/fretboardHistory';
-import { useLanguage } from '../i18n';
+import { useLanguage, zh } from '../i18n';
 
 export function FretboardGallery({
   historyStates,
@@ -29,7 +29,7 @@ export function FretboardGallery({
   hideToggleButton = false
 }) {
   const { t } = useLanguage();
-  const tg = t?.gallery ?? {};
+  const tg = t?.gallery ?? zh.gallery;
 
   const [showImportDialog, setShowImportDialog] = React.useState(false);
   const [importText, setImportText] = React.useState('');
@@ -67,7 +67,7 @@ export function FretboardGallery({
               success: true, 
               historyStates: updatedStates,
               directories: directories,
-              message: tg.undoDelete ?? 'Delete undone'
+              message: tg.undoDelete
             });
           }
           
@@ -158,7 +158,7 @@ export function FretboardGallery({
     }
     
     if (!onImport) {
-      alert(tg.importNotInit ?? 'Import not initialized, please refresh the page');
+      alert(tg.importNotInit);
       return;
     }
 
@@ -188,15 +188,15 @@ export function FretboardGallery({
       }
       
       if (importData) {
-        onImport({ success: true, data: importData, message: tg.importSuccess ?? 'Import successful!' });
+        onImport({ success: true, data: importData, message: tg.importSuccess });
         setShowImportDialog(false);
         setImportText('');
       } else {
-        onImport({ success: false, message: tg.importParseFail ?? 'Import failed: data parse error' });
+        onImport({ success: false, message: tg.importParseFail });
       }
     } catch (error) {
       // 确保错误通过 onImport 回调显示 Toast
-      onImport({ success: false, message: error.message || (tg.importFail?.() ?? 'Import failed: unknown error') });
+      onImport({ success: false, message: error.message || tg.importFail() });
     }
   };
 
@@ -204,7 +204,7 @@ export function FretboardGallery({
     if (importMode === 'string') {
       const text = importText.trim();
       if (!text) {
-        onImport({ success: false, message: tg.importEnterString ?? 'Please enter a share string' });
+        onImport({ success: false, message: tg.importEnterString });
         return;
       }
       await processImport(text);
@@ -216,11 +216,11 @@ export function FretboardGallery({
           await processImport(e.target.result, true);
         };
         reader.onerror = () => {
-          onImport({ success: false, message: tg.importReadSvgFail ?? 'Failed to read SVG file' });
+          onImport({ success: false, message: tg.importReadSvgFail });
         };
         reader.readAsText(file);
       } else {
-        onImport({ success: false, message: tg.importSelectSvg ?? 'Please select an SVG file' });
+        onImport({ success: false, message: tg.importSelectSvg });
       }
     } else if (importMode === 'json') {
       if (jsonFileInputRef.current && jsonFileInputRef.current.files.length > 0) {
@@ -241,15 +241,15 @@ export function FretboardGallery({
               setImportMode('string');
             }
           } catch (error) {
-            onImport({ success: false, message: tg.importJsonFail ? tg.importJsonFail(error.message) : 'JSON parse error: ' + error.message });
+            onImport({ success: false, message: tg.importJsonFail(error.message) });
           }
         };
         reader.onerror = () => {
-          onImport({ success: false, message: tg.importReadJsonFail ?? 'Failed to read JSON file' });
+          onImport({ success: false, message: tg.importReadJsonFail });
         };
         reader.readAsText(file);
       } else {
-        onImport({ success: false, message: tg.importSelectJson ?? 'Please select a JSON file' });
+        onImport({ success: false, message: tg.importSelectJson });
       }
     }
   };
@@ -268,7 +268,7 @@ export function FretboardGallery({
     if (!file) return;
 
     if (!file.name.endsWith('.svg')) {
-      onImport({ success: false, message: tg.importSelectSvgFile ?? 'Please select an SVG file' });
+      onImport({ success: false, message: tg.importSelectSvgFile });
       return;
     }
 
@@ -278,7 +278,7 @@ export function FretboardGallery({
       await processImport(e.target.result, true);
     };
     reader.onerror = () => {
-      onImport({ success: false, message: tg.importReadSvgFail ?? 'Failed to read SVG file' });
+      onImport({ success: false, message: tg.importReadSvgFail });
     };
     reader.readAsText(file);
   };
@@ -324,7 +324,7 @@ export function FretboardGallery({
   };
 
   const handleClearAll = () => {
-    if (window.confirm(tg.confirmClearAll ?? 'Clear all states? This cannot be undone.')) {
+    if (window.confirm(tg.confirmClearAll)) {
       if (onClearAll) {
         onClearAll();
       }
@@ -338,12 +338,12 @@ export function FretboardGallery({
       const shareString = exportFretboardState(stateSnapshot);
       await copyToClipboard(shareString);
       if (onImport) {
-        onImport({ success: true, message: tg.shareSuccess ?? 'Copied!' });
+        onImport({ success: true, message: tg.shareSuccess });
       }
     } catch (error) {
       console.error('Share failed:', error);
       if (onImport) {
-        onImport({ success: false, message: tg.shareFail ? tg.shareFail(error.message) : error.message });
+        onImport({ success: false, message: tg.shareFail(error.message) });
       }
     }
   };
@@ -412,7 +412,7 @@ export function FretboardGallery({
       
       if (dirStates.length === 0) {
         if (onImport) {
-          onImport({ success: false, message: tg.dirExportEmpty ?? 'No states in this directory' });
+          onImport({ success: false, message: tg.dirExportEmpty });
         }
         return;
       }
@@ -436,12 +436,12 @@ export function FretboardGallery({
       URL.revokeObjectURL(url);
       
       if (onImport) {
-        onImport({ success: true, message: tg.dirExportSuccess ? tg.dirExportSuccess(dirStates.length) : `Exported ${dirStates.length} states` });
+        onImport({ success: true, message: tg.dirExportSuccess(dirStates.length) });
       }
     } catch (error) {
       console.error('Export failed:', error);
       if (onImport) {
-        onImport({ success: false, message: tg.dirExportFail ? tg.dirExportFail(error.message) : 'Export failed: ' + error.message });
+        onImport({ success: false, message: tg.dirExportFail(error.message) });
       }
     }
     setContextMenu(null);
@@ -497,11 +497,7 @@ export function FretboardGallery({
     if (dir.isDefault) return;
     
     const stateCount = historyStates.filter(s => s.directoryId === dir.id).length;
-    const confirmMsg = tg.confirmDeleteDir
-      ? tg.confirmDeleteDir(dir.name, stateCount)
-      : stateCount > 0
-        ? `Delete "${dir.name}"? ${stateCount} state(s) will be moved to default.`
-        : `Delete "${dir.name}"?`;
+    const confirmMsg = tg.confirmDeleteDir(dir.name, stateCount);
     
     if (window.confirm(confirmMsg)) {
       if (onDirectoryDelete) {
@@ -531,7 +527,7 @@ export function FretboardGallery({
           onClick={() => {
             setIsOpen(!isOpen);
           }}
-          title={isOpen ? (tg.toggleCloseTitle ?? 'Hide gallery') : (tg.toggleOpenTitle ?? 'Show gallery')}
+          title={isOpen ? tg.toggleCloseTitle : tg.toggleOpenTitle}
         >
           {isOpen ? '«' : '»'}
         </button>
@@ -539,21 +535,21 @@ export function FretboardGallery({
 
       <div className={`fretboard-gallery ${isOpen ? 'open' : ''}`}>
         <div className="gallery-header">
-          <h3 className="gallery-title">{tg.title ?? 'State Gallery'}</h3>
+          <h3 className="gallery-title">{tg.title}</h3>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <button 
               className="gallery-export-btn"
               onClick={handleExportAll}
-              title={tg.exportTitle ?? 'Export all'}
+              title={tg.exportTitle}
             >
-              {tg.export ?? 'Export'}
+              {tg.export}
             </button>
             <button 
               className="gallery-import-btn"
               onClick={handleImport}
-              title={tg.importTitle ?? 'Import'}
+              title={tg.importTitle}
             >
-              {tg.import ?? 'Import'}
+              {tg.import}
             </button>
           </div>
         </div>
@@ -590,7 +586,7 @@ export function FretboardGallery({
                 <button
                   className="directory-tab-close"
                   onClick={(e) => handleDirectoryDelete(e, dir)}
-                  title={tg.deleteDirectoryTitle ?? 'Delete directory'}
+                  title={tg.deleteDirectoryTitle}
                 >
                   ×
                 </button>
@@ -600,15 +596,15 @@ export function FretboardGallery({
           <button
             className="directory-tab-add"
             onClick={handleDirectoryCreate}
-            title={tg.newDirectoryTitle ?? 'New directory'}
+            title={tg.newDirectoryTitle}
           >
-            {tg.newDirectory ?? '+'}
+            {tg.newDirectory}
           </button>
         </div>
       </div>
       
       {filteredStates.length === 0 ? (
-        <div className="gallery-empty">{tg.empty ?? 'No saved states'}</div>
+        <div className="gallery-empty">{tg.empty}</div>
       ) : (
         <div className="gallery-grid">
         {filteredStates.map((stateSnapshot) => (
@@ -616,7 +612,7 @@ export function FretboardGallery({
             key={stateSnapshot.id}
             className={`gallery-item ${selectedHistoryState && selectedHistoryState.id === stateSnapshot.id ? 'selected' : ''}`}
             onClick={(e) => handleThumbnailClick(stateSnapshot, e)}
-            title={tg.applyHint ? tg.applyHint(stateSnapshot.name) : stateSnapshot.name}
+            title={tg.applyHint(stateSnapshot.name)}
           >
             <div className="gallery-thumbnail-wrapper">
               {stateSnapshot.thumbnail ? (
@@ -627,20 +623,20 @@ export function FretboardGallery({
                 />
               ) : (
                 <div className="gallery-thumbnail-placeholder">
-                  {tg.noThumbnail ?? 'No thumbnail'}
+                  {tg.noThumbnail}
                 </div>
               )}
               <button
                 className="gallery-delete-btn"
                 onClick={(e) => handleDelete(e, stateSnapshot)}
-                title={tg.deleteStateTitle ?? 'Delete'}
+                title={tg.deleteStateTitle}
               >
                 ×
               </button>
               <button
                 className="gallery-share-btn"
                 onClick={(e) => handleShare(e, stateSnapshot)}
-                title={tg.shareStateTitle ?? 'Share'}
+                title={tg.shareStateTitle}
               >
                 📤
               </button>
@@ -661,7 +657,7 @@ export function FretboardGallery({
                 <div 
                   className="gallery-item-name"
                   onDoubleClick={(e) => handleNameDoubleClick(e, stateSnapshot)}
-                  title={tg.renameHint ?? 'Double-click to rename'}
+                  title={tg.renameHint}
                 >
                   {stateSnapshot.name}
                 </div>
@@ -674,39 +670,39 @@ export function FretboardGallery({
       {showImportDialog && ReactDOM.createPortal(
         <div className="import-dialog-overlay" onClick={handleDialogCancel}>
           <div className="import-dialog" onClick={(e) => e.stopPropagation()}>
-            <h3>{tg.importDialogTitle ?? 'Import Fretboard State'}</h3>
+            <h3>{tg.importDialogTitle}</h3>
             <div style={{ marginBottom: '15px' }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <button
                   className={`mode-tab${importMode === 'string' ? ' active' : ''}`}
                   onClick={() => setImportMode('string')}
                 >
-                  {tg.tabString ?? 'Share string'}
+                  {tg.tabString}
                 </button>
                 <button
                   className={`mode-tab${importMode === 'svg' ? ' active' : ''}`}
                   onClick={() => setImportMode('svg')}
                 >
-                  {tg.tabSvg ?? 'SVG file'}
+                  {tg.tabSvg}
                 </button>
                 <button
                   className={`mode-tab${importMode === 'json' ? ' active' : ''}`}
                   onClick={() => setImportMode('json')}
                 >
-                  {tg.tabJson ?? 'JSON batch import'}
+                  {tg.tabJson}
                 </button>
               </div>
             </div>
             {importMode === 'string' ? (
               <>
                 <p style={{ fontSize: '12px', color: 'var(--text-color)', opacity: 0.7, marginBottom: '10px' }}>
-                  {tg.stringHint ?? 'Paste a share string (fretboard://...)'}
+                  {tg.stringHint}
                 </p>
                 <textarea
                   className="import-textarea"
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
-                  placeholder={tg.stringPlaceholder ?? 'Paste share string...'}
+                  placeholder={tg.stringPlaceholder}
                   rows={4}
                   autoFocus
                 />
@@ -714,7 +710,7 @@ export function FretboardGallery({
             ) : importMode === 'json' ? (
               <>
                 <p style={{ fontSize: '12px', color: 'var(--text-color)', opacity: 0.7, marginBottom: '10px' }}>
-                  {tg.jsonHint ?? 'Select a previously exported JSON backup file'}
+                  {tg.jsonHint}
                 </p>
                 <input
                   ref={jsonFileInputRef}
@@ -733,7 +729,7 @@ export function FretboardGallery({
             ) : (
               <>
                 <p style={{ fontSize: '12px', color: 'var(--text-color)', opacity: 0.7, marginBottom: '10px' }}>
-                  {tg.svgHint ?? 'Select a previously exported SVG file'}
+                  {tg.svgHint}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -752,10 +748,10 @@ export function FretboardGallery({
             )}
             <div className="import-dialog-buttons">
               <button className="gallery-import-btn" onClick={handleDialogImport}>
-                {tg.confirmImport ?? 'Import'}
+                {tg.confirmImport}
               </button>
               <button className="gallery-clear-btn" onClick={handleDialogCancel}>
-                {tg.cancel ?? 'Cancel'}
+                {tg.cancel}
               </button>
             </div>
           </div>
@@ -776,7 +772,7 @@ export function FretboardGallery({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="context-menu-item" onClick={handleExportDirectory}>
-            {tg.contextExportDir ?? 'Export directory'}
+            {tg.contextExportDir}
           </div>
         </div>,
         document.body

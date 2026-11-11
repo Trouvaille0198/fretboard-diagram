@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { zh } from '../i18n';
 import { LEVEL1_COLORS } from '../colorConfig';
 
 // 调色盘不展示中性灰（gray）：与单色点(mono)同为灰色系易混淆，按需求收掉。
@@ -15,7 +16,7 @@ const LEVEL1_SHORTCUTS = {
 };
 
 export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPalette, onReplaceAllTintNotes, onCycleTintColor, t }) {
-  const tp = t?.palette ?? {};
+  const tp = t?.palette ?? zh.palette;
   const paletteRef = useRef(null);
 
   // 获取实际的颜色名称（处理自定义颜色对象）
@@ -53,7 +54,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPale
     if (colorName === 'trans') return;
 
     // 显示确认对话框
-    const confirmed = window.confirm(tp.replaceConfirm ? tp.replaceConfirm(colorName) : `Replace with this color?\n\nThis will replace all tint notes with ${colorName} tint.`);
+    const confirmed = window.confirm(tp.replaceConfirm(colorName));
     if (confirmed && onReplaceAllTintNotes) {
       onReplaceAllTintNotes(colorName);
     }
@@ -65,7 +66,7 @@ export function ColorPalette({ selectedColorLevel, selectedColor, onOpenTintPale
         {LEVEL1_PALETTE_ORDER.map(colorName => (
           <button
             key={colorName}
-            title={tp.tintTitle ? tp.tintTitle(colorName, LEVEL1_SHORTCUTS[colorName]) : (LEVEL1_SHORTCUTS[colorName] ? `${colorName} (${LEVEL1_SHORTCUTS[colorName]})` : colorName)}
+            title={tp.tintTitle(colorName, LEVEL1_SHORTCUTS[colorName])}
             className={`color ${colorName} ${selectedColorLevel === 1 && actualColorName === colorName ? 'selected' : ''}`}
             onClick={(e) => onOpenTintPalette && onOpenTintPalette(1, colorName, e.currentTarget)}
             onContextMenu={(e) => handleContextMenu(e, colorName)}

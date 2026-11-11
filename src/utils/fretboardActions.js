@@ -1,6 +1,7 @@
 import { updateNote, inlineCSS } from "../utils";
 import { LEVEL1_COLORS, LEVEL2_COLORS, getLevel2Color } from "../colorConfig";
 import { CONSTS } from "../constants";
+import { getT } from "../i18n/getT.js";
 
 const LEVEL1_COLOR_ORDER = Object.keys(LEVEL1_COLORS);
 const LEVEL2_COLOR_ORDER = Object.keys(LEVEL2_COLORS);
@@ -52,9 +53,8 @@ function showImageForManualCopy(
     text-align: center;
     padding: 10px;
   `;
-    hint.textContent =
-        t?.actions?.copyImageHint ??
-        'Right-click the image and select "Copy image", then click anywhere to close';
+    const a = (t?.actions ? t : getT()).actions;
+    hint.textContent = a.copyImageHint;
 
     // 克隆图片
     const displayImg = img.cloneNode(true);
@@ -79,10 +79,7 @@ function showImageForManualCopy(
     });
 
     if (setToastMessage) {
-        setToastMessage(
-            t?.actions?.copyImageToast ??
-                'Right-click the image and select "Copy image"',
-        );
+        setToastMessage(a.copyImageToast);
         setToastType("info");
     }
 }
@@ -1510,13 +1507,11 @@ export function saveSVG(
             // 转换为 Blob (PNG)
             canvas.toBlob((blob) => {
                 URL.revokeObjectURL(url);
+                const a = (t?.actions ? t : getT()).actions;
 
                 if (!blob) {
                     if (setToastMessage) {
-                        setToastMessage(
-                            t?.actions?.toastConvertFail ??
-                                "Failed to convert image",
-                        );
+                        setToastMessage(a.toastConvertFail);
                         setToastType("error");
                     }
                     return;
@@ -1543,10 +1538,7 @@ export function saveSVG(
                         .write([clipboardItem])
                         .then(() => {
                             if (setToastMessage) {
-                                setToastMessage(
-                                    t?.actions?.toastCopied ??
-                                        "Image copied to clipboard!",
-                                );
+                                setToastMessage(a.toastCopied);
                                 setToastType("success");
                             }
                         })
@@ -1558,18 +1550,9 @@ export function saveSVG(
                                     err.name === "NotAllowedError" ||
                                     err.name === "SecurityError"
                                 ) {
-                                    setToastMessage(
-                                        t?.actions?.toastCopyPermission ??
-                                            "Copy failed: clipboard permission required.",
-                                    );
+                                    setToastMessage(a.toastCopyPermission);
                                 } else {
-                                    setToastMessage(
-                                        t?.actions?.toastCopyFail
-                                            ? t.actions.toastCopyFail(
-                                                  err.message,
-                                              )
-                                            : "Copy failed: " + err.message,
-                                    );
+                                    setToastMessage(a.toastCopyFail(err.message));
                                 }
                                 setToastType("error");
                             }
@@ -1609,10 +1592,7 @@ export function saveSVG(
                                         document.execCommand("copy");
                                     if (successful) {
                                         if (setToastMessage) {
-                                            setToastMessage(
-                                                t?.actions?.toastCopied ??
-                                                    "Image copied to clipboard!",
-                                            );
+                                            setToastMessage(a.toastCopied);
                                             setToastType("success");
                                         }
                                     } else {
@@ -1622,6 +1602,7 @@ export function saveSVG(
                                             dataUrl,
                                             setToastMessage,
                                             setToastType,
+                                            t,
                                         );
                                     }
                                 } catch (err) {
@@ -1631,6 +1612,7 @@ export function saveSVG(
                                         dataUrl,
                                         setToastMessage,
                                         setToastType,
+                                        t,
                                     );
                                 }
 
@@ -1645,10 +1627,7 @@ export function saveSVG(
                     } else {
                         // HTTPS但浏览器不支持
                         if (setToastMessage) {
-                            setToastMessage(
-                                t?.actions?.toastNoClipboard ??
-                                    "Clipboard image copy not supported; please use the download option.",
-                            );
+                            setToastMessage(a.toastNoClipboard);
                             setToastType("error");
                         }
                     }
@@ -1660,9 +1639,7 @@ export function saveSVG(
             URL.revokeObjectURL(url);
             console.error("Failed to load SVG image");
             if (setToastMessage) {
-                setToastMessage(
-                    t?.actions?.toastConvertFail ?? "Failed to convert image",
-                );
+                setToastMessage((t?.actions ? t : getT()).actions.toastConvertFail);
                 setToastType("error");
             }
         };

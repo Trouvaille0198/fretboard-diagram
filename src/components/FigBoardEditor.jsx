@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import { useLanguage, fmt, zh } from '../i18n';
 import { FretboardSVG } from './FretboardSVG';
 import { UiSelect } from './UiSelect';
 import { ConnectionPresetIcon } from './ConnectionPresetIcon';
@@ -24,6 +25,9 @@ const solfegeRelKey = (noteIndex, rootNote) => SOLFEGE_REL[((noteIndex - rootNot
 // 编辑实时自动保存(数据变化即落盘到该拍 unit.fig,无需手动确认)；
 // 顶条：形状库候选(该拍和弦匹配) / 存为形状 / 关闭。
 export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClose, showToast, figOpts, recentFigs }) {
+  const { t } = useLanguage();
+  const tf = t?.fig ?? zh.fig;
+  const tc = t?.connection?.presetLabels ?? zh.connection.presetLabels;
   const [data, setData] = useState(() => (initialData && Object.keys(initialData).length ? JSON.parse(JSON.stringify(initialData)) : {}));
   const dataRef = useRef(data);
   dataRef.current = data;
@@ -310,7 +314,7 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     const next = positions.same[(i + 1) % positions.same.length] ?? positions.same[0];
     const up = next.rootFret > (lastCandRef.current?.rootFret ?? 0);
     applyCand(next);
-    showToast && up && showToast(`同一形状整体升高八度 → @${next.rootFret} 品`, 'info');
+    showToast && up && showToast(fmt(tf.shiftedPos, { f: next.rootFret }), 'info');
   };
 
   // 还原：回到打开本编辑器时的指法（形状覆盖多少次都回到最初）
@@ -335,23 +339,23 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
     if (!v || !renameForm) return;
     persistShapes(loadShapes().map(s => (s.id === renameForm.id ? { ...s, name: v } : s)));
     setShapesVer(v => v + 1);
-    showToast && showToast(`已重命名：${v}`, 'success');
+    showToast && showToast(fmt(tf.renamed, { name: v }), 'success');
   };
   const doDelete = (shape) => {
     persistShapes(loadShapes().filter(s => s.id !== shape.id));
     if (lastCandRef.current?.shape.id === shape.id) { lastCandRef.current = null; setLastCand(null); }
     setShapesVer(v => v + 1);
     setCandMenu(null);
-    showToast && showToast(`已删除形状：${shape.name}`, 'success');
+    showToast && showToast(fmt(tf.deleted, { name: shape.name }), 'success');
   };
 
   const openSave = () => {
     const got = shapeFromBoard(dataRef.current);
-    if (!got.shape) { showToast && showToast('先点亮几个音再存形状', 'info'); return; }
+    if (!got.shape) { showToast && showToast(tf.needNotes, 'info'); return; }
     if (got.quality !== null) {
-      const shape = { ...got.shape, name: (got.quality || '三和弦') + ' 形状' };
+      const shape = { ...got.shape, name: `${got.quality || tf.triad} ${tf.shapeSuffix}` };
       const all = loadShapes(); all.push(shape); persistShapes(all);
-      showToast && showToast(`已存入形状库：${shape.name}`, 'success');
+      showToast && showToast(fmt(tf.saved, { name: shape.name }), 'success');
     } else {
       setSaveForm({ quality: '', intervals: got.intervals, shape: got.shape });
     }
@@ -386,14 +390,14 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
   return (
     <div className="figbe">
       <div className="figbe-top">
-        <span className="figbe-title">指法图{chord ? ` · ${formatName(chord, viewKey || { root: 0, minor: false })}` : ""}</span>
-        <button className="button sm" onClick={openSave}>存为形状</button>
+        <span className="figbe-title">{tf.title}{chord ? ` · ${formatName(chord, viewKey || { root: 0, minor: false })}` : ""}</span>
+        <button className="button sm" onClick={openSave}>{tf.saveShape}</button>
         {positions ? <button className="button sm" onClick={cyclePos}
-          title={`切换八度把位（当前第 ${lastCand.rootFret} 品）`}>换把位</button> : null}
+          title={fmt(tf.shiftPosTip, { f: lastCand.rootFret })}>{tf.shiftPos}</button> : null}
         {!sameAsOriginal(data, originalRef.current) ? <button className="button sm" onClick={restoreOriginal}
-          title="还原初始指法">还原</button> : null}
-        <button className="button sm danger" onClick={() => { dataRef.current = null; onAutoSave && onAutoSave(null); onClose(); }}>删除</button>
-        <button className="button sm accent" onClick={onClose}>完成</button>
+          title={tf.restoreTip}>{tf.restore}</button> : null}
+        <button className="button sm danger" onClick={() => { dataRef.current = null; onAutoSave && onAutoSave(null); onClose(); }}>{tf.delete}</button>
+        <button className="button sm accent" onClick={onClose}>{tf.done}</button>
       </div>
 
       <div className="figbe-body">
@@ -471,33 +475,33 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
         <div className="figbe-side">
           <div className="figbe-side-block">
-            <div className="figbe-side-title">连线</div>
+            <div className="figbe-side-title">{tf.sideConn}</div>
             <div className="figbe-presets">
               {CONNECTION_PRESETS.map(p => (
                 <button key={p.id} className={`button ${conn.connectionMode && conn.connectionPresetId === p.id ? 'selected' : ''}`}
-                  onClick={() => conn.selectConnectionPreset(p.id)} title={p.id}>
+                  onClick={() => conn.selectConnectionPreset(p.id)} title={tc[p.id] ?? p.id}>
                   <ConnectionPresetIcon presetId={p.id} />
                 </button>
               ))}
-              {conn.connectionMode ? <button className="button" onClick={() => conn.setConnectionMode(false)} title="退出连线 (S)">✕</button> : null}
+              {conn.connectionMode ? <button className="button" onClick={() => conn.setConnectionMode(false)} title={tf.exitConn}>✕</button> : null}
             </div>
           </div>
           <div className="figbe-side-block figbe-panel">
             <div className="figbe-side-head">
-              <div className="figbe-side-title">和弦图</div>
+              <div className="figbe-side-title">{tf.sideChart}</div>
               {chord ? <button className="button sm figbe-panel-toggle"
-                onClick={() => setPanelTab(t => (t === 'recent' ? 'shapes' : 'recent'))}>{panelTab === 'recent' ? '形状库' : '最近同和弦'}</button> : null}
+                onClick={() => setPanelTab(t => (t === 'recent' ? 'shapes' : 'recent'))}>{panelTab === 'recent' ? tf.panelShapes : tf.panelRecent}</button> : null}
             </div>
             <div className="figbe-shapes-list figbe-panel-list">
               {panelTab === 'recent'
                 ? (recentFigs || []).map((item, i) => (
-                  <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={`第${item.mi + 1}小节`}>
+                  <button key={i} className="figbe-shape" onClick={() => applyRecent(item.fig)} title={fmt(tf.measureN, { n: item.mi + 1 })}>
                     <span dangerouslySetInnerHTML={{ __html: figSvg(boardFigData(item.fig, chord, viewKey || { root: 0, minor: false }), { degMode: figOpts?.degMode ?? 'chord', orientation: figOpts?.orientation, size: figOpts?.size ?? 44, key: viewKey || { root: 0, minor: false } }) }} />
                   </button>
                 ))
                 : candidates.map((c, i) => (
                   <button key={i} className="figbe-shape" onClick={() => applyCandidate(c)}
-                    onContextMenu={e => openCandMenu(e, c.shape)} title={`${c.shape.name} @${c.rootFret}品`}>
+                    onContextMenu={e => openCandMenu(e, c.shape)} title={fmt(tf.shapeAtFret, { name: c.shape.name, f: c.rootFret })}>
                     <span dangerouslySetInnerHTML={{ __html: figSvg({ points: c.points.map(p => ({ string: p.string, fret: p.fret })), links: [], startFret: Math.min(...c.points.filter(p => p.fret > 0).map(p => p.fret), 13), window: 4, rootPc: c.rootPc, fail: false }, { degMode: 'none', orientation: figOpts?.orientation, size: figOpts?.size ?? 44 }) }} />
                   </button>
                 ))}
@@ -508,42 +512,42 @@ export function FigBoardEditor({ initialData, chord, viewKey, onAutoSave, onClos
 
       {candMenu ? (
         <div className="figbe-cmenu" style={{ left: Math.min(candMenu.x, window.innerWidth - 180), top: Math.min(candMenu.y, window.innerHeight - 110) }}>
-          <button disabled={candMenu.shape.builtin} title={candMenu.shape.builtin ? '内置形状不可修改' : ''}
-            onClick={() => { setRenameForm({ id: candMenu.shape.id, name: candMenu.shape.name }); setCandMenu(null); }}>重命名</button>
+          <button disabled={candMenu.shape.builtin} title={candMenu.shape.builtin ? tf.builtinEdit : ''}
+            onClick={() => { setRenameForm({ id: candMenu.shape.id, name: candMenu.shape.name }); setCandMenu(null); }}>{tf.rename}</button>
           {candMenu.confirmDelete ? (
-            <button className="danger" onClick={() => doDelete(candMenu.shape)}>确认删除？</button>
+            <button className="danger" onClick={() => doDelete(candMenu.shape)}>{tf.confirmDelete}</button>
           ) : (
-            <button className="danger" disabled={candMenu.shape.builtin} title={candMenu.shape.builtin ? '内置形状不可删除' : ''}
-              onClick={() => setCandMenu(m => ({ ...m, confirmDelete: true }))}>删除</button>
+            <button className="danger" disabled={candMenu.shape.builtin} title={candMenu.shape.builtin ? tf.builtinDel : ''}
+              onClick={() => setCandMenu(m => ({ ...m, confirmDelete: true }))}>{tf.delete}</button>
           )}
         </div>
       ) : null}
 
       {renameForm ? (
         <div className="figbe-shapes figbe-saveform">
-          <div className="figbe-shapes-title">重命名形状</div>
+          <div className="figbe-shapes-title">{tf.renameTitle}</div>
           <div className="figbe-saveform-row">
             <input ref={renameInputRef} autoFocus className="cc-dialog-input" defaultValue={renameForm.name}
               onKeyDown={e => { if (e.key === 'Enter') doRename(); if (e.key === 'Escape') setRenameForm(null); }} />
-            <button className="button sm accent" onClick={doRename}>确定</button>
-            <button className="button sm" onClick={() => setRenameForm(null)}>取消</button>
+            <button className="button sm accent" onClick={doRename}>{tf.ok}</button>
+            <button className="button sm" onClick={() => setRenameForm(null)}>{tf.cancel}</button>
           </div>
         </div>
       ) : null}
 
       {saveForm ? (
         <div className="figbe-shapes figbe-saveform">
-          <div className="figbe-shapes-title">未识别质量</div>
+          <div className="figbe-shapes-title">{tf.unknownQuality}</div>
           <div className="figbe-saveform-row">
             <UiSelect value={saveForm.quality ?? ''} onChange={q => setSaveForm(f => ({ ...f, quality: q }))}
-              options={[{ value: '', label: '— 选择质量 —' }, ...QUALITIES.map(q => ({ value: q, label: q || '三和弦' }))]} />
+              options={[{ value: '', label: tf.selectQuality }, ...QUALITIES.map(q => ({ value: q, label: q || tf.triad }))]} />
             <button className="button sm accent" disabled={!saveForm.quality} onClick={() => {
-              const shape = { ...saveForm.shape, quality: saveForm.quality, name: (saveForm.quality || '三和弦') + ' 形状' };
+              const shape = { ...saveForm.shape, quality: saveForm.quality, name: `${saveForm.quality || tf.triad} ${tf.shapeSuffix}` };
               const all = loadShapes(); all.push(shape); persistShapes(all);
               setSaveForm(null);
-              showToast && showToast(`已存入形状库：${shape.name}`, 'success');
-            }}>存入</button>
-            <button className="button sm" onClick={() => setSaveForm(null)}>不存了</button>
+              showToast && showToast(fmt(tf.saved, { name: shape.name }), 'success');
+            }}>{tf.store}</button>
+            <button className="button sm" onClick={() => setSaveForm(null)}>{tf.discard}</button>
           </div>
         </div>
       ) : null}

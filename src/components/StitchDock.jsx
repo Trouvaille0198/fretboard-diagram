@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { zh } from '../i18n';
 import { ScoreBoard } from './ScorePieces';
 import { stitchLayout, unifyStitchState } from '../utils/stitchModel';
 import { copyStitchImage, downloadStitchImage } from '../utils/stitchExport';
@@ -49,11 +50,10 @@ function StitchSegment({ state, opts, seg, onRemove, removeTitle, dnd, removeId,
 }
 
 export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, unify, showToast, t }) {
-  const ts = t?.stitch ?? {};
-  // 词条支持函数式（带参）：L('count', n => `${n} 张`, items.length)
-  const L = (key, fallback, ...args) => {
-    const f = ts[key] ?? fallback;
-    return typeof f === 'function' ? f(...args) : f;
+  const ts = t?.stitch ?? zh.stitch;
+  const L = (key, ...args) => {
+    const f = ts[key];
+    return typeof f === 'function' ? f(...args) : (f ?? '');
   };
 
   const [open, setOpen] = useState(false);        // hover 展开
@@ -145,7 +145,7 @@ export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, uni
       <button
         className={`stitch-fab ${hasItems ? '' : 'empty'} ${pinned ? 'pinned' : ''}`}
         onClick={() => setPinned(p => !p)}
-        title={L('fabTitle', '拼接区：Ctrl+S 把当前板面加进来，横向拼接成一张长图')}
+        title={L('fabTitle')}
         aria-expanded={showPanel}
       >
         <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
@@ -153,34 +153,34 @@ export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, uni
           <rect x="10.5" y="4" width="6.5" height="16" rx="1.6" opacity="0.66" />
           <rect x="19" y="4" width="3" height="16" rx="1.2" opacity="0.38" />
         </svg>
-        <span className="stitch-fab-label">{L('label', '拼接区')}</span>
+        <span className="stitch-fab-label">{L('label')}</span>
         {hasItems && <span className="stitch-fab-badge">{items.length}</span>}
       </button>
 
       {showPanel && (
-        <div className="stitch-panel" ref={panelRef} role="dialog" aria-label={L('label', '拼接区')}>
+        <div className="stitch-panel" ref={panelRef} role="dialog" aria-label={L('label')}>
           <div className="stitch-panel-head">
             <span className="stitch-panel-title">
-              {L('label', '拼接区')}
-              {hasItems && <em>{L('count', n => `${n} 张`, items.length)}</em>}
+              {L('label')}
+              {hasItems && <em>{L('count', items.length)}</em>}
             </span>
             <div className="stitch-panel-actions">
               <button className="stitch-btn primary" disabled={!hasItems || !!busy} onClick={onCopy}>
-                {busy === 'copy' ? L('working', '生成中…') : L('copy', '复制拼接图')}
+                {busy === 'copy' ? L('working') : L('copy')}
               </button>
-              <button className="stitch-btn" disabled={!hasItems || !!busy} onClick={onDownload} title={L('downloadTitle', '下载 PNG')}>
-                {busy === 'download' ? L('working', '生成中…') : 'PNG'}
+              <button className="stitch-btn" disabled={!hasItems || !!busy} onClick={onDownload} title={L('downloadTitle')}>
+                {busy === 'download' ? L('working') : 'PNG'}
               </button>
               <button
                 className="stitch-btn danger"
                 disabled={!hasItems}
                 onClick={() => {
-                  if (!window.confirm(L('clearConfirm', '清空拼接区？'))) return;
+                  if (!window.confirm(L('clearConfirm'))) return;
                   onClear();
                 }}
-                title={L('clearTitle', '移除全部')}
+                title={L('clearTitle')}
               >
-                {L('clear', '清空')}
+                {L('clear')}
               </button>
             </div>
           </div>
@@ -200,7 +200,7 @@ export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, uni
                   const dnd = {
                     dragging: dragIdx === i,
                     dragOver: overIdx === i && dragIdx !== null && dragIdx !== i,
-                    title: `${L('dragTitle', '拖动可调换拼接顺序')}；${L('restoreTitle', '双击还原到编辑板面')}`,
+                    title: `${L('dragTitle')} · ${L('restoreTitle')}`,
                     onDragStart: e => {
                       setDragIdx(i);
                       if (e.dataTransfer) {
@@ -222,7 +222,7 @@ export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, uni
                       clearDnd();
                     },
                   };
-                  return <StitchSegment key={item.id} state={renderStates[i]} opts={item.opts} seg={seg} onRemove={onRemove} removeTitle={L('removeTitle', '移除这张')} dnd={dnd} removeId={item.id} onDoubleClick={() => onRestore?.(item.id)} />;
+                  return <StitchSegment key={item.id} state={renderStates[i]} opts={item.opts} seg={seg} onRemove={onRemove} removeTitle={L('removeTitle')} dnd={dnd} removeId={item.id} onDoubleClick={() => onRestore?.(item.id)} />;
                 })}
                 {layout.dividers.map((dx, i) => (
                   <div key={'div' + i} className="stitch-divider" style={{ left: `${(dx / layout.w * 100).toFixed(4)}%` }} />
@@ -236,12 +236,12 @@ export function StitchDock({ items, onRemove, onClear, onReorder, onRestore, uni
                 <rect x="10.5" y="4" width="6.5" height="16" rx="1.6" opacity="0.66" />
                 <rect x="19" y="4" width="3" height="16" rx="1.2" opacity="0.38" />
               </svg>
-              <p>{L('empty', '拼接区还是空的')}</p>
-              <p className="stitch-empty-sub">{L('hint', '画好一张图后按 Ctrl+S 加入；多张会从左到右横向拼接，指板上下对齐')}</p>
+              <p>{L('empty')}</p>
+              <p className="stitch-empty-sub">{L('hint')}</p>
             </div>
           )}
 
-          {hasItems && <div className="stitch-panel-foot">{L('hint', '画好一张图后按 Ctrl+S 加入；多张会从左到右横向拼接，指板上下对齐')}</div>}
+          {hasItems && <div className="stitch-panel-foot">{L('hint')}</div>}
         </div>
       )}
     </div>

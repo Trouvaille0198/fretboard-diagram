@@ -1,3 +1,5 @@
+import { getT, fmt } from '../i18n/getT.js';
+
 const API_BASE_URL = '/api';
 const TIMEOUT = 10000; // 10秒超时
 
@@ -45,7 +47,7 @@ async function request(endpoint, options = {}) {
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new ApiError(
-                errorData.detail || `请求失败: ${response.status}`,
+                errorData.detail || fmt(getT().utils.reqFail, { status: response.status }),
                 response.status
             );
         }
@@ -55,14 +57,14 @@ async function request(endpoint, options = {}) {
         clearTimeout(timeoutId);
         
         if (error.name === 'AbortError') {
-            throw new ApiError('请求超时', 408);
+            throw new ApiError(getT().utils.reqTimeout, 408);
         }
         
         if (error instanceof ApiError) {
             throw error;
         }
         
-        throw new ApiError(error.message || '网络请求失败', 0);
+        throw new ApiError(error.message || getT().utils.netFail, 0);
     }
 }
 

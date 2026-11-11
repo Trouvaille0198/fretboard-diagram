@@ -1,35 +1,36 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { zh } from "../i18n";
 import { ScoreBoard } from "./ScorePieces";
 import { loadClips } from "../utils/clipModel";
 
 // 配图选择弹窗：静态=进普通编辑器画一张板；动图=进动图编辑器（新建或续编）
 // value = song.image：{kind:'board',frame} | {kind:'clip',id} | null
 export function AttachPicker({ value, subtitle, onPickStatic, onPickClip, onRemove, onClose, t }) {
-	const ts = t?.chords ?? {};
+	const ts = t?.chords ?? zh.chords;
 	return (
 		<div className="cc-modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
 			<div className="cc-modal">
 				<div className="cc-modal-head">
-					<span className="cc-modal-title">{value ? (ts.editAttach ?? "编辑配图") : (ts.attachImage ?? "添加配图")}{subtitle ? <small className="cc-modal-sub"> · {subtitle}</small> : null}</span>
+					<span className="cc-modal-title">{value ? ts.editAttach : ts.attachImage}{subtitle ? <small className="cc-modal-sub"> · {subtitle}</small> : null}</span>
 					<button className="cc-modal-x" onClick={onClose}>✕</button>
 				</div>
 				<div className="cc-modal-body">
 					<div className="cc-ap-grid">
 						<button className="cc-ap-item" onClick={onPickStatic}>
-							<span className="cc-ap-icon">板</span>
-							<b>{ts.attachStatic ?? "静态配图"}</b>
-							<small>{(value?.kind === "board" ? ts.attachContinue : ts.attachStaticHint) ?? "用普通编辑器画一张指板"}</small>
+							<span className="cc-ap-icon">🎸</span>
+							<b>{ts.attachStatic}</b>
+							<small>{value?.kind === "board" ? ts.attachContinue : ts.attachStaticHint}</small>
 						</button>
 						<button className="cc-ap-item" onClick={onPickClip}>
-							<span className="cc-ap-icon">动</span>
-							<b>{ts.attachAnim ?? "动图配图"}</b>
-							<small>{(value?.kind === "clip" ? ts.attachContinue : ts.attachAnimHint) ?? "用动图编辑器做一段动画"}</small>
+							<span className="cc-ap-icon">🎬</span>
+							<b>{ts.attachAnim}</b>
+							<small>{value?.kind === "clip" ? ts.attachContinue : ts.attachAnimHint}</small>
 						</button>
 					</div>
 				</div>
 				{value ? (
 					<div className="cc-modal-foot">
-						<button className="cc-ap-remove" onClick={onRemove}>🗑 {ts.removeImage ?? "移除配图"}</button>
+						<button className="cc-ap-remove" onClick={onRemove}>🗑 {ts.removeImage}</button>
 					</div>
 				) : null}
 			</div>

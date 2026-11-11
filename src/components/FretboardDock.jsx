@@ -1,4 +1,5 @@
 import React from 'react';
+import { zh } from '../i18n';
 import { ScoreBoard, TransitionFx } from './ScorePieces';
 import { renameClip } from '../utils/clipModel';
 import './FretboardDock.css';
@@ -74,7 +75,7 @@ export function FretboardDock({
   currentId,
   t,
 }) {
-  const td = t?.dock ?? {};
+  const td = t?.dock ?? zh.dock;
 
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [hoveredId, setHoveredId] = React.useState(null);
@@ -112,21 +113,21 @@ export function FretboardDock({
       onMouseLeave={scheduleCloseDock}
     >
       <div className="dock-tabs">
-        <span className="dock-label">{td.clipsTitle ?? '动画片段'}</span>
+        <span className="dock-label">{td.clipsTitle}</span>
         <span className="dock-count">{countLabel}</span>
         <button
           className="dock-examples"
-          title={td.examplesHint ?? '加载技巧示例动画'}
+          title={td.examplesHint}
           onClick={onExamples}
         >
-          {td.examples ?? '示例'}
+          {td.examples}
         </button>
       </div>
 
       {isExpanded && (
         <div className="dock-content">
           {clips.length === 0 && (
-            <div className="dock-empty">{td.emptyHint ?? '暂无动图：按 Q 进入动图模式，按 Ctrl+S 保存关键帧'}</div>
+            <div className="dock-empty">{td.emptyHint}</div>
           )}
           {clips.map(clip => (
             <div
@@ -135,7 +136,7 @@ export function FretboardDock({
               onMouseEnter={() => setHoveredId(clip.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
-              <div className="dock-clip-board" onClick={() => onLoad?.(clip)} title={td.loadHint ?? '加载并继续编辑'}>
+              <div className="dock-clip-board" onClick={() => onLoad?.(clip)} title={td.loadHint}>
                 <ClipPreview clip={clip} play={hoveredId === clip.id} />
               </div>
               <div className="dock-clip-info">
@@ -160,7 +161,7 @@ export function FretboardDock({
                 ) : (
                   <span
                     className="dock-clip-name"
-                    title={td.renameHint ?? '双击重命名'}
+                    title={td.renameHint}
                     onDoubleClick={() => setRenamingId(clip.id)}
                   >
                     {clip.name}
@@ -169,7 +170,7 @@ export function FretboardDock({
                 <span className="dock-clip-frames">{clip.frames.length}f</span>
                 <button
                   className="dock-clip-del"
-                  title={td.deleteHint ?? '删除'}
+                  title={td.deleteHint}
                   onClick={e => {
                     e.stopPropagation();
                     onDelete?.(clip.id);
@@ -181,7 +182,7 @@ export function FretboardDock({
             </div>
           ))}
           {clips.length > 0 && (
-            <button className="dock-clear" onClick={onClear}>{td.clear ?? '清空'}</button>
+            <button className="dock-clear" onClick={onClear}>{td.clear}</button>
           )}
         </div>
       )}

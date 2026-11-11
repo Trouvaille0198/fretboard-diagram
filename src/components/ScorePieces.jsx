@@ -6,6 +6,7 @@ import { resolveNoteVisualStyle, CANVAS_COLORS } from '../colorConfig';
 import { chordDisplay } from '../utils/songStructure';
 import { describeTransition, sampleTransition, elsToSvgString } from '../utils/transitionAnimator';
 import { LanguageProvider } from '../i18n';
+import { getT } from '../i18n/getT.js';
 import { createPortal } from 'react-dom';
 
 const noOp = () => {};
@@ -202,7 +203,7 @@ export async function renderBoardImage(state, width, options = {}) {
   if (!svgEl) {
     root.unmount();
     host.remove();
-    throw new Error('板面渲染失败');
+    throw new Error(getT().utils.boardRenderFail);
   }
   const clone = inlineCSS(svgEl.cloneNode(true), svgEl); // 原始树=本离屏 svg（此前误抄主舞台，导出帧全同）
   const vbStr = clone.getAttribute('viewBox') || '0 0 800 400';
@@ -231,7 +232,7 @@ export async function renderBoardImage(state, width, options = {}) {
     const url = URL.createObjectURL(blob);
     const image = new Image();
     image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
-    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('板面 SVG 解码失败')); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error(getT().utils.svgDecodeFail)); };
     image.src = url;
   });
   root.unmount();

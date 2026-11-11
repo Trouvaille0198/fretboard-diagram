@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLanguage } from "../i18n";
+import { useLanguage, fmt, zh } from "../i18n";
 import { LoginModal } from "./LoginModal";
 import { Toast } from "./Toast";
 import { authUser, logout, onAuthChange, mergeLocalToCloud, pullCloud, subscribeCloud } from "../utils/authModel";
@@ -12,8 +12,9 @@ import { trashPut } from "../utils/trashModel.js";
 // 顶部导航（8pu 式）：logo + 三模式文字 tab + 右侧主题/语言，常驻所有页面
 // mode: 'normal' | 'dynamic' | 'chords'
 export function TopNav({ mode }) {
-	const { t, lang, toggleLang } = useLanguage();
-	const tr = t?.rail ?? {};
+	const { t, toggleLang } = useLanguage();
+	const tr = t?.rail ?? zh.rail;
+	const tf = t?.fretboard ?? zh.fretboard;
 	const [theme, setTheme] = useState(() => localStorage.getItem("fretboard-theme") || "dark");
 	const [user, setUser] = useState(() => authUser()?.user ?? null);
 	const [loginOpen, setLoginOpen] = useState(false);
@@ -42,11 +43,11 @@ export function TopNav({ mode }) {
 	const [sync, setSync] = useState({ state: "idle", pending: 0, error: null });
 	useEffect(() => onSyncStatus(setSync), []);
 	const syncBadge = !user ? null
-		: sync.state === "syncing" ? { cls: "syncing", text: "同步中…" }
-		: sync.state === "offline" ? { cls: "offline", text: `离线待同步${sync.pending ? ` ${sync.pending}` : ""}` }
-		: sync.state === "error" ? { cls: "error", text: sync.error === "conflict" ? "版本冲突" : "同步失败" }
-		: sync.pending ? { cls: "syncing", text: `待同步 ${sync.pending}` }
-		: { cls: "ok", text: "已同步" };
+		: sync.state === "syncing" ? { cls: "syncing", text: tr.syncing }
+		: sync.state === "offline" ? { cls: "offline", text: sync.pending ? fmt(tr.offlinePending, { n: sync.pending }) : tr.offline }
+		: sync.state === "error" ? { cls: "error", text: sync.error === "conflict" ? tr.syncConflict : tr.syncFailed }
+		: sync.pending ? { cls: "syncing", text: fmt(tr.pendingCount, { n: sync.pending }) }
+		: { cls: "ok", text: tr.synced };
 
 	// 全局轻提示（冲突副本等由 syncEngine 派发）
 	const [toast, setToast] = useState(null);
@@ -149,9 +150,9 @@ export function TopNav({ mode }) {
 	}, [theme]);
 
 	const items = [
-		{ id: "normal", label: tr.normal ?? "普通编辑", route: "#/" },
-		{ id: "dynamic", label: tr.dynamic ?? "动图", route: "#/dynamic" },
-		{ id: "chords", label: tr.chords ?? "和弦谱", route: "#/chords" }
+		{ id: "normal", label: tr.normal, route: "#/" },
+		{ id: "dynamic", label: tr.dynamic, route: "#/dynamic" },
+		{ id: "chords", label: tr.chords, route: "#/chords" }
 	];
 
 	const go = (item) => {
@@ -167,7 +168,7 @@ export function TopNav({ mode }) {
 	return (
 		<>
 		<header className="top-nav">
-			<nav className="top-nav-tabs" aria-label={tr.label ?? "模式切换"}>
+			<nav className="top-nav-tabs" aria-label={tr.label}>
 				{items.map(it => (
 					<button
 						key={it.id}
@@ -180,33 +181,33 @@ export function TopNav({ mode }) {
 				))}
 			</nav>
 			<div className="top-nav-right">
-				<span className="top-nav-ver" title="当前版本 v1.1.1">v1.1.1</span>
+				<span className="top-nav-ver" title={fmt(tr.versionTitle, { v: "v1.1.1" })}>v1.1.1</span>
 				{syncBadge ? (
 					<button className={`top-nav-sync ${syncBadge.cls}`}
-						title={syncBadge.cls === "error" ? "云端同步出错，点击重试" : "云端同步状态"}
+						title={syncBadge.cls === "error" ? tr.syncErrorTip : tr.syncStatusTip}
 						onClick={() => { flushOutbox(); pullAll(); }}>
 						{syncBadge.text}
 					</button>
 				) : null}
-				<button className="top-nav-icon cc-prefs-btn" title="偏好设置"
+				<button className="top-nav-icon cc-prefs-btn" title={tr.prefsTip}
 					onClick={e => { e.stopPropagation(); setPrefsOpen(v => !v); }}>⚙</button>
 				{prefsOpen ? (
 					<div className="cc-prefs" onClick={e => e.stopPropagation()}>
 						<div className="cc-prefs-ver">v1.1.1</div>
-						<button onClick={toggleLang}>{lang === "zh" ? "Switch to English" : "切换为中文"}</button>
+						<button onClick={toggleLang}>{tr.otherLang}</button>
 						<button onClick={() => setTheme(x => (x === "dark" ? "light" : "dark"))}>
-							{theme === "dark" ? (tr.toLight ?? "浅色模式") : (tr.toDark ?? "深色模式")}
+							{theme === "dark" ? tf.themeLight : tf.themeDark}
 						</button>
 					</div>
 				) : null}
 				{user ? (
-					<span className="top-nav-user" title={user + (cloudFail ? "（云同步失败，当前为离线状态）" : "")}>
-						{cloudFail ? <span className="top-nav-cloudfail" title="云同步失败，当前为离线状态">⚠</span> : null}
+					<span className="top-nav-user" title={user + (cloudFail ? tr.cloudOfflineNote : "")}>
+						{cloudFail ? <span className="top-nav-cloudfail" title={tr.cloudOfflineTip}>⚠</span> : null}
 						<span className="top-nav-user-name">{user}</span>
-						<button className="top-nav-icon" onClick={() => setLogoutAsk(true)} title="退出登录">⏻</button>
+						<button className="top-nav-icon" onClick={() => setLogoutAsk(true)} title={tr.logout}>⏻</button>
 					</span>
 				) : (
-					<button className="top-nav-icon" onClick={() => setLoginOpen(true)} title="登录 / 注册">👤</button>
+					<button className="top-nav-icon" onClick={() => setLoginOpen(true)} title={tr.loginBtn}>👤</button>
 				)}
 				{loginOpen ? (
 					<LoginModal onLoggedIn={() => setLoginOpen(false)} onGuest={() => {}} onClose={() => setLoginOpen(false)} />
@@ -214,25 +215,30 @@ export function TopNav({ mode }) {
 				{logoutAsk ? createPortal(
 					<div className="login-modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setLogoutAsk(false); }}>
 						<div className="login-modal">
-							<h2>退出登录？</h2>
-							<p className="merge-ask-text">退出后回到游客模式，本机数据保留。</p>
+							<h2>{tr.logoutTitle}</h2>
+							<p className="merge-ask-text">{tr.logoutDesc}</p>
 							<div className="merge-ask-btns">
-								<button className="btn-primary" onClick={() => { setLogoutAsk(false); logout(); }}>退出</button>
-								<button className="merge-ask-no" onClick={() => setLogoutAsk(false)}>取消</button>
+								<button className="btn-primary" onClick={() => { setLogoutAsk(false); logout(); }}>{tr.logoutConfirm}</button>
+								<button className="merge-ask-no" onClick={() => setLogoutAsk(false)}>{tr.cancel}</button>
 							</div>
 						</div>
 					</div>, document.body) : null}
 				{mergeAsk ? createPortal(
 					<div className="login-modal-overlay">
 						<div className="login-modal">
-							<h2>合并本机数据？</h2>
+							<h2>{tr.mergeTitle}</h2>
 							<p className="merge-ask-text">
-								检测到本机游客数据：{mergeAsk.charts ? mergeAsk.charts + " 首曲目" : ""}{mergeAsk.charts && mergeAsk.clips ? " · " : ""}{mergeAsk.clips ? mergeAsk.clips + " 个动图" : ""}。
-								合并到账号 <b>{mergeAsk.user}</b> 吗？（同名以本机版本为准）
+								{fmt(tr.mergeDesc, {
+									summary: [
+										mergeAsk.charts ? fmt(tr.mergeCharts, { n: mergeAsk.charts }) : "",
+										mergeAsk.clips ? fmt(tr.mergeClips, { n: mergeAsk.clips }) : "",
+									].filter(Boolean).join(" · "),
+									user: mergeAsk.user,
+								})}
 							</p>
 							<div className="merge-ask-btns">
-								<button className="btn-primary" onClick={doMergeLocal}>合并到账号</button>
-								<button className="merge-ask-no" onClick={doNotMerge}>不合并（本机数据自动备份）</button>
+								<button className="btn-primary" onClick={doMergeLocal}>{tr.mergeConfirm}</button>
+								<button className="merge-ask-no" onClick={doNotMerge}>{tr.mergeCancel}</button>
 							</div>
 						</div>
 					</div>, document.body) : null}

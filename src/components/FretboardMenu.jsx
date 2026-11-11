@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { zh } from '../i18n';
 import { CONSTS } from '../constants';
 import PianoKeyboard from '../PianoKeyboard';
 import { ColorPalette } from './ColorPalette';
@@ -102,8 +103,8 @@ export function FretboardMenu({
   // 小调状态
   const [isMinor, setIsMinor] = useState(false);
 
-  const tm = t?.menu ?? {};
-  const tc = t?.connection ?? {};
+  const tm = t?.menu ?? zh.menu;
+  const tc = t?.connection ?? zh.connection;
 
   return (
     <div className="menu">
@@ -129,7 +130,7 @@ export function FretboardMenu({
                     className={`color color-tint ${isSelected ? 'selected' : ''}`}
                     style={{ backgroundColor: color }}
                     onClick={() => pickVariant(1, color)}
-                    title={tm.tintVariantTitle ? tm.tintVariantTitle(index + 1) : `Tint ${index + 1}`}
+                    title={tm.tintVariantTitle(index + 1)}
                   />
                 );
               })}
@@ -145,7 +146,7 @@ export function FretboardMenu({
                     className={`color color-tint level2 ${isSelected ? 'selected' : ''}`}
                     style={{ borderColor: color, borderWidth: '6px', borderStyle: 'solid' }}
                     onClick={() => pickVariant(2, color)}
-                    title={tm.tintVariantTitle ? tm.tintVariantTitle(index + 1) : `Tint ${index + 1}`}
+                    title={tm.tintVariantTitle(index + 1)}
                   />
                 );
               })}
@@ -166,39 +167,39 @@ export function FretboardMenu({
           <button
             className="enharmonic-button"
             onClick={onToggleEnharmonic}
-            title={tm.toggleAccidental ?? 'Toggle accidental'}
+            title={tm.toggleAccidental}
           >
             {CONSTS.sign[enharmonic]}
           </button>
           <button
             className="button"
             onClick={onToggleVisibility}
-            title={tm.toggleTitle ?? 'Toggle (Z)'}
+            title={tm.toggleTitle}
           >
-            {tm.toggle ?? 'Toggle'}
+            {tm.toggle}
           </button>
           {onSaveState && (
             <button
               className="button"
               onClick={onSaveState}
-              title={tm.saveTitle ?? 'Save (Ctrl+S)'}
+              title={tm.saveTitle}
             >
-              {tm.save ?? 'Save'}
+              {tm.save}
             </button>
           )}
           <button
             className="button"
             onClick={onReset}
-            title={tm.resetTitle ?? 'Reset (Ctrl+D)'}
+            title={tm.resetTitle}
           >
-            {tm.reset ?? 'Reset'}
+            {tm.reset}
           </button>
           <button
             className="button menu-download-button"
             onClick={onSaveSVG}
-            title={copyOnly ? (tm.copySvgTitle ?? 'Copy to clipboard') : (tm.downloadSvgTitle ?? 'Download SVG')}
+            title={copyOnly ? tm.copySvgTitle : tm.downloadSvgTitle}
           >
-            {copyOnly ? (tm.copySvg ?? 'Copy SVG') : (tm.downloadSvg ?? 'Download SVG')}
+            {copyOnly ? tm.copySvg : tm.downloadSvg}
           </button>
         </div>
         {/* 连线工具区域：点预设即进入连线模式，再点当前的预设退出 */}
@@ -227,7 +228,7 @@ export function FretboardMenu({
                   checked={includeMarkers}
                   onChange={(e) => setIncludeMarkers(e.target.checked)}
                 />
-                <span>{tm.includeMarkers ?? 'Fret markers'}</span>
+                <span>{tm.includeMarkers}</span>
               </label>
               <label className="menu-checkbox">
                 <input
@@ -235,16 +236,16 @@ export function FretboardMenu({
                   checked={showNotes}
                   onChange={(e) => setShowNotes(e.target.checked)}
                 />
-                <span>{tm.showNotes ?? 'Show notes'}</span>
+                <span>{tm.showNotes}</span>
               </label>
               {stitchUnifyVisible && (
-                <label className="menu-checkbox" title={tm.stitchUnifyHint ?? '仅对拼接图有效：每张图按第一张图的色系统一涂色，第 1 张最浅、往后逐张加深；第一张图含多种色系（透明色不算）时不生效'}>
+                <label className="menu-checkbox" title={tm.stitchUnifyHint}>
                   <input
                     type="checkbox"
                     checked={!!stitchUnify}
                     onChange={(e) => setStitchUnify?.(e.target.checked)}
                   />
-                  <span>{tm.stitchUnify ?? '统一色系'}</span>
+                  <span>{tm.stitchUnify}</span>
                 </label>
               )}
               <label className="menu-checkbox">
@@ -253,7 +254,7 @@ export function FretboardMenu({
                   checked={horizontalCrop}
                   onChange={(e) => setHorizontalCrop(e.target.checked)}
                 />
-                <span>{tm.horizontalCrop ?? 'H-crop'}</span>
+                <span>{tm.horizontalCrop}</span>
               </label>
               <label className="menu-checkbox">
                 <input
@@ -261,7 +262,7 @@ export function FretboardMenu({
                   checked={verticalCrop}
                   onChange={(e) => setVerticalCrop(e.target.checked)}
                 />
-                <span>{tm.verticalCrop ?? 'V-crop'}</span>
+                <span>{tm.verticalCrop}</span>
               </label>
               <label className="menu-checkbox">
                 <input
@@ -269,7 +270,7 @@ export function FretboardMenu({
                   checked={copyOnly}
                   onChange={(e) => setCopyOnly(e.target.checked)}
                 />
-                <span>{tm.copyOnly ?? 'Copy only'}</span>
+                <span>{tm.copyOnly}</span>
               </label>
 
               <label className="menu-checkbox">
@@ -278,7 +279,7 @@ export function FretboardMenu({
                   checked={isMinor}
                   onChange={(e) => setIsMinor(e.target.checked)}
                 />
-                <span>{tm.minor ?? 'Minor'}</span>
+                <span>{tm.minor}</span>
               </label>
             </div>
           </div>

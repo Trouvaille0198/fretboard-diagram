@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmt, zh } from '../i18n';
 import { getLevel1FillColor, CANVAS_COLORS } from '../colorConfig';
 
 // 动态编辑模式工具条：模式开关、技法工具、定格、播放、节奏设置、导出
@@ -25,7 +26,8 @@ export function DynamicToolbar({
   onExport,
   t
 }) {
-  const td = t?.dynamic ?? {};
+  const td = t?.dynamic ?? zh.dynamic;
+  const tm = t?.menu ?? zh.menu;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -34,20 +36,20 @@ export function DynamicToolbar({
       <button
         className={`dyn-btn dyn-mode ${dynamic.isDynamic ? 'on' : ''}`}
         onClick={dynamic.toggleQ}
-        title={dynamic.isDynamic ? (td.exitHint ?? '退出并保存动图（Q）') : (td.enterHint ?? '进入动态编辑模式（Q）')}
+        title={dynamic.isDynamic ? td.exitHint : td.enterHint}
       >
         {dynamic.isDynamic
-          ? (dynamic.viewMode === 'preview' ? (td.toEdit ?? '✎ 编辑') : (td.toPreview ?? '👁 预览'))
-          : (td.enterMode ?? '🎬 动态编辑')}
+          ? (dynamic.viewMode === 'preview' ? td.toEdit : td.toPreview)
+          : td.enterMode}
       </button>
 
       {dynamic.isDynamic && (
         <button
           className="dyn-btn"
           onClick={dynamic.newClip}
-          title="新建动图"
+          title={td.newClipTip}
         >
-          ＋新建
+          {td.newClip}
         </button>
       )}
 
@@ -58,7 +60,7 @@ export function DynamicToolbar({
               key={name}
               className={`dyn-btn dyn-scheme ${scheme === name ? 'on' : ''}`}
               onClick={() => onSchemeChange?.(name)}
-              title={`色系：${name}（切换整体配色）`}
+              title={fmt(td.schemeTip, { name })}
             >
               <span className="dyn-scheme-dot" style={{ background: getLevel1FillColor(name) }} />
             </button>
@@ -66,7 +68,7 @@ export function DynamicToolbar({
           <button
             className={`dyn-btn dyn-scheme ${transTool ? 'on' : ''}`}
             onClick={onToggleTransTool}
-            title="透明音（Ctrl+点击）"
+            title={td.transNoteTip}
           >
             <span className="dyn-scheme-dot" style={{ background: 'var(--background-color)', boxShadow: `inset 0 0 0 2px ${CANVAS_COLORS.ghostRing}` }} />
           </button>
@@ -84,9 +86,9 @@ export function DynamicToolbar({
             className="dyn-btn dyn-commit"
             onClick={dynamic.persistClip}
             disabled={playing}
-            title="保存当前关键帧（Ctrl+S）"
+            title={td.saveKeyTip}
           >
-            保存
+            {td.saveKey}
           </button>
           </>
           )}
@@ -98,27 +100,27 @@ export function DynamicToolbar({
         className={`dyn-btn dyn-play ${playing ? 'on' : ''}`}
         onClick={onTogglePlay}
         disabled={!canPlay}
-        title={td.playHint ?? '播放动图'}
+        title={td.playHint}
       >
         {playing ? '⏹' : '▶'}
       </button>
       <button
         className={`dyn-btn ${loopPlay ? 'on' : ''}`}
         onClick={onToggleLoop}
-        title={td.loopHint ?? '循环播放'}
+        title={td.loopHint}
       >
         ↻
       </button>
       <button
         className={`dyn-btn ${cumulative ? 'on' : ''}`}
         onClick={onToggleCumulative}
-        title={td.cumulativeHint ?? '音符轨迹累积预览'}
+        title={td.cumulativeHint}
       >
-        迹
+        {td.traceShort}
       </button>
 
       <span className="dyn-sep" />
-      <button className="dyn-btn dyn-right" onClick={() => setSettingsOpen(v => !v)} title={td.settingsHint ?? '动画设置'}>
+      <button className="dyn-btn dyn-right" onClick={() => setSettingsOpen(v => !v)} title={td.settingsHint}>
         ⚙
       </button>
       <div className="dyn-export-wrap" style={{ position: 'relative' }}>
@@ -126,21 +128,21 @@ export function DynamicToolbar({
           className="dyn-btn"
           disabled={!canPlay || exporting !== null}
           onClick={() => setExportOpen(v => !v)}
-          title="导出动图"
+          title={td.exportTip}
         >
-          {exporting !== null ? '…' : '⬇ 导出'}
+          {exporting !== null ? '…' : td.exportBtn}
         </button>
         {exportOpen && (
           <>
             <div className="dyn-export-veil" onClick={() => setExportOpen(false)} />
             <div className="dyn-export-menu">
               {[
-                { id: 'gif', label: 'GIF 动图', hint: '通用动态图格式' },
-                { id: 'svganim', label: 'SVG 矢量动图', hint: '无损矢量动画' },
+                { id: 'gif', label: td.expGif, hint: td.expGifHint },
+                { id: 'svganim', label: td.expSvg, hint: td.expSvgHint },
                 ...(typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.42E01E')
-                  ? [{ id: 'mp4', label: 'MP4 视频', hint: '标准视频格式' }] : []),
-                { id: 'webm', label: 'WebM 视频', hint: '高质量视频格式' },
-                { id: 'json', label: '数据 JSON', hint: '完整项目工程数据' },
+                  ? [{ id: 'mp4', label: td.expMp4, hint: td.expMp4Hint }] : []),
+                { id: 'webm', label: td.expWebm, hint: td.expWebmHint },
+                { id: 'json', label: td.expJson, hint: td.expJsonHint },
               ].map(item => (
                 <button
                   key={item.id}
@@ -160,7 +162,7 @@ export function DynamicToolbar({
       {settingsOpen && (
         <div className="dyn-settings">
           <label>
-            {td.hold ?? '帧停留'}
+            {td.hold}
             <input type="text" inputMode="numeric"
               defaultValue={animSettings.holdMs}
               onBlur={e => { const v = parseInt(e.target.value, 10); if (Number.isFinite(v)) { onSettingsChange({ holdMs: Math.max(20, v) }); } else { e.target.value = animSettings.holdMs; } }}
@@ -168,7 +170,7 @@ export function DynamicToolbar({
             ms
           </label>
           <label>
-            {td.trans ?? '过渡时长'}
+            {td.trans}
             <input type="text" inputMode="numeric"
               defaultValue={animSettings.transMs}
               onBlur={e => { const v = parseInt(e.target.value, 10); if (Number.isFinite(v)) { onSettingsChange({ transMs: Math.max(20, v) }); } else { e.target.value = animSettings.transMs; } }}
@@ -176,7 +178,7 @@ export function DynamicToolbar({
             ms
           </label>
           <label>
-            {td.fps ?? '导出帧率'}
+            {td.fps}
             <input type="text" inputMode="numeric"
               defaultValue={animSettings.fps}
               onBlur={e => { const v = parseInt(e.target.value, 10); if (Number.isFinite(v)) { onSettingsChange({ fps: Math.min(60, Math.max(2, v)) }); } else { e.target.value = animSettings.fps; } }}
@@ -184,27 +186,27 @@ export function DynamicToolbar({
             fps
           </label>
           <label>
-            {td.width ?? '导出宽度'}
+            {td.width}
             <input type="text" inputMode="numeric"
               defaultValue={animSettings.width}
               onBlur={e => { const v = parseInt(e.target.value, 10); if (Number.isFinite(v)) { onSettingsChange({ width: Math.min(4000, Math.max(160, v)) }); } else { e.target.value = animSettings.width; } }}
               onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }} />
             px
           </label>
-          <div className="dyn-settings-sep">动效</div>
+          <div className="dyn-settings-sep">{td.secMotion}</div>
           <div className="dyn-settings-checks">
             <label className="dyn-settings-check">
               <input type="checkbox" checked={!!animSettings.leadBlank} onChange={e => onSettingsChange({ leadBlank: e.target.checked })} />
-              <span>{td.leadBlank ?? '从空白开始'}</span>
+              <span>{td.leadBlank}</span>
             </label>
           </div>
-          <div className="dyn-settings-sep">导出显示（与普通模式共用）</div>
+          <div className="dyn-settings-sep">{td.secExportDisplay}</div>
           <div className="dyn-settings-checks">
             {[
-              ['includeMarkers', '包含品数'],
-              ['showNotes', '显示音符'],
-              ['horizontalCrop', '水平截断'],
-              ['verticalCrop', '垂直截断']
+              ['includeMarkers', tm.includeMarkers],
+              ['showNotes', tm.showNotes],
+              ['horizontalCrop', tm.horizontalCrop],
+              ['verticalCrop', tm.verticalCrop]
             ].map(([key, label]) => (
               <label key={key} className="dyn-settings-check">
                 <input type="checkbox" checked={!!displayOptions?.[key]} onChange={e => onDisplayChange?.(key, e.target.checked)} />

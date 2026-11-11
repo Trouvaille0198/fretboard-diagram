@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useLanguage } from "../i18n";
+import { useLanguage, fmt, zh } from "../i18n";
 import { ChartListPanel } from "./ChartListPanel";
 import { loadCharts, saveChart, saveCharts, deleteChart, createSong } from "../utils/chordChartModel";
 import { packChart, packChartsBundle, unpackChartBundle, unpackChartsBundle, isChartPack, isChartsBundle } from "../utils/chartPack";
@@ -13,7 +13,7 @@ import { Toast } from "./Toast";
 // 与编辑页的约定：进入某首 = location.hash = '#/chords?id=<id>'。
 export function ChartListPage() {
 	const { t } = useLanguage();
-	const ts = t?.chords ?? {};
+	const ts = t?.chords ?? zh.chords;
 	const [charts, setCharts] = useState(() => loadCharts());
 	const [dialog, setDialog] = useState(null); // {type:'prompt'|'confirm'|'alert', ...} 应用内对话框
 	const dialogInputRef = useRef(null);
@@ -37,7 +37,7 @@ export function ChartListPage() {
 		trashRemove(entry.tbl, entry.id);
 		setTrashItems(trashList());
 		refresh();
-		showToast((ts.trashRestored ?? "已还原「{n}」").replace("{n}", entry.name || ""));
+		showToast(fmt(ts.trashRestored, { n: entry.name || "" }));
 	};
 	// 永久删除单条（已在回收站，无需再确认）
 	const purgeTrashItem = async (entry) => {
@@ -52,7 +52,7 @@ export function ChartListPage() {
 		}
 		trashClear();
 		setTrashItems([]);
-		showToast(ts.trashCleared ?? "回收站已清空");
+		showToast(ts.trashCleared);
 	};
 
 	const enter = (id) => { window.location.hash = '#/chords?id=' + id; };
@@ -67,7 +67,7 @@ export function ChartListPage() {
 
 	// 本机存储写满（persistCharts 广播）：导入/编辑都要让人知道"没存上"，而不是刷新后凭空消失
 	useEffect(() => {
-		const onFull = () => showToast(ts.storageFull ?? "本机存储已满，刚才的改动没存上！请删几首曲目或清空回收站后再试");
+		const onFull = () => showToast(ts.storageFull);
 		window.addEventListener("fretboard:storage-full", onFull);
 		return () => window.removeEventListener("fretboard:storage-full", onFull);
 	}, []);
@@ -79,7 +79,7 @@ export function ChartListPage() {
 	}, []);
 
 	const newSong = () => {
-		const base = ts.newSong ?? "新歌";
+		const base = ts.newSong;
 		const used = charts.filter(c => (c.name || "").startsWith(base)).length;
 		const saved = saveChart(createSong(used ? `${base} ${used + 1}` : base));
 		enter(saved.id);
@@ -96,10 +96,10 @@ export function ChartListPage() {
 		const src = charts.find(c => c.id === id);
 		if (!src) return;
 		const copy = JSON.parse(JSON.stringify(src));
-		const sn = createSong(`${src.name || "未命名"} ${ts.copySuffix ?? "副本"}`);
+		const sn = createSong(`${src.name || ts.untitled} ${ts.copySuffix}`);
 		saveChart({ ...copy, id: sn.id, createdAt: Date.now() });
 		refresh();
-		showToast((ts.duplicated ?? "已复制为「{n}」").replace("{n}", sn.name));
+		showToast(fmt(ts.duplicated, { n: sn.name }));
 	};
 
 	const removeChartById = (id) => {
@@ -107,12 +107,12 @@ export function ChartListPage() {
 		if (!target) return;
 		setDialog({
 			type: "confirm",
-			title: ts.delSong ?? "删除这首歌",
-			text: (ts.delConfirmOne ?? "删除「{n}」？（不可撤销）").replace("{n}", target.name || ""),
+			title: ts.delSong,
+			text: fmt(ts.delConfirmOne, { n: target.name || "" }),
 			onOk: () => {
 				deleteChart(id);
 				refresh();
-				showToast((ts.deleted ?? "已删除「{n}」").replace("{n}", target.name || ""));
+				showToast(fmt(ts.deleted, { n: target.name || "" }));
 			}
 		});
 	};
@@ -130,7 +130,7 @@ export function ChartListPage() {
 		a.click();
 		a.remove();
 		setTimeout(() => URL.revokeObjectURL(url), 5000);
-		showToast((ts.exportedOne ?? "已导出「{n}」").replace("{n}", target.name || ""));
+		showToast(fmt(ts.exportedOne, { n: target.name || "" }));
 	};
 
 	// —— 批量操作（列表页勾选）：勾选状态在本页，面板只负责画勾选框和操作条 ——
@@ -151,13 +151,13 @@ export function ChartListPage() {
 		if (!ids.length) return;
 		setDialog({
 			type: "confirm",
-			title: ts.batchDel ?? "批量删除",
-			text: (ts.batchDelConfirm ?? "删除选中的 {n} 首？（进回收站，10 天内可还原）").replace("{n}", String(ids.length)),
+			title: ts.batchDel,
+			text: fmt(ts.batchDelConfirm, { n: ids.length }),
 			onOk: () => {
 				ids.forEach(c => deleteChart(c.id));
 				setSel(new Set());
 				refresh();
-				showToast((ts.batchDeleted ?? "已删除 {n} 首（可在回收站还原）").replace("{n}", String(ids.length)));
+				showToast(fmt(ts.batchDeleted, { n: ids.length }));
 			}
 		});
 	};
@@ -169,12 +169,12 @@ export function ChartListPage() {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
 		a.href = url;
-		a.download = `曲谱批量-${targets.length}首.fbcharts`;
+		a.download = fmt(ts.batchFilename, { n: targets.length });
 		document.body.appendChild(a);
 		a.click();
 		a.remove();
 		setTimeout(() => URL.revokeObjectURL(url), 5000);
-		showToast((ts.batchExported ?? "已把 {n} 首打成一个批量工程包").replace("{n}", String(targets.length)));
+		showToast(fmt(ts.batchExported, { n: targets.length }));
 	};
 
 	// 导入完成后的公共路径：落盘（含内嵌动图）→ 进编辑页
@@ -199,21 +199,21 @@ export function ChartListPage() {
 					items.forEach(({ clips }) => (clips || []).forEach(c => saveClip(c)));
 					saveCharts(items.map(x => x.song));
 					refresh();
-					showToast((ts.importedN ?? "已导入 {n} 首").replace("{n}", String(items.length)));
+					showToast(fmt(ts.importedN, { n: items.length }));
 					return;
 				}
 				if (isChartPack(text)) {
 					const { song: imported, clips } = unpackChartBundle(text);
 					adoptImported(imported, clips);
-					showToast(ts.importedPack ?? "已导入工程文件");
+					showToast(ts.importedPack);
 					return;
 				}
 				const imported = importMusicXml(text, file.name.replace(/\.musicxml$|\.xml$/i, ""));
-				if (!imported) throw new Error(ts.importFail ?? "未识别到有效和弦数据");
+				if (!imported) throw new Error(ts.importFail);
 				adoptImported(imported, []);
-				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: ts.importXmlWarn ?? "已导入 MusicXML。提示：MusicXML 仅支持通用乐谱数据，自定义配图与标色未包含。" });
+				setDialog({ type: "alert", title: ts.importTitle, text: ts.importXmlWarn });
 			} catch (err) {
-				setDialog({ type: "alert", title: ts.importTitle ?? "导入", text: (ts.importFailShort ?? "导入失败") + "：" + err.message });
+				setDialog({ type: "alert", title: ts.importTitle, text: `${ts.importFailShort}：${err.message}` });
 			}
 		};
 		reader.readAsText(file);
@@ -223,9 +223,9 @@ export function ChartListPage() {
 		try {
 			const { song: imported, clips } = unpackChartBundle(code);
 			adoptImported(imported, clips);
-			showToast(ts.importedPack ?? "已导入工程文件");
+			showToast(ts.importedPack);
 		} catch (err) {
-			setDialog({ type: "alert", title: ts.importCode ?? "从分享码导入", text: err.message });
+			setDialog({ type: "alert", title: ts.importCode, text: err.message });
 		}
 	};
 
@@ -248,8 +248,8 @@ export function ChartListPage() {
 					onTrash={openTrash}
 					onImportCode={() => setDialog({
 						type: "prompt", multiline: true,
-						title: ts.importCode ?? "从分享码导入",
-						label: ts.importCodePh ?? "粘贴分享码（或直接粘贴工程文件内容）",
+						title: ts.importCode,
+						label: ts.importCodePh,
 						value: "",
 						onOk: (v) => { const code = String(v || "").trim(); if (code) importCode(code); }
 					})}
@@ -260,21 +260,21 @@ export function ChartListPage() {
 				<div className="cc-modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) setTrashOpen(false); }}>
 					<div className="cc-modal cc-dialog cc-trash-modal">
 						<div className="cc-modal-head">
-							<span className="cc-modal-title">🗑 {ts.trashTitle ?? "回收站"}<small className="cc-modal-sub"> · {ts.trashSub ? ts.trashSub(TRASH_TTL_DAYS) : `删除后保留 ${TRASH_TTL_DAYS} 天`}</small></span>
+							<span className="cc-modal-title">🗑 {ts.trashTitle}<small className="cc-modal-sub"> · {ts.trashSub(TRASH_TTL_DAYS)}</small></span>
 							<button className="cc-modal-x" onClick={() => setTrashOpen(false)}>✕</button>
 						</div>
 						<div className="cc-modal-body">
 							{trashItems.length === 0 ? (
-								<div className="cc-trash-empty">{ts.trashEmpty ?? "回收站是空的"}</div>
+								<div className="cc-trash-empty">{ts.trashEmpty}</div>
 							) : (
 								<div className="cc-trash-list">
 									{trashItems.map(entry => (
 										<div key={entry.tbl + "|" + entry.id} className="cc-trash-item">
-											<span className={"cc-trash-kind " + entry.tbl}>{entry.tbl === "clips" ? (ts.trashKindClip ?? "动图") : (ts.trashKindSong ?? "曲目")}</span>
-											<span className="cc-trash-name">{entry.name || entry.item?.name || "(未命名)"}</span>
-											<span className="cc-trash-days">{ts.trashDaysLeft ? ts.trashDaysLeft(trashDaysLeft(entry)) : `${trashDaysLeft(entry)} 天后删除`}</span>
-											<button className="button sm accent" onClick={() => restoreTrashItem(entry)}>{ts.trashRestore ?? "还原"}</button>
-											<button className="button sm danger" title={ts.trashPurge ?? "永久删除"}
+											<span className={"cc-trash-kind " + entry.tbl}>{entry.tbl === "clips" ? ts.trashKindClip : ts.trashKindSong}</span>
+											<span className="cc-trash-name">{entry.name || entry.item?.name || ts.untitled}</span>
+											<span className="cc-trash-days">{ts.trashDaysLeft(trashDaysLeft(entry))}</span>
+											<button className="button sm accent" onClick={() => restoreTrashItem(entry)}>{ts.trashRestore}</button>
+											<button className="button sm danger" title={ts.trashPurge}
 												onClick={() => purgeTrashItem(entry)}>✕</button>
 										</div>
 									))}
@@ -282,16 +282,16 @@ export function ChartListPage() {
 							)}
 						</div>
 						<div className="cc-modal-foot">
-							<button className="button sm" onClick={() => setTrashOpen(false)}>{ts.close ?? "关闭"}</button>
+							<button className="button sm" onClick={() => setTrashOpen(false)}>{ts.close}</button>
 							{trashItems.length > 0 ? (
 								<button className="button sm danger" onClick={() => {
 									setDialog({
 										type: "confirm",
-										title: ts.trashClearAll ?? "清空回收站",
-										text: ts.trashClearConfirm ?? "永久删除回收站里的全部条目？（不可还原）",
+										title: ts.trashClearAll,
+										text: ts.trashClearConfirm,
 										onOk: () => clearTrash()
 									});
-								}}>{ts.trashClearAll ?? "清空回收站"}</button>
+								}}>{ts.trashClearAll}</button>
 							) : null}
 						</div>
 					</div>
@@ -321,15 +321,15 @@ export function ChartListPage() {
 							) : <div className="cc-dialog-text">{dialog.text}</div>}
 						</div>
 						<div className="cc-modal-foot">
-							{dialog.type !== "alert" ? <button className="button sm" onClick={() => setDialog(null)}>{ts.cancel ?? "取消"}</button> : null}
+							{dialog.type !== "alert" ? <button className="button sm" onClick={() => setDialog(null)}>{ts.cancel}</button> : null}
 							{dialog.type === "confirm" ? (
-								<button className="button sm danger" onClick={() => { const d = dialog; d.onOk?.(); setDialog(cur => (cur === d ? null : cur)); }}>{ts.ok ?? "确定"}</button>
+								<button className="button sm danger" onClick={() => { const d = dialog; d.onOk?.(); setDialog(cur => (cur === d ? null : cur)); }}>{ts.ok}</button>
 							) : dialog.type !== "choose" ? (
 								<button className="button sm accent" onClick={() => {
 									const d = dialog;
 									d.onOk?.(d.type === "prompt" ? (dialogInputRef.current ? dialogInputRef.current.value : "") : undefined);
 									setDialog(cur => (cur === d ? null : cur));
-								}}>{ts.ok ?? "确定"}</button>
+								}}>{ts.ok}</button>
 							) : null}
 						</div>
 					</div>

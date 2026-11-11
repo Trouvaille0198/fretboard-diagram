@@ -1,4 +1,5 @@
 import React from 'react';
+import { getT } from '../i18n/getT';
 
 const RESET_KEYS = [
     'fretboard-current-state',
@@ -28,7 +29,8 @@ export class ErrorBoundary extends React.Component {
     };
 
     handleReset = () => {
-        const confirmed = window.confirm('将清除本地保存的指板数据并重置页面，确定吗？');
+        const tf = getT().fretboard;
+        const confirmed = window.confirm(tf.errResetConfirm);
         if (!confirmed) {
             return;
         }
@@ -46,6 +48,7 @@ export class ErrorBoundary extends React.Component {
         if (!this.state.error) {
             return this.props.children;
         }
+        const tf = getT().fretboard;
 
         const panelStyle = {
             maxWidth: '460px',
@@ -73,15 +76,15 @@ export class ErrorBoundary extends React.Component {
             <div style={panelStyle}>
                 <div style={{ fontSize: '34px', marginBottom: '10px' }}>🎸</div>
                 <h2 style={{ margin: '0 0 8px', fontSize: '18px' }}>
-                    页面出错了 / Something went wrong
+                    {tf.errTitle}
                 </h2>
                 <p style={{ margin: '0 0 18px', fontSize: '13px', opacity: 0.75, wordBreak: 'break-all' }}>
                     {String(this.state.error?.message || this.state.error)}
                 </p>
                 <div>
-                    <button style={buttonStyle} onClick={this.handleReload}>重新加载 / Reload</button>
+                    <button style={buttonStyle} onClick={this.handleReload}>{tf.errReload}</button>
                     <button style={{ ...buttonStyle, borderColor: 'color-mix(in srgb, var(--app-danger) 45%, transparent)', color: 'var(--app-danger, #ff8787)', background: 'color-mix(in srgb, var(--app-danger) 10%, transparent)' }} onClick={this.handleReset}>
-                        清除数据并重置 / Reset
+                        {tf.errReset}
                     </button>
                 </div>
             </div>

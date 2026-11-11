@@ -32,12 +32,13 @@ import { stageWindowOf, cropBoxOfNotes } from './utils/animStage';
 import { buildActionOverlay } from './utils/staticSummary';
 import { FretboardSVG } from './components/FretboardSVG';
 import { FretWindowThumb } from './components/FretWindowThumb';
-import { useLanguage } from './i18n';
+import { useLanguage, getT, fmt, zh } from './i18n';
 
 const COLOR_SCHEMES = ['navy', 'crimson', 'green', 'blue', 'red', 'brown'];
 
 function Fretboard({ mode = 'normal' }) {
   const { t } = useLanguage();
+  const tf = t?.fretboard ?? zh.fretboard;
 
   // 使用自定义hooks
   const fretboardState = useFretboardState();
@@ -204,7 +205,7 @@ function Fretboard({ mode = 'normal' }) {
     const next = [...loadStitch(), item]; // 以 localStorage 为准，避免旧闭话覆盖
     persistStitch(next);
     setStitchItems(next);
-    showToast(`已加入拼接区（第 ${next.length} 张）— 悬停右上角查看`, 'success');
+    showToast(fmt(getT().fretboard.stitchAdded, { n: next.length }), 'success');
   }, [captureBoard, includeMarkers, showNotes, horizontalCrop, verticalCrop, showToast]);
 
   // Ctrl+Shift+C（普通模式）：复制拼接图（与悬浮舱「复制拼接图」同路）；拼接区为空时静默无事发生
@@ -227,7 +228,7 @@ function Fretboard({ mode = 'normal' }) {
   const toggleStitchUnify = useCallback((v) => {
     setStitchUnify(v);
     if (v && stitchItems.length && !unifySchemeOf(stitchItems)) {
-      showToast('第一张图包含多种色系（透明色不算），「统一色系」暂不生效', 'info');
+      showToast(getT().fretboard.stitchUnifyMulti, 'info');
     }
   }, [stitchItems, showToast]);
 
@@ -645,7 +646,7 @@ function Fretboard({ mode = 'normal' }) {
   useEffect(() => {
     if (toolbarDropdown && toolbarRef.current) {
       setTimeout(() => {
-        const buttonSelector = `.toolbar-icon-btn[title="${toolbarDropdown === 'type' ? '类型' : toolbarDropdown === 'arrow' ? '箭头' : toolbarDropdown === 'width' ? '粗细' : '弧度'}"]`;
+        const buttonSelector = `.toolbar-icon-btn[data-tool="${toolbarDropdown}"]`;
         const button = toolbarRef.current?.querySelector(buttonSelector);
         if (button) {
           const direction = detectDropdownDirection(button, toolbarRef, svgElementRef);
@@ -886,7 +887,7 @@ function Fretboard({ mode = 'normal' }) {
   const handleNoteMiddleDown = useCallback((noteId) => {
     const dyn = dynamicRef.current;
     if (dyn.isDynamic) {
-      if (dyn.viewMode !== 'edit') { showToast('中键链音只在编辑态可用（Q 切回编辑）', 'info'); return true; }
+      if (dyn.viewMode !== 'edit') { showToast(getT().dynamic.chainEditOnly, 'info'); return true; }
       if (playingIdx !== null) setPlayingIdx(null);
       return dyn.beginChainDrag(noteId);
     }
@@ -1285,7 +1286,7 @@ function Fretboard({ mode = 'normal' }) {
     const idx = cur.findIndex(it => it.id === id);
     if (idx < 0) return;
     applyClipBoard(cur[idx].state);
-    showToast(`已还原第 ${idx + 1} 张到编辑板面`, 'success');
+    showToast(fmt(getT().fretboard.stitchRestored, { n: idx + 1 }), 'success');
   }, [applyClipBoard, showToast]);
   const handleLoadClipRef = useRef(null);
 
@@ -1427,7 +1428,7 @@ function Fretboard({ mode = 'normal' }) {
     const frames = framesRef.current;
     const specs = transitionsRef.current;
     const preCheck = expandTimeline(frames, specs, 300, 200);
-    if (preCheck.states.length < 2 && !(preCheck.fx || []).length) throw new Error('需要至少 2 帧，或单帧内含技法/前置划弦标注');
+    if (preCheck.states.length < 2 && !(preCheck.fx || []).length) throw new Error(getT().fretboard.needTwoFrames);
     const settings = animSettingsRef.current;
     const tl = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200, { leadBlank: !!settings.leadBlank });
     // 统一舞台（与预览播放同源）：联合品窗 + 统一裁剪框，GIF/WebM/SMIL/预览四者同视野
@@ -1497,7 +1498,7 @@ function Fretboard({ mode = 'normal' }) {
           cumulative: cumulativeView,
           onProgress: (i, n) => {
             const pct = Math.floor(i / n * 100);
-            if (pct >= lastPct + 10 || i === n) { lastPct = pct; showToast(`编码中 ${i}/${n} 帧`, 'info'); }
+            if (pct >= lastPct + 10 || i === n) { lastPct = pct; showToast(fmt(getT().fretboard.encoding, { i, n }), 'info'); }
           }
         });
       }
@@ -1512,10 +1513,10 @@ function Fretboard({ mode = 'normal' }) {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-      showToast(`已导出 ${ext.toUpperCase()}（${(blob.size / 1024).toFixed(0)} KB）`, 'success');
+      showToast(fmt(getT().fretboard.exportedSize, { ext: ext.toUpperCase(), kb: (blob.size / 1024).toFixed(0) }), 'success');
     } catch (error) {
       console.error('导出失败:', error);
-      showToast(`导出失败: ${error.message}`, 'error');
+      showToast(fmt(getT().fretboard.exportFail, { msg: error.message }), 'error');
     } finally {
       setExporting(null);
     }
@@ -1523,8 +1524,9 @@ function Fretboard({ mode = 'normal' }) {
 
   // 动画 SVG 落盘共用（Ctrl+C / Ctrl+Shift+C）：直接下载
   const saveSvgBlobToDisk = useCallback(async (buildFn) => {
+    const tf0 = getT().fretboard;
     try {
-      showToast('生成动图 SVG…', 'info');
+      showToast(tf0.generatingSvg, 'info');
       setExporting('svganim');
       const svgBlob = await buildFn();
       const name = `fretboard-${Date.now()}.svg`;
@@ -1532,9 +1534,9 @@ function Fretboard({ mode = 'normal' }) {
       const a = document.createElement('a'); a.href = url; a.download = name;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-      showToast(`已下载 SVG（${(svgBlob.size / 1024).toFixed(0)} KB）`, 'success');
+      showToast(fmt(tf0.downloadedSvg, { kb: (svgBlob.size / 1024).toFixed(0) }), 'success');
     } catch (error) {
-      showToast(`保存失败: ${error.message}`, 'error');
+      showToast(fmt(tf0.saveFail, { msg: error.message }), 'error');
     } finally {
       setExporting(null);
     }
@@ -1551,16 +1553,17 @@ function Fretboard({ mode = 'normal' }) {
   // 色档深浅即加入时间线（浅早深晚），静态图里动画的趋势依然可读。
   // 剪贴板只收 image/png（浏览器限制）；非安全上下文（http://IP）无剪贴板 API 时回落下载 PNG
   const copyUnionSnapshot = useCallback(async () => {
+    const tf0 = getT().fretboard;
     try {
       setExporting('png');
       const frames = framesRef.current;
-      if (!frames.length) throw new Error('动图为空');
+      if (!frames.length) throw new Error(tf0.clipEmpty);
       const specs = transitionsRef.current;
       const settings = animSettingsRef.current;
       const tl = expandTimeline(frames, specs, Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 300, Number(settings.transMs) > 0 ? Number(settings.transMs) : 200, { leadBlank: !!settings.leadBlank });
       const acc = accumulateStates(tl.states);
       let union = acc[acc.length - 1];
-      if (!union) throw new Error('动图为空');
+      if (!union) throw new Error(tf0.clipEmpty);
       // 品窗：跨全部帧的联合窗口（与动图导出同款规则）
       let wStart = Infinity, wEnd = -Infinity;
       frames.forEach(f => {
@@ -1610,7 +1613,7 @@ function Fretboard({ mode = 'normal' }) {
         const url = URL.createObjectURL(blob);
         const image = new Image();
         image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
-        image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('快照 SVG 解码失败')); };
+        image.onerror = () => { URL.revokeObjectURL(url); reject(new Error(tf0.snapshotDecodeFail)); };
         image.src = url;
       });
       const w = img.naturalWidth || Number(settings.width) || 720;
@@ -1622,20 +1625,20 @@ function Fretboard({ mode = 'normal' }) {
       ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0);
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-      if (!blob) throw new Error('PNG 编码失败');
+      if (!blob) throw new Error(tf0.pngEncodeFail);
       if (navigator.clipboard && window.ClipboardItem) {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        showToast('已复制整图快照（所有点都在，含动作标注与离场音）', 'success');
+        showToast(tf0.snapshotCopied, 'success');
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = `fretboard-${Date.now()}.png`;
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
-        showToast('剪贴板不可用（非安全上下文），已改为下载 PNG', 'info');
+        showToast(tf0.clipboardFallback, 'info');
       }
     } catch (error) {
-      showToast(`复制快照失败：${error.message}`, 'error');
+      showToast(fmt(tf0.copySnapshotFail, { msg: error.message }), 'error');
     } finally {
       setExporting(null);
     }
@@ -1699,7 +1702,7 @@ function Fretboard({ mode = 'normal' }) {
     <>
       {attachEdit ? (
         <div className="attach-bar">
-          <span className="attach-bar-label">🖼 {attachEdit.kind === 'board' ? '静态配图编辑中' : '动图配图编辑中'}</span>
+          <span className="attach-bar-label">🖼 {attachEdit.kind === 'board' ? tf.editingStaticAttach : tf.editingAnimAttach}</span>
           <button className="button sm accent" onClick={async () => {
             if (attachEdit.kind === 'board') {
               await finishAttach({ kind: 'board', frame: captureBoard() });
@@ -1713,11 +1716,11 @@ function Fretboard({ mode = 'normal' }) {
                 await finishAttach({ kind: 'clip', id: clip.id });
               }
             }
-          }}>✓ 完成配图</button>
+          }}>{tf.finishAttach}</button>
           <button className="button sm" onClick={() => {
             sessionStorage.removeItem('fretboard-attach-edit');
             window.location.hash = '#/chords';
-          }}>取消</button>
+          }}>{tf.cancel}</button>
 
 
 
@@ -1731,7 +1734,7 @@ function Fretboard({ mode = 'normal' }) {
               className="dyn-badge"
               style={dynamic.sessionClip?.id ? { cursor: 'text' } : undefined}
               onClick={() => { if (dynamic.sessionClip?.id) setBadgeEditing(true); }}
-              title={dynamic.sessionClip?.id ? '点击改名' : '新动图（尚未定格）'}>
+              title={dynamic.sessionClip?.id ? tf.clickRename : tf.newClipDraft}>
               <span className="dyn-badge-dot" />
               {badgeEditing
                 ? <input
@@ -1749,11 +1752,11 @@ function Fretboard({ mode = 'normal' }) {
                   />
                 : (dynamic.sessionClip && (dynamic.persistedOnce || dynamic.viewMode === 'preview'))
                   ? (dynamic.sessionClip.name.length > 10 ? dynamic.sessionClip.name.slice(0, 10) + '…' : dynamic.sessionClip.name)
-                  : '新动图'}
+                  : tf.newClipName}
               <span className="dyn-badge-sep">|</span>
               {dynamic.viewMode === 'preview'
-                ? `${dynamic.frames.length} 帧`
-                : `编辑 ${dynamic.editIdx + 1}/${dynamic.frames.length}`}
+                ? fmt(tf.frameCount, { n: dynamic.frames.length })
+                : fmt(tf.editFrameOf, { i: dynamic.editIdx + 1, n: dynamic.frames.length })}
             </div>
           )}
         </div>
@@ -1882,7 +1885,7 @@ function Fretboard({ mode = 'normal' }) {
               const hot = hoveredPair && hoveredPair.from === m.from && hoveredPair.to === m.to;
               return (
                 <g key={i} opacity={hot ? 1 : 0.85}>
-                  <title>{hot ? '按退格/Delete 删除该标注' : '悬停后按退格/Delete 删除'}</title>
+                  <title>{hot ? tf.markDelHot : tf.markDelHint}</title>
                   {/* 命中层：只做悬停，不拦截点击（拖拽手势/点音不受影响） */}
                   <line className="tech-hit" x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={16} style={{ pointerEvents: 'stroke' }}
                     onMouseEnter={() => setHoveredPair({ from: m.from, to: m.to })}
@@ -1971,7 +1974,7 @@ function Fretboard({ mode = 'normal' }) {
                   if (playingIdx !== null) setPlayingIdx(null);
                 }
               }}
-              title={dynamic.viewMode === 'edit' ? `第 ${i + 1} 帧` : `查看第 ${i + 1} 帧`}
+              title={dynamic.viewMode === 'edit' ? fmt(tf.frameN, { n: i + 1 }) : fmt(tf.viewFrameN, { n: i + 1 })}
             >
               <ScoreBoard snapshot={{ state: frame }} />
               <span className="dyn-frame-no">{i + 1}</span>
@@ -1980,7 +1983,7 @@ function Fretboard({ mode = 'normal' }) {
                   className="dyn-thumb-del"
                   onClick={e => { e.stopPropagation(); dynamic.deleteFrame(i); }}
                   disabled={playingIdx !== null || dynamic.frames.length <= 1}
-                  title={`删除第 ${i + 1} 帧`}
+                  title={fmt(tf.delFrameN, { n: i + 1 })}
                 >×</button>
               )}
             </div>
@@ -1990,7 +1993,7 @@ function Fretboard({ mode = 'normal' }) {
               className="dyn-thumb-add"
               onClick={() => dynamic.addFrame(dynamic.frames.length - 1)}
               disabled={playingIdx !== null}
-              title="追加新帧"
+              title={tf.addFrame}
             >＋</button>
           )}
         </div>
@@ -2004,7 +2007,7 @@ function Fretboard({ mode = 'normal' }) {
               key={i}
               className={`dyn-frame-thumb ${i === dynamic.editIdx ? 'active' : ''}`}
               onClick={() => dynamic.gotoFrame(i)}
-              title={`第 ${i + 1} 帧`}
+              title={fmt(tf.frameN, { n: i + 1 })}
             >
               <ScoreBoard snapshot={{ state: frame }} />
               <span className="dyn-frame-no">{i + 1}</span>
@@ -2168,8 +2171,9 @@ function Fretboard({ mode = 'normal' }) {
         onRenamed={refreshClips}
         onExamples={() => {
           import('./utils/exampleClips').then(({ ensureExampleClips }) => {
-            setClips(ensureExampleClips(true)); // 显式要求：清掉"已清空"标记并补回示例
-            showToast('已载入 6 张示例动图', 'success');
+            const nextClips = ensureExampleClips(true); // 显式要求：清掉"已清空"标记并补回示例
+            setClips(nextClips);
+            showToast(fmt(tf.examplesLoaded, { n: nextClips.length }), 'success');
           });
         }}
         t={t}

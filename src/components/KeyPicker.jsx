@@ -1,3 +1,4 @@
+import { useLanguage, zh } from "../i18n";
 import { UiSelect } from "./UiSelect";
 import { KEY_LETTERS, keyLabelText } from "../utils/chordChartModel.js";
 
@@ -12,26 +13,28 @@ import { KEY_LETTERS, keyLabelText } from "../utils/chordChartModel.js";
 //   onChange(letter, acc, minor)          主音/升降号/调式任意变化；音高由调用方按 keyPcOf 换算
 //   onClear()                             清除标记
 export function KeyPicker({ letter, acc, minor, marked, onChange, onClear, disabled, title }) {
+	const { t } = useLanguage();
+	const ts = t?.chords ?? zh.chords;
 	const accI = acc || 0;
 	const setAcc = (d) => onChange(letter, Math.max(-1, Math.min(1, accI + d)), minor);
 	return (
 		<span className="cc-key-stepper" role="group" aria-label={title}>
 			<UiSelect value={letter} disabled={disabled} menuClassName="ui-grid" className="cc-key-root" menuAbsolute
 				options={KEY_LETTERS.map((k, i) => ({ value: i, label: k }))}
-				title="主音：C D E F G A B"
+				title={ts.keyRootTip}
 				onChange={li => onChange(li, accI, minor)}>
 				<span className="cc-key-root-txt">1 =</span>
 				<b>{KEY_LETTERS[letter] ?? "C"}{accI > 0 ? "♯" : accI < 0 ? "♭" : ""}</b>
 				<i className="ui-select-arrow">▾</i>
 			</UiSelect>
 			<button type="button" className={`cc-key-mode${minor ? " minor" : ""}`} disabled={disabled}
-				title="切换大调/小调" onClick={() => onChange(letter, accI, !minor)}>
-				{minor ? "小调" : "大调"}
+				title={ts.keyModeTip} onClick={() => onChange(letter, accI, !minor)}>
+				{minor ? ts.keyMinor : ts.keyMajor}
 			</button>
-			<button type="button" disabled={disabled} title={accI <= -1 ? "已是降号" : "降号 (♭)"} onClick={() => setAcc(-1)}>♭</button>
-			<button type="button" disabled={disabled} title={accI >= 1 ? "已是升号" : "升号 (♯)"} onClick={() => setAcc(1)}>♯</button>
+			<button type="button" disabled={disabled} title={accI <= -1 ? ts.accFlatDisabled : ts.accFlatTitle} onClick={() => setAcc(-1)}>♭</button>
+			<button type="button" disabled={disabled} title={accI >= 1 ? ts.accSharpDisabled : ts.accSharpTitle} onClick={() => setAcc(1)}>♯</button>
 			{marked && onClear ? (
-				<button type="button" className="cc-key-clear" title="清除转调（恢复原调）" onClick={onClear}>×</button>
+				<button type="button" className="cc-key-clear" title={ts.keyClear} onClick={onClear}>×</button>
 			) : null}
 			<span className="cc-key-pc" hidden>{keyLabelText(letter, accI, minor)}</span>
 		</span>

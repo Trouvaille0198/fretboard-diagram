@@ -10,6 +10,7 @@ import {
     updateState as updateStateAPI,
     deleteState as deleteStateAPI
 } from '../utils/api';
+import { getT } from '../i18n/getT.js';
 
 /**
  * 存储服务 - 简化版
@@ -74,12 +75,12 @@ class StorageService {
      */
     async saveAll(directories, states) {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再保存');
+            throw new Error(getT().utils.loginRequired);
         }
 
         const response = await saveToBackend(directories, states);
         if (!response.success) {
-            throw new Error(response.message || '保存到服务器失败');
+            throw new Error(response.message || getT().utils.serverSaveFail);
         }
         return response;
     }
@@ -91,7 +92,7 @@ class StorageService {
      */
     async createDirectory(directory) {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再创建目录');
+            throw new Error(getT().utils.loginRequired);
         }
 
         return this.retry(async () => {
@@ -99,7 +100,7 @@ class StorageService {
                 return await createDirectoryAPI(directory);
             } catch (error) {
                 console.error('创建目录失败:', error);
-                throw new Error(error.message || '创建目录失败');
+                throw new Error(error.message || getT().utils.dirCreateFail);
             }
         });
     }
@@ -109,7 +110,7 @@ class StorageService {
      */
     async getDirectories() {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再获取目录');
+            throw new Error(getT().utils.loginRequired);
         }
 
         return this.retry(async () => {
@@ -117,7 +118,7 @@ class StorageService {
                 return await getDirectoriesAPI();
             } catch (error) {
                 console.error('获取目录失败:', error);
-                throw new Error(error.message || '获取目录失败');
+                throw new Error(error.message || getT().utils.dirFetchFail);
             }
         });
     }
@@ -127,14 +128,14 @@ class StorageService {
      */
     async updateDirectory(directoryId, data) {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再更新目录');
+            throw new Error(getT().utils.loginRequired);
         }
 
         try {
             return await updateDirectoryAPI(directoryId, data);
         } catch (error) {
             console.error('更新目录失败:', error);
-            throw new Error(error.message || '更新目录失败');
+            throw new Error(error.message || getT().utils.dirUpdateFail);
         }
     }
 
@@ -143,7 +144,7 @@ class StorageService {
      */
     async deleteDirectory(directoryId) {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再删除目录');
+            throw new Error(getT().utils.loginRequired);
         }
 
         return this.retry(async () => {
@@ -151,7 +152,7 @@ class StorageService {
                 return await deleteDirectoryAPI(directoryId);
             } catch (error) {
                 console.error('删除目录失败:', error);
-                throw new Error(error.message || '删除目录失败');
+                throw new Error(error.message || getT().utils.dirDeleteFail);
             }
         });
     }
@@ -163,7 +164,7 @@ class StorageService {
      */
     async createState(state) {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再创建状态');
+            throw new Error(getT().utils.loginRequired);
         }
 
         return this.retry(async () => {
@@ -171,7 +172,7 @@ class StorageService {
                 return await createStateAPI(state);
             } catch (error) {
                 console.error('创建状态失败:', error);
-                throw new Error(error.message || '创建状态失败');
+                throw new Error(error.message || getT().utils.stateCreateFail);
             }
         });
     }
@@ -181,7 +182,7 @@ class StorageService {
      */
     async getStates(directoryId = null) {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再获取状态');
+            throw new Error(getT().utils.loginRequired);
         }
 
         return this.retry(async () => {
@@ -189,7 +190,7 @@ class StorageService {
                 return await getStatesAPI(directoryId);
             } catch (error) {
                 console.error('获取状态失败:', error);
-                throw new Error(error.message || '获取状态失败');
+                throw new Error(error.message || getT().utils.stateFetchFail);
             }
         });
     }
@@ -199,14 +200,14 @@ class StorageService {
      */
     async updateState(stateId, data) {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再更新状态');
+            throw new Error(getT().utils.loginRequired);
         }
 
         try {
             return await updateStateAPI(stateId, data);
         } catch (error) {
             console.error('更新状态失败:', error);
-            throw new Error(error.message || '更新状态失败');
+            throw new Error(error.message || getT().utils.stateUpdateFail);
         }
     }
 
@@ -215,7 +216,7 @@ class StorageService {
      */
     async deleteState(stateId) {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再删除状态');
+            throw new Error(getT().utils.loginRequired);
         }
 
         return this.retry(async () => {
@@ -223,7 +224,7 @@ class StorageService {
                 return await deleteStateAPI(stateId);
             } catch (error) {
                 console.error('删除状态失败:', error);
-                throw new Error(error.message || '删除状态失败');
+                throw new Error(error.message || getT().utils.stateDeleteFail);
             }
         });
     }
@@ -234,7 +235,7 @@ class StorageService {
      */
     async loadAll() {
         if (!this.isAuthenticated) {
-            throw new Error('请先登录后再加载历史');
+            throw new Error(getT().utils.loginRequired);
         }
 
         // 分别加载目录和状态，而不是使用全量接口
@@ -250,7 +251,7 @@ class StorageService {
             };
         } catch (error) {
             console.error('加载数据失败:', error);
-            throw new Error(error.message || '从服务器加载失败');
+            throw new Error(error.message || getT().utils.serverLoadFail);
         }
     }
 
