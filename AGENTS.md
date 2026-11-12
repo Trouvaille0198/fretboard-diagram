@@ -22,6 +22,10 @@
 4. **Commit Message 格式要求**：
    - **Subject**：单行且不超过 50 个字符，准确概括改动内容；
    - **Body**：与 Subject 之间空一行，详细说明改动背景、关键细节与验证方法。严禁将长篇分析直接塞入 Subject。
+5. **推送前提交检查（硬性）**：push 前必须先 `git log origin/main..HEAD --oneline` 检查未推送提交列表——
+   迭代过程中的碎提交（连续调参、试错、返工产生的中间态）必须先合并成有意义的主题提交再推送：
+   `git reset --soft origin/main` 后按主题重新分组提交，`git diff backup分支 HEAD` 校验合并前后逐字节一致；
+   同时确认工作区干净、smoke 全绿后再 push。严禁把一串无意义的迭代碎提交直接推上远端。
 
 ---
 
