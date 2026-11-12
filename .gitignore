@@ -10,3 +10,6 @@ server/data.db*
 
 # 认证服务数据库（部署时挂载，别进仓库）
 server-data/
+
+# ZCode 会话计划快照（工具自管，不入库）
+.zcode/
