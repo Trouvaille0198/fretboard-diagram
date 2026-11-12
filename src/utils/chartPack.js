@@ -235,6 +235,7 @@ function encodeMeasure(m) {
 	if (m.house) o.H = m.house;
 	if (m.keyRoot != null) o.K = [m.keyRoot, m.keyMinor ? 1 : 0];
 	if (m.tint) o.T = m.tint;
+	if (m.lineBreak) o.N = 1; // 手动换行标记：该小节另起一行（N = new line）
 	return o;
 }
 
@@ -312,6 +313,8 @@ function decodeMeasure(o) {
 		house: o.H ?? null,
 		slots: (o.p || []).map(decodeSlot)
 	};
+	// lineBreak 条件写入（不落 false 键）：往返比较按 norm 抹平 null/undefined，false 会破坏对齐
+	if (o.N) m.lineBreak = true;
 	if (Array.isArray(o.LB?.r)) m.lyricsBold = o.LB.r.filter(x => Array.isArray(x) && Number.isFinite(x[0]) && Number.isFinite(x[1]));
 	if (o.RP && Number.isFinite(o.RP.n) && o.RP.n > 1) m.repeatTimes = o.RP.n;
 	if (o.K) { m.keyRoot = o.K[0]; m.keyMinor = !!o.K[1]; }

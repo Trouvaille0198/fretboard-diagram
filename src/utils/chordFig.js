@@ -235,7 +235,7 @@ export function figSvg(fig, opts = {}) {
 		return "";
 	};
 	// 带度数的点 0.40 格:相邻弦的点之间留 0.2 格空隙(0.44 时 R 5 ♭3 三点相贴)
-	const rDeg = 0.40 * cell, rPlain = 0.35 * cell;
+	const rDeg = 0.42 * cell, rPlain = 0.40 * cell;
 	const dotR = (p) => (degFor(p) ? rDeg : rPlain);
 	// 连线(压点下层):主板三种预设如实成形——line/line-arrow 直线;arc-arrow 弧线:两端各沿垂直于两音连线的方向
 	// 起落的 cubic(切线正对圆心,可见段始终"对着音符中心";二次曲线的控制点悬在两音中点上,短跨距时斜切圆边像没对准)。
@@ -302,12 +302,11 @@ export function figSvg(fig, opts = {}) {
 		if (arrowDirection === "start" || arrowDirection === "both") arrowAt("start");
 	});
 	// (闷音/空弦不画 ×/○ —— 传统黑点图不带圈叉标记;闷音直接不显示)
-	// 点 + 度数(点径=格距固定比例);划音幽灵起点画空心圆环(无实色=空音符)
+	// 点 + 度数(点径=格距固定比例);划音幽灵起点不画圈——只留箭头指向目标音（用户要求起点音不展示）
 	fig.points.forEach(p => {
 		const { x, y } = posOf(p);
 		if (p.ghost) {
-			svg += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${(rGhost).toFixed(2)}" fill="none" stroke="${th.dot}" stroke-width="${(1.2 * cell / 9).toFixed(2)}"/>`;
-			return; // 幽灵起点不标度数（空音符是滑入的经过音，标了反而误导）
+			return; // 幽灵起点只作为箭头几何端点存在（posOf 坐标仍供连线用），不画圈不标度数
 		}
 		const deg = degFor(p);
 		// 所有点(格内按弦音与琴枕外空弦音)同一套半径/字号的度数——视觉全等

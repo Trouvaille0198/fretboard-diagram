@@ -789,7 +789,7 @@
 /* 行：行首编号/段落 + 小节格 */
 .cc-line {
     display: flex;
-    margin-bottom: 12px;
+    margin-bottom: 8px
 }
 
 .cc-line-head {
@@ -815,8 +815,8 @@
 /* 有图行：小节线从图行下方(figH+8)起笔，行号跟着到同一高度、紧邻小节线——
    不再钉在行顶（那里现在是和弦图，行号标在图旁实测被用户打回）；
    行内还有角标带时再下移带宽(20+2)px */
-.cc-line:has(.cc-cell-figs.pad) .cc-line-no-float { top: calc(var(--cc-fig-h) + 8px); }
-.cc-line:has(.cc-cell-tags.in-flow) .cc-line-no-float { top: calc(var(--cc-fig-h) + 30px); }
+.cc-line:has(.cc-cell-figs.pad) .cc-line-no-float { top: calc(var(--cc-fig-h) + 2px); }
+.cc-line:has(.cc-cell-tags.in-flow) .cc-line-no-float { top: calc(var(--cc-fig-h) + 22px); }
 .cc-line { position: relative; }
 
 /* 移动端：左右边距全部收紧（寸土寸金） */
@@ -837,7 +837,7 @@
     .app-main { padding: 2px !important; } /* lint-allow-important 断点承载层（实证：删后移动端布局变化，勿动） */
     .cc-page .cc-body { padding: 2px; }
     .cc-page .cc-score { padding: 6px 6px 6px; }
-    .cc-cell { padding: 4px 5px 2px 5px; }
+    .cc-cell { padding: 2px 5px 2px 5px; }
     .cc-page { --cc-beat-gap: 3px; }
     .cc-page .cc-tooltabs button { padding: 5px 8px 4px; }
     .cc-score-head { gap: 4px; }
@@ -846,7 +846,7 @@
     .cc-beat .csign, .cc-beat .cc-glyph { zoom: 0.78; }
     .cc-cell-lyrics { font-size: var(--app-fs-2xs); }
     /* 窄屏图被拍格宽度夹住（~40px），行高再高也只是留白——维持原 108，不多占竖向空间 */
-    .cc-page { --cc-fig-h: 108px; }
+    .cc-page { --cc-fig-h: 64px; }
     /* 歌词加粗覆盖层跟随窄屏歌词字号（.cc-cell-lyrics 同款降档） */
     .cc-page .cc-lyrics-rich { font-size: var(--app-fs-2xs); }
 }
@@ -889,7 +889,7 @@
 .cc-cell {
     position: relative;
     min-width: 0;
-    padding: 4px 9px 2px 6px;
+    padding: 2px 9px 2px 6px;
     display: flex;
     flex-direction: column;
     /* 左侧让开小节线的呼吸空间 */
@@ -900,11 +900,11 @@
     content: "";
     position: absolute;
     left: 0;
-    bottom: 0;
+    bottom: 20px; /* 止于歌词行上方，不遮歌词 */
     width: 1.5px;
     background: var(--cc-bar-ink);
 }
-.cc-cell:has(.cc-cell-figs.pad)::before { top: calc(var(--cc-fig-h) + 8px); } /* 图行占位高(图高+4 下边距)+4 格上内边距 以下才开始画线 */
+.cc-cell:has(.cc-cell-figs.pad)::before { top: calc(var(--cc-fig-h) + 2px); } /* 图行占位高(图高+2 下边距)+2 格上内边距 以下才开始画线 */
 .cc-cell:not(:has(.cc-cell-figs.pad))::before { top: 0; }
 
 .cc-cell:first-child::before {
@@ -922,7 +922,7 @@
     position: absolute;
     right: 0;
     top: 0;
-    bottom: 0;
+    bottom: 20px; /* 止于歌词行上方，不遮歌词 */
     width: 1.5px;
     background: var(--cc-bar-ink);
     box-shadow: -4px 0 0 var(--cc-bar-ink);
@@ -934,7 +934,7 @@
     position: absolute;
     right: 0;
     top: 0;
-    bottom: 0;
+    bottom: 20px; /* 止于歌词行上方，不遮歌词 */
     width: 4px;
     background: var(--cc-bar-ink);
     box-shadow: -5.5px 0 0 var(--cc-bar-ink);
@@ -946,7 +946,7 @@
     position: absolute;
     right: 0;
     top: 0;
-    bottom: 0;
+    bottom: 20px; /* 止于歌词行上方，不遮歌词 */
     width: 4px;
     background: var(--cc-bar-ink);
     box-shadow: -5.5px 0 0 var(--cc-bar-ink);
@@ -959,10 +959,10 @@
 
 /* 右缘线（双线/终止/反复结束）与左侧小节线同口径：有图行时从图行下方起笔——
    top:0 会贯通整个小节格，被和弦图行拉高到谱面上方 */
-.cc-cell:has(.cc-cell-figs.pad)::after { top: calc(var(--cc-fig-h) + 8px); }
+.cc-cell:has(.cc-cell-figs.pad)::after { top: calc(var(--cc-fig-h) + 2px); }
 
 /* 反复双点居中于拍格行（有图行时避开图行:图高+8 边距 + 拍格半高 29px） */
-.cc-cell:has(.cc-cell-figs.pad) .cc-bardots { top: calc(var(--cc-fig-h) + 37px); }
+.cc-cell:has(.cc-cell-figs.pad) .cc-bardots { top: calc(var(--cc-fig-h) + 31px); }
 
 /* 反复结束紧跟反复开始（同一条小节线）：两符号并成标准 :||:，以小节线为轴左右对称——
    粗线 4px 骑线居中 [-2,+2]；左细线由下一格的 ::before 画在 [-6.5,-5]，右细线由其 ::after 画在 [+5,+6.5]；
@@ -976,7 +976,7 @@
     content: "";
     position: absolute;
     left: 5px;
-    top: calc(var(--cc-fig-h) + 30px);
+    top: calc(var(--cc-fig-h) + 22px);
     bottom: 0;
     width: 1.5px;
     background: var(--cc-bar-ink);
@@ -984,7 +984,7 @@
 .cc-cell.repeat-joint + .cc-cell .cc-bardots.start { left: 8px; }
 
 /* ×N 标识：有图行时落到拍格行右上（结束圆点上方），无图行贴小节顶 */
-.cc-cell:has(.cc-cell-figs.pad) .cc-repeat-times { top: calc(var(--cc-fig-h) + 12px); }
+.cc-cell:has(.cc-cell-figs.pad) .cc-repeat-times { top: calc(var(--cc-fig-h) + 6px); }
 
 /* 记号区让位（padding 不改列宽） */
 .cc-cell.rep-start {
@@ -1121,15 +1121,15 @@
 
 /* 拍格 */
 /* 图行与拍格同轨：grid 列数=槽位数(--cc-fig-n 由 JSX 按小节给)、列距=拍距(--cc-beat-gap 与 .cc-cell-slots 同源)，
-   每个图显式落在自己拍的列上(grid-column 内联)。右邻槽位没图时图 span 跨过去(见 ChordChartView 图行注释)，
-   跨拍图([data-span]) svg 撑满整段：几何按实测段宽重算(figSvg boxW/boxH)，只加宽不加高，弦/品格距拉开 */
+   每个图显式落在自己拍的列上(grid-column 内联)。右邻槽位没图时图 span 跨过去拉宽弦距，
+   几何恒为原始设计尺寸（整段宽×144），渲染由 --cc-fig-h 统一缩放至 72%（104/144），比例与原版一致 */
 /* pad：同行有图时全行占位（空小节也留同高带），记号才同线；整行无图(:empty 无 pad)不占高 */
 /* 图行高度单一来源 --cc-fig-h：svg 高 / pad 占位高(+4 下边距) / 小节线起点(再 +4 格上内边距) 三处同步。
    图宽随之按比例长；窄拍格下 max-width:100% 夹住，相邻图至少隔一个拍距 + 图内左右留白 */
-.cc-page { --cc-fig-h: 144px; --cc-beat-gap: 5px; }
-.cc-cell-figs { display: grid; grid-template-columns: repeat(var(--cc-fig-n, 4), minmax(0, 1fr)); align-items: start; gap: var(--cc-beat-gap); margin-bottom: 4px; min-height: 0; }
+.cc-page { --cc-fig-h: 132px; --cc-beat-gap: 5px; }
+.cc-cell-figs { display: grid; grid-template-columns: repeat(var(--cc-fig-n, 4), minmax(0, 1fr)); align-items: start; gap: var(--cc-beat-gap); margin-bottom: 2px; min-height: 0; }
 .cc-cell-figs:empty:not(.pad) { display: none; }
-.cc-cell-figs.pad { min-height: calc(var(--cc-fig-h) + 4px); }
+.cc-cell-figs.pad { min-height: calc(var(--cc-fig-h) + 2px); }
 .cc-cell-figslot { display: flex; gap: 2px; min-width: 0; position: relative; }
 /* 占位带空槽：极淡虚线框（同行有图才出现），双击开编辑配图——空隙变功能槽 */
 .cc-cell-figslot .cc-figview { flex: 1; display: flex; justify-content: center; min-width: 0; }
@@ -1137,13 +1137,10 @@
 /* 单图档再放大：溢出拍格两侧各 10%——溢出的只是 svg 透明边距(左品数位/右留白)，不遮点；
    相邻图之间仍有对方品数 + 空隙分隔。flex:none 免被拍格当 flex 容器压回去；双图档两图挤一格，溢出会互叠，维持 100% */
 .cc-cell-figslot:not(.paired) .cc-figview svg { max-width: 120%; flex: none; }
-/* 跨拍图：svg 几何已按整段宽生成，宽度直接撑满(纵横比与段盒一致，不变形)，不再溢出 */
-.cc-cell-figslot[data-span] .cc-figview svg { width: 100%; max-width: 100%; }
-/* 跨小节图（简略模式）：段宽含下一小节开头空组，svg 溢出本小节格渲染（--cc-cross-w = 实测整段宽）。
-   溢出部分压在下一小节空图行之上（图槽是定位元素，命中测试本就优先于静态内容），
-   不需要 pointer-events 穿透——那会让点击穿透到格子本身、误开和弦菜单（实测踩雷） */
+/* 跨拍图（限宽版）：几何按段宽生成但封顶 192px，渲染高=行高、宽按纵横比自动——不再出超长图；
+   图在段内左对齐（和弦记号在段首拍）。跨小节溢出图：figview 定宽=限幅后的渲染宽 */
+
 .cc-cell-figslot[data-cross] .cc-figview { flex: none; width: var(--cc-cross-w); justify-content: flex-start; }
-.cc-cell-figslot[data-cross] .cc-figview svg { width: 100%; max-width: 100%; }
 
 .cc-cell-slots {
     display: flex;
@@ -2683,7 +2680,7 @@ html[data-theme="light"] .button.sm.edit-enter {
 
 /* 标记带存在时：左/右小节竖线、反复双点、×N 的基准整体下移带宽(20+2)px（v179 的 :has(.pad) 偏移之上） */
 .cc-cell:has(.cc-cell-tags.in-flow)::before,
-.cc-cell:has(.cc-cell-tags.in-flow)::after { top: calc(var(--cc-fig-h) + 30px); }
+.cc-cell:has(.cc-cell-tags.in-flow)::after { top: calc(var(--cc-fig-h) + 22px); }
 .cc-cell:has(.cc-cell-tags.in-flow) .cc-bardots { top: calc(var(--cc-fig-h) + 59px); }
 .cc-cell:has(.cc-cell-tags.in-flow) .cc-repeat-times { top: calc(var(--cc-fig-h) + 34px); }
 

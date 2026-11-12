@@ -322,7 +322,13 @@
 }
 
 .cc-page .cc-line {
-    margin-bottom: 28px; /* 行间呼吸空间：内嵌图行变高后 18px 仍显挤，行与行之间再放开些 */
+    margin-bottom: 12px; /* 行间空隙收紧（用户实测 28px 留白过大）：图行加高后贴紧排布 */
+}
+
+/* 手动换行起始的行：行间只加一条横向分割线，不留额外空隙（用户要求只要线不要空） */
+.cc-page .cc-line.brk {
+    border-top: 1px solid color-mix(in srgb, var(--app-text) 14%, transparent);
+    padding-top: 10px; /* 线下留一点空隙再接谱面内容 */
 }
 
 .cc-page .cc-cell-slots {

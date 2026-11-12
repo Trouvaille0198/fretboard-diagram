@@ -313,7 +313,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		};
 	}, [song.timeSig, compactView]);
 
-	// 内嵌图行跨拍拉宽用的实测几何：各拍数下的拍格宽(byN[拍数])、拍距(gap)、图高(--cc-fig-h，窄屏断点会降到 108)。
+	// 内嵌图行跨拍拉宽用的实测几何：各拍数下的拍格宽(byN[拍数])、拍距(gap)、图高(--cc-fig-h，窄屏断点会降到 72)。
 	// 图 svg 要按"跨过的那段槽位"的真实像素宽重算几何，只能量 DOM。
 	// ⚠测量绝不能挂在"每次渲染"上： setState → 重渲染 → 再测量 若赶上布局在两个状态间振荡(自动每行小节数/滚动条
 	// 出现消失正好卡在阈值)，比较器永不收敛 → Maximum update depth 白屏。所以只在"会改变拍宽的结构变化"后同步量
@@ -324,7 +324,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		if (!el) return;
 		const slotsEl = el.querySelector(".cc-cell-slots");
 		const gap = slotsEl ? parseFloat(getComputedStyle(slotsEl).columnGap) || 0 : 0;
-		const figH = parseFloat(getComputedStyle(el).getPropertyValue("--cc-fig-h")) || 144;
+		const figH = parseFloat(getComputedStyle(el).getPropertyValue("--cc-fig-h")) || 88;
 		const byN = {};
 		el.querySelectorAll(".cc-cell").forEach(cell => {
 			const beats = cell.querySelectorAll(".cc-beat");
@@ -350,6 +350,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		window.addEventListener("resize", measureFigMetrics);
 		return () => { ro.disconnect(); window.removeEventListener("resize", measureFigMetrics); };
 	}, [figOpts.mode, measureFigMetrics]);
+
 	const popupRef = useRef(null);
 	const saveTimerRef = useRef(null);
 
@@ -1563,7 +1564,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	const cellView = (m, mi, rowHasFig, figsTags) => {
 		const inSel = selRange != null && mi >= selRange[0] && mi <= selRange[1];
 		// 反复结束紧跟反复开始（同一条小节线，且两格同在一行）：并成标准 :||:，而不是两套符号并排
-		const repeatJoint = m.endBar === "repeatEnd" && !!song.measures[mi + 1]?.repeatStart && (mi + 1) % autoPer !== 0;
+		// 同在一行 = mi+1 不是行首（行首集合含每行小节数的整倍点 + 手动换行标记的小节）
+		const repeatJoint = m.endBar === "repeatEnd" && !!song.measures[mi + 1]?.repeatStart && !rowStartSet.has(mi + 1);
 		return (
 			<div key={m.id} className={`cc-cell end-${m.endBar} ${m.repeatStart ? "rep-start" : ""} ${repeatJoint ? "repeat-joint" : ""} ${editing && cursorOn && cursor.mi === mi ? "cur" : ""} ${inSel ? "sel" : ""} ${selRange != null && mi === selRange[0] ? "sel-first" : ""} ${selRange != null && mi === selRange[1] ? "sel-last" : ""}`}
 				style={!copyMode && m.tint && TINTS[m.tint] ? { background: TINTS[m.tint] } : undefined}
@@ -1606,19 +1608,26 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => ({ key: k * 2, units: compactPairUnits(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null) }))
 						: m.slots.map((sl, si) => ({ key: si, units: (sl.split || [sl]).map((u, h) => ({ u, si, half: sl.split ? h : null })) }));
 					const flags = groups.map(g => g.units.some(({ u }) => figVisible(u)));
+					const figIdxs = flags.map((f, i) => (f ? i : -1)).filter(i => i >= 0);
 					const beatW = figMetrics ? figMetrics.byN[groups.length] : null;
 					return (
 						<div className={`cc-cell-figs${rowHasFig ? " pad" : ""}`} style={{ "--cc-fig-n": groups.length }}>
-							{groups.map(({ key, units }, gi) => {
-								if (!flags[gi]) return null;
-								let span = 1;
-								while (gi + span < groups.length && !flags[gi + span]) span++;
+							{figIdxs.map((gi, fi) => {
+								const { key, units } = groups[gi];
 								const paired = units.length > 1;
-								// 简略模式跨小节：本组拉到小节末尾、下一小节(同行)开头连续几组没图 → 溢出本格继续拉——
-								// 被跨区域是下一小节的空图行，视觉真空（CSS 关其容器指针事件，点击穿透到溢出的图）；双图档不拉；行尾不跨(下一小节在下一行)
+								// 占位 = 与左右相邻有图组的等分中点之间的段（空拍就近并入最近的有图组）——
+								// 中点分配保证相邻两图的占位永不重叠；图在合并占位居中，空隙即给图放大用
+								const prev = fi > 0 ? figIdxs[fi - 1] : null;
+								const next = fi < figIdxs.length - 1 ? figIdxs[fi + 1] : null;
+								// 空拍均分给相邻两图（平局给左图）：与左图之间的空拍各取一半作自己的左边界，
+								// 与右图之间的空拍同理作右边界——两图占位零重叠且宽度均衡
+								const L = prev == null ? 0 : prev + 1 + Math.ceil((gi - prev - 1) / 2);
+								let R = next == null ? groups.length : gi + 1 + Math.ceil((next - gi - 1) / 2);
+								// 跨小节(向右)：图已占至本小节末尾、下一小节(同行)开头连续几组没图 → 溢出本格继续占——
+								// 被跨区域是下一小节的空图行；双图档不拉；行尾不跨(下一小节在下一行)
 								let extra = 0, nextBeatW = null;
-								if (compactView && !paired && beatW && figMetrics
-									&& gi + span >= groups.length && mi + 1 < song.measures.length
+								if (!paired && beatW && figMetrics
+									&& R >= groups.length && mi + 1 < song.measures.length
 									&& Math.floor(mi / autoPer) === Math.floor((mi + 1) / autoPer)) {
 									const nm = song.measures[mi + 1];
 									const nN = Math.ceil(nm.slots.length / 2);
@@ -1630,12 +1639,15 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 									nextBeatW = extra ? figMetrics.byN[nN] : null;
 								}
 								const crossW = extra > 0 && nextBeatW ? figMetrics.mgap + extra * nextBeatW + (extra - 1) * figMetrics.gap : 0;
-								const boxW = !paired && beatW && (span > 1 || extra > 0)
-									? span * beatW + (span - 1) * figMetrics.gap + crossW : undefined;
+								// 几何恒为原始设计尺寸（占位段宽 × 144 高），纵横比与原版完全一致；
+								// 整体缩小由 --cc-fig-h 统一缩放（104 = 原 144 的 72%），比例严格不变
+								const span = R - L + extra;
+								const boxW = !paired && beatW && span > 1
+									? (R - L) * beatW + (R - L - 1) * figMetrics.gap + crossW : undefined;
 								return (
 									<div className={`cc-cell-figslot${paired ? " paired" : ""}`} key={key}
 										data-span={span > 1 ? span : undefined} data-cross={extra > 0 ? "" : undefined}
-										style={{ gridColumn: `${gi + 1} / span ${span}`, ...(extra > 0 ? { "--cc-cross-w": `${Math.round(boxW)}px` } : null) }}>
+										style={{ gridColumn: `${L + 1} / span ${span}`, ...(extra > 0 ? { "--cc-cross-w": `${Math.round(boxW)}px` } : null) }}>
 										{units.map(({ u, si, half }, i) => (figVisible(u) ? (
 											<FigView key={i} data={u.fig} chord={figChordOf(u, mi, si, half)} viewKey={keyAt(mi)}
 												opts={{ ...figOpts, compact: paired, size: paired ? 44 : 64, boxW, boxH: boxW ? figMetrics.figH : undefined }}
@@ -1712,6 +1724,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						{/* 结构操作两两一行（插入/删除配对），比单列省一半高度 */}
 						<div className="cc-mmenu-row">
 							<button onClick={() => { addMeasure(mi); setCellMenu(null); }}>＋ {ts.addMeasure}</button>
+							<button onClick={() => { duplicateMeasure(mi); setCellMenu(null); }}>⧉ {ts.dupMeasure}</button>
 							<button className="danger" onClick={() => { removeMeasure(mi); setCellMenu(null); }}>✕ {ts.delMeasure}</button>
 						</div>
 						<div className="cc-mmenu-row">
@@ -1720,6 +1733,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						</div>
 						<div className="cc-mmenu-row">
 							<button onClick={() => { setCellMenu(null); promptSection(mi); }}>¶ {ts.sectionBtn}</button>
+							<button className={m.lineBreak ? "on" : ""} title={ts.newLineTip}
+								onClick={() => patchMeasure(mi, x => ({ ...x, lineBreak: !x.lineBreak }))}>↵ {ts.newLine}</button>
 						</div>
 						<div className="cc-menu-sep" />
 						<div className="cc-mmenu-label">{ts.barlineLabel}</div>
@@ -1793,11 +1808,22 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		);
 	};
 
-	const rows = [];
+	// 行布局：每行小节数(autoPer)顺序铺排 + 手动换行标记(m.lineBreak)——
+	// 换行小节另起一行，旧行剩余位置留空（行内 grid 仍按每行 per 列渲染，空格自然留白）
 	const per = autoPer; // 响应式：视谱面宽度而定（rowsPerLine 仅作初值）
-	for (let i = 0; i < song.measures.length; i += per) rows.push(song.measures.slice(i, i + per));
-	// 行号按“演奏序”计数：反复段按遍数计入（回跳后的拍也要数）——行号 = 该行首小节首次出现时的演奏序 + 1。
-	// 原先用原始小节序，有反复的谱子下滚后数字对不上遍数（用户实测打回）。expandSong 为播放引擎同一口径。
+	const rows = [];
+	const rowStarts = [];
+	const rowStartSet = new Set();
+	{
+		let row = [], rowStart = 0;
+		song.measures.forEach((m, mi) => {
+			if (m.lineBreak && row.length) { rows.push(row); rowStarts.push(rowStart); rowStartSet.add(mi); row = []; }
+			if (!row.length) rowStart = mi;
+			row.push(m);
+			if (row.length === per) { rows.push(row); rowStarts.push(rowStart); rowStartSet.add(mi + 1); row = []; }
+		});
+		if (row.length) { rows.push(row); rowStarts.push(rowStart); }
+	}
 	const playedFirst = new Map();
 	try {
 		expandSong(song).forEach((mi, i) => { if (!playedFirst.has(mi)) playedFirst.set(mi, i); });
@@ -1817,7 +1843,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 							<button className="cc-songs-btn cc-songs-icon" onClick={goSongList} title={ts.songsTip}>←</button>
 							<button className={toolTab === "preview" ? "on" : ""} onClick={() => setToolTab("preview")}>{ts.tabPreview}</button>
 							<button className={toolTab === "chord" ? "on" : ""} onClick={() => setToolTab("chord")}>{ts.tabChord}</button>
-							<button className={toolTab === "measure" ? "on" : ""} onClick={() => setToolTab("measure")}>{ts.tabMeasure}</button>
 						</nav>
 					)}
 					{/* 曲谱设置条 */}
@@ -1944,56 +1969,6 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					</span>
 				) : null}
 					</div>
-				{editing && toolTab !== "chord" ? (
-					<div className="cc-tools-row">
-						{toolTab === "measure" ? (
-							<div className="cc-measuretools">
-								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
-								<button className="button sm" onClick={() => addMeasure(cursor.mi)}>＋ {ts.addMeasure}</button>
-								<button className="button sm" onClick={() => duplicateMeasure(cursor.mi)}>⧉ {ts.dupMeasure}</button>
-								<button className="button sm danger" onClick={() => removeMeasure(cursor.mi)} disabled={song.measures.length <= 1}>✕ {ts.delMeasure}</button>
-								<button className="button sm" onClick={() => insertBeat(cursor.mi, cursor.si)}
-									title={ts.insertBeatTip}>
-									⇥ {ts.insertBeat} <kbd>Ins</kbd>
-								</button>
-								<span className="cc-sep" />
-								<UiSelect value={song.measures[cursor.mi]?.endBar || "single"} title={ts.barlineLabel}
-									onChange={v => patchMeasure(cursor.mi, x => ({ ...x, endBar: v }))}
-									options={END_BARS.map(b => ({ value: b.v, label: ts.barNames[b.v] }))} />
-								<label className="cc-iconbtn" title={ts.repeatStart}>
-									<input type="checkbox" checked={!!song.measures[cursor.mi]?.repeatStart} onChange={e => patchMeasure(cursor.mi, x => ({ ...x, repeatStart: e.target.checked }))} />‖:
-								</label>
-								<UiSelect value={song.measures[cursor.mi]?.house || 0} title={ts.houseLabel}
-									onChange={v => patchMeasure(cursor.mi, x => ({ ...x, house: v === 0 ? null : Number(v) }))}
-									options={[{ value: 0, label: ts.houseNone }, { value: 1, label: "1." }, { value: 2, label: "2." }]} />
-								<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionShort}</button>
-								<span className="cc-sep" />
-								<label className="cc-field">{ts.keyChange}（{ts.keyChangeFrom}）</label>
-								{keyStepper()}
-							</div>
-						) : toolTab === "text" ? (
-							<div className="cc-measuretools">
-								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
-								<button className="button sm" onClick={() => promptSection(cursor.mi)}>¶ {ts.sectionBtn}</button>
-								<input className="cc-tools-lyrics" value={song.measures[cursor.mi]?.lyrics || ""} key={`ly-${cursor.mi}`}
-									placeholder={ts.lyricsPh} title={ts.lyricsFor}
-									onChange={e => patchMeasure(cursor.mi, x => ({ ...x, lyrics: e.target.value }))} />
-							</div>
-						) : toolTab === "color" ? (
-							<div className="cc-measuretools">
-								<span className="cc-tools-label">M{(song.measures[cursor.mi] ? cursor.mi + 1 : "-")}</span>
-								<span className="cc-tools-label2">{ts.tintLabel}</span>
-								{Object.keys(TINTS).map(k => (
-									<button key={k} className={`cc-tint ${k} ${(song.measures[cursor.mi]?.tint || "") === k ? "on" : ""}`}
-										title={ts.tintNames[k]} onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: k }))} />
-								))}
-								<button className="button sm" onClick={() => patchMeasure(cursor.mi, x => ({ ...x, tint: null }))}>{ts.tintClear}</button>
-							</div>
-						) : (
-							<div className="cc-tools-na">{ts.tabNA}</div>
-						)}
-					</div>
-				) : null}
 			</header>
 
 			{!editing ? (
@@ -2042,7 +2017,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 
 					<div className="cc-lines">
 							{rows.map((row, ri) => {
-								const first = ri * per;
+								const first = rowStarts[ri];
 								// 同行任一小节有图：全行图行占位（无图小节空占位带），保证全行记号同一条线
 								const rowHasFig = row.some(mm => mm.slots.some(sl => (sl.split || [sl]).some(u => u && u.fig)));
 								// 整行无歌词：歌词带压成细条省行高——输入框仍在（点击可补词，词落地离焦即恢复全高）
@@ -2050,7 +2025,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								// 行内任一小节有段落/跳房子/转调角标且有图行：角标整行统一放文档流（图行与拍格之间的标记带，空也占位对齐）
 								const figsTags = figOpts.mode === "inline" && rowHasFig && row.some(mm => mm.house || mm.section || mm.keyRoot != null);
 								return (
-									<div className={`cc-line${rowHasLyrics ? "" : " no-lyrics"}`} key={ri}>
+									<div className={`cc-line${row[0]?.lineBreak ? " brk" : ""}${rowHasLyrics ? "" : " no-lyrics"}`} key={ri}>
 									{/* 行号：叠在行首小节格左上角小字，不占独立列 */}
 									<span className="cc-line-no cc-line-no-float">{(playedFirst.get(first) ?? first) + 1}</span>
 									{/* 网格轨道按行内小节数固定：末行不满时列宽仍与他行像素级一致（加行入口在谱面底部按钮，不占格） */}
@@ -2111,7 +2086,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title={ts.buildVerTip}>v229</div>
+			<div className="cc-build-ver" title={ts.buildVerTip}>v245</div>
 
 
 			{dialog ? (
