@@ -309,6 +309,11 @@ console.log("== chartPack：工程文件往返 ==");
 	A("调拼写往返:letter/acc 不丢(Gb)", back.key?.letter === 4 && back.key?.acc === -1);
 	A("分享码往返无差异", deepDiff(s, dropTs(unpackChart(chartShareCode(s)))).length === 0);
 	A("裸紧凑 JSON 往返无差异", deepDiff(s, dropTs(unpackChart(JSON.stringify(compactChart(s))))).length === 0);
+	// 手动换行标记（N 标签）随谱往返：分享码与工程文件两条路都要带上
+	s.measures[5].lineBreak = true;
+	A("换行标记随分享码往返", unpackChart(chartShareCode(s)).measures[5].lineBreak === true);
+	A("换行标记随工程文件往返", unpackChart(packChart(s)).measures[5].lineBreak === true);
+	delete s.measures[5].lineBreak;
 	A("展示设置随谱往返(非默认值 hover/v/176)", back.figOpts?.mode === "hover" && back.figOpts?.orientation === "v" && back.figOpts?.size === 176);
 	// 批量工程包：外壳 JSON + 逐首完整工程文本——批量导出/导入与单首同一套保真
 	const s2 = createSong("第二首");
@@ -692,12 +697,15 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	const ghostPts = fsSlide.points.filter(p => p.ghost);
 	A("划音:幽灵起点进点集(ghost:true)且品窗盖住它", ghostPts.length === 1 && fsSlide.points.length === 2 && fsSlide.startFret === 1 && fsSlide.window === 4);
 	const svgSlide = figSvg(fsSlide, {});
-	A("划音:幽灵起点渲染空心环(fill=none)", /<circle [^>]*fill="none" stroke="#e8eef4"/.test(svgSlide));
-	A("划音:连线从环边起笔(不穿环心)", (() => {
-		const ring = /<circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)" fill="none"/.exec(svgSlide);
+	A("划音:幽灵起点不再画圈(只留箭头)", (() => {
+		const circles = svgSlide.match(/<circle [^>]*>/g) || [];
+		return circles.length === 1 && !/<circle [^>]*fill="none"/.test(svgSlide); // 唯一的圆 = 目标音实点
+	})());
+	A("划音:连线仍从幽灵端起笔(几何端点保留)", (() => {
 		const path = /<path d="M ([\d.]+) ([\d.]+) L/.exec(svgSlide);
-		if (!ring || !path) return false;
-		return Math.hypot(+path[1] - +ring[1], +path[2] - +ring[2]) >= +ring[3] * 0.8;
+		const dot = /<circle cx="([\d.]+)" cy="([\d.]+)" r/.exec(svgSlide);
+		if (!path || !dot) return false;
+		return Math.hypot(+path[1] - +dot[1], +path[2] - +dot[2]) > 5;
 	})());
 
 	// 跨拍拉宽(boxW/boxH):内嵌图行右邻空槽时图撑满整段——两轴格距独立,只加宽不加高;
