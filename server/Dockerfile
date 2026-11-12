@@ -11,8 +11,9 @@ RUN apt-get update \
 
 RUN npm install --omit=dev better-sqlite3@^13.0.3 lz-string@^1.4.4
 
-# index.js import 的 packChart 模块链（chartPack 及其 src/utils 传递依赖）
+# index.js import 的 packChart 模块链（chartPack 及其 src/utils 传递依赖，含 trashModel → i18n/getT）
 COPY src/utils/ /src/utils/
+COPY src/i18n/ /src/i18n/
 # /src/utils 下裸包名（lz-string）解析向上找不到 /app/node_modules，链接过去
 RUN ln -s /app/node_modules /src/node_modules
 
