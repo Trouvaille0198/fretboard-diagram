@@ -1169,6 +1169,9 @@ html[data-theme="light"] .cc-page {
     display: flex;
     align-items: stretch;
     transition: background 0.12s, border-color 0.12s;
+    /* 双击拍格 = 弹和弦面板：记号是交互对象不是文本，双击不拉蓝选中 */
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .cc-beat>.cc-beat-units>.cc-beat-unit:only-child:empty::after {

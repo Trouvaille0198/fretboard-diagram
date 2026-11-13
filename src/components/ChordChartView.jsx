@@ -192,11 +192,24 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			const gap = 8;
 			const spaceBelow = window.innerHeight - gap - r.bottom;
 			const spaceAbove = r.top - topInset - gap;
-			const openUp = spaceBelow >= ph ? false : (spaceAbove >= ph ? true : spaceAbove > spaceBelow);
-			const left = Math.max(4, Math.min(r.left - sr.left, sr.width - pw - 8));
-			let vpTop = openUp ? Math.max(topInset + gap, r.top - gap - ph)
-				: Math.min(r.bottom + gap, window.innerHeight - gap - ph);
-			vpTop = Math.max(topInset + gap, Math.min(vpTop, window.innerHeight - gap - ph));
+			const clampTop = (t) => Math.max(topInset + gap, Math.min(t, window.innerHeight - gap - ph));
+			const beatLeft = r.left - sr.left;
+			let left, vpTop;
+			if (spaceBelow >= ph || spaceAbove >= ph) {
+				// 上下放得下：紧贴拍下/上沿，与拍不相交
+				left = Math.max(4, Math.min(beatLeft, sr.width - pw - 8));
+				vpTop = clampTop(spaceBelow >= ph ? r.bottom + gap : r.top - gap - ph);
+			} else {
+				// 上下都放不下（弹层比可视余量高）：挪到拍侧边，纵向对齐拍心——绝不盖住当前和弦。
+				// 先右后左；谱面两侧都容不下时才钳回谱内兜底
+				const inScoreX = (x) => x >= 4 && x + pw <= sr.width - 8;
+				const rightX = beatLeft + r.width + gap;
+				const leftX = beatLeft - pw - gap;
+				if (inScoreX(rightX)) left = rightX;
+				else if (inScoreX(leftX)) left = leftX;
+				else left = Math.max(4, Math.min(beatLeft, sr.width - pw - 8));
+				vpTop = clampTop(r.top + r.height / 2 - ph / 2);
+			}
 			const top = Math.round(vpTop - sr.top);
 			setPopupPos(prev => (prev && prev.left === left && prev.top === top) ? prev : { left, top });
 		};
@@ -1415,6 +1428,21 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		setPopupOpen(false);
 		setFigTarget({ mi, si, half });
 	};
+	// 单击拍格（既有交互）：编辑态就地弹和弦面板；预览/分享/复制模式一律让路（预览保持只读，阅读不打扰）
+	const tapChord = (mi, si, half) => (e) => {
+		if (!editing || copyMode) return;
+		e.stopPropagation();
+		setCursor({ mi, si, half });
+		setCursorOn(true);
+		setPopupOpen(true);
+	};
+	// 双击拍格/和弦名 = 直开指法图编辑弹窗（与弹层里点「指法图」按钮同理，空图自动带入最近同和弦）；
+	// 面板定位永不遮当前拍（见 place 侧边策略），第二击落点始终可见可点；预览/分享只读、复制模式让位拖选
+	const dblFigEditor = (mi, si, half) => (e) => {
+		if (!editing || copyMode) return;
+		e.stopPropagation();
+		editFig(mi, si, half);
+	};
 
 
 	// ============ 渲染（8pu 式格子谱） ============
@@ -1491,7 +1519,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				data-si={si}
 				onMouseEnter={() => { hoverBeatRef.current = { mi, si, half: null }; }}
 				onMouseLeave={() => { const h = hoverBeatRef.current; if (h && h.mi === mi && h.si === si) hoverBeatRef.current = null; }}
-				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: null }); setCursorOn(true); setPopupOpen(true); }}
+				onClick={tapChord(mi, si, null)}
+				onDoubleClick={dblFigEditor(mi, si, null)}
 			>
 				{slot.split ? <span className="cc-beat-splitmark" title={ts.splitTip}>╱</span> : null}
 				{editing && isCur && !slot.split && slot.kind === "chord" ? (
@@ -1503,7 +1532,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						return (
 							<div key={h}
 								className={`cc-beat-unit ${active ? "cur" : ""}`}
-								onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half: slot.split ? h : null }); setCursorOn(true); setPopupOpen(true); }}
+								onClick={tapChord(mi, si, slot.split ? h : null)}
+								onDoubleClick={dblFigEditor(mi, si, slot.split ? h : null)}
 							>
 								{beatContent(u, !!slot.split, mi, si, slot.split ? h : null)}
 								{u.rhythm ? <span className="cc-rhythm-mark">{u.rhythm === "ballad" ? "∼" : u.rhythm === "block" ? "▮" : u.rhythm === "waltz" ? "③" : ""}</span> : null}
@@ -1545,13 +1575,15 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				data-si={siA}
 				onMouseEnter={() => { hoverBeatRef.current = { mi, si: siA, half: null }; }}
 				onMouseLeave={() => { const h = hoverBeatRef.current; if (h && h.mi === mi && h.si === siA) hoverBeatRef.current = null; }}
-				onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si: first.si, half: first.half }); setCursorOn(true); setPopupOpen(true); }}
+				onClick={tapChord(mi, first.si, first.half)}
+				onDoubleClick={dblFigEditor(mi, first.si, first.half)}
 			>
 				{units.length > 1 ? <span className="cc-beat-splitmark" title={ts.splitTip}>╱</span> : null}
 				<div className={`cc-beat-units ${units.length > 1 ? "halved" : ""}`}>
 					{units.map(({ u, si, half }, i) => (
 						<div key={i} className={`cc-beat-unit ${isCur && cursor.si === si && (half == null || cursor.half === half) ? "cur" : ""}`}
-							onClick={e => { if (!editing || copyMode) return; e.stopPropagation(); setCursor({ mi, si, half }); setCursorOn(true); setPopupOpen(true); }}>
+							onClick={tapChord(mi, si, half)}
+							onDoubleClick={dblFigEditor(mi, si, half)}>
 							{beatContent(u, units.length > 1, mi, si, half)}
 							{u.rhythm ? <span className="cc-rhythm-mark">{u.rhythm === "ballad" ? "∼" : u.rhythm === "block" ? "▮" : u.rhythm === "waltz" ? "③" : ""}</span> : null}
 						</div>
@@ -2037,8 +2069,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						})}
 					</div>
 
-					{popupOpen && popupPos ? (
-						<div className="cc-cp-wrap" ref={popupRef} style={{ left: popupPos.left, top: popupPos.top }}>
+					{popupOpen ? (
+						<div className="cc-cp-wrap" ref={popupRef}
+							style={popupPos ? { left: popupPos.left, top: popupPos.top } : { visibility: "hidden" }}>
 							<ChordPopup song={song} viewKey={keyAt(cursor.mi)} unit={currentUnit} typedHint={typedHint}
 								defaultQuality={(d) => defaultQualityFor(d)}
 								hasAttach={!!(currentUnit?.kind === "chord" && currentUnit.fig)}
@@ -2086,7 +2119,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title={ts.buildVerTip}>v246</div>
+			<div className="cc-build-ver" title={ts.buildVerTip}>v249</div>
 
 
 			{dialog ? (
