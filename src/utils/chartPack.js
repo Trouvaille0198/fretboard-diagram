@@ -7,7 +7,7 @@
 // 实测 32 小节满谱（128 个和弦单位 + 6 张配图）原始 JSON 17 KB → 打包后约 1.8 KB，
 // 而同一首的 MusicXML 是 33 KB —— 既 100% 还原，体积也只有 MusicXML 的 1/18。
 //
-// 结构：{ v:1, n:名, k:[根音pc, 小调?1:0], ts:拍数, bpm, dp:记谱, en:等音,
+// 结构：{ v:1, n:名, k:[根音pc, 小调?1:0], ts:拍数, tu:拍单位(仅8才存), bpm, dp:记谱, en:等音,
 //         rp:每行小节数, cs:色系, qm:同级数质量记忆, fo:和弦图展示设置, m:谱面 }
 // measure：{ i:id, S:段落, L:歌词, R:反复开始, E:终止线(非 single 才存), H:跳房子,
 //            K:[转调根音, 小调], T:标色, p:[槽位…] }
@@ -251,6 +251,7 @@ export function compactChart(song, { clips } = {}) {
 		cs: song.colorScheme ?? "navy",
 		m: (song.measures || []).map(encodeMeasure)
 	};
+	if (song.timeSigUnit === 8) o.tu = 8; // 八分拍（如 6/8）：非默认才存，旧包无 tu 解码回 4
 	if (song.createdAt) o.ct = song.createdAt;
 	if (song.qualityMemory && Object.keys(song.qualityMemory).length) o.qm = song.qualityMemory;
 	if (song.figOpts) o.fo = song.figOpts; // 和弦图展示设置每谱一份,随谱走
@@ -336,6 +337,7 @@ export function expandChart(o) {
 	if (o.ka) { song.key.letter = o.ka[0]; song.key.acc = o.ka[1]; }
 	else { const ks = keySpellOf(song.key.root); song.key.letter = ks.letter; song.key.acc = ks.acc; }
 	song.timeSig = o.ts ?? 4;
+	song.timeSigUnit = o.tu === 8 ? 8 : 4; // 旧包/分享码无 tu → 四分拍
 	song.bpm = o.bpm ?? 72;
 	song.display = o.dp ?? "degree";
 	song.enharmonic = o.en ?? 1;

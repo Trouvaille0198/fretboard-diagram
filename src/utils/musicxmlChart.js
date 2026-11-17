@@ -63,6 +63,9 @@ const BARLINE_XML = {
 export function exportMusicXml(song, keyAtFn) {
 	// keyAtFn：按小节取生效调（谱中转调 + 全局移调都会体现在导出的调号与和弦音名上）
 	const keyOf = typeof keyAtFn === "function" ? keyAtFn : (() => song.key || { root: 0, minor: false });
+	const unit = song.timeSigUnit === 8 ? 8 : 4; // 拍单位：8=八分拍（如 6/8）→ divisions 提到 4 才装得下反拍的十六分
+	const divisions = unit === 8 ? 4 : 2;
+	const slotDiv = divisions * 4 / unit; // 单槽时值（divisions 计）：四分槽=2，八分槽=2
 	const keyXml = (k) => `<key><fifths>${PC_TO_FIFTHS_MAJOR[k.minor ? (k.root + 3) % 12 : k.root] ?? 0}</fifths><mode>${k.minor ? "minor" : "major"}</mode></key>`;
 	let out = `<?xml version="1.0" encoding="UTF-8"?>\n<score-partwise version="4.0">\n`;
 	out += `  <work><work-title>${esc(song.name)}</work-title></work>\n`;
@@ -73,8 +76,8 @@ export function exportMusicXml(song, keyAtFn) {
 		out += `    <measure number="${i + 1}">\n`;
 		const keyChanged = !lastKey || key.root !== lastKey.root || !!key.minor !== !!lastKey.minor;
 		if (i === 0) {
-			out += `      <attributes>\n        <divisions>2</divisions>\n        ${keyXml(key)}\n`;
-			out += `        <time><beats>${song.timeSig}</beats><beat-type>4</beat-type></time>\n      </attributes>\n`;
+			out += `      <attributes>\n        <divisions>${divisions}</divisions>\n        ${keyXml(key)}\n`;
+			out += `        <time><beats>${song.timeSig}</beats><beat-type>${unit}</beat-type></time>\n      </attributes>\n`;
 			out += `      <sound tempo="${song.bpm || 72}"/>\n`;
 		} else if (keyChanged) {
 			out += `      <attributes>\n        ${keyXml(key)}\n      </attributes>\n`;
@@ -90,9 +93,10 @@ export function exportMusicXml(song, keyAtFn) {
 				if (u.kind === "chord" && u.chord) {
 					out += harmonyXml(u.chord, key);
 				}
-				// 每单元一个对应时值的隐形休止符撑住节拍
-				const dur = slot.split ? 1 : 2;
-				out += `      <note><rest/><duration>${dur}</duration><type>${slot.split ? "eighth" : "quarter"}</type></note>\n`;
+				// 每单元一个对应时值的隐形休止符撑住节拍（反拍 = 半槽：四分拍下的八分 / 八分拍下的十六分）
+				const dur = slot.split ? slotDiv / 2 : slotDiv;
+				const typeName = unit === 8 ? (slot.split ? "16th" : "eighth") : (slot.split ? "eighth" : "quarter");
+				out += `      <note><rest/><duration>${dur}</duration><type>${typeName}</type></note>\n`;
 			});
 		});
 		if (m.endBar === "repeatEnd" && m.repeatTimes > 1) {
@@ -199,7 +203,11 @@ export function importMusicXml(text, fallbackName = getT().chords.importedChartN
 			key = { root: pc, minor: mode === "minor" };
 		}
 		const timeNode = kid(attrs, "time");
-		if (timeNode) song.timeSig = Math.max(2, Math.min(6, num(kid(timeNode, "beats") && kid(timeNode, "beats").text, 4)));
+		if (timeNode) {
+			song.timeSig = Math.max(2, Math.min(6, num(kid(timeNode, "beats") && kid(timeNode, "beats").text, 4)));
+			// 拍单位认 4/8（6/8 等）；2/2、16 分拍等不在支持域，退回四分拍（拍数照旧钳 2..6）
+			song.timeSigUnit = num(kid(timeNode, "beat-type") && kid(timeNode, "beat-type").text, 4) === 8 ? 8 : 4;
+		}
 		break;
 	}
 	const tempoNode = measures.flatMap(m => kids(m, "sound"))[0];
@@ -256,15 +264,16 @@ export function importMusicXml(text, fallbackName = getT().chords.importedChartN
 			else if (placement === "below" && !measure.lyrics) measure.lyrics = w;
 			else if (!measure.section) measure.section = w;
 		});
-		// 和声骨架：按音符时值推算落点（divisions 为一拍的时值单位）；顺路收集标准歌词 <note><lyric><text>
+		// 和声骨架：按音符时值推算落点（pos 累计四分拍；再除以单槽四分拍数落到槽位——八分拍一槽=半拍）；顺路收集标准歌词 <note><lyric><text>
 		let pos = 0;
+		const slotQ = 4 / (song.timeSigUnit === 8 ? 8 : 4); // 单槽折合四分拍数：四分槽=1，八分槽=0.5
 		const noteLyrics = [];
 		m.children.forEach(c => {
 			if (c.tag === "harmony") {
 				const chord = harmonyToChord(c, key);
 				const offsetNode = kid(c, "offset");
 				const offsetBeats = offsetNode ? num(offsetNode.text, 0) / divisions : 0;
-				const at = pos + (offsetBeats > 0.25 ? offsetBeats : 0);
+				const at = (pos + (offsetBeats > 0.25 ? offsetBeats : 0)) / slotQ;
 				const si = Math.floor(at);
 				if (chord && si >= 0 && si < song.timeSig) {
 					const slot = measure.slots[si] || (measure.slots[si] = { kind: "empty" });

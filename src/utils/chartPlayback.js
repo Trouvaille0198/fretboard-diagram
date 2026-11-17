@@ -63,7 +63,7 @@ export function expandSong(song) {
 	return seq;
 }
 
-// 槽位事件流：反拍拆分展开成半拍；hold 并入前一个和弦事件；empty/rest 都是静音
+// 槽位事件流：反拍拆分展开成半槽；hold 并入前一个和弦事件；empty/rest 都是静音
 // 事件 = { mi, si, half, type:'chord'|'rest', chord?, rhythm?, beats }
 export function buildEvents(song) {
 	const events = [];
@@ -116,8 +116,9 @@ export const RHYTHMS = [
 ];
 
 // 节奏型 → 点火方案：[{ delayMs, idx, string, durMs }]（idx 为 audioService 品索引）
-// beatMs 一拍毫秒；beatPos 事件在小节内的拍位（0 起）；beats 事件时长（拍）
-export function firePlan(rhythm, beatPos, beats, beatMs, voicing) {
+// beatMs 单槽毫秒（随拍单位 4/8 缩放）；beatPos 事件在小节内的槽位（0 起）；beats 事件时长（槽）
+// slotUnit：拍单位（4=四分槽，8=八分槽）——八分槽里华尔兹按 3+3 复拍感给强位（0、3 槽低音）
+export function firePlan(rhythm, beatPos, beats, beatMs, voicing, slotUnit = 4) {
 	if (!voicing || !voicing.notes.length) return [];
 	const notes = voicing.notes.slice(); // 低音弦在前
 	const bass = notes[0];
@@ -142,8 +143,9 @@ export function firePlan(rhythm, beatPos, beats, beatMs, voicing) {
 			seqList.slice(0, Math.ceil(beats * 2)).forEach((n, k) => pick(k * stepMs, n, stepMs * 1.8));
 		}
 	} else if (r === "waltz") {
-		// 华尔兹：拍位 0 = 低音+和弦，其余拍 = 和弦
-		if (beatPos === 0) { pick(0, bass, beatMs * 0.9); strum(30, chord.slice(1), beatMs * 0.85); }
+		// 华尔兹：强位 = 低音+和弦，其余槽 = 和弦；四分槽强位只在 0，八分槽（6/8 复拍）0、3 都给低音
+		const onBeat = slotUnit === 8 ? beatPos % 3 === 0 : beatPos === 0;
+		if (onBeat) { pick(0, bass, beatMs * 0.9); strum(30, chord.slice(1), beatMs * 0.85); }
 		else strum(0, chord, beatMs * 0.85);
 	} else if (r === "rock8") {
 		// 摇滚 8 分下上：每拍 低音→下→上
@@ -183,6 +185,8 @@ export function firePlan(rhythm, beatPos, beats, beatMs, voicing) {
 // 反复/跳房子结构保持完整；startBeat = 切片前的累计拍数（节拍器强拍对齐用）
 export function buildPlayPlan(song, viewKey, startMi = 0) {
 	const beatMs = 60000 / (song.bpm || 72);
+	// bpm 语义恒为 ♩=（四分）；槽长按拍单位缩放（4/8）——6/8 的槽是八分，半拍即一槽
+	const slotMs = beatMs * 4 / (song.timeSigUnit === 8 ? 8 : 4);
 	const keyFor = (mi) => (typeof viewKey === "function" ? viewKey(mi) : viewKey); // 支持谱内转调：按小节取调
 	const events = buildEvents(song);
 	let begin = 0, startBeat = 0;
@@ -197,9 +201,9 @@ export function buildPlayPlan(song, viewKey, startMi = 0) {
 		if (ev.type === "chord") {
 			item.voicing = voiceChord(ev.chord, keyFor(ev.mi));
 			const beatPos = ev.si % song.timeSig;
-			item.plan = firePlan(ev.rhythm, beatPos, ev.beats, beatMs, item.voicing);
+			item.plan = firePlan(ev.rhythm, beatPos, ev.beats, slotMs, item.voicing, song.timeSigUnit);
 		}
-		t += ev.beats * beatMs;
+		t += ev.beats * slotMs;
 		return item;
 	});
 	return { items, totalMs: t, beatMs, beats: t / beatMs, startBeat };

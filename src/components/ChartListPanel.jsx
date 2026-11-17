@@ -115,7 +115,7 @@ export function ChartListPanel({ charts, currentId, onOpen, onNew, onDuplicate, 
 											)}
 											<div className="cc-song-meta">
 												<span>1 = {PC_KEY[c.key?.root ?? 0]}{c.key?.minor ? "m" : ""}</span>
-												<span>{c.timeSig ?? 4}/4</span>
+												<span>{c.timeSig ?? 4}/{c.timeSigUnit === 8 ? 8 : 4}</span>
 												<span>♩={c.bpm ?? 72}</span>
 												<span>{fmt(ts.measuresUnit, { n })}</span>
 												<span>{chords} {ts.chordsUnit}</span>

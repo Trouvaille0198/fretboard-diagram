@@ -6,7 +6,7 @@ import { getT, fmt } from "../i18n/getT.js";
 
 // 和弦谱（8pu 式功能谱）歌曲模型与本地存储
 // song = { id, name, createdAt, updatedAt,
-//   key: { root: 0-11(C基), minor }, timeSig: 拍数(2|3|4|6，单位四分), bpm,
+//   key: { root: 0-11(C基), minor }, timeSig: 拍数(2|3|4|6), timeSigUnit: 拍单位(4|8，缺省=4；8=八分拍，如 6/8), bpm,
 //   display: 'degree'|'name', enharmonic: 1, rowsPerLine: 每行小节数,
 //   colorScheme: 动图生成用的色系名（LEVEL1_COLORS 键）,
 //   measures: [measure] }
@@ -145,6 +145,7 @@ export function createSong(name = getT().chords.untitled) {
 		updatedAt: Date.now(),
 		key: { root: 0, minor: false },
 		timeSig: 4,
+		timeSigUnit: 4,
 		bpm: 72,
 		display: "degree",
 		enharmonic: 1,

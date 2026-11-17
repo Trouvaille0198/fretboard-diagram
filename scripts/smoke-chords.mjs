@@ -170,6 +170,19 @@ import { expandSong, buildEvents, buildPlayPlan } from "../src/utils/chartPlayba
 	A("和弦事件有按法与点火", !!plan.items[0].voicing && plan.items[0].plan.length >= 2);
 	A("空槽事件无和弦", !plan.items[1].chord);
 
+	console.log("== 播放引擎：八分拍（6/8） ==");
+	// 交替和弦防同和弦合并（合并后 beatPos 恒 0，测不了逐槽强位）
+	const waltz68 = { timeSig: 6, timeSigUnit: 8, bpm: 120, measures: [M([1, 5, 1, 5, 1, 5].map(d => ({ kind: "chord", chord: chT(String(d)), rhythm: "waltz" })))] };
+	const plan68 = buildPlayPlan(waltz68, C);
+	// ♩=120 → 四分 500ms，八分槽 250ms：6 槽一小节 = 1500ms
+	A("6/8 一小节 6 事件总时长 1500ms", plan68.items.length === 6 && Math.abs(plan68.totalMs - 1500) < 1, String(plan68.totalMs));
+	// 华尔兹复拍感：八分槽强位 0、3 给低音（第二点火项 delay 30），弱槽纯扫弦（delay 14）
+	const d68 = (si) => plan68.items[si].plan[1] ? plan68.items[si].plan[1].delayMs : null;
+	A("华尔兹 6/8 强位 0、3（3+3 复拍）", d68(0) === 30 && d68(3) === 30 && d68(1) === 14 && d68(2) === 14 && d68(4) === 14 && d68(5) === 14, JSON.stringify([0, 1, 2, 3, 4, 5].map(d68)));
+	const waltz44 = { timeSig: 4, bpm: 120, measures: [M([1, 5, 1, 5].map(d => ({ kind: "chord", chord: chT(String(d)), rhythm: "waltz" })))] };
+	const d44 = buildPlayPlan(waltz44, C).items.map(it => it.plan[1].delayMs);
+	A("华尔兹 4/4 强位仍只 0（缺省单位回归）", eq(d44, [30, 14, 14, 14]), JSON.stringify(d44));
+
 	console.log("== 动图 clip 生成 ==");
 	const { buildSongClip } = await import("../src/utils/chartFrames.js");
 	const clipSong = { name: "送别片段", key: C, timeSig: 4, bpm: 80, enharmonic: 1, colorScheme: "navy",
@@ -358,6 +371,13 @@ console.log("== chartPack：工程文件往返 ==");
 	A("isChartPack 认工程文件与分享码", isChartPack(packed) && isChartPack(chartShareCode(s)));
 	A("isChartPack 不误认 MusicXML", !isChartPack('<?xml version="1.0"?><score-partwise><part/></score-partwise>'));
 
+	// 拍单位（6/8）：tu 仅非默认才存——旧包/旧分享码无 tu 解码回 4
+	const s68 = createSong("六八拍往返");
+	s68.timeSig = 6; s68.timeSigUnit = 8;
+	A("拍单位 6/8 随分享码往返", (() => { const b = unpackChart(chartShareCode(s68)); return b.timeSig === 6 && b.timeSigUnit === 8; })());
+	A("拍单位 6/8 随工程文件往返", unpackChart(packChart(s68)).timeSigUnit === 8);
+	A("无 tu 的包解码回四分拍（旧包兼容）", unpackChart(chartShareCode({ ...s68, timeSigUnit: 4 })).timeSigUnit === 4);
+
 	// ===== 动图配图内嵌：只存 id 的话换台机器就是悬空引用 =====
 	console.log("== chartPack：动图配图内嵌 ==");
 	const { buildSongClip } = await import("../src/utils/chartFrames.js");
@@ -450,6 +470,30 @@ console.log("== chartPack：工程文件往返 ==");
 		&& qXmlBack.measures[0].slots[1]?.chord?.quality === "m7-5"
 		&& qXmlBack.measures[0].slots[2]?.chord?.quality === "dim7",
 		JSON.stringify(qXmlBack.measures[0].slots.slice(0, 3).map(x => x?.chord?.quality)));
+	// 八分拍（6/8）：导出 beat-type 8 + divisions 4（反拍十六分装得下）；导入认 beat-type 8
+	const M68 = (slots) => ({ id: "m68", section: null, lyrics: "", repeatStart: false, endBar: "single", house: null, slots });
+	const xml68Song = { name: "六八", key: C, timeSig: 6, timeSigUnit: 8, bpm: 120, enharmonic: 1,
+		measures: [M68([
+			{ kind: "chord", chord: chordFromDegreeToken("1") },
+			{ kind: "chord", chord: chordFromDegreeToken("4") },
+			{ kind: "chord", chord: chordFromDegreeToken("5"), split: [{ kind: "chord", chord: chordFromDegreeToken("5") }, { kind: "chord", chord: chordFromDegreeToken("6m") }] },
+			{ kind: "empty" }, { kind: "empty" }, { kind: "empty" }
+		])] };
+	const xml68 = exportMusicXml(xml68Song, () => C);
+	A("6/8 导出 beat-type 8 + divisions 4", xml68.includes("<divisions>4</divisions>") && xml68.includes("<beats>6</beats><beat-type>8</beat-type>"));
+	A("6/8 槽=八分、反拍=十六分", xml68.includes("<duration>2</duration><type>eighth</type>") && xml68.includes("<duration>1</duration><type>16th</type>"));
+	const back68x = importMusicXml(xml68, "x");
+	A("6/8 导入还原拍数与单位", back68x.timeSig === 6 && back68x.timeSigUnit === 8);
+	A("6/8 和弦落八分槽、反拍归半槽", back68x.measures[0].slots[0]?.chord?.degree === 1 && back68x.measures[0].slots[1]?.chord?.degree === 4
+		&& back68x.measures[0].slots[2]?.split?.[0]?.chord?.degree === 5 && back68x.measures[0].slots[2]?.split?.[1]?.chord?.degree === 6,
+		JSON.stringify(back68x.measures[0].slots));
+	// 外部 6/8 文件（十六分推进制造半槽落点）→ 和弦按八分槽落位
+	const ext68 = `<?xml version="1.0"?><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>x</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>2</divisions><key><fifths>0</fifths></key><time><beats>6</beats><beat-type>8</beat-type></time></attributes><harmony><root><root-step>C</root-step></root><kind>major</kind></harmony><note><rest/><duration>0.5</duration><type>16th</type></note><harmony><root><root-step>F</root-step></root><kind>major</kind></harmony><note><rest/><duration>0.5</duration><type>16th</type></note><harmony><root><root-step>G</root-step></root><kind>major</kind></harmony><note><rest/><duration>4</duration><type>half</type></note></measure></part></score-partwise>`;
+	const ext68Back = importMusicXml(ext68, "ext");
+	A("外部 6/8：首槽 C、十六分位 F 归反拍、次槽 G", ext68Back.timeSig === 6 && ext68Back.timeSigUnit === 8
+		&& ext68Back.measures[0].slots[0]?.split?.[0]?.chord?.degree === 1 && ext68Back.measures[0].slots[0]?.split?.[1]?.chord?.degree === 4
+		&& ext68Back.measures[0].slots[1]?.chord?.degree === 5,
+		JSON.stringify(ext68Back.measures[0].slots));
 	// 外部软件（MuseScore 等）的歌词写在 <note><lyric><text>（自家导出的在方向词里）：两条都要认
 	const extLyrXml = `<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>x</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>2</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time></attributes><harmony><root><root-step>C</root-step></root><kind>major</kind></harmony><note><rest/><duration>2</duration><type>quarter</type></note><harmony><root><root-step>G</root-step></root><kind>major</kind></harmony><note><rest/><duration>2</duration><type>quarter</type><lyric number="1"><text>一</text></lyric></note><harmony><root><root-step>A</root-step></root><kind>minor</kind></harmony><note><rest/><duration>2</duration><type>quarter</type><lyric number="1"><text>二</text></lyric></note><note><rest/><duration>2</duration><type>quarter</type></note></measure></part></score-partwise>`;
 	const extLyrBack = importMusicXml(extLyrXml, "ext");

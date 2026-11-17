@@ -951,8 +951,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		setCursor(c => ({ ...c, half: willSplit ? 1 : null }));
 	};
 
-	const setTimeSig = (n) => {
-		// 缩拍会裁掉尾部槽——含和弦的先提示再丢
+	const setTimeSig = (n, unit = song.timeSigUnit === 8 ? 8 : 4) => {
+		// 缩拍会裁掉尾部槽——含和弦的先提示再丢（只看拍数；6/4↔6/8 只换单位不裁槽）
 		if (n < song.timeSig) {
 			let dropped = 0;
 			song.measures.forEach(m => m.slots.slice(n).forEach(sl => {
@@ -960,7 +960,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 			}));
 			if (dropped > 0) showToast(fmt(ts.resizeDrop, { n: dropped }));
 		}
-		setSong(s => ({ ...s, timeSig: n, measures: s.measures.map(m => resizeMeasure(m, n)) }));
+		setSong(s => ({ ...s, timeSig: n, timeSigUnit: unit, measures: s.measures.map(m => resizeMeasure(m, n)) }));
 		// 光标钳回合法槽位（防幽灵拍）
 		setCursor(c => {
 			const mi = Math.max(0, Math.min(c.mi, song.measures.length - 1));
@@ -1881,7 +1881,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					<div className="cc-score-meta">
 						<button className={`cc-settings-btn${settingsOpen ? " on" : ""}`} title={ts.settingsTip}
 							onClick={() => setSettingsOpen(v => !v)}>
-							⚙ {keyLabelText(song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter, song.key?.acc ?? 0, !!song.key?.minor)} · {song.timeSig ?? 4}/4 · ♩={song.bpm ?? 72}
+							⚙ {keyLabelText(song.key?.letter ?? keySpellOf(song.key?.root ?? 0).letter, song.key?.acc ?? 0, !!song.key?.minor)} · {song.timeSig ?? 4}/{song.timeSigUnit === 8 ? 8 : 4} · ♩={song.bpm ?? 72}
 						</button>
 						<button className={`cc-compact-btn${compactView ? " on" : ""}`}
 							title={ts.compactTip}
@@ -1918,8 +1918,10 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								</div>
 								<div className="cc-settings-row"><span className="cc-settings-k">{ts.timeSigLabel}</span>
 									<span className="cc-settings-v">
-										<UiSelect value={song.timeSig} disabled={!editing} onChange={v => setTimeSig(Number(v))}
-											options={[2, 3, 4, 6].map(b => ({ value: b, label: b + "/4" }))} />
+										{/* menuAbsolute：紧凑行里原地展开会把整个设置面板撑高，菜单悬浮在触发器下 */}
+										<UiSelect value={`${song.timeSig ?? 4}/${song.timeSigUnit === 8 ? 8 : 4}`} disabled={!editing} menuAbsolute
+											onChange={v => { const [b, u] = String(v).split("/").map(Number); setTimeSig(b, u); }}
+											options={[["2", 4], ["3", 4], ["4", 4], ["6", 4], ["6", 8]].map(([b, u]) => ({ value: `${b}/${u}`, label: `${b}/${u}` }))} />
 									</span>
 								</div>
 							</div>
@@ -2119,7 +2121,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title={ts.buildVerTip}>v249</div>
+			<div className="cc-build-ver" title={ts.buildVerTip}>v250</div>
 
 
 			{dialog ? (
