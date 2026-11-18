@@ -1715,7 +1715,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					const voltaLast = (voltaEff[mi + 1] || 0) !== h;
 					return <span className={`cc-volta${voltaFirst ? " volta-start" : ""}${voltaLast ? " volta-end" : ""}`}>{voltaFirst ? `${h}.` : ""}</span>;
 				})() : null}
-				<div className="cc-cell-slots">{compactView
+				<div className="cc-cell-slots" style={{ "--cc-beats": song.timeSig ?? 4 }}>{compactView
 					? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => compactPairView(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null))
 					: m.slots.map((_, si) => slotView(mi, si))}
 					{/* 末小节尾部加拍钮：很窄一条＋，点了在曲尾追加一拍（拍满自动开新小节，终止线跟着走） */}
@@ -2121,7 +2121,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title={ts.buildVerTip}>v250</div>
+			<div className="cc-build-ver" title={ts.buildVerTip}>v251</div>
 
 
 			{dialog ? (

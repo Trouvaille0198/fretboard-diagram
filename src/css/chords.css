@@ -1159,6 +1159,14 @@ html[data-theme="light"] .cc-page {
     --cc-grid-ink: rgba(44, 76, 109, 0.15);
 }
 
+/* 拍宽=拍号等分轨（100%=拍格行内宽，拍距同源 --cc-beat-gap）：满小节缩去末尾＋的 15px 后与原 flex:1 逐像素等宽；
+   部分小节（末尾＋追加未满的 1..n 拍）按正常拍宽左对齐、右侧留白——不再整格拉爆成一个大拍。
+   简略模式的配对拍格（.cc-beat-pair）维持 flex:1：其图行轨道按对数等分，不跟单拍宽 */
+.cc-beat:not(.cc-beat-pair) {
+    box-sizing: border-box; /* 拍框含边框入轨宽：部分小节拍宽与满小节逐像素相等（content-box 会多出 2px 边框） */
+    flex: 0 1 calc((100% - (var(--cc-beats, 4) - 1) * var(--cc-beat-gap, 5px)) / var(--cc-beats, 4));
+}
+
 .cc-beat {
     flex: 1;
     position: relative;
