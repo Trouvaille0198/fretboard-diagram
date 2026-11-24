@@ -339,14 +339,21 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		const gap = slotsEl ? parseFloat(getComputedStyle(slotsEl).columnGap) || 0 : 0;
 		const figH = parseFloat(getComputedStyle(el).getPropertyValue("--cc-fig-h")) || 88;
 		const byN = {};
-		el.querySelectorAll(".cc-cell").forEach(cell => {
+		const cells = el.querySelectorAll(".cc-cell");
+		// 下一小节是否真的与本级同行(DOM 实测 top)——首行反复开始格加宽等会让实际分行偏离
+		// floor(mi/autoPer) 的均匀假设(m0 rep-start 行只有 4 格、其余 5 格实测踩雷),
+		// 跨小节拉宽若按索引推算同行,行尾格的图会冲出行的右缘悬空
+		const sameLineNext = [];
+		cells.forEach((cell, i) => {
 			const beats = cell.querySelectorAll(".cc-beat");
 			if (beats.length && byN[beats.length] == null) byN[beats.length] = Math.round(beats[0].getBoundingClientRect().width * 100) / 100;
+			const next = cells[i + 1];
+			sameLineNext[i] = !!next && Math.round(next.getBoundingClientRect().top) === Math.round(cell.getBoundingClientRect().top) ? "1" : "0";
 		});
+		const sameLineSig = sameLineNext.join("");
 		// 相邻小节格的水平实距(.cc-line 是 flex,间距来自盒模型,量出来最可靠)——简略模式跨小节拉宽要用
-		const cells = el.querySelectorAll(".cc-cell");
 		const mgap = cells.length >= 2 ? Math.round((cells[1].getBoundingClientRect().left - cells[0].getBoundingClientRect().right) * 100) / 100 : 0;
-		setFigMetrics(prev => (prev && prev.gap === gap && prev.figH === figH && prev.mgap === mgap && JSON.stringify(prev.byN) === JSON.stringify(byN) ? prev : { gap, figH, mgap, byN }));
+		setFigMetrics(prev => (prev && prev.gap === gap && prev.figH === figH && prev.mgap === mgap && prev.sameLineSig === sameLineSig && JSON.stringify(prev.byN) === JSON.stringify(byN) ? prev : { gap, figH, mgap, byN, sameLineSig }));
 	}, []);
 	// 结构变化后 layout 阶段同步量：拉宽在首帧绘制前就位，无闪跳
 	const slotSig = song.measures.map(m => m.slots.length).join(",");
@@ -1662,12 +1669,13 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								let R = next == null ? groups.length : gi + 1 + Math.ceil((next - gi - 1) / 2);
 								// 跨小节(向右)：图已占至本小节末尾、下一小节(同行)开头连续几组没图 → 溢出本格继续占——
 								// 被跨区域是下一小节的空图行；双图档不拉；行尾不跨(下一小节在下一行)。
+								// 同行判定用 figMetrics 实测的 DOM 分行(sameLineSig),不用 floor(mi/autoPer) 索引推算
 								// ⚠必须下一小节整行无图才跨：下一小节只要有图，首图槽位恒从第 1 列起画
 								// （独图整行居中，多图首图也占至组间中点），跨进任何有图小节都会压上它的图
 								let extra = 0, nextBeatW = null;
 								if (!paired && beatW && figMetrics
-									&& R >= groups.length && mi + 1 < song.measures.length
-									&& Math.floor(mi / autoPer) === Math.floor((mi + 1) / autoPer)) {
+									&& R >= groups.length
+									&& figMetrics.sameLineSig?.[mi] === "1") {
 									const nm = song.measures[mi + 1];
 									const nN = Math.ceil(nm.slots.length / 2);
 									const nFlags = Array.from({ length: nN }, (_, k) => {
@@ -2128,7 +2136,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title={ts.buildVerTip}>v253</div>
+			<div className="cc-build-ver" title={ts.buildVerTip}>v254</div>
 
 
 			{dialog ? (
