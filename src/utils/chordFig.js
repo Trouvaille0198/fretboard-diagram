@@ -72,7 +72,9 @@ export function boardFigData(data, chord, viewKey) {
 	const pressed = points.map(p => p.fret).filter(f => f > 0); // 空弦(品0)不算起点;幽灵起点参与品窗覆盖（滑入起点常比实音低一品，窗必须盖住它）
 	const startFret = pressed.length ? Math.min(...pressed) : 1;
 	const maxFret = pressed.length ? Math.max(...pressed) : 1;
-	const window = Math.max(4, Math.min(6, maxFret - startFret + 1));
+	// 品窗 4..10 品：上限 10——超宽指法(如 2..9 品大横按把位)宁可缩品格距也要画出全部音,
+	// 旧上限 6 会把窗外音钉死在窗右缘(posOf 的 Math.min(spanF,fo)),两点叠在边线上展示即错
+	const window = Math.max(4, Math.min(10, maxFret - startFret + 1));
 	// 连线:端点必须在点集里(含幽灵起点);样式(直线/弧、箭头、划音 ghost)随主板数据原样带入——
 	// 以前只存 {a,b},小图把三种预设一律画成弧,直线也成了弧、箭头全丢
 	const byId = new Map(points.map(p => [p.id, p]));
@@ -135,10 +137,10 @@ export function figGeometry(fig, opts = {}) {
 	const unitsX = horizontal ? nFrets + padLc + padRc : 5 + padLc + padRc;
 	const unitsY = horizontal ? 5 + padTc + padBc : nFrets + padTc + padBc;
 	let cellS, cellF, cell, W, H;
-	// 守卫下限 = 自然纵横比的 0.62 倍：跨拍盒宽(简略模式跨2拍才 ~150px)常低于自然宽(如 h/6品 164px、v/4品 182px),
-	// 按自然比卡会把这些全打成信箱留白、网格根本没拉开; mild 压扁无害——点径/字号取紧轴自动缩小,
-	// 品数位 padL 在 0.62 时仍有 ~0.8 品距余量。比 0.62 还窄才退回原比例(绝不压成纸条)。
-	const boxOk = opts.boxW != null && opts.boxH != null && opts.boxW >= opts.boxH * unitsX / unitsY * 0.62 - 0.5;
+	// 守卫下限 = 自然纵横比的 0.30 倍：盒宽低于自然宽 30% 才退回原比例(信箱式浮在盒中,CSS max-width 再夹)。
+	// 原下限 0.62 是为窄盒防"纸条";但超宽指法品窗上限提到 10 品后,自然宽(如 h/10品 ~231px)远超任何拍格宽,
+	// 0.62 一律拒盒 → 全成信箱小图。压扁无害:点径/字号取紧轴自动缩小;0.30 时品格距仍有弦距 ~1/3,列可辨。
+	const boxOk = opts.boxW != null && opts.boxH != null && opts.boxW >= opts.boxH * unitsX / unitsY * 0.30 - 0.5;
 	if (boxOk) {
 		W = Math.round(opts.boxW); H = Math.round(opts.boxH);
 		const cellX = W / unitsX, cellY = H / unitsY;

@@ -2121,7 +2121,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title={ts.buildVerTip}>v251</div>
+			<div className="cc-build-ver" title={ts.buildVerTip}>v252</div>
 
 
 			{dialog ? (

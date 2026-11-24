@@ -752,8 +752,21 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 		return Math.hypot(+path[1] - +dot[1], +path[2] - +dot[2]) > 5;
 	})());
 
+	// 超宽指法回归(跨越 7..10 品的把位图):品窗上限 6→10——旧上限把窗外音钉死在窗右缘
+	// (posOf 的 Math.min(spanF,fo)),两点叠在边线上,展示即错;现在全部音各归其位
+	const figAt = (...fs) => Object.fromEntries(fs.map(([f, s]) => [`f${f - 1}-s${s}`, N()]));
+	const fw = boardFigData({ ...figAt([2, 1], [4, 3], [5, 0], [6, 2], [7, 0], [7, 2], [7, 3], [9, 0], [9, 2]), connections: {} }, null, KEY);
+	A("超宽指法:品窗上限 10(2..9 品 → 窗 8 品全盖)", fw.startFret === 2 && fw.window === 8 && fw.points.every(p => p.fret < fw.startFret + fw.window));
+	const span11 = boardFigData({ ...figAt([1, 0], [11, 5]), connections: {} }, null, KEY);
+	A("超宽指法:跨度 >10 品 → 窗封顶 10(从最低品起)", span11.window === 10);
+	A("超宽指法:所有点落在窗内(不再钉在窗右缘)", (() => {
+		const g = figGeometry(fw, {});
+		const xs = [...figSvg(fw, {}).matchAll(/<circle cx="([\d.]+)"/g)].map(m => +m[1]);
+		return xs.length === fw.points.length && xs.every(x => x < g.L + g.spanF - 0.01);
+	})());
+
 	// 跨拍拉宽(boxW/boxH):内嵌图行右邻空槽时图撑满整段——两轴格距独立,只加宽不加高;
-	// 点径/字号取紧轴 → 与不拉宽时的渲染尺寸(CSS 缩放到同一高度后)完全一致;盒宽不够自然比例 → 忽略盒子(绝不压扁)
+	// 点径/字号取紧轴 → 与不拉宽时的渲染尺寸(CSS 缩放到同一高度后)完全一致;盒宽低于 0.30 倍自然比 → 忽略盒子
 	const gh0 = figGeometry(fa, { orientation: "h" });
 	const wide = figGeometry(fa, { orientation: "h", boxW: 300, boxH: 144 });
 	A("拉宽:svg 尺寸=盒宽高", wide.W === 300 && wide.H === 144);
@@ -766,10 +779,12 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("拉宽:度数标注照常", degTexts(svgWide).join(",") === "5,b3,R,5,R");
 	const gv1 = figGeometry(fa, { boxW: 400, boxH: 144 });
 	A("拉宽(v):弦轴格距拉开、品轴格距按盒高定", gv1.W === 400 && gv1.H === 144 && gv1.cellS > gv1.cellF * 2 && Math.abs(gv1.cellF - 144 / (fa.window + 1.38)) < 0.01);
-	const guarded = figGeometry(fa, { orientation: "h", boxW: 50, boxH: 144 });
-	A("拉宽守卫:盒宽不够自然比例 → 忽略盒子退回原几何", guarded.W === gh0.W && guarded.H === gh0.H);
-	// 守卫下限 = 自然比的 0.62 倍:简略模式跨2拍盒宽 ~150px 低于不少组合的自然宽(h/6品 164、v/4品 182),
-	// 按自然比卡会把这些全打成信箱留白、网格根本没拉开;轻微压扁无害(点径取紧轴自动缩小)
+	const guarded = figGeometry(fa, { orientation: "h", boxW: 15, boxH: 144 });
+	A("拉宽守卫:盒宽低于自然比 0.30 → 忽略盒子退回原几何", guarded.W === gh0.W && guarded.H === gh0.H);
+	// 守卫下限 = 自然比的 0.30 倍:品窗上限提到 10 后,超宽指法自然宽(如 h/10品 ~231px)远超拍格宽,
+	// 0.62 一律拒盒会把这些全打成信箱小图;压扁无害(点径取紧轴自动缩小),0.30 时品格距仍有弦距 ~1/3 可辨
+	const squeezed = figGeometry(fa, { orientation: "h", boxW: 40, boxH: 144 });
+	A("拉宽守卫:0.30~0.62 倍自然宽允许压扁进盒", squeezed.W === 40 && squeezed.H === 144 && squeezed.cellF < squeezed.cellS);
 	const mild = figGeometry(fa, { orientation: "h", boxW: 100, boxH: 144 });
 	A("拉宽守卫:0.62~1 倍自然宽允许轻微压扁(mild 拉开)", mild.W === 100 && mild.H === 144 && mild.cellF < mild.cellS && mild.cellF >= mild.cellS * 0.62 - 0.01);
 	const vMild = figGeometry({ ...fa, window: 4 }, { boxW: 154, boxH: 144 });
