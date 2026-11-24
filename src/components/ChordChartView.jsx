@@ -1548,18 +1548,23 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	// ===== 简略模式：两拍并一格的配对逻辑 =====
 	// 每拍取"该显示的那一个单元"：本身就是反拍(split)的只留前半；空的不要。
 	// 两拍都有和弦 → 并成一对反拍（左右两半）；否则只展示第一个有内容的。
-	const compactPairUnits = (mi, siA, siB) => {
+	// withFigs=图行口径：空拍也可能配了指法图（图在图行渲染，拍格本身无内容）——
+	//   这时空拍必须保留，否则该图在简略模式下整个消失、跨小节拉宽还会把下一小节
+	//   有图的组误判成无图而越界压过去（257dd45 后实测踩雷）；且不裁 slice(0,1)，
+	//   成对两拍各带图时两只图都要（拍格行不受影响，仍按原口径取"该显示的那一个"）。
+	const compactPairUnits = (mi, siA, siB, withFigs = false) => {
 		const slots = song.measures[mi].slots;
 		const one = (sl, si) => {
 			if (!sl) return [];
 			if (sl.split) return [{ u: sl.split[0], si, half: 0 }];
-			return sl.kind !== "empty" ? [{ u: sl, si, half: null }] : [];
+			if (sl.kind !== "empty") return [{ u: sl, si, half: null }];
+			return withFigs && figVisible(sl) ? [{ u: sl, si, half: null }] : [];
 		};
 		const A = one(slots[siA], siA);
 		const B = siB != null ? one(slots[siB], siB) : [];
 		const isChord = (x) => !!x && x.u.kind === "chord" && !!x.u.chord;
 		if (A.length && B.length && isChord(A[0]) && isChord(B[0])) return [A[0], B[0]];
-		return [...A, ...B].slice(0, 1);
+		return withFigs ? [...A, ...B] : [...A, ...B].slice(0, 1);
 	};
 
 	const compactPairView = (mi, siA, siB) => {
@@ -1637,7 +1642,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					// 只加宽不加高（svg 按实测段宽重算几何，弦/品格距拉开、点径字号不变，更清晰）；被跨的空槽不渲染。
 					// 简略模式下还可跨到下一小节开头连续无图的组（见下方 extra）；双图档（简略模式两拍并一格各有图）两图挤一格，不参与拉宽
 					const groups = compactView
-						? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => ({ key: k * 2, units: compactPairUnits(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null) }))
+						? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => ({ key: k * 2, units: compactPairUnits(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null, true) }))
 						: m.slots.map((sl, si) => ({ key: si, units: (sl.split || [sl]).map((u, h) => ({ u, si, half: sl.split ? h : null })) }));
 					const flags = groups.map(g => g.units.some(({ u }) => figVisible(u)));
 					const figIdxs = flags.map((f, i) => (f ? i : -1)).filter(i => i >= 0);
@@ -1656,7 +1661,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								const L = prev == null ? 0 : prev + 1 + Math.ceil((gi - prev - 1) / 2);
 								let R = next == null ? groups.length : gi + 1 + Math.ceil((next - gi - 1) / 2);
 								// 跨小节(向右)：图已占至本小节末尾、下一小节(同行)开头连续几组没图 → 溢出本格继续占——
-								// 被跨区域是下一小节的空图行；双图档不拉；行尾不跨(下一小节在下一行)
+								// 被跨区域是下一小节的空图行；双图档不拉；行尾不跨(下一小节在下一行)。
+								// ⚠必须下一小节整行无图才跨：下一小节只要有图，首图槽位恒从第 1 列起画
+								// （独图整行居中，多图首图也占至组间中点），跨进任何有图小节都会压上它的图
 								let extra = 0, nextBeatW = null;
 								if (!paired && beatW && figMetrics
 									&& R >= groups.length && mi + 1 < song.measures.length
@@ -1664,10 +1671,10 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 									const nm = song.measures[mi + 1];
 									const nN = Math.ceil(nm.slots.length / 2);
 									const nFlags = Array.from({ length: nN }, (_, k) => {
-										const us = compactPairUnits(mi + 1, k * 2, k * 2 + 1 < nm.slots.length ? k * 2 + 1 : null);
+										const us = compactPairUnits(mi + 1, k * 2, k * 2 + 1 < nm.slots.length ? k * 2 + 1 : null, true);
 										return us.some(({ u }) => figVisible(u));
 									});
-									while (extra < nN && !nFlags[extra]) extra++;
+									if (!nFlags.some(Boolean)) while (extra < nN && !nFlags[extra]) extra++;
 									nextBeatW = extra ? figMetrics.byN[nN] : null;
 								}
 								const crossW = extra > 0 && nextBeatW ? figMetrics.mgap + extra * nextBeatW + (extra - 1) * figMetrics.gap : 0;
@@ -2121,7 +2128,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title={ts.buildVerTip}>v252</div>
+			<div className="cc-build-ver" title={ts.buildVerTip}>v253</div>
 
 
 			{dialog ? (
