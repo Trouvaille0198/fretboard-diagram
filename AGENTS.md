@@ -1,16 +1,13 @@
 # 项目开发与协作规约
 
-## 浏览器与自动化测试规范
+## 浏览器规范：一律使用 ego browser
 
-严禁新建独立的 Chrome 窗口或进程实例，所有页面调试与验证均须复用既有浏览器：
+**禁止调用 `chrome.exe`**（包括「打开新标签页展示效果」这类用途），也**禁止**使用 9223 调试端口实例、`scripts/ensure-testchrome.sh`、`agent-browser` 或任何另起的 Chrome。测试、调试、截图、向用户展示页面——所有浏览器操作一律走 ego browser：
 
-1. **自动化测试环境**：
-   - 自动化测试仅允许复用调试端口 **9223** 上的专属实例（Profile：`Chroly/browser-profile`）。
-   - 运行前必须先执行探活脚本：`sh scripts/ensure-testchrome.sh`（脚本会自动复用存活实例，仅在无实例时拉起），**严禁**直接调用 `chrome.exe --remote-debugging-port=...`。
-   - 测试结束后必须执行 `agent-browser close` 清理测试标签页与会话，不得关闭用户的主浏览器。
-2. **页面效果展示**：
-   - 向用户展示页面效果时，统一在**用户当前的 Chrome 窗口**中打开新标签页（通过 `chrome.exe "<url>"` 自动接入当前运行的实例）。
-   - **严禁**携带 `--user-data-dir` 启动新实例，避免因 Chrome 单例机制冲突向桌面重复生成空白窗口。
+1. **用法**：动手前先读 `ego-browser` skill（`ego-browser skill` 输出的使用指南），脚本经 `ego-browser nodejs` 运行；每个目标一个 TaskSpace，工作结束用一次 `task.finish()` 关闭。
+2. **展示页面效果**：同样在 ego browser 里打开页面，结束时 `task.finish({ keep: ["p1"] })` 把结果页留给用户看。不要去动用户自己的 Chrome。
+3. **测试数据隔离**：测试不得碰到用户的真实数据。开发服务器另起一个独立端口（独立来源，无登录、无同步）来跑测试；测试谱用副本并加 `smoke-` 前缀，测完删除（含回收站）。
+4. **贴近真实数据**：用远程数据库本地副本里的真实谱来测。副本放在仓库外的 `~/.local/share/fretboard-diagram/remote-db-<日期>/`（含账号数据，不进仓库），对远程只读取、不写入。
 
 ---
 
@@ -39,7 +36,7 @@
   - 和弦谱领域模型校验：`node scripts/smoke-chords.mjs`
   - 动效内核逻辑校验：`node scripts/smoke-core.mjs`
   - 样式规范校验：`node scripts/lint-css.mjs`（规范细则参见 `STYLE_GUIDE.md`）
-- **测试环境就绪探活**：`scripts/ensure-testchrome.sh`
+- **UI 冒烟的旧通道**：`scripts/smoke-ui.mjs` 依赖 9223 调试实例，只在用户明确要求运行它时才用；其余一切浏览器操作走 ego browser。
 
 ---
 
