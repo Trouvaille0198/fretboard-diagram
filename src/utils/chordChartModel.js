@@ -13,7 +13,7 @@ import { getT, fmt } from "../i18n/getT.js";
 // measure = { id, section?: 段落标记, lyrics?: 按小节歌词, lyricsBold?: [[start,end),...](加粗区间,升序合并不重叠),
 //   repeatTimes?: 反复遍数(>1,配合 endBar='repeatEnd';缺省=标准 2 遍),
 //   repeatStart?: true(小节前有反复开始线), endBar: 'single'|'double'|'repeatEnd'|'final',
-//   house?: 1|2(跳房子), slots: [slot] × 拍数 }
+//   house?: 1|2(结尾), slots: [slot] × 拍数 }
 // slot = { kind: 'empty'|'chord'|'rest'|'hold', chord?: 和弦对象, split?: [子槽,子槽](反拍拆分), rhythm?: 节奏型 }
 
 const CHARTS_KEY = "fretboard-chordcharts";
@@ -261,7 +261,7 @@ export function firstEditableSlot(song) {
 
 // 在 (mi, si) 处插入一拍：从该拍起全曲的拍整体后移一位，内容一个不丢。
 // 小节长度固定等于拍号，所以"后移"表现为拍跨小节线流动：本小节装不下的末拍流到下一小节开头，
-// 逐节下传；全曲末尾溢出的拍落到新追加的小节里，终止线/反复线/跳房子跟着真正的曲尾走。
+// 逐节下传；全曲末尾溢出的拍落到新追加的小节里，终止线/反复线/结尾跟着真正的曲尾走。
 export function insertBeatInSong(song, mi, si) {
 	const target = song.measures[mi];
 	if (!target) return song;
@@ -284,7 +284,7 @@ export function insertBeatInSong(song, mi, si) {
 }
 
 // 删除一拍：插入一拍的逆操作。(mi, si) 处的拍移除，从它起全曲的拍整体前移（跨小节流动），
-// 末小节补空拍补满拍号；末小节因此被掏空时自动缩掉（小节线/跳房子随内容回移——插入时的正向搬运在此还原）
+// 末小节补空拍补满拍号；末小节因此被掏空时自动缩掉（小节线/结尾随内容回移——插入时的正向搬运在此还原）
 export function deleteBeatInSong(song, mi, si) {
 	const target = song.measures[mi];
 	if (!target) return song;

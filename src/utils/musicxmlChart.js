@@ -253,7 +253,7 @@ export function importMusicXml(text, fallbackName = getT().chords.importedChartN
 				}
 			}
 		});
-		// 方向词：段落/房子/歌词
+		// 方向词：段落/结尾/歌词
 		kids(m, "direction").forEach(d => {
 			const words = kid(kid(d, "direction-type"), "words");
 			if (!words) return;

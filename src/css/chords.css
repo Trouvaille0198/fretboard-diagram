@@ -1076,8 +1076,8 @@
     z-index: 2;
 }
 
-/* 跳房子 volta 括线：同号连续小节连成一条横线（每格 span 全格宽，相邻格自然相连）；
-   段首（上一格不是同号房子）加左竖钩 + 编号。有图行时顶部是 20px 标记带（文字底对齐），线压带顶不压字 */
+/* 结尾 volta 括线：同号连续小节连成一条横线（每格 span 全格宽，相邻格自然相连）；
+   段首（上一格不是同号结尾）加左竖钩 + 编号。有图行时顶部是 20px 标记带（文字底对齐），线压带顶不压字 */
 .cc-volta {
     position: absolute;
     top: 0;
@@ -2668,7 +2668,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     text-decoration: line-through;
 }
 
-/* 小节级角标统一排在本小节开头左上：跳房子 / 段落 / 转调依次排列，互不遮挡 */
+/* 小节级角标统一排在本小节开头左上：结尾 / 段落 / 转调依次排列，互不遮挡 */
 .cc-cell-tags {
     position: absolute;
     top: -14px;
@@ -2680,7 +2680,7 @@ html[data-theme="light"] .button.sm.edit-enter {
     white-space: nowrap;
 }
 
-/* 段落/跳房子/转调角标：有图行时放文档流（图行与拍格之间的标记带，不再绝对定位悬在格顶——
+/* 段落/结尾/转调角标：有图行时放文档流（图行与拍格之间的标记带，不再绝对定位悬在格顶——
    与拍格/反复线重叠实测踩雷）。整行每格都渲染这条带（空也占位），拍格横向对齐不破 */
 .cc-cell-tags.in-flow {
     position: static;

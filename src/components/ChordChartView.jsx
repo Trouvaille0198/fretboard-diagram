@@ -1706,7 +1706,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						</div>
 					);
 				})() : null}
-				{/* 小节级角标（8pu 式，一律在本小节开头）：跳房子 / 段落标记 / 转调。
+				{/* 小节级角标（8pu 式，一律在本小节开头）：结尾 / 段落标记 / 转调。
 				    有图行时（figsTags）角标放文档流里、落在图行与拍格之间——不再是绝对定位悬在格顶
 				    （与拍格/反复线重叠实测踩雷）；整行每格都渲染这条带（空也占位），拍格横向对齐不破 */}
 				{(figsTags || m.house || m.section || m.keyRoot != null) ? (
@@ -1721,9 +1721,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 						{m.keyRoot != null ? <span className="cc-keymark">{keyLabelText(m.keyLetter ?? keySpellOf(m.keyRoot).letter, m.keyAcc ?? 0, !!m.keyMinor)}</span> : null}
 					</div>
 				) : null}
-				{/* 跳房子 volta 括线：按「有效房子」渲染——段首标了房子，括线一路延伸到「反复结束」线
-				    （结束的标志就是反复结束本身；中间没标房子的格也算段内，线连过去、播放同样跳过）。
-				    段首竖钩+编号，段尾（下一格换房子/无房子）收尾竖钩 */}
+				{/* 结尾 volta 括线：按「有效结尾」渲染——段首标了结尾，括线一路延伸到「反复结束」线
+				    （结束的标志就是反复结束本身；中间没标结尾的格也算段内，线连过去、播放同样跳过）。
+				    段首竖钩+编号，段尾（下一格换结尾/无结尾）收尾竖钩 */}
 				{voltaEff[mi] ? (() => {
 					const h = voltaEff[mi];
 					const voltaFirst = (voltaEff[mi - 1] || 0) !== h;
@@ -1828,7 +1828,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 									}));
 								}} />
 						</div>
-						<div className="cc-mmenu-label">{ts.houseLabel}</div>
+						<div className="cc-mmenu-label" title={ts.houseLabelTip ?? "反复跳越记号"}>{ts.houseLabel ?? "结尾"}</div>
 						<div className="cc-mmenu-row">
 							{[0, 1, 2].map(h => (
 								<button key={h} className={(m.house || 0) === h ? "on" : ""}
@@ -1876,7 +1876,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		expandSong(song).forEach((mi, i) => { if (!playedFirst.has(mi)) playedFirst.set(mi, i); });
 	} catch (e) { /* 防御：展开失败退回原始序 */ }
 
-	const voltaEff = effectiveHouses(song.measures); // 跳房子括线按有效房子渲染（延伸到反复结束）
+	const voltaEff = effectiveHouses(song.measures); // 结尾括线按有效结尾渲染（延伸到反复结束）
 	return (
 		<div className={`cc-page${copyMode ? " cc-copying" : ""}${figOpts.mode === "hover" ? " figmode-hover" : ""}`}>
 			<header className="cc-toolbar">
@@ -2071,7 +2071,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								const rowHasFig = row.some(mm => mm.slots.some(sl => (sl.split || [sl]).some(u => u && u.fig)));
 								// 整行无歌词：歌词带压成细条省行高——输入框仍在（点击可补词，词落地离焦即恢复全高）
 								const rowHasLyrics = row.some(mm => (mm.lyrics || "").trim());
-								// 行内任一小节有段落/跳房子/转调角标且有图行：角标整行统一放文档流（图行与拍格之间的标记带，空也占位对齐）
+								// 行内任一小节有段落/结尾/转调角标且有图行：角标整行统一放文档流（图行与拍格之间的标记带，空也占位对齐）
 								const figsTags = figOpts.mode === "inline" && rowHasFig && row.some(mm => mm.house || mm.section || mm.keyRoot != null);
 								return (
 									<div className={`cc-line${row[0]?.lineBreak ? " brk" : ""}${rowHasLyrics ? "" : " no-lyrics"}`} key={ri}>

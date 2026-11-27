@@ -1,13 +1,13 @@
-// 和弦谱播放引擎：展开反复/跳房子 → 事件流 → 节奏型点火方案
+// 和弦谱播放引擎：展开反复/结尾 → 事件流 → 节奏型点火方案
 // 视图负责时钟与音频（audioService），这里只产出纯数据
 
 import { voiceChord } from "./voicing.js";
 import { getT } from "../i18n/getT.js";
 
-// 有效房子推导：房子标记在段首小节，括线一路延伸到「反复结束」线（结束的标志就是反复结束本身——
-// 反复结束之前的小节即使没标房子也归属该房子：渲染括线连过去、播放同样跳过）。
-// 规则：显式房子开一段；段向后延伸到下一个 endBar==='repeatEnd'（含）为止；中途遇到新的显式房子即换段；
-// 之后没有「反复结束」收口就不延伸（默认就是当前小节）。返回每小节的有效房子（0=无）。
+// 有效结尾推导：结尾标记在段首小节，括线一路延伸到「反复结束」线（结束的标志就是反复结束本身——
+// 反复结束之前的小节即使没标结尾也归属该结尾：渲染括线连过去、播放同样跳过）。
+// 规则：显式结尾开一段；段向后延伸到下一个 endBar==='repeatEnd'（含）为止；中途遇到新的显式结尾即换段；
+// 之后没有「反复结束」收口就不延伸（默认就是当前小节）。返回每小节的有效结尾（0=无）。
 export function effectiveHouses(measures) {
 	const ms = measures || [];
 	const eff = ms.map(m => m.house || 0);
@@ -15,7 +15,7 @@ export function effectiveHouses(measures) {
 		if (!ms[j].house) continue;
 		let k = -1;
 		for (let t = j + 1; t < ms.length; t++) {
-			if (ms[t].house) break; // 新显式房子开新段
+			if (ms[t].house) break; // 新显式结尾开新段
 			if (ms[t].endBar === "repeatEnd") { k = t; break; }
 		}
 		if (k === -1) continue;
@@ -24,7 +24,7 @@ export function effectiveHouses(measures) {
 	return eff;
 }
 
-// 展开反复/跳房子 → 线性小节索引序列（支持一层反复×自定义遍数；房子 1 第一遍、房子 2 第二遍起）
+// 展开反复/结尾 → 线性小节索引序列（支持一层反复×自定义遍数；结尾 1 第一遍、结尾 2 第二遍起）
 export function expandSong(song) {
 	const ms = song.measures || [];
 	const eff = effectiveHouses(ms);
@@ -53,7 +53,7 @@ export function expandSong(song) {
 				}
 				if (start === null) start = 0;
 				i = start;
-				pass = done + 2; // 进入第几遍（跳房子按遍次显隐）
+				pass = done + 2; // 进入第几遍（结尾按遍次显隐）
 				continue;
 			}
 			pass = 1; // 出反复段，回第一遍语义
@@ -182,7 +182,7 @@ export function firePlan(rhythm, beatPos, beats, beatMs, voicing, slotUnit = 4) 
 
 // 播放计划：把事件流变成 [{ startMs, mi, si, half, chord, voicing, plan, beats }] + 总时长
 // startMi：从第几小节开始——按展开后播放顺序找到第一个该小节（或其后）的事件切片，
-// 反复/跳房子结构保持完整；startBeat = 切片前的累计拍数（节拍器强拍对齐用）
+// 反复/结尾结构保持完整；startBeat = 切片前的累计拍数（节拍器强拍对齐用）
 export function buildPlayPlan(song, viewKey, startMi = 0) {
 	const beatMs = 60000 / (song.bpm || 72);
 	// bpm 语义恒为 ♩=（四分）；槽长按拍单位缩放（4/8）——6/8 的槽是八分，半拍即一槽

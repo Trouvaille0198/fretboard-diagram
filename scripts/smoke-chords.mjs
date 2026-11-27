@@ -140,14 +140,14 @@ checkVoicing("5/7", C, "G/B 斜杠");
 }
 
 
-console.log("== 播放引擎：展开反复/跳房子 ==");
+console.log("== 播放引擎：展开反复/结尾 ==");
 import { expandSong, buildEvents, buildPlayPlan } from "../src/utils/chartPlayback.js";
 {
 	const chT = (t) => chordFromDegreeToken(t);
 	const M = (slots, extra) => ({ id: "m", section: null, lyrics: "", repeatStart: false, endBar: "single", house: null, slots, ...(extra || {}) });
 	A("简单反复", eq(expandSong({ measures: [M([{}]), M([{}], { endBar: "repeatEnd" }), M([{}])] }), [0, 1, 0, 1, 2]));
 	const housed = { measures: [M([{}]), M([{}], { house: 1, endBar: "repeatEnd" }), M([{}], { house: 2 }), M([{}], { endBar: "final" })] };
-	A("跳房子两遍（1房→回跳→跳过1房进2房）", eq(expandSong(housed), [0, 1, 0, 2, 3]));
+	A("第一/第二结尾（第一遍 1. → 回跳 → 跳过 1. 进 2.）", eq(expandSong(housed), [0, 1, 0, 2, 3]));
 	const two = { measures: [M([{}], { endBar: "repeatEnd" }), M([{}], { endBar: "repeatEnd" }), M([{}])] };
 	A("连续两段反复", eq(expandSong(two), [0, 0, 1, 1, 2]));
 	const rs = { measures: [M([{}]), M([{}], { repeatStart: true }), M([{}], { endBar: "repeatEnd" }), M([{}])] };
@@ -249,7 +249,7 @@ console.log("== chordLib：变化音与新质量 ==");
 console.log("== chartPack：工程文件往返 ==");
 {
 	const { packChart, unpackChart, unpackChartBundle, chartShareCode, isChartPack, compactChart, packChartsBundle, isChartsBundle, unpackChartsBundle } = await import("../src/utils/chartPack.js");
-	// 造一首把应用里所有字段都用上的谱子（含配图/标色/节奏型/反复/跳房子/谱中转调/质量记忆）
+	// 造一首把应用里所有字段都用上的谱子（含配图/标色/节奏型/反复/结尾/谱中转调/质量记忆）
 	const s = createSong("往返测试");
 	s.key = { root: 6, letter: 4, acc: -1, minor: false }; // Gb 大调（含 letter/acc，往返不丢）
 	s.timeSig = 3; s.bpm = 88; s.display = "name"; s.enharmonic = -1; s.rowsPerLine = 3; s.colorScheme = "crimson";
@@ -517,7 +517,7 @@ console.log("== chordChartModel：删除一拍（插入的逆：全曲整体前�
 	const ins = insertBeatInSong(song2(), 0, 1);
 	const back = deleteBeatInSong(ins, 0, 1);
 	A("插入→删除同一位置 = 回到原曲", eq(flat(back), flat(src)) && back.measures.length === 2);
-	A("小节线/跳房子随内容还原", back.measures[1].endBar === "repeatEnd" && back.measures[1].house === 2);
+	A("小节线/结尾随内容还原", back.measures[1].endBar === "repeatEnd" && back.measures[1].house === 2);
 
 	// 直接删：m0 删第 2 拍（d4），后面整体前移，末尾补空拍
 	const a = deleteBeatInSong(song2(), 0, 1);
@@ -567,13 +567,13 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("末拍溢出流到下一小节开头", a.measures[1].slots[0].chord.degree === 4 && a.measures[1].slots[1].kind === "rest" && a.measures[1].slots[2].chord.degree === 5);
 	A("全曲末尾溢出的拍追加新小节", a.measures.length === 3 && a.measures[2].slots.length === 1 && a.measures[2].slots[0].kind === "empty");
 	A("内容零丢失（展平序 = 原序+一个空拍）", eq(flat(a).filter(x => x !== "empty"), before.filter(x => x !== "empty")));
-	A("终止线/跳房子跟曲尾走", a.measures[2].endBar === "repeatEnd" && a.measures[2].house === 2 && a.measures[1].endBar === "single" && a.measures[1].house == null);
+	A("终止线/结尾跟曲尾走", a.measures[2].endBar === "repeatEnd" && a.measures[2].house === 2 && a.measures[1].endBar === "single" && a.measures[1].house == null);
 	A("纯函数不改原 song", eq(flat(src), before) && before[0] === "d1");
 
 	const b = insertBeatInSong(song2(), 0, 0);
 	A("插在首拍：全曲右移一位", b.measures[0].slots[0].kind === "empty" && b.measures[0].slots[1].chord.degree === 1);
 
-	// 末尾追加（si == 拍数，末小节加拍钮）：新拍落进自动新开的小节，终止线/跳房子跟着真正的曲尾走
+	// 末尾追加（si == 拍数，末小节加拍钮）：新拍落进自动新开的小节，终止线/结尾跟着真正的曲尾走
 	const ap = insertBeatInSong(song2(), 1, 4);
 	A("末尾追加:si=拍数 → 新小节收下新空拍", ap.measures.length === 3 && ap.measures[2].slots.length === 1 && ap.measures[2].slots[0].kind === "empty");
 	A("末尾追加:旧末小节保持满拍且让出终止线", ap.measures[1].slots.length === 4 && ap.measures[1].endBar === "single" && ap.measures[1].house == null && ap.measures[2].endBar === "repeatEnd" && ap.measures[2].house === 2);
