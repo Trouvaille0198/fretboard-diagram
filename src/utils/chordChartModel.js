@@ -2,6 +2,7 @@ import { sameContent, queuePush, queueDelete, setApplier, setPuller, setConflict
 import { createBigStore } from "./idbStore.js";
 import { trashPut } from "./trashModel.js";
 import { degreePc } from "./chordLib.js";
+import { effectiveHouses, expandSong, repeatSections } from "./chartPlayback.js";
 import { getT, fmt } from "../i18n/getT.js";
 
 // 和弦谱（8pu 式功能谱）歌曲模型与本地存储
@@ -13,8 +14,12 @@ import { getT, fmt } from "../i18n/getT.js";
 // measure = { id, section?: 段落标记, lyrics?: 按小节歌词, lyricsBold?: [[start,end),...](加粗区间,升序合并不重叠),
 //   repeatTimes?: 反复遍数(>1,配合 endBar='repeatEnd';缺省=标准 2 遍),
 //   repeatStart?: true(小节前有反复开始线), endBar: 'single'|'double'|'repeatEnd'|'final',
-//   house?: 1|2(结尾), slots: [slot] × 拍数 }
-// slot = { kind: 'empty'|'chord'|'rest'|'hold', chord?: 和弦对象, split?: [子槽,子槽](反拍拆分), rhythm?: 节奏型 }
+//   house?: 1|2(结尾), slots: [slot] × 拍数,
+//   alt2Lyrics?/alt2LyricsBold?/alt2Section?/alt2Tint?/alt2LineBreak?: 第 2 遍独有的歌词/段落标记/标色/换行
+//     (收起反复时两遍这些属性不同的产物),
+//   unfold?: { id, pass, part } 展开态反复块的成员标记(见文件末「反复段展开 / 收起」) }
+// slot = { kind: 'empty'|'chord'|'rest'|'hold', chord?: 和弦对象, split?: [子槽,子槽](反拍拆分), rhythm?: 节奏型,
+//   alt2?: 第 2 遍起这一拍的替代槽位(同 slot 形状，不再嵌套) }
 
 const CHARTS_KEY = "fretboard-chordcharts";
 
@@ -329,6 +334,288 @@ export function moveCursor(song, cur, dmi, dsi) {
 		return { mi, si, half: null };
 	}
 	return { mi, si, half: null };
+}
+
+// ===== 反复段展开 / 收起 =====
+// 反复开始处的图标：把「反复线 + 第一/第二结尾」摊成线性小节（展开），或无损还原成记号（收起）。
+// 展开块成员带 unfold = { id, pass, part }：pass 第几遍，part = 'A' 共用段 / '1' 第一结尾 / '2' 第二结尾。
+// 收起后谱面只展示第 1 遍；第 2 遍与第 1 遍不同的拍挂在该拍上（slot.alt2 = 第 2 遍那一拍的完整内容），
+// 第 2 遍独有的歌词 / 段落标记 / 标色 / 换行存为小节上的 alt2* 字段——谱面上不显示，
+// 只用于播放 / 动图（第 2 遍起走第 2 遍自己的内容）和再展开时原样还原。
+// 挂在拍上而不是整小节：插入/删除一拍、复制粘贴、改拍号时替代内容自动跟着走。
+// 「两段式」记法 ‖: A [1.] :‖ ‖: A' [2.] :‖（两段各带各的和弦/和弦图）按同一个两结尾反复处理：
+// 展开成 A 第一结尾 A' 第二结尾，收起成标准的 ‖: A [1.] :‖ [2.]。
+
+const cloneJson = (x) => JSON.parse(JSON.stringify(x));
+// 键序无关的深比较：同一个和弦/指法图重新保存后键序可能变，不该被当成「两遍不同」
+const canon = (x) => {
+	if (Array.isArray(x)) return `[${x.map(canon).join(",")}]`;
+	if (x && typeof x === "object") return `{${Object.keys(x).sort().map(k => `${JSON.stringify(k)}:${canon(x[k])}`).join(",")}}`;
+	return JSON.stringify(x);
+};
+const sameJson = (a, b) => canon(a) === canon(b);
+// 小节内容签名（比较各遍是否相同时用）：不计 id、展开标记、手动换行
+const contentSig = (m) => canon({ ...m, id: undefined, unfold: undefined, lineBreak: undefined });
+const sameKey = (x, y) => x.keyRoot === y.keyRoot && x.keyMinor === y.keyMinor && x.keyLetter === y.keyLetter && x.keyAcc === y.keyAcc;
+
+// 展开块：同 unfold.id 的首到尾；中间没标记的小节（展开后插入的）归入前一个成员的遍次与段落
+function unfoldedBlock(measures, mi) {
+	const bid = measures[mi]?.unfold?.id;
+	if (!bid) return null;
+	let head = -1, tail = -1;
+	measures.forEach((m, i) => { if (m?.unfold?.id === bid) { if (head < 0) head = i; tail = i; } });
+	if (head < 0) return null;
+	const members = [];
+	let cur = null;
+	for (let i = head; i <= tail; i++) {
+		const u = measures[i]?.unfold;
+		if (u) cur = { pass: u.pass || 1, part: u.part || "A" };
+		if (cur) members.push({ mi: i, ...cur });
+	}
+	return { head, tail, members };
+}
+
+// 各遍 = 按遍次分组的成员序列（出现顺序）；每遍再分共用段 A 与结尾 E
+function blockPasses(members) {
+	const passes = [];
+	members.forEach(x => {
+		let p = passes.find(q => q.pass === x.pass);
+		if (!p) { p = { pass: x.pass, A: [], E: [] }; passes.push(p); }
+		(x.part === "A" ? p.A : p.E).push(x.mi);
+	});
+	return passes;
+}
+
+// 第 2 遍独有的小节属性（挂在主体小节上；再展开时还原到第 2 遍）
+const ALT2_KEYS = ["alt2Lyrics", "alt2LyricsBold", "alt2Section", "alt2Tint", "alt2LineBreak"];
+
+// 第 1 遍版本的小节：去掉所有替代内容（拍的与小节的），键形不变
+function stripAlt2(m) {
+	const out = { ...m };
+	ALT2_KEYS.forEach(k => { delete out[k]; });
+	out.slots = (m.slots || []).map(sl => {
+		if (!sl?.alt2) return sl;
+		const { alt2, ...s } = sl;
+		return s;
+	});
+	return out;
+}
+
+// 收起用的小节底版：第 1 遍版本再去掉展开标记与遍数，记号位清零（后面按新结构重新挂）
+function foldBase(m) {
+	const { unfold, repeatTimes, ...rest } = stripAlt2(m);
+	return { ...rest, repeatStart: false, house: null, endBar: m.endBar === "repeatEnd" ? "single" : m.endBar };
+}
+
+// 主体小节：第 1 遍的内容 + 第 2 遍不同的拍（slot.alt2）与第 2 遍独有的歌词 / 段落标记 / 标色 / 换行（alt2*）
+function bodyMeasure(first, second) {
+	const out = foldBase(first);
+	const fs = out.slots, ss = second.slots || [];
+	let slots = fs;
+	fs.forEach((sl, si) => {
+		if (sameJson(sl, ss[si])) return;
+		if (slots === fs) slots = fs.slice();
+		slots[si] = { ...sl, alt2: cloneJson(ss[si]) };
+	});
+	const base = slots === fs ? out : { ...out, slots };
+	const extra = {};
+	if ((base.lyrics || "") !== (second.lyrics || "") || !sameJson(base.lyricsBold || [], second.lyricsBold || [])) {
+		extra.alt2Lyrics = second.lyrics || "";
+		if (second.lyricsBold?.length) extra.alt2LyricsBold = second.lyricsBold;
+	}
+	if ((first.section ?? null) !== (second.section ?? null)) extra.alt2Section = second.section ?? null;
+	if ((first.tint ?? null) !== (second.tint ?? null)) extra.alt2Tint = second.tint ?? null;
+	if (!!first.lineBreak !== !!second.lineBreak) extra.alt2LineBreak = !!second.lineBreak;
+	return Object.keys(extra).length ? { ...base, ...extra } : base;
+}
+
+// 第 2 遍版本的小节：有替代的拍换成替代内容，歌词 / 段落标记 / 标色 / 换行换成第 2 遍的（替代字段一并清掉）
+function pass2Of(m) {
+	const out = stripAlt2(m);
+	out.slots = (m.slots || []).map(sl => (sl?.alt2 ? cloneJson(sl.alt2) : sl));
+	if (m.alt2Lyrics !== undefined) {
+		out.lyrics = m.alt2Lyrics;
+		if (m.alt2LyricsBold?.length) out.lyricsBold = m.alt2LyricsBold;
+		else delete out.lyricsBold;
+	}
+	if (m.alt2Section !== undefined) out.section = m.alt2Section;
+	if (m.alt2Tint !== undefined) {
+		if (m.alt2Tint) out.tint = m.alt2Tint;
+		else delete out.tint;
+	}
+	if (m.alt2LineBreak !== undefined) {
+		if (m.alt2LineBreak) out.lineBreak = true;
+		else delete out.lineBreak;
+	}
+	return out;
+}
+
+// 收起方案：null = 不是可收起的块；{ fail } = 现有记号表达不了；{ head, tail, out } = 用 out 替换 [head..tail]
+function planFold(measures, mi) {
+	const blk = unfoldedBlock(measures, mi);
+	if (!blk) return null;
+	const P = blockPasses(blk.members);
+	if (P.length < 2) return null; // 只剩一遍：没有可收起的东西
+	const fail = { fail: true, head: blk.head, tail: blk.tail };
+	// 3 遍以上只能收成「第 2 遍起用替代拍」的纯反复：带结尾括线、或第 2 遍起各遍互不相同，都表达不了
+	const sig2 = P[1].A.map(i => contentSig(measures[i]));
+	if (P.length >= 3 && (P.some(p => p.E.length) || P.slice(1).some(p => !sameJson(p.A.map(i => contentSig(measures[i])), sig2)))) return fail;
+	const [p1, p2] = P;
+	const a = p1.A, b = p2.A;
+	// 主体对位：逐小节比第 1 遍与第 2 遍的共用段。转调标记不同、拍数不同——替代拍表达不了，从这里起余下部分改走结尾括线
+	const body = [];
+	for (let i = 0; i < a.length && i < b.length; i++) {
+		const x = measures[a[i]], y = measures[b[i]];
+		if (!sameKey(x, y) || (x.slots?.length || 0) !== (y.slots?.length || 0)) break;
+		body.push(bodyMeasure(x, y));
+	}
+	const cut = body.length;
+	let e1 = [...a.slice(cut), ...p1.E].map(i => foldBase(measures[i]));
+	let e2 = [...b.slice(cut), ...p2.E].map(i => foldBase(measures[i]));
+	if (P.length >= 3 && (e1.length || e2.length)) return fail; // 两遍长短不同 → 多出的部分要进结尾括线，3 遍以上表达不了
+	// 第 1 遍没有结尾而第 2 遍有：现有播放引擎下「2.」前面必须有「1.」才会被演奏——主体最后一小节同时放进两个结尾
+	if (!e1.length && e2.length && body.length) {
+		const last = body.pop();
+		e1.push(foldBase(last));
+		e2.unshift(pass2Of(last));
+	}
+	const out = body.slice();
+	const tailEnd = measures[blk.tail]?.endBar || "single";
+	if (!e1.length && !e2.length) {
+		// 纯反复：‖: 挂在主体第一小节、:‖ 挂在最后一小节；第 2 遍起用替代拍
+		out[0] = { ...out[0], repeatStart: true };
+		out[out.length - 1] = { ...out[out.length - 1], endBar: "repeatEnd", ...(P.length > 2 ? { repeatTimes: P.length } : {}) };
+	} else {
+		if (body.length) out[0] = { ...out[0], repeatStart: true };
+		else e1[0] = { ...e1[0], repeatStart: true };
+		// 两个结尾的每一小节都挂上编号：「2.」在反复结束线之后，有效结尾不会自动向后延伸——只标段首的话，
+		// 多小节的第二结尾只有第一小节算数（括线、展开范围都会漏掉后面的小节）
+		e1 = e1.map(m => ({ ...m, house: 1 }));
+		e1[e1.length - 1] = { ...e1[e1.length - 1], endBar: "repeatEnd" };
+		e2 = e2.map(m => ({ ...m, house: 2 }));
+		if (e2.length) e2[e2.length - 1] = { ...e2[e2.length - 1], endBar: tailEnd };
+		out.push(...e1, ...e2);
+	}
+	return { head: blk.head, tail: blk.tail, out };
+}
+
+// 「两段式」记法：第一段带「1.」结尾，紧接着的第二段（自己的 ‖: … :‖）带「2.」结尾——
+// 实际是同一个两结尾反复被写成了首尾相接的两段（两段各带各的和弦/和弦图，如 Verse / Verse2）。
+// 两段各只收口在自己身上（第一段没有「2.」、第二段没有「1.」）才算；返回合并后的块，否则 null
+function coupledPair(eff, secs, k) {
+	const x = secs[k], y = secs[k + 1];
+	if (!x || !y || y.start !== x.end + 1) return null;
+	const has = (sec, h) => {
+		for (let i = sec.start; i <= sec.end; i++) if (eff[i] === h) return true;
+		return false;
+	};
+	if (!has(x, 1) || has(x, 2) || !has(y, 2) || has(y, 1)) return null;
+	return { start: x.start, end: y.end, first: x, second: y };
+}
+
+// mi 所在的可展开块：{ start, end2, seq: [{ mi, pass, part }] }（按演奏顺序）；不在任何可展开的块里 → null
+//   普通反复段：取演奏序列落在段内的部分（看到 = 听到），回跳处遍数加一；段内有小节进不了演奏序列（中途夹终止线）→ null
+//   两段式：第 1 遍 = 第一段（「1.」之前共用段、之后第一结尾），第 2 遍 = 第二段（「2.」之前共用段、之后第二结尾）
+function blockPlan(song, mi) {
+	const ms = song?.measures || [];
+	const eff = effectiveHouses(ms);
+	const secs = repeatSections(ms);
+	const skip = new Set(); // 两段式的第二段：已并入前一段的块
+	for (let k = 0; k < secs.length; k++) {
+		if (skip.has(k)) continue;
+		const pair = coupledPair(eff, secs, k);
+		if (pair) {
+			skip.add(k + 1);
+			if (mi < pair.start || mi > pair.end) continue;
+			const split = (sec, h, pass) => {
+				const A = [], E = [];
+				for (let i = sec.start; i <= sec.end; i++) (eff[i] === h ? E : A).push(i);
+				return [...A.map(i => ({ mi: i, pass, part: "A" })), ...E.map(i => ({ mi: i, pass, part: String(h) }))];
+			};
+			return { start: pair.start, end2: pair.end, seq: [...split(pair.first, 1, 1), ...split(pair.second, 2, 2)] };
+		}
+		const sec = secs[k];
+		if (mi < sec.start || mi > sec.end2) continue;
+		const idxs = expandSong(song).filter(i => i >= sec.start && i <= sec.end2);
+		if (!idxs.length || new Set(idxs).size !== sec.end2 - sec.start + 1) return null;
+		let pass = 1;
+		return {
+			start: sec.start, end2: sec.end2,
+			seq: idxs.map((idx, j) => {
+				if (j > 0 && idxs[j] <= idxs[j - 1]) pass++;
+				return { mi: idx, pass, part: eff[idx] === 1 ? "1" : eff[idx] === 2 ? "2" : "A" };
+			})
+		};
+	}
+	return null;
+}
+
+// 渲染用的开关表：Map<小节下标, { kind:'unfold', start, end } | { kind:'fold', head, tail }>
+//   unfold：收起态反复块的起点（含隐式起点；两段式落在第一段的起点）；普通段里有小节进不了演奏序列（中途夹终止线）时不给
+//   fold：展开态反复块的首小节，且结构能无损收起
+export function repeatToggles(song) {
+	const ms = song?.measures || [];
+	const out = new Map();
+	const eff = effectiveHouses(ms);
+	const secs = repeatSections(ms);
+	const seq = new Set(expandSong(song || { measures: [] }));
+	const skip = new Set();
+	secs.forEach((sec, k) => {
+		if (skip.has(k)) return;
+		const pair = coupledPair(eff, secs, k);
+		if (pair) { // 两段式：一个开关管两段，落在第一段的起点
+			skip.add(k + 1);
+			out.set(pair.start, { kind: "unfold", start: pair.start, end: pair.end });
+			return;
+		}
+		for (let i = sec.start; i <= sec.end2; i++) {
+			if (!seq.has(i)) return;
+		}
+		out.set(sec.start, { kind: "unfold", start: sec.start, end: sec.end2 });
+	});
+	ms.forEach((m, mi) => {
+		const bid = m?.unfold?.id;
+		if (!bid || out.has(mi)) return; // 同一小节既有收起态记号又是块首：让位给展开
+		if (ms.findIndex(x => x?.unfold?.id === bid) !== mi) return; // 只在块首
+		const plan = planFold(ms, mi);
+		if (plan && !plan.fail) out.set(mi, { kind: "fold", head: plan.head, tail: plan.tail });
+	});
+	return out;
+}
+
+// 展开反复段：mi 所在块按 blockPlan 的顺序落成线性小节。同一小节落下来不止一次时，后续的深拷贝换新 id；
+// 第 2 遍起套用替代拍 / 第 2 遍属性。不在可展开的块里 → null
+export function unfoldRepeat(song, mi) {
+	const ms = song?.measures || [];
+	const plan = blockPlan(song, mi);
+	if (!plan) return null;
+	const tag = `u-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+	const seen = new Set();
+	const out = plan.seq.map(({ mi: idx, pass, part }) => {
+		const src = ms[idx];
+		const { unfold, repeatTimes, ...rest } = pass >= 2 ? pass2Of(src) : stripAlt2(src);
+		const first = !seen.has(idx);
+		seen.add(idx);
+		return {
+			...rest,
+			repeatStart: false,
+			house: null,
+			endBar: src.endBar === "repeatEnd" ? "single" : src.endBar,
+			...(first ? {} : { id: newMeasureId() }),
+			unfold: { id: tag, pass, part }
+		};
+	});
+	return { ...song, measures: [...ms.slice(0, plan.start), ...out, ...ms.slice(plan.end2 + 1)] };
+}
+
+// 收起展开态反复块（unfoldRepeat 的逆，无损）：mi 所在块按 planFold 的规则还原成记号。
+// → { song } | { fail: true }（3 遍以上且现有记号表达不了）| null（不是可收起的块）
+export function foldRepeat(song, mi) {
+	const plan = planFold(song?.measures || [], mi);
+	if (!plan) return null;
+	if (plan.fail) return { fail: true };
+	const ms = song.measures;
+	return { song: { ...song, measures: [...ms.slice(0, plan.head), ...plan.out, ...ms.slice(plan.tail + 1)] } };
 }
 
 // ===== 云端同步落地 =====

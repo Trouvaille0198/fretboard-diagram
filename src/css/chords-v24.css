@@ -328,7 +328,7 @@
 /* 手动换行起始的行：横向分割线，线下留空隙再接谱面内容 */
 .cc-page .cc-line.brk {
     border-top: 1px solid color-mix(in srgb, var(--app-text) 14%, transparent);
-    padding-top: 16px;
+    padding-top: 30px;
 }
 
 .cc-page .cc-cell-slots {

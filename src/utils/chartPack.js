@@ -9,8 +9,9 @@
 //
 // 结构：{ v:1, n:名, k:[根音pc, 小调?1:0], ts:拍数, tu:拍单位(仅8才存), bpm, dp:记谱, en:等音,
 //         rp:每行小节数, cs:色系, qm:同级数质量记忆, fo:和弦图展示设置, m:谱面 }
-// measure：{ i:id, S:段落, L:歌词, R:反复开始, E:终止线(非 single 才存), H:结尾,
-//            K:[转调根音, 小调], T:标色, p:[槽位…] }
+// measure：{ i:id, S:段落, L:歌词, LB:{r:加粗区间}, R:反复开始, E:终止线(非 single 才存), H:结尾,
+//            RP:{n:反复遍数}, K:转调, T:标色, p:[槽位…], N:新起一行,
+//            A2:{s:[[槽位, 替代拍]…], l/b:第 2 遍歌词, sec/t/n:第 2 遍段落标记/标色/换行}, U:展开态反复块成员标记 }
 // slot（tag 编码，省掉 "kind"/"chord"/"degree" 这类重复键名）：
 //   0=空 | 1=休止 | 2=延音 | 3=和弦 | 4=反拍拆分
 //   和弦 [3, degree, acc, quality, bass, rhythm, image, fig]，尾部空值裁掉
@@ -236,6 +237,17 @@ function encodeMeasure(m) {
 	if (m.keyRoot != null) o.K = [m.keyRoot, m.keyMinor ? 1 : 0];
 	if (m.tint) o.T = m.tint;
 	if (m.lineBreak) o.N = 1; // 手动换行标记：该小节另起一行（N = new line）
+	// 收起反复的产物（见 chordChartModel「反复段展开 / 收起」）：全部走小节级新键，旧版解码器整体忽略——旧版本只会少掉替代，不会丢拍
+	const a2 = {};
+	const altSlots = (m.slots || []).map((sl, si) => (sl?.alt2 ? [si, encodeSlot(sl.alt2)] : null)).filter(Boolean);
+	if (altSlots.length) a2.s = altSlots; // 第 2 遍替代拍：[槽位下标, 槽位]
+	if (m.alt2Lyrics !== undefined) a2.l = m.alt2Lyrics;
+	if (m.alt2LyricsBold?.length) a2.b = m.alt2LyricsBold;
+	if (m.alt2Section !== undefined) a2.sec = m.alt2Section;
+	if (m.alt2Tint !== undefined) a2.t = m.alt2Tint;
+	if (m.alt2LineBreak !== undefined) a2.n = m.alt2LineBreak ? 1 : 0;
+	if (Object.keys(a2).length) o.A2 = a2;
+	if (m.unfold) o.U = { b: m.unfold.id, n: m.unfold.pass || 1, p: m.unfold.part || "A" };
 	return o;
 }
 
@@ -320,6 +332,20 @@ function decodeMeasure(o) {
 	if (o.RP && Number.isFinite(o.RP.n) && o.RP.n > 1) m.repeatTimes = o.RP.n;
 	if (o.K) { m.keyRoot = o.K[0]; m.keyMinor = !!o.K[1]; }
 	if (o.T) m.tint = o.T;
+	// 第 2 遍替代拍 / 歌词、展开态反复块标记：有才写（不落空键，往返比较按 norm 抹平 null/undefined）
+	if (o.A2 && typeof o.A2 === "object") {
+		if (Array.isArray(o.A2.s)) {
+			o.A2.s.forEach(([si, sl]) => {
+				if (Number.isInteger(si) && m.slots[si]) m.slots[si] = { ...m.slots[si], alt2: decodeSlot(sl) };
+			});
+		}
+		if (typeof o.A2.l === "string") m.alt2Lyrics = o.A2.l;
+		if (Array.isArray(o.A2.b)) m.alt2LyricsBold = o.A2.b.filter(x => Array.isArray(x) && Number.isFinite(x[0]) && Number.isFinite(x[1]));
+		if (typeof o.A2.sec === "string" || o.A2.sec === null) m.alt2Section = o.A2.sec;
+		if (typeof o.A2.t === "string" || o.A2.t === null) m.alt2Tint = o.A2.t;
+		if (o.A2.n === 0 || o.A2.n === 1) m.alt2LineBreak = !!o.A2.n;
+	}
+	if (typeof o.U?.b === "string") m.unfold = { id: o.U.b, pass: Number(o.U.n) || 1, part: o.U.p === "1" || o.U.p === "2" ? o.U.p : "A" };
 	return m;
 }
 

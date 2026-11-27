@@ -41,7 +41,7 @@ The library provides an organized view showing key, time signature, tempo (BPM),
 - **Degree & Letter-Name Input**: Type keyboard numbers `1`–`7` to enter scale degrees directly (e.g., typing `1 m 7` generates `1m7`, `5 / 7` produces slash chord `5/7`), or hold `Shift` to enter letter-named chords (e.g., `Shift+A m` → `Am`).
 - **Visual Chord Inspector**: Easily pick triads, 7ths, 9ths, suspended chords, alterations (♭9, ♯11, 13), slash bass notes, and rhythm patterns in a dedicated visual selector.
 - **Rich Song Structure**: Mark song sections (Intro, Verse, Chorus, etc.), align lyrics with bold text styling, split off-beat beats, and assign measure background colors.
-- **Repeats & Volta Brackets**: Configure multi-pass repeats and 1st/2nd ending brackets with synchronized notation rendering and audio playback according to standard music theory rules.
+- **Repeats & Volta Brackets**: Configure multi-pass repeats and 1st/2nd ending brackets with synchronized notation rendering and audio playback according to standard music theory rules. Unfold any repeat into linear bars with one click (each pass can carry its own chords and chord diagrams), then fold it back — the folded view shows only the first pass, while each later pass's own chords and diagrams are kept in the data and restored on the next unfold.
 - **Flexible Transposition**: Change the key at any measure; subsequent chords transpose automatically while the header displays the active key in real time.
 - **Full History**: Complete undo and redo support (`Ctrl+Z` / `Ctrl+Shift+Z`) for a stress-free editing experience.
 

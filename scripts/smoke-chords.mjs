@@ -822,5 +822,200 @@ console.log("== chordChartModel：插入一拍（全曲整体后移） ==");
 	A("展示设置:非对象/缺字段 → 整体默认", normalizeFigOpts(null).mode === "inline" && normalizeFigOpts({}).orientation === "h");
 }
 
+// ===== 反复段展开 / 收起：反复开始处的图标把「反复线 + 结尾」摊成线性小节，再无损还原 =====
+// 收起时主体保留第 1 遍；第 2 遍不同的拍挂在拍上（slot.alt2）、歌词另存——多段反复每一遍可以标不同的和弦与和弦图
+console.log("== chordChartModel：反复段展开 / 收起 ==");
+{
+	const { repeatToggles, unfoldRepeat, foldRepeat } = await import("../src/utils/chordChartModel.js");
+	const { packChart, unpackChart, chartShareCode } = await import("../src/utils/chartPack.js");
+	const beat = (t, extra) => ({ kind: "chord", chord: chordFromDegreeToken(t), ...(extra || {}) });
+	const M = (slots, extra) => ({ ...createMeasure(4), slots, ...(extra || {}) });
+	const E = { kind: "empty" };
+	// 键序无关的深比较：展开/收起会重建对象，键序不该影响「是否相等」
+	const canon = (x) => Array.isArray(x) ? `[${x.map(canon).join(",")}]`
+		: (x && typeof x === "object") ? `{${Object.keys(x).sort().map(k => `${JSON.stringify(k)}:${canon(x[k])}`).join(",")}}` : JSON.stringify(x);
+	const same = (a, b) => canon(a) === canon(b);
+	const strip = (s) => s.measures.map(({ id, unfold, ...m }) => (unfold ? { ...m, unfold: { ...unfold, id: "" } } : m)); // 忽略小节 id 与随机块 id
+	// 事件流签名只看内容（类型/和弦/拍数）：展开前后小节下标必然不同
+	const evSig = (s) => buildEvents(s).map(e => `${e.type}.${e.chord ? [e.chord.degree, e.chord.acc, e.chord.quality].join("/") : ""}.${e.beats}`).join(" ");
+	const kinds = (s) => [...repeatToggles(s)].map(([mi, t]) => `${mi}:${t.kind}`).join(",");
+	const FIG = { "f1-s2": { color: "red", visibility: "visible" } };
+	const FIG2 = { "f0-s1": { color: "blue", visibility: "visible" } };
+	// ‖: m0(1 5 6 4)  m1(1 5· ·，1.) :‖  m2(4 5 1·，2.)  | m3(终止线)
+	const song = () => ({ id: "rep", measures: [
+		M([beat("1"), beat("5"), beat("6"), beat("4")], { repeatStart: true }),
+		M([beat("1"), beat("5", { fig: FIG }), E, E], { house: 1, endBar: "repeatEnd" }),
+		M([beat("4"), beat("5"), beat("1"), E], { house: 2 }),
+		M([beat("1"), E, E, E], { endBar: "final" }),
+	] });
+
+	const s0 = song();
+	A("反复段起点给「展开」开关", kinds(s0) === "0:unfold");
+	const u1 = unfoldRepeat(s0, 0);
+	A("展开：A B1 A B2 + 段尾，共 5 小节", u1.measures.length === 5);
+	A("展开：演奏事件流不变（看到 = 听到）", evSig(u1) === evSig(s0));
+	A("展开：反复线/结尾括线/遍数清零", u1.measures.every(m => !m.repeatStart && m.house == null && m.endBar !== "repeatEnd" && m.repeatTimes == null));
+	A("展开：成员标记 = 遍次 + 共用段/结尾", same(u1.measures.slice(0, 4).map(m => m.unfold.pass + m.unfold.part), ["1A", "11", "2A", "22"]));
+	A("展开：块首给「收起」开关", kinds(u1) === "0:fold");
+	const f1 = foldRepeat(u1, 0);
+	A("未改动 → 收起逐字还原（忽略 id）", !!f1.song && same(strip(f1.song), strip(s0)));
+
+	// 展开后给第 2 遍单独标注：换和弦 / 换和弦图 / 换歌词
+	const u2 = JSON.parse(JSON.stringify(u1));
+	u2.measures[2].slots[1] = beat("5m");
+	u2.measures[2].slots[2] = beat("6", { fig: FIG2 });
+	u2.measures[2].lyrics = "第二段词";
+	const f2 = foldRepeat(u2, 0);
+	const b = f2.song.measures;
+	A("第 2 遍有改动 → 收起仍是 4 小节、B1/B2 边界不变", b.length === 4 && b[1].house === 1 && b[1].endBar === "repeatEnd" && b[2].house === 2);
+	A("收起：主体是第 1 遍（和弦、和弦图、歌词都不动）", b[0].slots[1].chord.quality === "" && !b[0].slots[1].fig && !b[0].slots[2].fig && b[0].lyrics === "");
+	A("收起：第 2 遍不同的拍挂替代内容（alt2），相同的拍不挂", b[0].slots[1].alt2?.chord?.quality === "m" && same(b[0].slots[2].alt2?.fig, FIG2) && !b[0].slots[0].alt2 && !b[0].slots[3].alt2);
+	A("收起：第 2 遍歌词另存", b[0].alt2Lyrics === "第二段词");
+	A("收起：第 2 遍起走替代拍 → 事件流与展开态一致", evSig(f2.song) === evSig(u2));
+	A("再展开逐字还原（忽略 id）", same(strip(unfoldRepeat(f2.song, 0)), strip(u2)));
+	A("同一个和弦重新保存（只是键序变）不算两遍不同", (() => {
+		const u = JSON.parse(JSON.stringify(u1));
+		const c = u.measures[2].slots[1].chord;
+		u.measures[2].slots[1].chord = { bass: c.bass, quality: c.quality, acc: c.acc, degree: c.degree };
+		return !foldRepeat(u, 0).song.measures[0].slots[1].alt2;
+	})());
+	const pk = unpackChart(packChart(f2.song)), sc = unpackChart(chartShareCode(f2.song));
+	A("工程文件/分享码往返带上替代拍与第 2 遍歌词", pk.measures[0].slots[1].alt2?.chord?.quality === "m" && same(pk.measures[0].slots[2].alt2?.fig, FIG2) && pk.measures[0].alt2Lyrics === "第二段词"
+		&& sc.measures[0].slots[1].alt2?.chord?.quality === "m" && sc.measures[0].alt2Lyrics === "第二段词");
+	const pku = unpackChart(packChart(u2));
+	A("工程文件往返带上展开块成员标记", pku.measures.slice(0, 4).every((m, i) => m.unfold?.pass === u2.measures[i].unfold.pass && m.unfold.part === u2.measures[i].unfold.part) && !pku.measures[4].unfold);
+	const { compactChart } = await import("../src/utils/chartPack.js");
+	A("没有替代/展开标记的谱：打包不产生新键（旧谱体积不变）", (() => { const j = JSON.stringify(compactChart(song())); return !j.includes('"A2"') && !j.includes('"U"') && !j.includes('"L2"'); })());
+
+	// 纯反复 ×3
+	const s3 = () => ({ id: "x3", measures: [M([beat("1"), beat("5"), beat("6"), beat("4")], { repeatStart: true, endBar: "repeatEnd", repeatTimes: 3 }), M([beat("5"), E, E, E])] });
+	const u3 = unfoldRepeat(s3(), 0);
+	A("纯反复 ×3：展开成 3 遍", u3.measures.length === 4 && [1, 2, 3].every(p => u3.measures[p - 1].unfold.pass === p && u3.measures[p - 1].unfold.part === "A") && evSig(u3) === evSig(s3()));
+	A("纯反复 ×3：未改动收起逐字还原", same(strip(foldRepeat(u3, 0).song), strip(s3())));
+	const u3b = JSON.parse(JSON.stringify(u3)); u3b.measures[1].slots[0] = beat("2");
+	A("×3：第 2、3 遍互不相同 → 现有记号表达不了，拒绝收起", foldRepeat(u3b, 0).fail === true);
+	const u3c = JSON.parse(JSON.stringify(u3)); u3c.measures[1].slots[0] = beat("2"); u3c.measures[2].slots[0] = beat("2");
+	const f3c = foldRepeat(u3c, 0);
+	A("×3：第 2 遍起相同、与第 1 遍不同 → 纯反复 + 替代拍，遍数照旧", f3c.song.measures[0].slots[0].alt2?.chord.degree === 2 && f3c.song.measures[0].house == null && f3c.song.measures[0].repeatTimes === 3 && evSig(f3c.song) === evSig(u3c));
+	const s4 = song(); s4.measures[1].repeatTimes = 3;
+	A("带结尾 ×3：展开按引擎实际走的 2 遍落地，收起回 2 遍", (() => { const u = unfoldRepeat(s4, 0); const f = foldRepeat(u, 0).song; return new Set(u.measures.slice(0, 4).map(m => m.unfold.pass)).size === 2 && f.measures.length === 4 && f.measures[1].repeatTimes === undefined && evSig(f) === evSig(u); })());
+
+	// ===== 以下几组来自真实谱（云端库副本）批量验证时踩到的问题 =====
+	// 多小节的纯反复：‖: 挂回主体第一小节、:‖ 挂回最后一小节
+	const sP = () => ({ id: "plain2", measures: [M([beat("1"), E, E, E], { repeatStart: true }), M([beat("5"), E, E, E], { endBar: "repeatEnd" }), M([beat("4"), E, E, E])] });
+	const uP = unfoldRepeat(sP(), 0);
+	const fP = foldRepeat(uP, 0).song;
+	A("两小节的纯反复：展开 4 小节；收起后 ‖: 在第 1 小节、:‖ 在第 2 小节，逐字还原", uP.measures.length === 5 && fP.measures.length === 3
+		&& fP.measures[0].repeatStart && fP.measures[0].endBar === "single" && !fP.measures[1].repeatStart && fP.measures[1].endBar === "repeatEnd"
+		&& same(strip(fP), strip(sP())) && evSig(fP) === evSig(uP));
+
+	// 「两段式」记法：‖: A [1.] :‖ ‖: A' [2.] :‖ —— 两段各带各的和弦 / 和弦图（如 Verse / Verse2），按同一个两结尾反复处理
+	const FIG3 = { "f3-s1": { visibility: "visible" } };
+	const pair = () => ({
+		id: "pair",
+		measures: [
+			M([beat("1"), E, E, E], { repeatStart: true, section: "Verse", lineBreak: true }), M([beat("5"), E, E, E]), M([beat("4"), E, E, E], { house: 1, endBar: "repeatEnd" }),
+			M([beat("1"), E, E, E], { repeatStart: true, section: "Verse2" }), M([beat("5", { fig: FIG3 }), E, E, E], { tint: "red" }), M([beat("6"), E, E, E], { house: 2, endBar: "repeatEnd" }),
+			M([beat("1"), E, E, E]),
+		],
+	});
+	const pr = pair();
+	A("两段式：只给一个展开开关，落在第一段的起点", kinds(pr) === "0:unfold" && repeatToggles(pr).get(0).end === 5);
+	A("两段式：在第二段里点，也落到同一个块", same(strip(unfoldRepeat(pr, 3)), strip(unfoldRepeat(pr, 0))));
+	const uq = unfoldRepeat(pr, 0);
+	const want = pair().measures.map(m => ({ ...m, repeatStart: false, endBar: "single", house: null })); // 线性参考：整首摊平后的演奏内容
+	A("两段式展开：A、第一结尾、A'、第二结尾 依次落地", uq.measures.length === 7 && same(uq.measures.slice(0, 6).map(m => m.unfold.pass + m.unfold.part), ["1A", "1A", "11", "2A", "2A", "22"])
+		&& same(uq.measures.slice(0, 6).map(m => m.slots[0].chord?.degree), [1, 5, 4, 1, 5, 6]) && evSig(uq) === evSig({ measures: want }));
+	const fq = foldRepeat(uq, 0).song;
+	A("两段式收起：标准记法 ‖: A [1.] :‖ [2.]（7 → 5 小节）", fq.measures.length === 5 && fq.measures[0].repeatStart && !fq.measures[1].repeatStart
+		&& fq.measures[2].house === 1 && fq.measures[2].endBar === "repeatEnd" && fq.measures[3].house === 2 && fq.measures[3].endBar === "single" && evSig(fq) === evSig(uq));
+	A("两段式收起：主体首小节是第一段（段落标记 Verse、第 1 遍的换行与标色）", fq.measures[0].section === "Verse" && fq.measures[0].lineBreak === true && !fq.measures[0].tint);
+	A("两段式收起：主体和弦不动，第二段不同的拍挂替代", same(fq.measures[1].slots[0].chord, pr.measures[1].slots[0].chord) && !fq.measures[0].slots[0].alt2 && same(fq.measures[1].slots[0].alt2?.fig, FIG3));
+	A("两段式收起：第二段独有的段落标记 / 标色 / 换行另存，再展开原样回到第 2 遍", fq.measures[0].alt2Section === "Verse2" && fq.measures[0].alt2LineBreak === false
+		&& fq.measures[1].alt2Tint === "red" && same(strip(unfoldRepeat(fq, 0)), strip(uq)));
+	A("两段式收起后只剩一个展开开关", kinds(fq) === "0:unfold");
+	const pkq = unpackChart(packChart(fq));
+	A("工程文件往返带上第 2 遍的段落标记 / 标色 / 换行", pkq.measures[0].alt2Section === "Verse2" && pkq.measures[0].alt2LineBreak === false && pkq.measures[1].alt2Tint === "red" && same(pkq.measures[1].slots[0].alt2?.fig, FIG3));
+
+	// 多小节的第二结尾：反复结束线之后「2.」不会自动向后延伸 → 收起时每一小节都挂编号，括线和展开范围才不漏
+	const sE = () => ({ id: "e2multi", measures: [M([beat("1"), E, E, E], { repeatStart: true }), M([beat("5"), E, E, E], { house: 1, endBar: "repeatEnd" }), M([beat("4"), E, E, E], { house: 2 }), M([beat("6"), E, E, E], { house: 2 }), M([beat("1"), E, E, E])] });
+	const uE = unfoldRepeat(sE(), 0);
+	const fE = foldRepeat(uE, 0).song;
+	A("多小节第二结尾：展开范围覆盖整个「2.」，收起后每小节都挂编号、逐字还原", uE.measures.length === 6 && repeatToggles(sE()).get(0).end === 3
+		&& fE.measures[1].house === 1 && fE.measures[1].endBar === "repeatEnd" && fE.measures[2].house === 2 && fE.measures[3].house === 2 && same(strip(fE), strip(sE())) && evSig(fE) === evSig(uE));
+
+	// 结尾括线的延伸范围：只延伸到「收住本段」的那条反复结束线；后面另起的一段反复（‖: … :‖）不归它
+	const { effectiveHouses } = await import("../src/utils/chartPlayback.js");
+	const sX = () => ({ id: "later", measures: [
+		M([beat("1"), E, E, E], { repeatStart: true }), M([beat("5"), E, E, E], { house: 1 }), M([beat("4"), E, E, E], { house: 1, endBar: "repeatEnd" }),
+		M([beat("6"), E, E, E], { house: 2 }), M([beat("2"), E, E, E], { house: 2 }),
+		M([beat("1"), E, E, E]), // 后面的内容（副歌）
+		M([beat("5"), E, E, E], { repeatStart: true }), M([beat("4"), E, E, E], { endBar: "repeatEnd" }), // 另起的一段反复
+	] });
+	A("后面另有反复时，「2.」括线只到自己的结尾为止：后面的内容和另起的反复不被划进去", same(effectiveHouses(sX().measures), [0, 1, 1, 2, 2, 0, 0, 0])
+		&& repeatToggles(sX()).get(0).end === 4 && repeatToggles(sX()).get(6)?.kind === "unfold");
+	A("后面另有反复时播放顺序不变（先走完两结尾反复，再走后面的内容和后面的反复两遍）", evSig(sX()) === evSig({ measures: [0, 1, 2, 0, 3, 4, 5, 6, 7, 6, 7].map(i => ({ ...sX().measures[i], repeatStart: false, endBar: "single", house: null })) }));
+	A("「1.」只标了段首：仍延伸到本段的反复结束线", same(effectiveHouses([M([beat("1"), E, E, E], { repeatStart: true }), M([beat("5"), E, E, E], { house: 1 }), M([beat("4"), E, E, E], { endBar: "repeatEnd" })]), [0, 1, 1]));
+	const sY = () => ({ id: "pairExt", measures: [
+		M([beat("1"), E, E, E], { repeatStart: true }), M([beat("5"), E, E, E], { house: 1, endBar: "repeatEnd" }),
+		M([beat("1"), E, E, E], { repeatStart: true }), M([beat("6"), E, E, E], { house: 2 }), M([beat("4"), E, E, E], { endBar: "repeatEnd" }),
+	] });
+	A("两段式的「2.」只标了段首：仍延伸到收住本段的那条反复结束线", same(effectiveHouses(sY().measures), [0, 1, 0, 2, 2]) && repeatToggles(sY()).get(0).end === 4);
+
+	// 第 1 遍没有结尾而第 2 遍有（展开后删掉第一结尾）：主体最后一小节同时进两个结尾——
+	// 现有播放引擎下「2.」前面必须有「1.」才会被演奏
+	const s5 = () => ({ id: "b2only", measures: [
+		M([beat("1"), beat("1"), beat("1"), beat("1")], { repeatStart: true }),
+		M([beat("5"), beat("5"), beat("5"), beat("5")]),
+		M([beat("6"), E, E, E], { house: 1, endBar: "repeatEnd" }),
+		M([beat("4"), E, E, E], { house: 2 }),
+	] });
+	const u5 = unfoldRepeat(s5(), 0); u5.measures.splice(2, 1);
+	const f5 = foldRepeat(u5, 0).song;
+	A("删掉第一结尾再收起：主体最后一小节进两个结尾，事件流不变", f5.measures.length === 4 && f5.measures[0].house == null && f5.measures[0].repeatStart
+		&& f5.measures[1].house === 1 && f5.measures[1].endBar === "repeatEnd" && f5.measures[2].house === 2 && f5.measures[3].house === 2 && evSig(f5) === evSig(u5));
+	A("只有「2.」没有「1.」的谱：引擎会跳过第二结尾（现存边角），这类段不给展开开关", same(expandSong({ measures: [M([beat("1"), E, E, E], { repeatStart: true, endBar: "repeatEnd" }), M([beat("4"), E, E, E], { house: 2 })] }), [0, 0]) && kinds({ measures: [M([beat("1"), E, E, E], { repeatStart: true, endBar: "repeatEnd" }), M([beat("4"), E, E, E], { house: 2 })] }) === "");
+
+	// 长度 / 转调
+	const u9 = JSON.parse(JSON.stringify(u1)); u9.measures.splice(3, 0, M([beat("3"), E, E, E])); // 第 2 遍共用段多出一小节
+	const f9 = foldRepeat(u9, 0).song;
+	A("第 2 遍多出一小节 → 进第二结尾开头，事件流不变", f9.measures.length === 5 && f9.measures[2].slots[0].chord.degree === 3 && f9.measures[2].house === 2 && f9.measures[1].house === 1 && evSig(f9) === evSig(u9));
+	const u9b = JSON.parse(JSON.stringify(u1)); u9b.measures.splice(1, 0, M([beat("3"), E, E, E])); // 第 1 遍共用段多出一小节
+	const f9b = foldRepeat(u9b, 0).song;
+	A("第 1 遍多出一小节 → 进第一结尾开头，事件流不变", f9b.measures.length === 5 && f9b.measures[1].slots[0].chord.degree === 3 && f9b.measures[1].house === 1 && f9b.measures[2].endBar === "repeatEnd" && f9b.measures[3].house === 2 && evSig(f9b) === evSig(u9b));
+	const ua = JSON.parse(JSON.stringify(u1)); ua.measures[2].keyRoot = 7; ua.measures[2].keyMinor = false;
+	const fa = foldRepeat(ua, 0).song;
+	A("第 2 遍转调不同（替代拍表达不了）→ 从该小节起改走结尾括线", fa.measures.length === 5 && fa.measures[0].house === 1 && fa.measures[1].endBar === "repeatEnd" && fa.measures[2].house === 2 && fa.measures[2].keyRoot === 7 && evSig(fa) === evSig(ua));
+
+	// 开关落点 / 防御
+	A("隐式起点（段首没画 ‖:）：开关落在段首第 1 小节", kinds({ measures: [M([beat("1"), E, E, E]), M([beat("5"), E, E, E], { endBar: "repeatEnd" })] }) === "0:unfold");
+	const s7 = { measures: [M([beat("1"), E, E, E], { endBar: "repeatEnd" }), M([beat("5"), E, E, E], { repeatStart: true, endBar: "repeatEnd" })] };
+	A("首尾相接的两段反复：各给一个展开开关", kinds(s7) === "0:unfold,1:unfold");
+	const u7 = unfoldRepeat(s7, 1);
+	A("只展开点中的那一段，另一段原样保留", u7.measures.length === 3 && u7.measures[0].endBar === "repeatEnd" && evSig(u7) === evSig(s7) && kinds(u7) === "0:unfold,1:fold");
+	const s8 = song(); s8.measures[0].endBar = "final";
+	A("段内夹了终止线（有小节进不了演奏序列）→ 不给展开开关", kinds(s8) === "" && unfoldRepeat(s8, 0) === null);
+	const ub = JSON.parse(JSON.stringify(u1)); ub.measures = ub.measures.slice(0, 2);
+	A("展开块只剩一遍 → 不可收起", foldRepeat(ub, 0) === null && kinds(ub) === "");
+	A("不在反复段内：展开/收起都不作为", unfoldRepeat(u1, 4) === null && foldRepeat(song(), 3) === null);
+
+	// 事件流遍次：第 1 遍走主体、第 2 遍起走替代拍；连续两段时第二段的第 1 遍不走替代
+	const withAlt = (base, extra, si, alt) => { const m = M(base.map((t, i) => beat(t, i === si ? { alt2: beat(alt) } : null)), extra); return m; };
+	const two = { measures: [
+		withAlt(["1", "5", "6", "4"], { repeatStart: true, endBar: "repeatEnd" }, 1, "5m"),
+		withAlt(["4", "5", "6", "5"], { repeatStart: true, endBar: "repeatEnd" }, 0, "2"),
+	] };
+	const twoLin = { measures: [M([beat("1"), beat("5"), beat("6"), beat("4")]), M([beat("1"), beat("5m"), beat("6"), beat("4")]), M([beat("4"), beat("5"), beat("6"), beat("5")]), M([beat("2"), beat("5"), beat("6"), beat("5")])] };
+	A("事件流：连续两段，第 1 遍走主体、第 2 遍走替代拍", evSig(two) === evSig(twoLin));
+	const twoEnd = { measures: [
+		M([beat("1"), beat("5", { alt2: beat("5m") }), E, E], { repeatStart: true }),
+		M([beat("4"), E, E, E], { house: 1, endBar: "repeatEnd" }),
+		M([beat("6"), E, E, E], { house: 2 }),
+		withAlt(["4", "5", "6", "5"], { repeatStart: true, endBar: "repeatEnd" }, 0, "2"),
+	] };
+	const twoEndLin = { measures: [M([beat("1"), beat("5"), E, E]), M([beat("4"), E, E, E]), M([beat("1"), beat("5m"), E, E]), M([beat("6"), E, E, E]), M([beat("4"), beat("5"), beat("6"), beat("5")]), M([beat("2"), beat("5"), beat("6"), beat("5")])] };
+	A("事件流：带结尾的第一段之后，第二段第 1 遍仍走主体", evSig(twoEnd) === evSig(twoEndLin));
+}
+
 console.log(fail ? `\n✗ ${fail}/${n} 断言失败` : `\n✓ 全部 ${n} 项断言通过`);
 process.exit(fail ? 1 : 0);

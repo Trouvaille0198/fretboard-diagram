@@ -1101,6 +1101,56 @@
     border-right: 1.5px solid var(--cc-bar-ink); /* 段尾收尾竖钩：跨小节延伸到此为止的可见标志 */
 }
 
+/* 展开态反复块：每一遍开头在第一拍左上角标遍号（1. / 2. …），紧贴和弦记号本身——
+   不在小节顶部的角标带里（那里有图行时会落到和弦图那一块）；收起时编号回到结尾括线上 */
+.cc-passmark {
+    position: absolute;
+    top: 0;
+    left: 1px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 11px;
+    color: var(--cc-accent-text);
+    pointer-events: none;
+}
+
+/* 反复段展开/收起开关：钉在块首小节角标带的最左（反复开始处），只有图标、不带字——
+   ▸ 收起态 / ▾ 展开态。实心圆钮：描边 + 底色用和弦谱的强调色，高度与段落标记齐（18px），
+   不压到下方拍格；可点区域用伪元素向外扩 8px（触屏手指点得中），不影响角标带排版 */
+.cc-rep-toggle {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--cc-accent);
+    background: var(--cc-accent-weak);
+    color: var(--cc-accent-text);
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+.cc-rep-toggle::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+}
+
+/* 角标带浮在小节上方（没有图行）时，按钮再抬高 8px：底边离开小节线，不压反复线/小节线 */
+.cc-cell-tags:not(.in-flow) .cc-rep-toggle {
+    transform: translateY(-8px);
+}
+
+.cc-rep-toggle:hover {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-accent) 35%, transparent);
+}
+
 .cc-add-cell {
     flex: 0 0 44px;
     margin-left: 6px;
@@ -1143,6 +1193,7 @@
 .cc-cell-figslot[data-cross] .cc-figview { flex: none; width: var(--cc-cross-w); justify-content: flex-start; }
 
 .cc-cell-slots {
+    position: relative; /* 展开态遍号（.cc-passmark）的定位基准：第一拍左上角 */
     display: flex;
     gap: 6px;
     min-height: 78px;

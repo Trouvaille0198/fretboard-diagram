@@ -36,7 +36,7 @@ import { KeyPicker } from "./KeyPicker";
 import {
 	loadCharts, saveChart, deleteChart, createSong, createMeasure, resizeMeasure, insertBeatInSong, deleteBeatInSong,
 	KEY_LETTERS, keyPcOf, keySpellOf, keyLabelText, normalizeBoldRanges, toggleBoldRange, collectSameChordFigs,
-	FIG_SIZES, defaultFigOpts, normalizeFigOpts
+	FIG_SIZES, defaultFigOpts, normalizeFigOpts, repeatToggles, unfoldRepeat, foldRepeat
 } from "../utils/chordChartModel";
 import { expandSong, effectiveHouses } from "../utils/chartPlayback";
 import { remoteIsNewer } from "../utils/syncEngine";
@@ -734,7 +734,10 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		if (!clip) return;
 		if (clip.type === "chord") { patchCurrentUnit({ kind: "chord", chord: JSON.parse(JSON.stringify(clip.chord)) }); return; }
 		const src = clip.type === "measures" ? clip.measures : [{ ...createMeasure(song.timeSig), slots: clip.slots || [] }];
-		const fresh = JSON.parse(JSON.stringify(src)).map(m => ({ ...m, id: createMeasure(song.timeSig).id }));
+		const fresh = JSON.parse(JSON.stringify(src)).map(m => {
+			const { unfold, ...rest } = m; // 粘贴件不带走展开态反复块的成员标记：冒充块成员会让「收起」认错范围
+			return { ...rest, id: createMeasure(song.timeSig).id };
+		});
 		setSong(s => { const ms = s.measures.slice(); ms.splice(Math.max(0, cursor.mi) + 1, 0, ...fresh); return { ...s, measures: ms }; });
 		if (copyMode) setSel({ anchor: null, end: null }); // 不退出模式：可连续粘贴；清选区防索引漂移
 	};
@@ -935,6 +938,30 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 		measures.splice(mi + 1, 0, copy);
 		return { ...s, measures };
 	});
+
+	// 反复段展开 / 收起（反复开始处的图标）：展开 = 按演奏顺序落成线性小节；收起 = 无损还原成反复记号
+	const toggleRepeat = (mi) => {
+		const tog = repToggle?.get(mi);
+		if (!tog) return;
+		if (tog.kind === "unfold") {
+			const next = unfoldRepeat(song, mi);
+			if (!next) return;
+			const delta = next.measures.length - song.measures.length;
+			setSong(next);
+			if (delta && cursor.mi > tog.end) setCursor(c => ({ ...c, mi: c.mi + delta })); // 块后的小节整体后移
+		} else {
+			const res = foldRepeat(song, mi);
+			if (!res) return;
+			if (res.fail) { showToast(ts.foldFailTimes ?? "3 遍及以上的反复各遍内容不同，无法收起"); return; }
+			const n = res.song.measures.length;
+			setSong(res.song);
+			// 块后的小节整体前移，再钳回新长度
+			setCursor(c => {
+				const m = Math.max(tog.head, Math.min(c.mi - (c.mi > tog.tail ? song.measures.length - n : 0), n - 1));
+				return { mi: m, si: Math.min(c.si, (res.song.measures[m]?.slots.length || 1) - 1), half: null };
+			});
+		}
+	};
 
 	const toggleSplit = () => {
 		const willSplit = !song.measures[cursor.mi]?.slots[cursor.si]?.split;
@@ -1607,6 +1634,9 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 
 	const cellView = (m, mi, rowHasFig, figsTags) => {
 		const inSel = selRange != null && mi >= selRange[0] && mi <= selRange[1];
+		// 展开态反复块：每一遍的第一小节标遍号（1. / 2. …）——收起时编号挂在结尾括线上，展开后挪到各遍开头
+		const prevU = song.measures[mi - 1]?.unfold;
+		const passNo = m.unfold && (!prevU || prevU.id !== m.unfold.id || prevU.pass !== m.unfold.pass) ? m.unfold.pass : 0;
 		// 反复结束紧跟反复开始（同一条小节线，且两格同在一行）：并成标准 :||:，而不是两套符号并排
 		// 同在一行 = mi+1 不是行首（行首集合含每行小节数的整倍点 + 手动换行标记的小节）
 		const repeatJoint = m.endBar === "repeatEnd" && !!song.measures[mi + 1]?.repeatStart && !rowStartSet.has(mi + 1);
@@ -1709,8 +1739,15 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				{/* 小节级角标（8pu 式，一律在本小节开头）：结尾 / 段落标记 / 转调。
 				    有图行时（figsTags）角标放文档流里、落在图行与拍格之间——不再是绝对定位悬在格顶
 				    （与拍格/反复线重叠实测踩雷）；整行每格都渲染这条带（空也占位），拍格横向对齐不破 */}
-				{(figsTags || m.house || m.section || m.keyRoot != null) ? (
+				{(figsTags || m.house || m.section || m.keyRoot != null || repToggle?.has(mi)) ? (
 					<div className={`cc-cell-tags${figsTags ? " in-flow" : ""}`}>
+						{/* 反复段展开/收起开关：钉在块首小节的角标带最左（反复开始处），只有图标不带字。▸=收起态，点击展开成线性小节；▾=展开态，点击收回 */}
+						{repToggle?.has(mi) ? (
+							<button className="cc-rep-toggle" aria-label={repToggle.get(mi).kind === "unfold" ? (ts.unfoldRepeat ?? "展开反复") : (ts.foldRepeat ?? "收起反复")}
+								onClick={e => { e.stopPropagation(); toggleRepeat(mi); }}>
+								{repToggle.get(mi).kind === "unfold" ? "▸" : "▾"}
+							</button>
+						) : null}
 						{m.section ? (
 							<span className="cc-sectionmark"
 								title={ts.sectionEditTip}
@@ -1730,7 +1767,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 					const voltaLast = (voltaEff[mi + 1] || 0) !== h;
 					return <span className={`cc-volta${voltaFirst ? " volta-start" : ""}${voltaLast ? " volta-end" : ""}`}>{voltaFirst ? `${h}.` : ""}</span>;
 				})() : null}
-				<div className="cc-cell-slots" style={{ "--cc-beats": song.timeSig ?? 4 }}>{compactView
+				<div className="cc-cell-slots" style={{ "--cc-beats": song.timeSig ?? 4 }}>{passNo ? <span className="cc-passmark">{passNo}.</span> : null}{compactView
 					? Array.from({ length: Math.ceil(m.slots.length / 2) }, (_, k) => compactPairView(mi, k * 2, k * 2 + 1 < m.slots.length ? k * 2 + 1 : null))
 					: m.slots.map((_, si) => slotView(mi, si))}
 					{/* 末小节尾部加拍钮：很窄一条＋，点了在曲尾追加一拍（拍满自动开新小节，终止线跟着走） */}
@@ -1877,6 +1914,8 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 	} catch (e) { /* 防御：展开失败退回原始序 */ }
 
 	const voltaEff = effectiveHouses(song.measures); // 结尾括线按有效结尾渲染（延伸到反复结束）
+	// 反复段展开/收起开关（仅编辑态）：收起态反复块的起点给「展开」，展开态反复块的首小节给「收起」
+	const repToggle = editing ? repeatToggles(song) : null;
 	return (
 		<div className={`cc-page${copyMode ? " cc-copying" : ""}${figOpts.mode === "hover" ? " figmode-hover" : ""}`}>
 			<header className="cc-toolbar">
@@ -2072,7 +2111,10 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 								// 整行无歌词：歌词带压成细条省行高——输入框仍在（点击可补词，词落地离焦即恢复全高）
 								const rowHasLyrics = row.some(mm => (mm.lyrics || "").trim());
 								// 行内任一小节有段落/结尾/转调角标且有图行：角标整行统一放文档流（图行与拍格之间的标记带，空也占位对齐）
-								const figsTags = figOpts.mode === "inline" && rowHasFig && row.some(mm => mm.house || mm.section || mm.keyRoot != null);
+								// 行内任一小节带展开/收起开关时同样进文档流（开关就渲染在这条角标带里）
+								const figsTags = figOpts.mode === "inline" && rowHasFig
+									&& (row.some(mm => mm.house || mm.section || mm.keyRoot != null)
+										|| [...(repToggle?.keys() || [])].some(i => i >= first && i < first + row.length));
 								return (
 									<div className={`cc-line${row[0]?.lineBreak ? " brk" : ""}${rowHasLyrics ? "" : " no-lyrics"}`} key={ri}>
 									{/* 行号：叠在行首小节格左上角小字，不占独立列 */}
@@ -2136,7 +2178,7 @@ export function ChordChartView({ songId, sharedSong, sharedClips }) {
 				);
 			})() : null}
 
-			<div className="cc-build-ver" title={ts.buildVerTip}>v254</div>
+			<div className="cc-build-ver" title={ts.buildVerTip}>v255</div>
 
 
 			{dialog ? (
